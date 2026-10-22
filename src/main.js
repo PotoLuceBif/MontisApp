@@ -1,60 +1,121 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import javascriptLogo from './assets/javascript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.js'
+import * as maplibregl from 'maplibre-gl';
+import maplibreWorkerUrl from '../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+import mlcontour from 'maplibre-contour';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import './style.css';
 
-document.querySelector('#app').innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${javascriptLogo}" class="framework" alt="JavaScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.js</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
-<div class="ticks"></div>
+const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-          <img class="button-icon" src="${javascriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+// Source des courbes de niveau, calculées à partir des altitudes
+const demSource = new mlcontour.DemSource({
+  url: DEM_URL,
+  encoding: 'terrarium',
+  maxzoom: 13,
+  worker: false,
+});
+demSource.setupMaplibre(maplibregl);
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '© les contributeurs OpenStreetMap',
+      },
+      relief: {
+        type: 'raster-dem',
+        tiles: [DEM_URL],
+        encoding: 'terrarium',
+        tileSize: 256,
+        maxzoom: 15,
+        attribution: 'Relief : Terrain Tiles (AWS)',
+      },
+      ombrage: {
+        type: 'raster-dem',
+        tiles: [DEM_URL],
+        encoding: 'terrarium',
+        tileSize: 256,
+        maxzoom: 15,
+      },
+    },
+    layers: [
+      { id: 'osm', type: 'raster', source: 'osm' },
+      {
+        id: 'ombrage',
+        type: 'hillshade',
+        source: 'ombrage',
+        layout: { visibility: 'none' },
+        paint: { 'hillshade-exaggeration': 0.5 },
+      },
+    ],
+  },
+  center: [6.87, 45.88], // massif du Mont-Blanc (longitude, latitude)
+  zoom: 11.5,
+  maxPitch: 85,
+});
 
-setupCounter(document.querySelector('#counter'))
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+map.on('load', () => {
+  map.addSource('courbes', {
+    type: 'vector',
+    tiles: [
+      demSource.contourProtocolUrl({
+        // [courbe fine, courbe maîtresse] en mètres, selon le niveau de zoom
+        thresholds: {
+          9: [500, 1000],
+          10: [200, 1000],
+          11: [100, 500],
+          12: [50, 250],
+          13: [20, 100],
+          14: [10, 50],
+        },
+        contourLayer: 'contours',
+        elevationKey: 'ele',
+        levelKey: 'level',
+        extent: 4096,
+        buffer: 1,
+      }),
+    ],
+    maxzoom: 15,
+  });
+
+  map.addLayer({
+    id: 'courbes',
+    type: 'line',
+    source: 'courbes',
+    'source-layer': 'contours',
+    layout: { visibility: 'visible' },
+    paint: {
+      'line-color': '#8a5a2b',
+      'line-opacity': 0.6,
+      'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6],
+    },
+  });
+});
+
+const bouton = document.getElementById('toggle3d');
+let mode3D = false;
+
+bouton.addEventListener('click', () => {
+  mode3D = !mode3D;
+  map.setLayoutProperty('ombrage', 'visibility', mode3D ? 'visible' : 'none');
+  if (map.getLayer('courbes')) {
+    map.setLayoutProperty('courbes', 'visibility', mode3D ? 'none' : 'visible');
+  }
+  if (mode3D) {
+    map.setTerrain({ source: 'relief', exaggeration: 1.6 });
+    map.easeTo({ pitch: 70, bearing: -20, duration: 1000 });
+  } else {
+    map.setTerrain(null);
+    map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+  }
+  bouton.textContent = mode3D ? '2D' : '3D';
+});
