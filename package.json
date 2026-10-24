@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "maplibre-contour": "^0.1.1",
-    "maplibre-gl": "^6.15.0"
+    "maplibre-gl": "^6.15.0",
+    "suncalc": "^2.1.1"
   }
 }

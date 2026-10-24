@@ -1,5 +1,5 @@
 html, body { margin: 0; height: 100%; }
-#map { position: absolute; inset: 0; }
+#map { position: absolute; inset: 0; background: #05070d; }
 #toggle3d {
   position: absolute; top: 12px; left: 12px; z-index: 1;
   padding: 10px 18px; border: 0; border-radius: 8px;
@@ -8,3 +8,162 @@ html, body { margin: 0; height: 100%; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   cursor: pointer;
 }
+
+.balise { width: 34px; height: 34px; position: relative; cursor: pointer; }
+.balise svg { width: 34px; height: 34px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
+.balise span {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  font: 700 11px system-ui, sans-serif; color: #fff; text-shadow: 0 0 3px #000;
+  pointer-events: none;
+}
+.balise-perimee { opacity: 0.55; }
+
+#menu-bouton {
+  position: absolute; top: 12px; left: 12px; z-index: 4;
+  width: 44px; height: 44px; border: 0; border-radius: 8px;
+  background: #fff; color: #111; font-size: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+#toggle3d { left: 64px; }
+
+#menu-tiroir {
+  position: absolute; top: 0; left: 0; bottom: 0; z-index: 3;
+  width: min(320px, 88vw);
+  display: flex; flex-direction: column;
+  background: #fff; color: #111;
+  font: 14px system-ui, sans-serif;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+#menu-tiroir.ouvert { transform: translateX(0); }
+.menu-entete {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px 12px 70px; border-bottom: 1px solid #eee; font-size: 17px;
+}
+#menu-fermer { border: 0; background: none; font-size: 18px; cursor: pointer; color: #555; }
+.menu-corps { flex: 1; overflow: auto; padding: 6px 10px 24px; }
+
+.menu-section { border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.menu-section > summary {
+  cursor: pointer; padding: 12px 4px; list-style: none;
+  font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #555;
+}
+.menu-section > summary::-webkit-details-marker { display: none; }
+.menu-section > summary::after { content: '▾'; float: right; }
+.menu-section[open] > summary::after { content: '▴'; }
+
+.menu-module { margin-bottom: 6px; }
+.menu-ligne {
+  width: 100%; text-align: left; padding: 10px 12px;
+  border: 1px solid #ddd; border-radius: 8px; background: #f7f7f7; color: #111;
+  font: 600 15px system-ui, sans-serif; cursor: pointer;
+}
+.menu-ligne.actif { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+.menu-contenu { padding: 10px 4px 6px; }
+.menu-contenu p { margin: 0; color: #444; }
+.menu-contenu h2 { display: none; }
+.menu-contenu h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.04em; }
+.menu-contenu h4 { margin: 0 0 6px; font-size: 15px; }
+.menu-contenu .note { margin: 6px 0; font-size: 12px; color: #666; }
+
+/* ----- Fond de carte : onglets France / Monde ----- */
+.fond-onglets {
+  display: flex;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.fond-onglets button {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  background: #f7f7f7;
+  color: #111;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+.fond-onglets button.actif {
+  background: #2b6cb0;
+  color: #fff;
+}
+
+.liste-fonds {
+  max-height: 240px; overflow-y: auto;
+  border: 1px solid #ddd; border-radius: 8px;
+}
+.fond-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+.fond-item:last-child { border-bottom: 0; }
+.fond-item:hover { background: #f5f8fc; }
+.fond-item:has(input:checked) { background: #e8f1fb; }
+.fond-nom { flex: 1; font-weight: 600; }
+
+/* ----- Relief : sélecteur 2D | 3D et hauteur du relief ----- */
+.relief-bascule {
+  display: flex;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.relief-bascule button {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  background: #f7f7f7;
+  color: #111;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+.relief-bascule button.actif {
+  background: #2b6cb0;
+  color: #fff;
+}
+.relief-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.relief-reglage input[type='range'] { width: 100%; }
+.relief-reglage small {
+  display: block;
+  color: #777;
+  margin-top: 2px;
+}
+.relief-reglage.inactif { opacity: 0.5; }
+
+.ligne-coche { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+
+/* Cases à cocher du panneau Parapente (à garder) */
+.option { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+
+/* ----- Cases à cocher du menu (Éléments de la carte) ----- */
+.option-case {
+  display: block;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+/* ----- Pied du menu : retour à zéro ----- */
+.menu-pied {
+  padding: 12px;
+  border-top: 1px solid #eee;
+}
+#menu-reset {
+  width: 100%;
+  padding: 9px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f7f7f7;
+  color: #111;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+#menu-reset:hover { background: #eee; }

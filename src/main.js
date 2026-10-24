@@ -3,6 +3,10 @@ import maplibreWorkerUrl from '../node_modules/maplibre-gl/dist/maplibre-gl-work
 import mlcontour from 'maplibre-contour';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
+import { initMenu } from './menu.js';
+import { etat, majCourbes } from './options-carte.js';
+import { lire, ecrire } from './reglages.js';
+import { retablirFond } from './fond-de-carte.js';
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
@@ -21,6 +25,7 @@ const map = new maplibregl.Map({
   container: 'map',
   style: {
     version: 8,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
       osm: {
         type: 'raster',
@@ -52,7 +57,11 @@ const map = new maplibregl.Map({
         type: 'hillshade',
         source: 'ombrage',
         layout: { visibility: 'none' },
-        paint: { 'hillshade-exaggeration': 0.5 },
+        paint: {
+          'hillshade-exaggeration': 0.5,
+          // Les ombres restent, mais plus d'éclaircie blanche sur la carte
+          'hillshade-highlight-color': 'rgba(255, 255, 255, 0)',
+        },
       },
     ],
   },
@@ -61,21 +70,123 @@ const map = new maplibregl.Map({
   maxPitch: 85,
 });
 
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+window.map = map;
 
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+map.addControl(
+  new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true,
+    showUserLocation: true,
+    fitBoundsOptions: { maxZoom: 15 },
+  }),
+  'top-right'
+);
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+
+// ===== Mémoire de la position de la carte =====
+const vueSauvee = lire('vue', null);
+
+if (
+  vueSauvee &&
+  Number.isFinite(vueSauvee.lng) && Number.isFinite(vueSauvee.lat) &&
+  Number.isFinite(vueSauvee.zoom) &&
+  Math.abs(vueSauvee.lat) <= 90
+) {
+  map.jumpTo({
+    center: [vueSauvee.lng, vueSauvee.lat],
+    zoom: vueSauvee.zoom,
+    bearing: vueSauvee.bearing ?? 0,
+    pitch: vueSauvee.pitch ?? 0,
+  });
+}
+
+map.on('moveend', () => {
+  const c = map.getCenter();
+  ecrire('vue', {
+    lng: Math.round(c.lng * 1e5) / 1e5,
+    lat: Math.round(c.lat * 1e5) / 1e5,
+    zoom: Math.round(map.getZoom() * 100) / 100,
+    bearing: Math.round(map.getBearing()),
+    pitch: Math.round(map.getPitch()),
+  });
+});
+
+// ===== Bouton 2D / 3D =====
+const boutonToggle3d = document.getElementById('toggle3d');
+const ZOOM_RELIEF_MIN = 9; // en dessous, projection globe : on coupe le relief 3D
+let terrainActif = false;
+
+function majTerrain() {
+  const veut = etat.mode3D && map.getZoom() >= ZOOM_RELIEF_MIN;
+  if (veut) {
+    map.setTerrain({ source: 'relief', exaggeration: etat.exageration ?? 1.2 });
+  } else if (terrainActif) {
+    map.setTerrain(null);
+  }
+  terrainActif = veut;
+}
+etat.majTerrain = majTerrain;
+
+map.on('zoomend', () => {
+  const veut = etat.mode3D && map.getZoom() >= ZOOM_RELIEF_MIN;
+  if (veut !== terrainActif) majTerrain();
+});
+
+function appliquerMode(mode3D) {
+  etat.mode3D = mode3D;
+
+  if (mode3D) {
+    // 3D : relief + ombrage, inclinaison autorisée
+    map.setMaxPitch(85);
+    majTerrain();
+    map.setLayoutProperty('ombrage', 'visibility', 'visible');
+    map.touchPitch.enable();
+    boutonToggle3d.textContent = '2D';
+  } else {
+    // 2D : on remet à plat, puis on bloque l'inclinaison
+    majTerrain();
+    map.setLayoutProperty('ombrage', 'visibility', 'none');
+    map.easeTo({ pitch: 0, duration: 400 });
+    map.once('moveend', () => map.setMaxPitch(0));
+    map.setMaxPitch(0);
+    map.touchPitch.disable();
+    boutonToggle3d.textContent = '3D';
+  }
+
+  ecrire('mode3D', mode3D);
+  majCourbes(map);
+
+  // Les courbes de niveau ne s'affichent qu'en 2D
+  if (mode3D) {
+    ['courbes', 'courbes-altitude'].forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
+    });
+  }
+
+  window.dispatchEvent(new CustomEvent('mode3d', { detail: mode3D }));
+}
+
+etat.basculerMode = () => appliquerMode(!etat.mode3D);
+
+boutonToggle3d.addEventListener('click', () => {
+  appliquerMode(!etat.mode3D);
+});
+
+// ===== Tout ce qui s'ajoute une fois la carte chargée =====
 map.on('load', () => {
+  // ---------- Courbes de niveau ----------
   map.addSource('courbes', {
     type: 'vector',
     tiles: [
       demSource.contourProtocolUrl({
-        // [courbe fine, courbe maîtresse] en mètres, selon le niveau de zoom
         thresholds: {
           9: [500, 1000],
           10: [200, 1000],
           11: [100, 500],
-          12: [50, 250],
+          12: [20, 100],
           13: [20, 100],
-          14: [10, 50],
+          14: [10, 100],
         },
         contourLayer: 'contours',
         elevationKey: 'ele',
@@ -92,30 +203,68 @@ map.on('load', () => {
     type: 'line',
     source: 'courbes',
     'source-layer': 'contours',
-    layout: { visibility: 'visible' },
     paint: {
       'line-color': '#8a5a2b',
       'line-opacity': 0.6,
       'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6],
     },
   });
-});
 
-const bouton = document.getElementById('toggle3d');
-let mode3D = false;
+  map.addLayer({
+    id: 'courbes-altitude',
+    type: 'symbol',
+    source: 'courbes',
+    'source-layer': 'contours',
+    filter: ['>=', ['get', 'level'], 1],
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 300,
+      'text-field': [
+        'concat',
+        ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }],
+        ' m',
+      ],
+      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-size': 11,
+    },
+    paint: {
+      'text-color': '#6b4220',
+      'text-halo-color': '#ffffff',
+      'text-halo-width': 1.5,
+    },
+  });
 
-bouton.addEventListener('click', () => {
-  mode3D = !mode3D;
-  map.setLayoutProperty('ombrage', 'visibility', mode3D ? 'visible' : 'none');
-  if (map.getLayer('courbes')) {
-    map.setLayoutProperty('courbes', 'visibility', mode3D ? 'none' : 'visible');
+  // ---------- Menu (activités, météo, carte) ----------
+  initMenu(map);
+  retablirFond(map);
+  map.once('idle', () => retablirFond(map)); // second passage une fois la carte au repos
+
+  // ---------- Globe quand on dézoome ----------
+  try {
+    map.setProjection({
+      type: ['interpolate', ['linear'], ['zoom'], 6, 'vertical-perspective', 9, 'mercator'],
+    });
+  } catch (err) {
+    console.warn('Transition globe indisponible, globe simple :', err);
+    try {
+      map.setProjection({ type: 'globe' });
+    } catch (err2) {
+      console.warn('Globe indisponible :', err2);
+    }
   }
-  if (mode3D) {
-    map.setTerrain({ source: 'relief', exaggeration: 1.6 });
-    map.easeTo({ pitch: 70, bearing: -20, duration: 1000 });
-  } else {
-    map.setTerrain(null);
-    map.easeTo({ pitch: 0, bearing: 0, duration: 1000 });
+
+  // Atmosphère autour du globe (visible seulement en dézoomant)
+  try {
+    map.setSky({
+      'sky-color': '#199EF3',
+      'sky-horizon-blend': 0.5,
+      'horizon-color': '#ffffff',
+      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+    });
+  } catch (err) {
+    console.warn('Atmosphère indisponible :', err);
   }
-  bouton.textContent = mode3D ? '2D' : '3D';
+
+  // ---------- Démarrage dans le dernier mode utilisé (2D par défaut) ----------
+  appliquerMode(lire('mode3D', false));
 });
