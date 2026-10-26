@@ -210,6 +210,96 @@ const GLACIERS = {
     },
   ],
 };
+const PARCS = {
+  couches: [
+    {
+      id: 'nature-parcs',
+      type: 'fill',
+      'source-layer': 'park',
+      minzoom: 4,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: {
+        'fill-color': '#12a05c',
+        'fill-opacity': ['match', ['get', 'class'], 'national_park', 0.28, 0.18],
+      },
+    },
+    // Halo lumineux le long des limites
+    {
+      id: 'nature-parcs-halo',
+      type: 'line',
+      'source-layer': 'park',
+      minzoom: 4,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': '#2fd17e',
+        'line-opacity': 0.45,
+        'line-blur': 3,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 3, 12, 9],
+      },
+    },
+    {
+      id: 'nature-parcs-bord',
+      type: 'line',
+      'source-layer': 'park',
+      minzoom: 4,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': '#0a6b3d',
+        'line-opacity': 1,
+        'line-dasharray': [4, 2],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.2, 12, 3],
+      },
+    },
+    // Noms des parcs nationaux : en majuscules espacées
+    {
+      id: 'nature-parcs-noms-nationaux',
+      type: 'symbol',
+      'source-layer': 'park',
+      minzoom: 6,
+      haut: true,
+      filter: [
+        'all',
+        ['==', ['geometry-type'], 'Point'],
+        ['==', ['get', 'class'], 'national_park'],
+        ['has', 'name'],
+      ],
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-font': POLICE,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 11, 12, 18],
+        'text-transform': 'uppercase',
+        'text-letter-spacing': 0.12,
+        'text-max-width': 8,
+        'symbol-sort-key': ['to-number', ['get', 'rank'], 99],
+      },
+      paint: { 'text-color': '#0a6b3d', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
+    },
+    // Noms des autres zones protégées
+    {
+      id: 'nature-parcs-noms',
+      type: 'symbol',
+      'source-layer': 'park',
+      minzoom: 9,
+      haut: true,
+      filter: [
+        'all',
+        ['==', ['geometry-type'], 'Point'],
+        ['!=', ['get', 'class'], 'national_park'],
+        ['has', 'name'],
+      ],
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-font': POLICE,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 11, 14, 14],
+        'text-max-width': 8,
+        'symbol-sort-key': ['to-number', ['get', 'rank'], 99],
+      },
+      paint: { 'text-color': '#0a6b3d', 'text-halo-color': '#ffffff', 'text-halo-width': 1.8 },
+    },
+  ],
+};
 
 // ---------- Création et affichage ----------
 function afficher(map, groupe, visible) {
@@ -238,3 +328,4 @@ function afficher(map, groupe, visible) {
 export const afficherForets = (map, visible) => afficher(map, FORETS, visible);
 export const afficherEaux = (map, visible) => afficher(map, EAUX, visible);
 export const afficherGlaciers = (map, visible) => afficher(map, GLACIERS, visible);
+export const afficherParcs = (map, visible) => afficher(map, PARCS, visible);

@@ -2,7 +2,8 @@ import { creerActiviteParapente } from './activite-parapente.js';
 import { creerFondDeCarte } from './fond-de-carte.js';
 import { creerOptionRelief } from './relief.js';
 import { creerElementsCarte } from './elements-carte.js';
-import { lire, ecrire, retourAZero } from './reglages.js';
+import { creerPageParametres } from './parametres.js';
+import { lire, ecrire } from './reglages.js';
 
 // Module « à venir » : une ligne dans le menu avec un petit texte
 function creerModuleBientot(id, label, icone, texte) {
@@ -61,8 +62,9 @@ export function initMenu(map) {
     </div>
     <div class="menu-corps"></div>
     <div class="menu-pied">
-      <button id="menu-reset" type="button">↺ Retour à zéro</button>
+      <button id="menu-params" type="button" class="btn-secondaire">⚙️ Paramètres</button>
     </div>
+    <div class="menu-parametres"></div>
   `;
   document.body.append(bouton, tiroir);
   const corps = tiroir.querySelector('.menu-corps');
@@ -71,11 +73,12 @@ export function initMenu(map) {
   bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
   tiroir.querySelector('#menu-fermer').addEventListener('click', () => ouvrir(false));
 
-  tiroir.querySelector('#menu-reset').addEventListener('click', () => {
-    if (confirm('Tout remettre à zéro et recentrer la carte sur votre position ?')) {
-      retourAZero();
-    }
-  });
+  // ---------- Page Paramètres ----------
+  const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
+  tiroir
+    .querySelector('.menu-parametres')
+    .appendChild(creerPageParametres({ retour: () => montrerParametres(false) }));
+  tiroir.querySelector('#menu-params').addEventListener('click', () => montrerParametres(true));
 
   // ---------- Sections et modules ----------
   function demarrer(e) {

@@ -7,8 +7,14 @@ import { initMenu } from './menu.js';
 import { etat, majCourbes } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { retablirFond } from './fond-de-carte.js';
+import { initRecherche } from './recherche.js';
+import { initFiches } from './fiche.js';
+import { initBasculeMode } from './bascule-mode.js';
+import { appliquerApparence } from './apparence.js';
+
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
+appliquerApparence();
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 
@@ -73,6 +79,7 @@ const map = new maplibregl.Map({
 window.map = map;
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+initBasculeMode();
 map.addControl(
   new maplibregl.GeolocateControl({
     positionOptions: { enableHighAccuracy: true },
@@ -237,6 +244,9 @@ map.on('load', () => {
   // ---------- Menu (activités, météo, carte) ----------
   initMenu(map);
   retablirFond(map);
+  initRecherche(map);
+  initFiches(map);
+
   map.once('idle', () => retablirFond(map)); // second passage une fois la carte au repos
 
   // ---------- Globe quand on dézoome ----------
@@ -252,18 +262,25 @@ map.on('load', () => {
       console.warn('Globe indisponible :', err2);
     }
   }
-
-  // Atmosphère autour du globe (visible seulement en dézoomant)
-  try {
-    map.setSky({
-      'sky-color': '#199EF3',
-      'sky-horizon-blend': 0.5,
-      'horizon-color': '#ffffff',
-      'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
-    });
-  } catch (err) {
-    console.warn('Atmosphère indisponible :', err);
+  // ---------- Ciel : seulement près du sol (vue plate), sans brouillard ----------
+  const CIEL = {
+    'sky-color': '#8fb8d8',
+    'horizon-color': '#e6eef2',
+    'sky-horizon-blend': 0.5,
+    'horizon-fog-blend': 0,       // à l'horizon : couleur d'horizon seulement
+    'fog-color': '#e6eef2',       // même couleur : le brouillard se fond dans le ciel
+    'fog-ground-blend': 1,        // le brouillard reste à l'horizon, ne couvre pas le terrain
+    'atmosphere-blend': 0,
+  };
+  let cielActif = false;
+  function majCiel() {
+    const veut = map.getZoom() >= ZOOM_RELIEF_MIN; // au-dessus : projection plate
+    if (veut === cielActif) return;
+    map.setSky(veut ? CIEL : undefined);
+    cielActif = veut;
   }
+  map.on('zoom', majCiel);
+  majCiel();
 
   // ---------- Démarrage dans le dernier mode utilisé (2D par défaut) ----------
   appliquerMode(lire('mode3D', false));

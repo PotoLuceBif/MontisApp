@@ -1,14 +1,48 @@
-html, body { margin: 0; height: 100%; }
-#map { position: absolute; inset: 0; background: #05070d; }
-#toggle3d {
-  position: absolute; top: 12px; left: 12px; z-index: 1;
-  padding: 10px 18px; border: 0; border-radius: 8px;
-  background: #fff; color: #111;
-  font: 600 16px system-ui, sans-serif;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
+/* ===== Thème : variables ===== */
+:root {
+  --surface: #fbfaf8;
+  --surface-2: #f0ede8;
+  --survol: #e6e2db;
+  --bord: #dcd7cf;
+  --texte: #1f2421;
+  --texte-2: #6b706c;
+  --accent-clair: #2f6b57;
+  --accent-sombre: #5fb59a;
+  --accent: var(--accent-clair);
+  --accent-texte: #ffffff;
+  --accent-doux: color-mix(in srgb, var(--accent) 14%, transparent);
+  --ombre: 0 2px 8px rgba(0, 0, 0, 0.28);
+  --ombre-forte: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --rayon: 10px;
+  color-scheme: light;
 }
+:root[data-theme='sombre'] {
+  --surface: #1c2125;
+  --surface-2: #262c31;
+  --survol: #2f373d;
+  --bord: #38414a;
+  --texte: #e9ecee;
+  --texte-2: #9aa4ab;
+  --accent: var(--accent-sombre);
+  --accent-texte: #10171a;
+  --ombre: 0 2px 8px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+:root[data-accent='sapin'] { --accent-clair: #2f6b57; --accent-sombre: #5fb59a; }
+:root[data-accent='ocre'] { --accent-clair: #9a6212; --accent-sombre: #e3a64d; }
+:root[data-accent='acier'] { --accent-clair: #3a5f86; --accent-sombre: #7fabd9; }
+:root[data-accent='brique'] { --accent-clair: #a2402c; --accent-sombre: #e8806a; }
+:root[data-accent='prune'] { --accent-clair: #6c4879; --accent-sombre: #bb98c9; }
 
+/* ===== Base ===== */
+html, body { margin: 0; height: 100%; }
+body { font-family: system-ui, sans-serif; color: var(--texte); }
+#map { position: absolute; inset: 0; background: #05070d; }
+[hidden] { display: none !important; }
+input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--accent); }
+#toggle3d { display: none; } /* ancien bouton, remplacé par le sélecteur 2D | 3D */
+
+/* ===== Balises de vent (parapente) ===== */
 .balise { width: 34px; height: 34px; position: relative; cursor: pointer; }
 .balise svg { width: 34px; height: 34px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
 .balise span {
@@ -18,20 +52,42 @@ html, body { margin: 0; height: 100%; }
 }
 .balise-perimee { opacity: 0.55; }
 
+/* ===== Barre du haut : 2D | 3D et recherche ===== */
+#barre-haut {
+  position: absolute; top: 12px; left: 64px; right: 64px;
+  display: flex; align-items: flex-start; gap: 8px;
+  pointer-events: none; transition: left 0.25s ease;
+}
+#barre-haut > * { pointer-events: auto; position: relative; z-index: 2; }
+body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px); }
+
+#bascule-mode {
+  display: flex; gap: 2px; flex: none;
+  height: 44px; padding: 4px; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--bord);
+  border-radius: var(--rayon); box-shadow: var(--ombre);
+}
+#bascule-mode button {
+  width: 42px; border: 0; border-radius: 7px; background: transparent; color: var(--texte-2);
+  font: 600 14px system-ui, sans-serif; cursor: pointer;
+}
+#bascule-mode button:hover:not(.actif) { background: var(--survol); }
+#bascule-mode button.actif { background: var(--accent); color: var(--accent-texte); }
+
+/* ===== Bouton et tiroir du menu ===== */
 #menu-bouton {
   position: absolute; top: 12px; left: 12px; z-index: 4;
-  width: 44px; height: 44px; border: 0; border-radius: 8px;
-  background: #fff; color: #111; font-size: 22px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
+  width: 44px; height: 44px; border: 1px solid var(--bord); border-radius: var(--rayon);
+  background: var(--surface); color: var(--texte); font-size: 22px;
+  box-shadow: var(--ombre); cursor: pointer;
 }
-#toggle3d { left: 64px; }
+#menu-bouton:hover { background: var(--survol); }
 
 #menu-tiroir {
   position: absolute; top: 0; left: 0; bottom: 0; z-index: 3;
   width: min(320px, 88vw);
   display: flex; flex-direction: column;
-  background: #fff; color: #111;
+  background: var(--surface); color: var(--texte);
   font: 14px system-ui, sans-serif;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
   transform: translateX(-100%);
@@ -40,15 +96,15 @@ html, body { margin: 0; height: 100%; }
 #menu-tiroir.ouvert { transform: translateX(0); }
 .menu-entete {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 14px 12px 70px; border-bottom: 1px solid #eee; font-size: 17px;
+  padding: 12px 14px 12px 70px; border-bottom: 1px solid var(--bord); font-size: 17px;
 }
-#menu-fermer { border: 0; background: none; font-size: 18px; cursor: pointer; color: #555; }
+#menu-fermer { border: 0; background: none; font-size: 18px; cursor: pointer; color: var(--texte-2); }
 .menu-corps { flex: 1; overflow: auto; padding: 6px 10px 24px; }
 
-.menu-section { border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.menu-section { border-bottom: 1px solid var(--bord); padding-bottom: 8px; }
 .menu-section > summary {
   cursor: pointer; padding: 12px 4px; list-style: none;
-  font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #555;
+  font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texte-2);
 }
 .menu-section > summary::-webkit-details-marker { display: none; }
 .menu-section > summary::after { content: '▾'; float: right; }
@@ -57,113 +113,231 @@ html, body { margin: 0; height: 100%; }
 .menu-module { margin-bottom: 6px; }
 .menu-ligne {
   width: 100%; text-align: left; padding: 10px 12px;
-  border: 1px solid #ddd; border-radius: 8px; background: #f7f7f7; color: #111;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte);
   font: 600 15px system-ui, sans-serif; cursor: pointer;
 }
-.menu-ligne.actif { background: #2b6cb0; border-color: #2b6cb0; color: #fff; }
+.menu-ligne:hover:not(.actif) { background: var(--survol); }
+.menu-ligne.actif { background: var(--accent); border-color: var(--accent); color: var(--accent-texte); }
 .menu-contenu { padding: 10px 4px 6px; }
-.menu-contenu p { margin: 0; color: #444; }
+.menu-contenu p { margin: 0; color: var(--texte-2); }
 .menu-contenu h2 { display: none; }
-.menu-contenu h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; color: #666; letter-spacing: 0.04em; }
+.menu-contenu h3 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; color: var(--texte-2); letter-spacing: 0.04em; }
 .menu-contenu h4 { margin: 0 0 6px; font-size: 15px; }
-.menu-contenu .note { margin: 6px 0; font-size: 12px; color: #666; }
+.menu-contenu .note { margin: 6px 0; font-size: 12px; color: var(--texte-2); }
+.menu-contenu hr { border-top-color: var(--bord) !important; }
 
-/* ----- Fond de carte : onglets France / Monde ----- */
-.fond-onglets {
-  display: flex;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 8px;
+/* Champs et boutons des outils (Parapente, etc.) */
+:where(.menu-contenu) input[type='number'],
+:where(.menu-contenu) input[type='text'] {
+  width: 100%; box-sizing: border-box; height: 36px; margin: 4px 0 10px; padding: 0 10px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte);
+  font: 14px system-ui, sans-serif;
 }
-.fond-onglets button {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  background: #f7f7f7;
-  color: #111;
-  font: 600 14px system-ui, sans-serif;
-  cursor: pointer;
+:where(.menu-contenu) input[type='number']:focus,
+:where(.menu-contenu) input[type='text']:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.menu-contenu button:not([class]) {
+  height: 36px; margin: 2px 4px 6px 0; padding: 0 12px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte);
+  font: 600 13px system-ui, sans-serif; cursor: pointer;
 }
-.fond-onglets button.actif {
-  background: #2b6cb0;
-  color: #fff;
-}
+.menu-contenu button:not([class]):hover { background: var(--survol); }
 
-.liste-fonds {
-  max-height: 240px; overflow-y: auto;
-  border: 1px solid #ddd; border-radius: 8px;
+/* Contrôles segmentés : onglets, 2D | 3D, thème */
+.segments, .fond-onglets, .relief-bascule {
+  display: flex; border: 1px solid var(--bord); border-radius: 8px; overflow: hidden;
 }
-.fond-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 12px; border-bottom: 1px solid #eee;
-  cursor: pointer;
+.fond-onglets { margin-bottom: 8px; }
+.relief-bascule { margin-bottom: 12px; }
+.segments button, .fond-onglets button, .relief-bascule button {
+  flex: 1; padding: 8px 0; border: 0; background: var(--surface-2); color: var(--texte);
+  font: 600 14px system-ui, sans-serif; cursor: pointer;
 }
+.segments button:hover:not(.actif), .fond-onglets button:hover:not(.actif), .relief-bascule button:hover:not(.actif) { background: var(--survol); }
+.segments button.actif, .fond-onglets button.actif, .relief-bascule button.actif { background: var(--accent); color: var(--accent-texte); }
+
+/* Fond de carte */
+.liste-fonds { max-height: 240px; overflow-y: auto; border: 1px solid var(--bord); border-radius: 8px; }
+.fond-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-bottom: 1px solid var(--bord); cursor: pointer; }
 .fond-item:last-child { border-bottom: 0; }
-.fond-item:hover { background: #f5f8fc; }
-.fond-item:has(input:checked) { background: #e8f1fb; }
+.fond-item:hover { background: var(--survol); }
+.fond-item:has(input:checked) { background: var(--accent-doux); }
 .fond-nom { flex: 1; font-weight: 600; }
 
-/* ----- Relief : sélecteur 2D | 3D et hauteur du relief ----- */
-.relief-bascule {
-  display: flex;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-.relief-bascule button {
-  flex: 1;
-  padding: 8px 0;
-  border: none;
-  background: #f7f7f7;
-  color: #111;
-  font: 600 14px system-ui, sans-serif;
-  cursor: pointer;
-}
-.relief-bascule button.actif {
-  background: #2b6cb0;
-  color: #fff;
-}
-.relief-entete {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 4px;
-}
+/* Relief */
+.relief-entete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .relief-reglage input[type='range'] { width: 100%; }
-.relief-reglage small {
-  display: block;
-  color: #777;
-  margin-top: 2px;
-}
+.relief-reglage small { display: block; color: var(--texte-2); margin-top: 2px; }
 .relief-reglage.inactif { opacity: 0.5; }
+.relief-altitude > div { border-top-color: var(--bord) !important; }
+.altitude-reglages div[style*='#666'] { color: var(--texte-2) !important; }
 
+/* Cases à cocher */
 .ligne-coche { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
-
-/* Cases à cocher du panneau Parapente (à garder) */
 .option { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+.option-case { display: block; padding: 6px 0; cursor: pointer; }
+.option-case small { display: block; margin-left: 24px; color: var(--texte-2); font-size: 12px; }
 
-/* ----- Cases à cocher du menu (Éléments de la carte) ----- */
-.option-case {
-  display: block;
-  padding: 6px 0;
-  cursor: pointer;
+/* Boutons génériques */
+.btn-secondaire {
+  width: 100%; height: 38px; border: 1px solid var(--bord); border-radius: 8px;
+  background: var(--surface-2); color: var(--texte);
+  font: 600 14px system-ui, sans-serif; cursor: pointer;
+}
+.btn-secondaire:hover { background: var(--survol); }
+.btn-danger { color: #b03a2a; }
+:root[data-theme='sombre'] .btn-danger { color: #ff8f7e; }
+
+/* Pied du menu */
+.menu-pied { padding: 12px; border-top: 1px solid var(--bord); }
+
+/* ===== Page Paramètres ===== */
+.menu-parametres { display: none; }
+#menu-tiroir.en-parametres .menu-corps,
+#menu-tiroir.en-parametres .menu-pied { display: none; }
+#menu-tiroir.en-parametres .menu-parametres { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+.params { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.params-entete { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--bord); font-size: 16px; }
+.params-retour { border: 0; background: none; color: var(--texte); font-size: 20px; cursor: pointer; padding: 2px 8px; border-radius: 6px; }
+.params-retour:hover { background: var(--survol); }
+.params-corps { flex: 1; overflow-y: auto; padding: 6px 14px 24px; }
+.params-groupe { padding: 10px 0; border-bottom: 1px solid var(--bord); }
+.params-groupe h3 { margin: 4px 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texte-2); }
+.params-ligne { margin-bottom: 14px; }
+.params-ligne > span { display: block; margin-bottom: 6px; }
+.params-aide { margin: 0 0 10px; font-size: 12px; color: var(--texte-2); }
+.pastilles { display: flex; gap: 12px; }
+.pastille { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: var(--c-clair); cursor: pointer; }
+:root[data-theme='sombre'] .pastille { background: var(--c-sombre); }
+.pastille.actif { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--texte); }
+
+/* ===== Barre de recherche ===== */
+#recherche { position: relative; flex: 0 1 380px; min-width: 0; font: 14px system-ui, sans-serif; color: var(--texte); }
+.rech-champ {
+  display: flex; align-items: center; gap: 2px;
+  height: 44px; padding: 0 6px 0 4px; box-sizing: border-box;
+  background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); box-shadow: var(--ombre);
+}
+.rech-champ:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-doux), var(--ombre); }
+.rech-loupe, .rech-effacer {
+  width: 36px; height: 36px; padding: 0; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 6px; background: none; color: var(--texte-2); cursor: pointer;
+}
+.rech-loupe:hover, .rech-effacer:hover { background: var(--survol); }
+.rech-champ input {
+  flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent;
+  font: 16px system-ui, sans-serif; color: var(--texte);
+}
+.rech-champ input::placeholder { color: var(--texte-2); }
+.rech-attente {
+  width: 16px; height: 16px; margin: 0 4px; flex: none;
+  border: 2px solid var(--bord); border-top-color: var(--accent); border-radius: 50%;
+  animation: rech-tour 0.7s linear infinite;
+}
+@keyframes rech-tour { to { transform: rotate(360deg); } }
+
+.rech-liste {
+  position: absolute; top: 50px; left: 0; right: 0;
+  max-height: min(60vh, 420px); overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon);
+  padding: 4px 0; box-shadow: var(--ombre-forte);
+}
+.rech-titre {
+  display: flex; justify-content: space-between; align-items: center; padding: 8px 14px 4px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--texte-2);
+}
+.rech-titre button {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  color: var(--accent); font: 600 12px system-ui, sans-serif; text-transform: none; letter-spacing: 0;
+}
+.rech-item { display: flex; align-items: center; gap: 12px; padding: 9px 14px; cursor: pointer; }
+.rech-item:hover, .rech-item.actif { background: var(--accent-doux); }
+.rech-icone {
+  width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: var(--surface-2); font-size: 18px;
+}
+.rech-textes { min-width: 0; flex: 1; }
+.rech-nom { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rech-sous { font-size: 12px; color: var(--texte-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rech-message { padding: 14px; color: var(--texte-2); }
+.rech-credit { padding: 6px 14px 8px; font-size: 11px; color: var(--texte-2); border-top: 1px solid var(--bord); }
+
+.rech-repere { cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
+.rech-repere path:first-child { fill: var(--accent); }
+.rech-popup strong { display: block; font-size: 15px; margin-bottom: 2px; }
+.rech-popup-sous { color: var(--texte-2); font-size: 12px; margin-bottom: 6px; }
+.rech-popup-coord { font: 12px ui-monospace, Consolas, monospace; margin-bottom: 8px; }
+.rech-popup-actions { display: flex; gap: 6px; }
+.rech-popup-actions button {
+  flex: 1; padding: 6px 0; border: 1px solid var(--bord); border-radius: 6px;
+  background: var(--surface-2); color: var(--texte); font: 600 12px system-ui, sans-serif; cursor: pointer;
+}
+.rech-popup-actions button:hover { background: var(--survol); }
+
+/* ===== Fiche d'information ===== */
+#fiche {
+  position: absolute; top: 150px; right: 12px; z-index: 2;
+  width: min(340px, calc(100vw - 24px)); max-height: calc(100vh - 200px); overflow-y: auto;
+  background: var(--surface); color: var(--texte); border: 1px solid var(--bord); border-radius: 12px;
+  box-shadow: var(--ombre-forte); font: 14px system-ui, sans-serif;
+}
+.fiche-entete { display: flex; align-items: flex-start; gap: 12px; padding: 14px 10px 10px 14px; }
+.fiche-icone {
+  width: 40px; height: 40px; flex: none; border-radius: 10px; background: var(--surface-2);
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.fiche-titres { flex: 1; min-width: 0; }
+.fiche-nom { font-size: 17px; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.fiche-type { margin-top: 2px; color: var(--texte-2); font-size: 13px; }
+.fiche-fermer { border: 0; background: none; color: var(--texte-2); font-size: 18px; cursor: pointer; padding: 2px 8px; border-radius: 6px; }
+.fiche-fermer:hover { background: var(--survol); }
+.fiche-corps { padding: 0 14px 12px; }
+.fiche-ligne { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--bord); }
+.fiche-etiquette { width: 88px; flex: none; padding-top: 2px; color: var(--texte-2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.fiche-valeur { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fiche-position { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fiche-coord { font: 13px ui-monospace, Consolas, monospace; }
+.fiche-copier {
+  flex: none; padding: 4px 10px; border: 1px solid var(--bord); border-radius: 6px;
+  background: var(--surface-2); color: var(--texte); font: 600 12px system-ui, sans-serif; cursor: pointer;
+}
+.fiche-copier:hover { background: var(--survol); }
+.fiche-attente-ligne { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 13px; }
+.fiche-liens a { margin-right: 14px; color: var(--accent); font-weight: 600; text-decoration: none; }
+.fiche-liens a:hover { text-decoration: underline; }
+.fiche-point {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 3px solid #e8590c; background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 2px #fff, 0 1px 4px rgba(0, 0, 0, 0.4); pointer-events: none;
 }
 
-/* ----- Pied du menu : retour à zéro ----- */
-.menu-pied {
-  padding: 12px;
-  border-top: 1px solid #eee;
+/* ===== Éléments de MapLibre : contrôles, échelle, fenêtres ===== */
+.maplibregl-ctrl-group { background: var(--surface); border-radius: var(--rayon); box-shadow: var(--ombre); }
+.maplibregl-ctrl-group:not(:empty) { box-shadow: var(--ombre); }
+.maplibregl-ctrl-group button + button { border-top: 1px solid var(--bord); }
+:root[data-theme='sombre'] .maplibregl-ctrl button .maplibregl-ctrl-icon { filter: invert(0.9); }
+.maplibregl-ctrl-scale { background: color-mix(in srgb, var(--surface) 75%, transparent); color: var(--texte); border-color: var(--texte-2); }
+.maplibregl-popup-content { background: var(--surface); color: var(--texte); border-radius: var(--rayon); box-shadow: var(--ombre-forte); }
+.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-top-right .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: var(--surface); }
+.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
+
+/* ===== Petits écrans ===== */
+@media (max-width: 640px) {
+  /* La recherche se réduit à une loupe qui s'étend au toucher */
+  #recherche { flex: none; width: 44px; }
+  #recherche:not(.ouverte) .rech-champ { padding: 0; width: 44px; justify-content: center; }
+  #recherche:not(.ouverte) input,
+  #recherche:not(.ouverte) .rech-effacer,
+  #recherche:not(.ouverte) .rech-attente { display: none; }
+  #recherche.ouverte { position: fixed; left: 12px; right: 12px; top: 12px; width: auto; z-index: 6; }
+  /* Le menu occupe presque tout l'écran : on masque la barre du haut tant qu'il est ouvert */
+  body:has(#menu-tiroir.ouvert) #barre-haut { display: none; }
+  /* La fiche devient un panneau en bas de l'écran */
+  #fiche { top: auto; right: 0; left: 0; bottom: 0; width: auto; max-height: 55vh; border-radius: 16px 16px 0 0; }
 }
-#menu-reset {
-  width: 100%;
-  padding: 9px 0;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background: #f7f7f7;
-  color: #111;
-  font: 600 14px system-ui, sans-serif;
-  cursor: pointer;
-}
-#menu-reset:hover { background: #eee; }
