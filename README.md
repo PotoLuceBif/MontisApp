@@ -10,6 +10,12 @@ L’application s’ouvre alors sans l’interface habituelle du navigateur. Une
 
 La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique.
 
+## Création d’un parcours de randonnée
+
+Dans **Randonnée > Outils complémentaires > Créer un parcours**, cliquez sur la carte pour placer le départ puis les étapes suivantes. Montis calcule un itinéraire avec le profil piéton de Valhalla, à partir du réseau OpenStreetMap. Selon les données locales, le parcours peut emprunter des voies piétonnes et n’est pas nécessairement un sentier de randonnée. Les coordonnées des étapes sont transmises à `valhalla1.openstreetmap.de` ; aucun compte ni clé API n’est requis. La disponibilité et la couverture dépendent du service et des chemins cartographiés.
+
+La distance provient de l’itinéraire calculé. Le profil, les altitudes et les dénivelés sont estimés depuis les tuiles de relief existantes. Vérifiez la praticabilité du parcours avant de partir : un itinéraire calculé n’est pas une garantie de sécurité. Le tracé peut être téléchargé au format GPX depuis sa fiche.
+
 ## Activité parapente
 
 Le panneau parapente affiche les sites de vol et les relevés des balises FFVL lorsqu’ils sont accessibles. Les données sont chargées à l’ouverture de l’activité, puis actualisées toutes les cinq minutes ; un bouton permet aussi de les recharger manuellement.

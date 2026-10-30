@@ -12,7 +12,7 @@ const ICONE_LOUPE =
   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
 
 const ICONE_REPERE =
-  '<svg viewBox="0 0 24 34" width="28" height="40"><path d="M12 0C5.4 0 0 5.2 0 11.7 0 20.6 12 34 12 34s12-13.4 12-22.3C24 5.2 18.6 0 12 0z" fill="#2b6cb0" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="#fff"/></svg>';
+  '<svg viewBox="0 0 24 34" width="28" height="40"><path d="M12 0C5.4 0 0 5.2 0 11.7 0 20.6 12 34 12 34s12-13.4 12-22.3C24 5.2 18.6 0 12 0z" fill="#ff59d6" stroke="#0b111b" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="#4debd4"/></svg>';
 
 // ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
 const CATEGORIES = [

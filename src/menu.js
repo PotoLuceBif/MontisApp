@@ -131,6 +131,8 @@ export function initMenu(map) {
     }
   }
 
+  window.addEventListener('fiche-ouverte', fermerPanneauxFlottants);
+
   const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
   const ouvrir = (ouvert, pageParametres = false) => {
     tiroir.classList.toggle('ouvert', ouvert);

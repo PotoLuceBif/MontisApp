@@ -404,6 +404,7 @@ export function initFiches(map) {
     };
     poserAnneau(lngLat);
     panneau.hidden = false;
+    window.dispatchEvent(new Event('fiche-ouverte'));
     rendre();
     chargerDetails(courant);
 
