@@ -533,7 +533,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   min-height: 76px;
   padding: 14px 18px 14px 22px;
   border-bottom: 0;
-  background: linear-gradient(118deg, #17392e 0%, #245a43 100%);
+  background: linear-gradient(115deg, #0b1723 0%, #14223a 58%, #241331 100%);
   color: #f5f7ef;
   font-size: inherit;
 }
@@ -545,12 +545,10 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   width: 270px;
   height: 270px;
   border-radius: 50%;
-  background: repeating-radial-gradient(
-    ellipse at 48% 52%,
-    transparent 0 12px,
-    rgba(238, 246, 232, 0.22) 12.5px 13px,
-    transparent 13.5px 25px
-  );
+  background:
+    linear-gradient(120deg, transparent 48%, rgba(77, 235, 212, 0.13) 49%, transparent 50%),
+    repeating-linear-gradient(0deg, transparent 0 13px, rgba(77, 235, 212, 0.08) 13.5px 14px);
+  transform: skewX(-20deg);
   content: '';
   pointer-events: none;
 }
@@ -1381,21 +1379,22 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   z-index: 12;
   display: grid;
   top: 216px;
-  right: 14px;
+  right: 26px;
   justify-items: end;
   gap: 8px;
   pointer-events: auto;
 }
 .outil-rapide-bouton {
   display: flex;
-  width: 48px;
-  min-height: 48px;
+  box-sizing: border-box;
+  width: 40px;
+  min-height: 40px;
   align-items: center;
   gap: 8px;
   overflow: hidden;
-  padding: 0 12px;
+  padding: 0 8px;
   border: 1px solid var(--bord);
-  border-radius: 24px;
+  border-radius: 20px;
   background: var(--surface);
   box-shadow: var(--ombre-forte);
   color: var(--texte);
@@ -1666,7 +1665,7 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 @media (max-width: 700px) {
   .outils-rapides {
     top: 244px;
-    right: 10px;
+    right: 19px;
     gap: 8px;
   }
   .outil-rapide-panneau {
@@ -1699,8 +1698,8 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
     top: 116px;
     right: auto;
     left: 10px;
-    width: 104px;
-    grid-template-columns: repeat(2, 48px);
+    width: 88px;
+    grid-template-columns: repeat(2, 40px);
   }
   .outil-rapide-panneau {
     top: 172px;
