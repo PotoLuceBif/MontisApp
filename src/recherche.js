@@ -4,7 +4,7 @@ import { lire, ecrire } from './reglages.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
-const NB_RESULTATS = 8;
+const NB_RESULTATS = 12;
 const NB_RECENTS = 6;
 const CLE_RECENTS = 'recherches-recentes';
 
@@ -17,7 +17,7 @@ const ICONE_REPERE =
 // ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
 const CATEGORIES = [
   { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), nom: 'Sommet', icone: '⛰️', zoom: 13 },
-  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports'), nom: 'Station de ski', icone: '🎿', zoom: 12 },
+  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports') || (k === 'site' && v === 'piste'), nom: 'Station de ski', icone: '🎿', zoom: 12 },
   { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), nom: 'Col', icone: '⛰️', zoom: 13 },
   { test: (k, v) => k === 'natural' && v === 'glacier', nom: 'Glacier', icone: '🧊', zoom: 12 },
   { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), nom: 'Lac', icone: '💧', zoom: 13 },

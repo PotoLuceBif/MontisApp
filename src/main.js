@@ -158,13 +158,6 @@ function appliquerMode(mode3D) {
   ecrire('mode3D', mode3D);
   majCourbes(map);
 
-  // Les courbes de niveau ne s'affichent qu'en 2D
-  if (mode3D) {
-    ['courbes', 'courbes-altitude'].forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none');
-    });
-  }
-
   window.dispatchEvent(new CustomEvent('mode3d', { detail: mode3D }));
 }
 

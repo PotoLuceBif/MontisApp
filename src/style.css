@@ -1891,6 +1891,15 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .ski-station-texte strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .ski-station-texte small { color: var(--texte-2); font-size: 10px; }
 .ski-station-fleche { color: var(--accent); font-size: 21px; line-height: 1; }
+.ski-repere-flocon {
+  fill: none;
+  stroke: #ff59d6;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ski-groupe-liste { min-width: 210px; }
+.ski-groupe-choix { width: 100%; }
 .ski-vide {
   margin: 0;
   padding: 11px;

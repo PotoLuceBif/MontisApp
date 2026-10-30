@@ -1,13 +1,13 @@
 import * as maplibregl from 'maplibre-gl';
 
 const SERVEURS_OVERPASS = [
+  'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ];
 const ZOOM_MIN = 7.5;
-const SOURCE_STATIONS = 'ski-stations';
-const VIDE = { type: 'FeatureCollection', features: [] };
+const DISTANCE_GROUPE_PX = 56;
 
 function centreElement(element) {
   if (element.type === 'node') return [element.lon, element.lat];
@@ -27,15 +27,20 @@ function distanceMetres(a, b) {
   return 12_742_000 * Math.asin(Math.sqrt(h));
 }
 
-function geojsonStations(elements) {
+function geojsonStations(elements, bornes) {
   const stations = [];
   const vus = new Map();
   for (const element of elements) {
     const tags = element.tags || {};
-    if (tags.leisure !== 'ski_resort' && tags.landuse !== 'winter_sports') continue;
+    if (
+      tags.leisure !== 'ski_resort' &&
+      tags.landuse !== 'winter_sports' &&
+      tags.site !== 'piste'
+    ) continue;
     const nom = String(tags.name || tags['name:fr'] || '').trim();
     const coordonnees = centreElement(element);
     if (!nom || !coordonnees || !coordonnees.every(Number.isFinite)) continue;
+    if (bornes && !bornes.contains(coordonnees)) continue;
 
     const cle = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const coordonneesDejaVues = vus.get(cle) || [];
@@ -69,7 +74,7 @@ async function interrogerOverpass(requete, signal) {
       throw annulation;
     }
     const controleur = new AbortController();
-    const delai = setTimeout(() => controleur.abort(), 7000);
+    const delai = setTimeout(() => controleur.abort(), 8000);
     const annuler = () => controleur.abort();
     signal.addEventListener('abort', annuler, { once: true });
     try {
@@ -90,7 +95,7 @@ async function interrogerOverpass(requete, signal) {
         annulation.name = 'AbortError';
         throw annulation;
       }
-      derniereErreur = erreur.name === 'AbortError' ? new Error('Délai de réponse dépassé.') : erreur;
+      derniereErreur = erreur.name === 'AbortError' ? new Error(`Délai dépassé sur ${new URL(url).hostname}.`) : erreur;
     } finally {
       clearTimeout(delai);
       signal.removeEventListener('abort', annuler);
@@ -155,90 +160,14 @@ export function creerActiviteSki(map) {
   let controleur = null;
   let popupStation = null;
   let stations = [];
+  let stationSelectionnee = null;
+  let marqueursStations = [];
+  let ecouteurCarte = false;
 
   function assurerCouches() {
-    if (!map.getSource(SOURCE_STATIONS)) {
-      map.addSource(SOURCE_STATIONS, {
-        type: 'geojson',
-        data: VIDE,
-        cluster: true,
-        clusterRadius: 46,
-        clusterMaxZoom: 10,
-      });
-      map.addLayer({
-        id: 'ski-stations-clusters',
-        type: 'circle',
-        source: SOURCE_STATIONS,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': '#132535',
-          'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 30, 27],
-          'circle-stroke-color': '#ff59d6',
-          'circle-stroke-width': 2,
-          'circle-blur': 0.12,
-        },
-      });
-      map.addLayer({
-        id: 'ski-stations-nombres',
-        type: 'symbol',
-        source: SOURCE_STATIONS,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-size': 12,
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-        },
-        paint: { 'text-color': '#4debd4', 'text-halo-color': '#08111b', 'text-halo-width': 1 },
-      });
-      map.addLayer({
-        id: 'ski-stations-points',
-        type: 'circle',
-        source: SOURCE_STATIONS,
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': '#4debd4',
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 5, 12, 8],
-          'circle-stroke-color': '#ff59d6',
-          'circle-stroke-width': 2,
-          'circle-blur': 0.08,
-        },
-      });
-      map.addLayer({
-        id: 'ski-stations-noms',
-        type: 'symbol',
-        source: SOURCE_STATIONS,
-        filter: ['!', ['has', 'point_count']],
-        minzoom: 9,
-        layout: {
-          'text-field': ['get', 'nom'],
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-size': 11,
-          'text-offset': [0, 1.2],
-          'text-anchor': 'top',
-          'text-max-width': 12,
-        },
-        paint: {
-          'text-color': '#e6f7ff',
-          'text-halo-color': '#09131e',
-          'text-halo-width': 1.5,
-        },
-      });
-
-      map.on('click', 'ski-stations-clusters', (event) => {
-        const feature = event.features?.[0];
-        const source = map.getSource(SOURCE_STATIONS);
-        if (!feature || !source) return;
-        source
-          .getClusterExpansionZoom(Number(feature.properties.cluster_id))
-          .then((zoom) => map.easeTo({ center: feature.geometry.coordinates, zoom }))
-          .catch((erreur) => console.warn('Zoom du groupe de stations :', erreur));
-      });
-      map.on('click', 'ski-stations-points', afficherStationCarte);
-      for (const id of ['ski-stations-clusters', 'ski-stations-points']) {
-        map.on('mouseenter', id, () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', id, () => { map.getCanvas().style.cursor = ''; });
-      }
-    }
+    if (ecouteurCarte) return;
+    map.on('moveend', actualiserMarqueurs);
+    ecouteurCarte = true;
   }
 
   function afficherPopup(station, coordonnees) {
@@ -279,14 +208,150 @@ export function creerActiviteSki(map) {
       .addTo(map);
     popupStation = popup;
     popup.on('close', () => {
+      if (popupStation !== popup) return;
+      popupStation = null;
+      if (stationSelectionnee) {
+        stationSelectionnee = null;
+        actualiserMarqueurs();
+      }
+    });
+    stationSelectionnee = stations.find((feature) => feature.properties === station) || null;
+    actualiserMarqueurs();
+  }
+
+  function retirerMarqueurs() {
+    marqueursStations.forEach((marqueur) => marqueur.remove());
+    marqueursStations = [];
+  }
+
+  function afficherGroupe(features, coordonnees) {
+    if (map.getZoom() < 15) {
+      map.easeTo({ center: coordonnees, zoom: Math.min(16, map.getZoom() + 2) });
+      return;
+    }
+
+    const contenu = document.createElement('div');
+    contenu.className = 'rando-groupe-liste ski-groupe-liste';
+    const titre = document.createElement('strong');
+    titre.className = 'rando-groupe-titre';
+    titre.textContent = `${features.length} stations à proximité`;
+    contenu.appendChild(titre);
+    features.forEach((feature) => {
+      const station = feature.properties;
+      const choix = document.createElement('button');
+      choix.type = 'button';
+      choix.className = 'rando-groupe-choix ski-groupe-choix';
+      choix.textContent = station.nom;
+      choix.addEventListener('click', () => {
+        if (popupStation) popupStation.remove();
+        const point = feature.geometry.coordinates;
+        map.flyTo({ center: point, zoom: Math.max(map.getZoom(), 13), duration: 700 });
+        afficherPopup(station, point);
+      });
+      contenu.appendChild(choix);
+    });
+
+    if (popupStation) popupStation.remove();
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '300px' })
+      .setLngLat(coordonnees)
+      .setDOMContent(contenu)
+      .addTo(map);
+    popupStation = popup;
+    popup.on('close', () => {
       if (popupStation === popup) popupStation = null;
     });
   }
 
-  function afficherStationCarte(event) {
-    const feature = event.features?.[0];
-    if (!feature) return;
-    afficherPopup(feature.properties, feature.geometry.coordinates);
+  function creerRepere(feature) {
+    const station = feature.properties;
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'rando-repere ski-repere';
+    element.setAttribute('aria-label', `Afficher la station ${station.nom}`);
+    element.title = station.nom;
+    element.innerHTML =
+      '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 15v17m-7-13 14 9m0-9-14 9m3-12 4 3 4-3m-8 18 4-3 4 3"/></svg>';
+    const nom = document.createElement('span');
+    nom.className = 'rando-repere-nom';
+    nom.textContent = station.nom;
+    element.appendChild(nom);
+    element.addEventListener('click', (event) => {
+      event.stopPropagation();
+      afficherPopup(station, feature.geometry.coordinates);
+    });
+    return new maplibregl.Marker({ element, anchor: 'bottom' })
+      .setLngLat(feature.geometry.coordinates)
+      .addTo(map);
+  }
+
+  function creerRepereGroupe(features, coordonnees) {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'rando-groupe ski-groupe';
+    element.setAttribute(
+      'aria-label',
+      `${features.length} stations regroupées. Touchez pour zoomer ou choisir une station.`
+    );
+    element.innerHTML =
+      `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${features.length}</span>`;
+    element.addEventListener('click', (event) => {
+      event.stopPropagation();
+      afficherGroupe(features, coordonnees);
+    });
+    return new maplibregl.Marker({ element, anchor: 'center' })
+      .setLngLat(coordonnees)
+      .addTo(map);
+  }
+
+  function actualiserMarqueurs() {
+    retirerMarqueurs();
+    if (!actif || !stations.length) return;
+
+    const { clientWidth, clientHeight } = map.getContainer();
+    const stationsAffichees = stationSelectionnee ? [stationSelectionnee] : stations;
+    const visibles = stationsAffichees
+      .map((feature) => ({ feature, pixel: map.project(feature.geometry.coordinates) }))
+      .filter(({ pixel }) =>
+        pixel.x >= 0 && pixel.x <= clientWidth && pixel.y >= 0 && pixel.y <= clientHeight);
+    const parents = visibles.map((_, index) => index);
+    const racine = (index) => {
+      while (parents[index] !== index) {
+        parents[index] = parents[parents[index]];
+        index = parents[index];
+      }
+      return index;
+    };
+
+    for (let i = 0; i < visibles.length; i++) {
+      for (let j = i + 1; j < visibles.length; j++) {
+        const dx = visibles[i].pixel.x - visibles[j].pixel.x;
+        const dy = visibles[i].pixel.y - visibles[j].pixel.y;
+        if (dx * dx + dy * dy <= DISTANCE_GROUPE_PX * DISTANCE_GROUPE_PX) {
+          parents[racine(j)] = racine(i);
+        }
+      }
+    }
+
+    const groupes = new Map();
+    visibles.forEach((entree, index) => {
+      const id = racine(index);
+      if (!groupes.has(id)) groupes.set(id, []);
+      groupes.get(id).push(entree);
+    });
+
+    groupes.forEach((groupe) => {
+      if (groupe.length === 1) {
+        marqueursStations.push(creerRepere(groupe[0].feature));
+        return;
+      }
+      const pixel = groupe.reduce(
+        (centre, entree) => [centre[0] + entree.pixel.x / groupe.length, centre[1] + entree.pixel.y / groupe.length],
+        [0, 0]
+      );
+      marqueursStations.push(
+        creerRepereGroupe(groupe.map((entree) => entree.feature), map.unproject(pixel))
+      );
+    });
   }
 
   function rendreListe() {
@@ -320,7 +385,7 @@ export function creerActiviteSki(map) {
       item.append(icone, texte, fleche);
       item.addEventListener('click', () => {
         const coordonnees = feature.geometry.coordinates;
-        map.flyTo({ center: coordonnees, zoom: Math.max(map.getZoom(), 12), duration: 900 });
+        map.flyTo({ center: coordonnees, zoom: Math.max(map.getZoom(), 13), duration: 900 });
         afficherPopup(station, coordonnees);
       });
       fragment.appendChild(item);
@@ -346,22 +411,28 @@ export function creerActiviteSki(map) {
     const est = Math.min(180, bornes.getEast()).toFixed(5);
     const requete =
       `[out:json][timeout:25];(nwr["leisure"="ski_resort"](${sud},${ouest},${nord},${est});` +
-      `nwr["landuse"="winter_sports"](${sud},${ouest},${nord},${est}););out center tags 80;`;
+      `nwr["landuse"="winter_sports"](${sud},${ouest},${nord},${est});` +
+      `nwr["site"="piste"](${sud},${ouest},${nord},${est}););out tags center;`;
     actualiser.disabled = true;
     actualiser.textContent = 'Recherche…';
     statut.dataset.etat = 'chargement';
     statut.setAttribute('aria-busy', 'true');
     message.textContent = 'Recherche des stations dans la zone affichée…';
+    stationSelectionnee = null;
+    if (popupStation) popupStation.remove();
+    stations = [];
+    retirerMarqueurs();
+    compteur.textContent = '0';
+    rendreListe();
 
     try {
       const elements = await interrogerOverpass(requete, nouveauControleur.signal);
-      if (!actif) return;
-      const donnees = geojsonStations(elements);
-      if (popupStation) popupStation.remove();
+      if (!actif || controleur !== nouveauControleur) return;
+      const donnees = geojsonStations(elements, bornes);
       stations = donnees.features;
       assurerCouches();
-      map.getSource(SOURCE_STATIONS).setData(donnees);
       rendreListe();
+      actualiserMarqueurs();
       statut.dataset.etat = 'ok';
       message.textContent = stations.length
         ? `${stations.length} station${stations.length > 1 ? 's' : ''} repérée${stations.length > 1 ? 's' : ''} dans la zone affichée.`
@@ -370,7 +441,7 @@ export function creerActiviteSki(map) {
       if (erreur.name === 'AbortError') return;
       if (controleur !== nouveauControleur) return;
       statut.dataset.etat = 'erreur';
-      message.textContent = 'Recherche indisponible. Vérifiez votre connexion et réessayez.';
+      message.textContent = 'Le service cartographique ne répond pas. Réessayez dans quelques instants.';
       console.warn('Recherche de stations de ski :', erreur);
     } finally {
       if (controleur !== nouveauControleur) return;
@@ -394,8 +465,9 @@ export function creerActiviteSki(map) {
     desactiver() {
       actif = false;
       if (controleur) controleur.abort();
+      stationSelectionnee = null;
       if (popupStation) popupStation.remove();
-      if (map.getSource(SOURCE_STATIONS)) map.getSource(SOURCE_STATIONS).setData(VIDE);
+      retirerMarqueurs();
       stations = [];
       compteur.textContent = '—';
       liste.innerHTML = '<p class="ski-vide">Les stations trouvées apparaîtront ici.</p>';

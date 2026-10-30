@@ -29,7 +29,9 @@ export function creerOptionRelief(map) {
       <input type="range" id="curseur-exag" min="0.5" max="4" step="0.1" value="${etat.exageration}">
     </div>
 
-    <div class="relief-commun" data-seulement="2d"></div>
+    <div class="relief-courbes" data-seulement="2d">
+      <h3>Courbes de niveau</h3>
+    </div>
   `;
 
   const boutons = panneau.querySelectorAll('.relief-bascule button');
@@ -70,10 +72,7 @@ export function creerOptionRelief(map) {
 
   // ---------- Courbes de niveau (2D et 3D) ----------
   const courbes = creerOptionCourbes(map);
-  const commun = panneau.querySelector('.relief-commun');
-  const separateur = document.createElement('hr');
-  separateur.style.cssText = 'border:0;border-top:1px solid #eee;margin:14px 0 10px';
-  commun.append(separateur, courbes.panneau);
+  panneau.querySelector('.relief-courbes').append(courbes.panneau);
 
   return {
     id: 'relief',
