@@ -17,6 +17,7 @@ const ICONE_REPERE =
 // ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
 const CATEGORIES = [
   { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), nom: 'Sommet', icone: '⛰️', zoom: 13 },
+  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports'), nom: 'Station de ski', icone: '🎿', zoom: 12 },
   { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), nom: 'Col', icone: '⛰️', zoom: 13 },
   { test: (k, v) => k === 'natural' && v === 'glacier', nom: 'Glacier', icone: '🧊', zoom: 12 },
   { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), nom: 'Lac', icone: '💧', zoom: 13 },

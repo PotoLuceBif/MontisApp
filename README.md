@@ -16,6 +16,10 @@ Dans **Randonnée > Outils complémentaires > Créer un parcours**, cliquez sur 
 
 La distance provient de l’itinéraire calculé. Le profil, les altitudes et les dénivelés sont estimés depuis les tuiles de relief existantes. Vérifiez la praticabilité du parcours avant de partir : un itinéraire calculé n’est pas une garantie de sécurité. Le tracé peut être téléchargé au format GPX depuis sa fiche.
 
+## Stations de ski
+
+Dans **Activités > Ski**, lancez **Rechercher dans cette zone** après avoir cadré un massif. Les stations cartographiées dans OpenStreetMap apparaissent dans une liste et sur la carte ; les groupes se déplient en zoomant. La barre de recherche générale peut aussi trouver une station par son nom. La couverture et les détails (altitude, exploitant, site web) dépendent des contributions OpenStreetMap ; vérifiez les conditions d’ouverture auprès de la station.
+
 ## Activité parapente
 
 Le panneau parapente affiche les sites de vol et les relevés des balises FFVL lorsqu’ils sont accessibles. Les données sont chargées à l’ouverture de l’activité, puis actualisées toutes les cinq minutes ; un bouton permet aussi de les recharger manuellement.

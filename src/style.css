@@ -1829,6 +1829,89 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
   .para-section { padding: 11px; }
 }
 
+.ski { display: grid; gap: 14px; }
+.ski-actualiser {
+  display: inline-flex;
+  min-height: 34px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bord));
+  border-radius: 8px;
+  background: var(--accent-doux);
+  color: var(--accent);
+  font: 650 11px system-ui, sans-serif;
+  cursor: pointer;
+}
+.ski-actualiser:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.08); }
+.ski-actualiser:disabled { opacity: 0.65; cursor: wait; }
+.ski-compteur {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 0 2px;
+}
+.ski-compteur strong { color: var(--accent); font-size: 23px; line-height: 1; }
+.ski-compteur span { color: var(--texte-2); font-size: 11px; }
+.ski-liste { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+.ski-station-ligne {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--texte);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.ski-station-ligne:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
+}
+.ski-station-icone {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--bord));
+  border-radius: 10px;
+  background: var(--accent-doux);
+  color: var(--accent);
+  font-size: 17px;
+}
+.ski-station-texte { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.ski-station-texte strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ski-station-texte small { color: var(--texte-2); font-size: 10px; }
+.ski-station-fleche { color: var(--accent); font-size: 21px; line-height: 1; }
+.ski-vide {
+  margin: 0;
+  padding: 11px;
+  border: 1px dashed var(--bord);
+  border-radius: 9px;
+  color: var(--texte-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.menu-contenu .ski-securite {
+  padding: 0 2px 4px;
+  color: var(--texte-2);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.ski-popup { color: var(--texte); font: 12px/1.5 system-ui, sans-serif; }
+.ski-popup strong { font-size: 14px; }
+.ski-popup p { margin: 5px 0 0; color: var(--texte-2); }
+.ski-popup a { display: inline-block; margin-top: 7px; color: var(--accent); font-weight: 650; }
+.ski :is(button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 @media (max-width: 700px) {
   .outils-rapides {
     top: 244px;

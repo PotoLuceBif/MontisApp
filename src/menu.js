@@ -5,6 +5,7 @@ import { creerElementsCarte } from './elements-carte.js';
 import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
 import { creerActiviteRandonnee } from './activite-randonnee.js';
+import { creerActiviteSki } from './activite-ski.js';
 import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
 
 const ICONES_MENU = {
@@ -157,7 +158,7 @@ export function initMenu(map) {
         creerActiviteParapente(map, { onChoisirPoint: () => ouvrir(false) }),
         creerActiviteRandonnee(map),
         creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
-        creerModuleBientot('ski', 'Ski', 'ski', 'À venir : pistes, remontées, pentes et expositions.'),
+        creerActiviteSki(map),
       ],
       emplacement: 'menu',
     },
