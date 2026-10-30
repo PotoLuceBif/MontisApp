@@ -43,7 +43,7 @@ export function initMenu(map) {
       id: 'activites',
       titre: 'Activités',
       icone: 'activites',
-      aide: 'Choisissez votre activité en montagne.',
+      aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
       exclusif: true,
       modules: [
         creerActiviteParapente(map),
@@ -51,6 +51,7 @@ export function initMenu(map) {
         creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
         creerModuleBientot('ski', 'Ski', 'ski', 'Cette activité arrive bientôt. Idées : pistes, remontées, pentes et expositions.'),
       ],
+      emplacement: 'menu',
     },
     {
       id: 'meteo',
@@ -63,6 +64,7 @@ export function initMenu(map) {
         creerRadarPluie(map),
         creerModuleBientot('vent', 'Vent et prévisions', 'vent', 'À venir : choix du modèle de prévision.'),
       ],
+      emplacement: 'flottant',
     },
     {
       id: 'carte',
@@ -75,6 +77,7 @@ export function initMenu(map) {
         creerOptionRelief(map), // inclut les courbes de niveau
         creerElementsCarte(map),
       ],
+      emplacement: 'flottant',
     },
   ];
 
@@ -101,29 +104,48 @@ export function initMenu(map) {
           <img src="/favicon.svg" alt="" width="34" height="34" />
           <strong>Montis</strong>
         </span>
-        <span class="menu-sous-titre">Cartographie alpine</span>
+        <span class="menu-sous-titre">ACTIVITÉS MONTAGNE</span>
       </div>
       <button id="menu-fermer" type="button" aria-label="Fermer le menu">${creerIconeMenu('close')}</button>
     </div>
-    <nav class="menu-navigation" role="tablist" aria-label="Rubriques principales"></nav>
-    <div class="menu-corps"></div>
+    <div class="menu-corps" aria-label="Activités"></div>
     <div class="menu-pied">
       <button id="menu-params" type="button" class="btn-secondaire">Paramètres</button>
     </div>
     <div class="menu-parametres"></div>
   `;
   document.body.append(bouton, tiroir);
-  const navigation = tiroir.querySelector('.menu-navigation');
   const corps = tiroir.querySelector('.menu-corps');
 
   const boutonFermer = tiroir.querySelector('#menu-fermer');
+  const panneauxFlottants = new Map();
+  const boutonsFlottants = new Map();
+
+  function fermerPanneauxFlottants() {
+    for (const [id, panneau] of panneauxFlottants) {
+      panneau.hidden = true;
+      boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
+    }
+  }
+
   const ouvrir = (ouvert) => {
     tiroir.classList.toggle('ouvert', ouvert);
     bouton.setAttribute('aria-expanded', String(ouvert));
     bouton.setAttribute('aria-label', ouvert ? 'Fermer le menu' : 'Ouvrir le menu');
+    if (ouvert) {
+      fermerPanneauxFlottants();
+      arreterCategoriesFlottantes();
+    }
   };
   bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
   boutonFermer.addEventListener('click', () => ouvrir(false));
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      fermerPanneauxFlottants();
+      ouvrir(false);
+    }
+  });
 
   // ---------- Page Paramètres ----------
   const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
@@ -150,61 +172,77 @@ export function initMenu(map) {
   }
 
   const activiteSauvee = lire('menu-activite', null);
-  let categorieCourante = lire('menu-categorie', 'activites');
-  if (!categories.some((categorie) => categorie.id === categorieCourante)) {
-    categorieCourante = 'activites';
-  }
-  const vues = new Map();
-  const onglets = new Map();
+  const actionsFlottantes = document.createElement('div');
+  actionsFlottantes.className = 'outils-rapides';
+  actionsFlottantes.setAttribute('aria-label', 'Outils de la carte');
+  document.body.appendChild(actionsFlottantes);
+  const etatsParCategorie = new Map();
 
-  function afficherCategorie(id) {
-    categorieCourante = id;
-    ecrire('menu-categorie', id);
+  function arreterCategoriesFlottantes(categorieConservee) {
     for (const categorie of categories) {
-      const actif = categorie.id === id;
-      onglets.get(categorie.id).classList.toggle('actif', actif);
-      onglets.get(categorie.id).setAttribute('aria-selected', String(actif));
-      onglets.get(categorie.id).tabIndex = actif ? 0 : -1;
-      vues.get(categorie.id).hidden = !actif;
+      if (categorie.emplacement !== 'flottant' || categorie.id === categorieConservee) continue;
+      etatsParCategorie.get(categorie.id)?.forEach((etat) => etat.actif && arreter(etat));
     }
   }
 
-  for (const [index, categorie] of categories.entries()) {
-    const onglet = document.createElement('button');
-    onglet.type = 'button';
-    onglet.className = 'menu-onglet';
-    onglet.setAttribute('role', 'tab');
-    onglet.id = `menu-onglet-${categorie.id}`;
-    onglet.setAttribute('aria-controls', `menu-vue-${categorie.id}`);
-    onglet.innerHTML = `${creerIconeMenu(categorie.icone)}<span>${categorie.titre}</span>`;
-    onglet.addEventListener('click', () => afficherCategorie(categorie.id));
-    onglet.addEventListener('keydown', (event) => {
-      let prochainIndex;
-      if (event.key === 'ArrowRight') prochainIndex = (index + 1) % categories.length;
-      else if (event.key === 'ArrowLeft') prochainIndex = (index - 1 + categories.length) % categories.length;
-      else if (event.key === 'Home') prochainIndex = 0;
-      else if (event.key === 'End') prochainIndex = categories.length - 1;
-      else return;
-      event.preventDefault();
-      const prochaineCategorie = categories[prochainIndex];
-      afficherCategorie(prochaineCategorie.id);
-      onglets.get(prochaineCategorie.id).focus();
-    });
-    navigation.appendChild(onglet);
-    onglets.set(categorie.id, onglet);
-
+  for (const categorie of categories) {
     const vue = document.createElement('section');
     vue.className = 'menu-vue';
     vue.id = `menu-vue-${categorie.id}`;
-    vue.setAttribute('role', 'tabpanel');
-    vue.setAttribute('aria-labelledby', onglet.id);
+    vue.setAttribute('aria-label', categorie.titre);
     vue.innerHTML = `
       <header class="menu-vue-entete">
         <h2>${categorie.titre}</h2>
         <p>${categorie.aide}</p>
       </header>
     `;
-    vues.set(categorie.id, vue);
+
+    if (categorie.emplacement === 'menu') {
+      corps.appendChild(vue);
+    } else {
+      const boutonOutil = document.createElement('button');
+      boutonOutil.type = 'button';
+      boutonOutil.className = 'outil-rapide-bouton';
+      boutonOutil.id = `outil-rapide-bouton-${categorie.id}`;
+      boutonOutil.setAttribute('aria-controls', `outil-rapide-panneau-${categorie.id}`);
+      boutonOutil.setAttribute('aria-expanded', 'false');
+      boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span>${categorie.titre}</span>`;
+
+      const panneauOutil = document.createElement('aside');
+      panneauOutil.className = 'outil-rapide-panneau';
+      panneauOutil.id = `outil-rapide-panneau-${categorie.id}`;
+      panneauOutil.setAttribute('aria-label', `Outils ${categorie.titre.toLowerCase()}`);
+      panneauOutil.hidden = true;
+      panneauOutil.innerHTML = `
+        <header class="outil-rapide-entete">
+          <div class="outil-rapide-titre">
+            ${creerIconeMenu(categorie.icone)}
+            <strong>${categorie.titre}</strong>
+          </div>
+          <button type="button" class="outil-rapide-fermer" aria-label="Fermer ${categorie.titre.toLowerCase()}">${creerIconeMenu('close')}</button>
+        </header>
+        <div class="outil-rapide-corps"></div>
+      `;
+      panneauOutil.querySelector('.outil-rapide-corps').appendChild(vue);
+      actionsFlottantes.appendChild(boutonOutil);
+      document.body.appendChild(panneauOutil);
+      boutonsFlottants.set(categorie.id, boutonOutil);
+      panneauxFlottants.set(categorie.id, panneauOutil);
+
+      boutonOutil.addEventListener('click', () => {
+        const ouvrirPanneau = panneauOutil.hidden;
+        fermerPanneauxFlottants();
+        ouvrir(false);
+        arreterCategoriesFlottantes(categorie.id);
+        etatsParCategorie.get('activites')?.forEach((etat) => etat.actif && arreter(etat));
+        ecrire('menu-activite', null);
+        if (ouvrirPanneau) {
+          panneauOutil.hidden = false;
+          boutonOutil.setAttribute('aria-expanded', 'true');
+        }
+      });
+      panneauOutil.querySelector('.outil-rapide-fermer').addEventListener('click', fermerPanneauxFlottants);
+    }
 
     const etats = [];
     for (const module of categorie.modules) {
@@ -235,14 +273,16 @@ export function initMenu(map) {
           return;
         }
         if (categorie.exclusif) {
+          arreterCategoriesFlottantes();
           etats.forEach((autre) => autre !== etat && autre.actif && arreter(autre));
           ecrire('menu-activite', module.id);
         }
         demarrer(etat);
       });
     }
+    etatsParCategorie.set(categorie.id, etats);
 
-    if (categorie.exclusif && activiteSauvee) {
+    if (categorie.emplacement === 'menu' && activiteSauvee) {
       const etat = etats.find((element) => element.module.id === activiteSauvee);
       if (etat) {
         try {
@@ -252,9 +292,5 @@ export function initMenu(map) {
         }
       }
     }
-
-    corps.appendChild(vue);
   }
-
-  afficherCategorie(categorieCourante);
 }

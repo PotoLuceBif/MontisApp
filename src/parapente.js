@@ -1,93 +1,164 @@
 import * as maplibregl from 'maplibre-gl';
 
-// À ajuster quand la clé API FFVL arrivera (adresses et format exacts à confirmer)
 const URL_BALISES = '/ffvl/json/balises.json';
 const URL_RELEVES = '/ffvl/json/relevesmeteo.json';
 const URL_SITES = '/ffvl/json/sites.json';
+const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
 
 const couleurVent = (v) =>
-  v < 10 ? '#2e9e4f' : v < 20 ? '#e6a800' : v < 30 ? '#f07a00' : '#d62828';
+  !Number.isFinite(v) ? '#66717a' : v < 10 ? '#2e9e4f' : v < 20 ? '#e6a800' : v < 30 ? '#f07a00' : '#d62828';
+
+const nombre = (valeur) =>
+  valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);
 
 const sansAccent = (s) =>
-  (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-async function charger(url) {
-  const rep = await fetch(url);
+function erreurFFVL(message, code) {
+  const erreur = new Error(message);
+  erreur.code = code;
+  return erreur;
+}
+
+async function charger(url, signal) {
+  const rep = await fetch(url, { signal, cache: 'no-store' });
   const texte = await rep.text();
-  if (!rep.ok) throw new Error(`${url} : erreur ${rep.status} – ${texte.slice(0, 200)}`);
-  let data;
-  try {
-    data = JSON.parse(texte);
-  } catch {
-    throw new Error(`${url} : réponse non JSON : ${texte.slice(0, 300)}`);
+  if (
+    rep.status === 401 ||
+    rep.status === 403 ||
+    /available using an ffvl api key|clé api|api key/i.test(texte)
+  ) {
+    throw erreurFFVL('L’accès aux données nécessite une clé API FFVL.', 'acces');
   }
-  return Array.isArray(data) ? data : Object.values(data);
+  if (!rep.ok) throw new Error(`${url} : erreur HTTP ${rep.status} – ${texte.slice(0, 200)}`);
+
+  let donnees;
+  try {
+    donnees = JSON.parse(texte);
+  } catch {
+    throw new Error(`${url} : réponse non JSON : ${texte.slice(0, 200)}`);
+  }
+
+  if (Array.isArray(donnees)) return donnees;
+  if (donnees && typeof donnees === 'object') return Object.values(donnees);
+  throw new Error(`${url} : format de données FFVL inattendu.`);
 }
 
 function sitesEnGeoJSON(sites) {
   const features = [];
-  for (const s of sites) {
-    if (!(s.pratiques || '').split(';').includes('parapente')) continue;
-    const type = sansAccent(s.site_sous_type);
+  for (const site of sites) {
+    if (!site || typeof site !== 'object') continue;
+    const pratiques = typeof site.pratiques === 'string' ? site.pratiques.split(';') : [];
+    if (!pratiques.some((pratique) => sansAccent(pratique.trim()) === 'parapente')) continue;
+    const type = sansAccent(site.site_sous_type);
     const genre = type.includes('atterr') ? 'atterrissage' : type.includes('decol') ? 'decollage' : null;
-    const lat = parseFloat(s.lat);
-    const lon = parseFloat(s.lon);
-    if (!genre || isNaN(lat) || isNaN(lon)) continue;
+    const lat = nombre(site.lat);
+    const lon = nombre(site.lon);
+    if (
+      !genre ||
+      !Number.isFinite(lat) || lat < -90 || lat > 90 ||
+      !Number.isFinite(lon) || lon < -180 || lon > 180
+    ) continue;
+
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [lon, lat] },
       properties: {
         genre,
-        nom: s.nom,
-        sous_nom: s.sous_nom,
-        alt: s.alt,
-        orientation: s.orientation,
-        vent_favo: s.vent_favo,
+        nom: site.nom,
+        sous_nom: site.sous_nom,
+        alt: site.alt,
+        orientation: site.orientation,
+        vent_favo: site.vent_favo,
       },
     });
   }
   return { type: 'FeatureCollection', features };
 }
 
-export function initParapente(map) {
+export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {} } = {}) {
   let marqueurs = [];
   let balisesVisibles = false;
   let sitesVisibles = false;
+  let actif = false;
+  let minuteur = null;
+  let controleur = null;
+  let actualisation = null;
+  let nombreSites = 0;
+  let nombreBalises = 0;
+  let nombrePerimees = 0;
+  let donneesDejaChargees = false;
   const couchesSites = ['decollages', 'atterrissages', 'sites-noms'];
 
-  // ---------- Décollages et atterrissages ----------
-  charger(URL_SITES)
-    .then((sites) => {
-      map.addSource('sites', { type: 'geojson', data: sitesEnGeoJSON(sites) });
+  function publierStatistiques() {
+    onStatistiques({ sites: nombreSites, balises: nombreBalises, perimees: nombrePerimees });
+  }
 
-      const rayon = ['interpolate', ['linear'], ['zoom'], 8, 3, 14, 8];
-      map.addLayer({
-        id: 'decollages',
-        type: 'circle',
-        source: 'sites',
-        filter: ['==', ['get', 'genre'], 'decollage'],
-        paint: {
-          'circle-radius': rayon,
-          'circle-color': '#2e9e4f',
-          'circle-stroke-color': '#fff',
-          'circle-stroke-width': 1.5,
-        },
-      });
-      map.addLayer({
-        id: 'atterrissages',
-        type: 'circle',
-        source: 'sites',
-        filter: ['==', ['get', 'genre'], 'atterrissage'],
-        paint: {
-          'circle-radius': rayon,
-          'circle-color': '#1f6fd1',
-          'circle-stroke-color': '#fff',
-          'circle-stroke-width': 1.5,
-        },
-      });
+  function majVisibilite() {
+    couchesSites.forEach((id) => {
+      if (map.getLayer(id)) {
+        map.setLayoutProperty(id, 'visibility', sitesVisibles ? 'visible' : 'none');
+      }
+    });
+    marqueurs.forEach((marqueur) => {
+      marqueur.getElement().style.display = balisesVisibles ? '' : 'none';
+    });
+  }
+
+  function assurerCouchesSites(geojson) {
+    if (!map.getSource('sites')) {
+      map.addSource('sites', { type: 'geojson', data: geojson });
+    } else {
+      map.getSource('sites').setData(geojson);
+    }
+
+    const rayon = ['interpolate', ['linear'], ['zoom'], 8, 3, 14, 8];
+    for (const [id, genre, couleur] of [
+      ['decollages', 'decollage', '#2e9e4f'],
+      ['atterrissages', 'atterrissage', '#1f6fd1'],
+    ]) {
+      if (!map.getLayer(id)) {
+        map.addLayer({
+          id,
+          type: 'circle',
+          source: 'sites',
+          filter: ['==', ['get', 'genre'], genre],
+          paint: {
+            'circle-radius': rayon,
+            'circle-color': couleur,
+            'circle-stroke-color': '#fff',
+            'circle-stroke-width': 1.5,
+          },
+        });
+        map.on('click', id, (event) => {
+          const feature = event.features?.[0];
+          if (!feature) return;
+          const properties = feature.properties;
+          const titre = id === 'decollages' ? 'Décollage' : 'Atterrissage';
+          new maplibregl.Popup({ offset: 10 })
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(
+              `<strong>${esc(properties.nom)}</strong><br>${esc(titre)}` +
+                (properties.sous_nom ? ` – ${esc(properties.sous_nom)}` : '') +
+                `<br>Altitude : ${esc(properties.alt)} m` +
+                (properties.orientation ? `<br>Orientation : ${esc(properties.orientation)}` : '') +
+                (properties.vent_favo ? `<br>Vent favorable : ${esc(properties.vent_favo)}` : '')
+            )
+            .addTo(map);
+        });
+        map.on('mouseenter', id, () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+        map.on('mouseleave', id, () => {
+          map.getCanvas().style.cursor = '';
+        });
+      }
+    }
+
+    if (!map.getLayer('sites-noms')) {
       map.addLayer({
         id: 'sites-noms',
         type: 'symbol',
@@ -102,92 +173,165 @@ export function initParapente(map) {
         },
         paint: { 'text-color': '#222', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
       });
+    }
+    nombreSites = geojson.features.length;
+    donneesDejaChargees = true;
+    majVisibilite();
+    publierStatistiques();
+  }
 
-      for (const id of ['decollages', 'atterrissages']) {
-        map.on('click', id, (e) => {
-          const f = e.features[0];
-          const p = f.properties;
-          const titre = id === 'decollages' ? 'Décollage' : 'Atterrissage';
-          new maplibregl.Popup({ offset: 10 })
-            .setLngLat(f.geometry.coordinates)
-            .setHTML(
-              `<strong>${esc(p.nom)}</strong><br>${esc(titre)}${p.sous_nom ? ' – ' + esc(p.sous_nom) : ''}` +
-                `<br>Altitude : ${esc(p.alt)} m` +
-                (p.orientation ? `<br>Orientation : ${esc(p.orientation)}` : '') +
-                (p.vent_favo ? `<br>Vent favorable : ${esc(p.vent_favo)}` : '')
-            )
-            .addTo(map);
-        });
-        map.on('mouseenter', id, () => (map.getCanvas().style.cursor = 'pointer'));
-        map.on('mouseleave', id, () => (map.getCanvas().style.cursor = ''));
+  async function chargerSites(signal) {
+    const sites = await charger(URL_SITES, signal);
+    assurerCouchesSites(sitesEnGeoJSON(sites));
+  }
+
+  async function chargerBalises(signal) {
+    const [balises, releves] = await Promise.all([
+      charger(URL_BALISES, signal),
+      charger(URL_RELEVES, signal),
+    ]);
+    const parId = new Map(
+      releves
+        .filter((releve) => releve && typeof releve === 'object' && releve.idbalise != null)
+        .map((releve) => [String(releve.idbalise), releve])
+    );
+    const nouveauxMarqueurs = [];
+    let perimees = 0;
+
+    for (const balise of balises) {
+      if (!balise || typeof balise !== 'object') continue;
+      const releve = parId.get(String(balise.idBalise));
+      const lat = nombre(balise.latitude);
+      const lon = nombre(balise.longitude);
+      if (!releve || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+        continue;
       }
-      majVisibilite();
-    })
-    .catch((err) => console.warn('FFVL sites :', err));
 
-  // ---------- Balises de vent ----------
-  async function chargerBalises() {
-    const [balises, releves] = await Promise.all([charger(URL_BALISES), charger(URL_RELEVES)]);
-    const parId = new Map(releves.map((r) => [String(r.idbalise), r]));
+      const moyenne = nombre(releve.vitesseVentMoy);
+      const maximum = nombre(releve.vitesseVentMax);
+      const direction = nombre(releve.directVentMoy);
+      const date = String(releve.date ?? '');
+      const ageHeures = (Date.now() - new Date(date.replace(' ', 'T')).getTime()) / 3600000;
+      const perime = !Number.isFinite(ageHeures) || ageHeures > 2 || ageHeures < -1;
+      if (perime) perimees++;
+      const couleur = perime ? '#999' : couleurVent(moyenne);
+      const directionValide = Number.isFinite(direction) ? direction : 0;
 
-    marqueurs.forEach((m) => m.remove());
-    marqueurs = [];
-
-    for (const b of balises) {
-      const r = parId.get(String(b.idBalise));
-      const lat = parseFloat(b.latitude);
-      const lon = parseFloat(b.longitude);
-      if (!r || isNaN(lat) || isNaN(lon)) continue;
-
-      const moy = Number(r.vitesseVentMoy);
-      const max = Number(r.vitesseVentMax);
-      const dir = Number(r.directVentMoy);
-      const ageH = (Date.now() - new Date(String(r.date).replace(' ', 'T')).getTime()) / 3600000;
-      const perime = isNaN(ageH) || ageH > 2; // relevé de plus de 2 h : grisé
-      const couleur = perime ? '#999' : couleurVent(moy);
-
-      const el = document.createElement('div');
-      el.className = 'balise' + (perime ? ' balise-perimee' : '');
-      el.innerHTML =
-        `<svg viewBox="0 0 24 24" style="transform:rotate(${(dir + 180) % 360}deg)">` +
+      const element = document.createElement('div');
+      element.className = `balise${perime ? ' balise-perimee' : ''}`;
+      element.setAttribute('aria-label', `${balise.nom || 'Balise FFVL'} : ${Number.isFinite(moyenne) ? `${Math.round(moyenne)} km/h` : 'vent indisponible'}`);
+      element.innerHTML =
+        `<svg viewBox="0 0 24 24" style="transform:rotate(${(directionValide + 180) % 360}deg)">` +
         `<path d="M12 2 L19 21 L12 17 L5 21 Z" fill="${couleur}" stroke="#fff" stroke-width="1.5"/></svg>` +
-        `<span>${isNaN(moy) ? '?' : Math.round(moy)}</span>`;
+        `<span>${Number.isFinite(moyenne) ? Math.round(moyenne) : '?'}</span>`;
 
       const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
-        `<strong>${esc(b.nom)}</strong><br>Altitude : ${esc(b.altitude)} m` +
-          `<br>Vent moyen : ${esc(moy)} km/h (rafales ${esc(max)} km/h)` +
-          `<br>Direction : ${esc(dir)}° (vent venant de cette direction)` +
-          (r.temperature != null ? `<br>Température : ${esc(r.temperature)} °C` : '') +
-          `<br><small>Relevé : ${esc(r.date)}${perime ? ' – ANCIEN' : ''}</small>`
+        `<strong>${esc(balise.nom)}</strong><br>Altitude : ${esc(balise.altitude)} m` +
+          `<br>Vent moyen : ${esc(Number.isFinite(moyenne) ? `${Math.round(moyenne)} km/h` : 'indisponible')}` +
+          `<br>Rafales : ${esc(Number.isFinite(maximum) ? `${Math.round(maximum)} km/h` : 'indisponibles')}` +
+          `<br>Direction : ${esc(Number.isFinite(direction) ? `${Math.round(direction)}° (vent venant de cette direction)` : 'indisponible')}` +
+          (releve.temperature != null ? `<br>Température : ${esc(releve.temperature)} °C` : '') +
+          `<br><small>Relevé : ${esc(date || 'date inconnue')}${perime ? ' – ancien' : ''}</small>`
       );
 
-      const m = new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).setPopup(popup).addTo(map);
-      marqueurs.push(m);
+      nouveauxMarqueurs.push(
+        new maplibregl.Marker({ element })
+          .setLngLat([lon, lat])
+          .setPopup(popup)
+      );
     }
+
+    marqueurs.forEach((marqueur) => marqueur.remove());
+    marqueurs = nouveauxMarqueurs;
+    marqueurs.forEach((marqueur) => marqueur.addTo(map));
+    nombreBalises = marqueurs.length;
+    nombrePerimees = perimees;
+    donneesDejaChargees = true;
+    majVisibilite();
+    publierStatistiques();
+  }
+
+  async function actualiser() {
+    if (!actif || actualisation) return actualisation;
+
+    controleur = new AbortController();
+    const { signal } = controleur;
+    onEtat({ type: 'chargement', message: 'Actualisation des sites et des relevés météo…' });
+
+    actualisation = (async () => {
+      const resultats = await Promise.allSettled([chargerSites(signal), chargerBalises(signal)]);
+      if (!actif || signal.aborted) return;
+
+      const erreurs = resultats
+        .filter((resultat) => resultat.status === 'rejected')
+        .map((resultat) => resultat.reason);
+      const reussites = resultats.length - erreurs.length;
+      const heure = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+
+      if (erreurs.length === 0) {
+        onEtat({
+          type: 'ok',
+          message: `Mis à jour à ${heure} · ${nombreSites} sites, ${nombreBalises} balises.`,
+        });
+        return;
+      }
+
+      if (reussites > 0) {
+        onEtat({
+          type: 'partiel',
+          message: `Mise à jour partielle à ${heure}. ${erreurs[0].message}`,
+        });
+      } else if (erreurs.some((erreur) => erreur.code === 'acces')) {
+        onEtat({
+          type: 'acces',
+          message: donneesDejaChargees
+            ? 'La FFVL exige une clé API et les demandes d’accès OpenData sont temporairement suspendues. Les dernières données reçues restent visibles et peuvent être périmées.'
+            : 'La FFVL exige une clé API. La Fédération indique que les demandes d’accès OpenData sont temporairement suspendues.',
+        });
+      } else {
+        onEtat({
+          type: 'erreur',
+          message: donneesDejaChargees
+            ? `Impossible d’actualiser les données FFVL. Les dernières données reçues restent visibles et peuvent être périmées. ${erreurs[0].message}`
+            : `Impossible de charger les données FFVL. ${erreurs[0].message}`,
+        });
+      }
+    })();
+
+    try {
+      await actualisation;
+    } finally {
+      actualisation = null;
+      controleur = null;
+    }
+  }
+
+  function demarrer() {
+    if (actif) return;
+    actif = true;
+    actualiser();
+    minuteur = setInterval(actualiser, INTERVALLE_ACTUALISATION);
+  }
+
+  function arreter() {
+    actif = false;
+    if (minuteur !== null) clearInterval(minuteur);
+    minuteur = null;
+    controleur?.abort();
+    controleur = null;
     majVisibilite();
   }
 
-  chargerBalises().catch((err) => console.warn('FFVL balises :', err));
-  setInterval(
-    () => chargerBalises().catch((err) => console.warn('FFVL balises :', err)),
-    5 * 60 * 1000
-  );
-
-  // ---------- Afficher / masquer ----------
-  function majVisibilite() {
-    couchesSites.forEach((id) => {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', sitesVisibles ? 'visible' : 'none');
-    });
-    marqueurs.forEach((m) => (m.getElement().style.display = balisesVisibles ? '' : 'none'));
-  }
-
   return {
-    setBalises(v) {
-      balisesVisibles = v;
+    actualiser,
+    demarrer,
+    arreter,
+    setBalises(visible) {
+      balisesVisibles = visible;
       majVisibilite();
     },
-    setSites(v) {
-      sitesVisibles = v;
+    setSites(visible) {
+      sitesVisibles = visible;
       majVisibilite();
     },
   };
