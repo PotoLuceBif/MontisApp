@@ -222,7 +222,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
 }
 
 // ---------- Interface ----------
-export function initPortee(map, conteneur) {
+export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   conteneur.innerHTML = `
     <div class="outil">
       <h4>📏 Hike & Fly : portée en vol plané</h4>
@@ -326,6 +326,7 @@ export function initPortee(map, conteneur) {
     attente = true;
     map.getCanvas().style.cursor = 'crosshair';
     resultat.textContent = 'Clique sur la carte pour placer le point de départ.';
+    onChoisirPoint?.();
   });
   conteneur.querySelector('#pt-effacer').addEventListener('click', reinitialiser);
 

@@ -54,7 +54,7 @@ input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color:
 
 /* ===== Barre du haut : 2D | 3D et recherche ===== */
 #barre-haut {
-  position: absolute; top: 12px; left: 64px; right: 64px;
+  position: absolute; top: 12px; left: 116px; right: 64px;
   display: flex; align-items: flex-start; gap: 8px;
   pointer-events: none; transition: left 0.25s ease;
 }
@@ -82,6 +82,31 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   box-shadow: var(--ombre); cursor: pointer;
 }
 #menu-bouton:hover { background: var(--survol); }
+#menu-bouton img { display: block; width: 30px; height: 30px; }
+#menu-parametres-bouton {
+  position: absolute;
+  top: 14px;
+  left: 70px;
+  z-index: 4;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--bord) 75%, transparent);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--ombre-forte);
+  color: var(--texte-2);
+  cursor: pointer;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+#menu-parametres-bouton > svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#menu-parametres-bouton:hover,
+#menu-parametres-bouton[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-doux);
+  color: var(--accent);
+}
 
 #menu-tiroir {
   position: absolute; top: 0; left: 0; bottom: 0; z-index: 3;
@@ -456,19 +481,18 @@ button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visibl
   background: var(--surface);
   box-shadow: var(--ombre-forte);
 }
-#menu-bouton svg {
-  width: 21px;
-  height: 21px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
+#menu-bouton img { width: 32px; height: 32px; }
+#menu-parametres-bouton {
+  top: 14px;
+  left: 72px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
 }
-#menu-bouton:hover { background: var(--surface-2); }
 
 #barre-haut {
   top: 14px;
-  left: 74px;
+  left: 128px;
   right: 70px;
   align-items: flex-start;
   gap: 10px;
@@ -496,7 +520,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .rech-liste { top: 56px; border-radius: 14px; }
 
 #menu-tiroir {
-  z-index: 8;
+  z-index: 15;
   width: min(352px, 88vw);
   border-right: 1px solid var(--bord);
   box-shadow: 14px 0 42px rgba(14, 30, 21, 0.18);
@@ -721,17 +745,30 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 
 @media (max-width: 700px) {
   #menu-bouton { top: max(10px, env(safe-area-inset-top)); left: 10px; width: 46px; height: 46px; }
-  body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events: none; }
+  #menu-bouton img { width: 30px; height: 30px; }
+  #menu-parametres-bouton {
+    top: max(10px, env(safe-area-inset-top));
+    left: 64px;
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+  }
+  body:has(#menu-tiroir.ouvert) #menu-bouton,
+  body:has(#menu-tiroir.ouvert) #menu-parametres-bouton {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  body:has(#menu-tiroir.ouvert) .outils-rapides { visibility: hidden; pointer-events: none; }
   #barre-haut {
     top: max(10px, env(safe-area-inset-top));
-    left: 66px;
+    left: 118px;
     right: 58px;
     gap: 6px;
   }
   body:has(#menu-tiroir.ouvert) #barre-haut { display: none; }
   #bascule-mode { height: 46px; gap: 1px; padding: 3px; border-radius: 13px; }
   #bascule-mode button { width: 36px; min-width: 36px; padding: 0; font-size: 12px; }
-  #recherche { flex-basis: 0; width: 44px; }
+  #recherche { flex: none; width: 44px; }
   #recherche:not(.ouverte) .rech-champ {
     width: 44px;
     height: 46px;
@@ -743,17 +780,29 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   #recherche.ouverte .rech-champ { height: 48px; }
   #menu-tiroir {
     position: fixed;
-    top: 0;
-    bottom: 0;
-    width: 100vw;
-    max-width: 420px;
+    top: max(12px, env(safe-area-inset-top));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 21;
+    width: min(360px, calc(100vw - 72px));
+    max-width: none;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     box-sizing: border-box;
-    box-shadow: 0 0 0 100vmax rgba(8, 18, 12, 0.36), 12px 0 36px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--bord);
+    border-left: 0;
+    border-radius: 0 18px 18px 0;
+    box-shadow: 12px 0 36px rgba(0, 0, 0, 0.18);
   }
-  .menu-entete { min-height: 66px; padding: 10px 16px 10px 68px; }
-  .menu-corps { padding: 6px 14px 24px; }
+  body:has(#menu-tiroir.ouvert)::before {
+    position: fixed;
+    z-index: 20;
+    inset: 0;
+    background: rgba(8, 18, 12, 0.36);
+    content: "";
+    pointer-events: none;
+  }
+  .menu-entete { min-height: 56px; padding: 6px 12px 6px 16px; }
+  .menu-corps { padding: 0 10px 14px; }
   #fiche {
     top: auto;
     right: 10px;
@@ -788,7 +837,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 }
 
 @media (max-width: 360px) {
-  #barre-haut { right: 54px; }
+  #barre-haut { left: 116px; right: 54px; }
   #bascule-mode button { width: 32px; min-width: 32px; }
 }
 
@@ -1029,8 +1078,20 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 
 @media (max-width: 700px) {
   :root[data-theme='cyberpunk'] #menu-tiroir {
-    box-shadow: 0 0 0 100vmax rgba(2, 6, 12, 0.68), 12px 0 36px rgba(0, 0, 0, 0.6);
+    box-shadow: 12px 0 36px rgba(0, 0, 0, 0.6);
   }
+  :root[data-theme='cyberpunk'] body:has(#menu-tiroir.ouvert)::before {
+    background: rgba(2, 6, 12, 0.68);
+  }
+  #menu-tiroir .menu-pied { padding: 8px 12px max(8px, env(safe-area-inset-bottom)); }
+  .menu-navigation { padding: 4px 10px 0; gap: 3px; }
+  .menu-onglet { min-height: 42px; padding: 4px 2px 6px; }
+  .menu-vue-entete { padding: 10px 3px 8px; }
+  .menu-vue-entete h2 { font-size: 15px; }
+  .menu-vue-entete p { font-size: 11px; }
+  .menu-vue .menu-module:first-of-type { margin-top: 6px; }
+  .menu-vue .menu-ligne { min-height: 42px; }
+  .menu-vue .menu-contenu { padding: 7px 2px 9px; }
 }
 
 .radar-panneau {
@@ -1321,34 +1382,33 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   display: grid;
   top: 216px;
   right: 14px;
-  width: 132px;
-  gap: 6px;
-  padding: 5px;
-  border: 1px solid color-mix(in srgb, var(--bord) 90%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  box-shadow: var(--ombre-forte);
-  backdrop-filter: blur(12px);
+  justify-items: end;
+  gap: 8px;
   pointer-events: auto;
 }
 .outil-rapide-bouton {
   display: flex;
-  width: 100%;
-  min-height: 40px;
+  width: 48px;
+  min-height: 48px;
   align-items: center;
   gap: 8px;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  background: transparent;
+  overflow: hidden;
+  padding: 0 12px;
+  border: 1px solid var(--bord);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--ombre-forte);
   color: var(--texte);
   font: 650 12px system-ui, sans-serif;
   cursor: pointer;
-  transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: width 0.2s ease, border-color 0.16s ease, color 0.16s ease, background 0.16s ease;
 }
 .outil-rapide-bouton > svg {
-  width: 19px;
-  height: 19px;
+  width: 22px;
+  height: 22px;
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -1356,12 +1416,41 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.outil-rapide-bouton:hover,
+.outil-rapide-bouton > span {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.14s ease;
+}
 .outil-rapide-bouton[aria-expanded='true'] {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--bord));
   background: var(--accent-doux);
   color: var(--accent);
 }
+@media (hover: hover) and (pointer: fine) {
+  .outil-rapide-bouton:hover,
+  .outil-rapide-bouton:focus-visible,
+  .outil-rapide-bouton[aria-expanded='true'] {
+    width: 116px;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--bord));
+    background: var(--accent-doux);
+    color: var(--accent);
+  }
+  .outil-rapide-bouton:hover > span,
+  .outil-rapide-bouton:focus-visible > span,
+  .outil-rapide-bouton[aria-expanded='true'] > span {
+    max-width: 64px;
+    opacity: 1;
+  }
+}
+.outil-rapide-bouton.appui-long {
+  width: 116px;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--bord));
+  background: var(--accent-doux);
+  color: var(--accent);
+}
+.outil-rapide-bouton.appui-long > span { max-width: 64px; opacity: 1; }
 .outil-rapide-bouton:focus-visible,
 .outil-rapide-fermer:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .outil-rapide-panneau {
@@ -1578,28 +1667,49 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
   .outils-rapides {
     top: 244px;
     right: 10px;
-    width: 120px;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 14px;
-  }
-  .outil-rapide-bouton {
-    min-height: 38px;
-    border-radius: 10px;
-    padding-inline: 8px;
+    gap: 8px;
   }
   .outil-rapide-panneau {
-    top: 342px;
+    top: 356px;
     right: 10px;
     width: min(360px, calc(100vw - 20px));
-    max-height: calc(100dvh - 362px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 376px - env(safe-area-inset-bottom));
     border-radius: 15px;
   }
   .outil-rapide-entete { min-height: 48px; }
 }
 
-@media (max-height: 620px) {
-  .outil-rapide-panneau { max-height: calc(100dvh - 232px - env(safe-area-inset-bottom)); }
+@media (max-height: 620px) and (min-width: 701px) {
+  .outils-rapides {
+    top: 72px;
+    right: auto;
+    left: 10px;
+  }
+  .outil-rapide-panneau {
+    top: 72px;
+    right: auto;
+    left: 68px;
+    width: min(360px, calc(100vw - 80px));
+    max-height: calc(100dvh - 84px - env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-height: 620px) and (max-width: 700px) {
+  .outils-rapides {
+    top: 116px;
+    right: auto;
+    left: 10px;
+    width: 104px;
+    grid-template-columns: repeat(2, 48px);
+  }
+  .outil-rapide-panneau {
+    top: 172px;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 10px;
+    width: auto;
+    max-height: none;
+  }
 }
 
 #menu-tiroir .menu-entete #menu-fermer {

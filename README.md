@@ -2,7 +2,13 @@
 
 Cartographie alpine et outils de préparation d’activités en montagne.
 
-La navigation est organisée en trois accès : le menu latéral regroupe les activités, tandis que les accès Météo et Carte restent visibles sous les commandes de navigation, même lorsque le menu Activités est ouvert. Leurs panneaux restent ouverts pendant les déplacements sur la carte et se ferment avec leur croix, Échap ou en basculant vers une autre rubrique. Chaque accès ferme l’activité ou l’autre rubrique avant d’afficher ses outils.
+## Installation sur mobile
+
+Montis peut être ajouté à l’écran d’accueil depuis son adresse HTTPS sur Vercel. Sur Android, ouvrez le site dans Chrome, puis choisissez **Installer l’application** ou **Ajouter à l’écran d’accueil** dans le menu du navigateur. Sur iPhone, ouvrez-le dans Safari, touchez **Partager**, puis **Sur l’écran d’accueil**.
+
+L’application s’ouvre alors sans l’interface habituelle du navigateur. Une connexion Internet reste nécessaire pour la carte, le relief, la météo et les autres données en ligne ; le mode hors connexion n’est pas encore pris en charge.
+
+La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique.
 
 ## Activité parapente
 

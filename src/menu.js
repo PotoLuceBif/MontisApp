@@ -21,6 +21,7 @@ const ICONES_MENU = {
   relief: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
   courbes: '<path d="M4 19c4-5 12-5 16 0M3 14c5-6 13-6 18 0M5 9c4-4 10-4 14 0"/>',
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+  reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
@@ -28,6 +29,46 @@ const ICONES_MENU = {
 function creerIconeMenu(nom) {
   const dessin = ICONES_MENU[nom] || ICONES_MENU.generic;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${dessin}</svg>`;
+}
+
+function ajouterAideMaintien(bouton, libelle) {
+  bouton.title = `${libelle} — maintenir appuyé pour afficher le libellé`;
+  bouton.addEventListener('contextmenu', (event) => event.preventDefault());
+
+  let minuterie;
+  let maintienActif = false;
+  let ignorerClic = false;
+
+  bouton.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch') return;
+    minuterie = window.setTimeout(() => {
+      maintienActif = true;
+      bouton.classList.add('appui-long');
+    }, 500);
+  });
+
+  const terminerMaintien = () => {
+    window.clearTimeout(minuterie);
+    if (!maintienActif) return;
+    maintienActif = false;
+    bouton.classList.remove('appui-long');
+    ignorerClic = true;
+    window.setTimeout(() => {
+      ignorerClic = false;
+    }, 0);
+  };
+  bouton.addEventListener('pointerup', terminerMaintien);
+  bouton.addEventListener('pointercancel', terminerMaintien);
+  bouton.addEventListener(
+    'click',
+    (event) => {
+      if (!ignorerClic) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      ignorerClic = false;
+    },
+    true
+  );
 }
 
 // Module « à venir » : une ligne dans le menu avec un petit texte
@@ -38,6 +79,71 @@ function creerModuleBientot(id, label, icone, texte) {
 }
 
 export function initMenu(map) {
+  // ---------- Bouton et tiroir ----------
+  const bouton = document.createElement('button');
+  bouton.id = 'menu-bouton';
+  bouton.type = 'button';
+  bouton.setAttribute('aria-label', 'Ouvrir le menu');
+  bouton.setAttribute('aria-controls', 'menu-tiroir');
+  bouton.setAttribute('aria-expanded', 'false');
+  bouton.innerHTML = `
+    <img src="/favicon.svg" alt="" width="30" height="30" />
+  `;
+  bouton.setAttribute('aria-label', 'Ouvrir les activités');
+  bouton.title = 'Activités';
+
+  const boutonParametres = document.createElement('button');
+  boutonParametres.id = 'menu-parametres-bouton';
+  boutonParametres.type = 'button';
+  boutonParametres.setAttribute('aria-label', 'Ouvrir les paramètres');
+  boutonParametres.setAttribute('aria-controls', 'menu-tiroir');
+  boutonParametres.innerHTML = creerIconeMenu('reglages');
+  boutonParametres.title = 'Paramètres';
+
+  const tiroir = document.createElement('aside');
+  tiroir.id = 'menu-tiroir';
+  tiroir.setAttribute('aria-label', 'Menu principal');
+  tiroir.innerHTML = `
+    <div class="menu-entete">
+      <div class="menu-marque">
+        <span class="menu-logotype">
+          <img src="/favicon.svg" alt="" width="34" height="34" />
+          <strong>Montis</strong>
+        </span>
+        <span class="menu-sous-titre">ACTIVITÉS MONTAGNE</span>
+      </div>
+      <button id="menu-fermer" type="button" aria-label="Fermer le menu">${creerIconeMenu('close')}</button>
+    </div>
+    <div class="menu-corps" aria-label="Activités"></div>
+    <div class="menu-parametres"></div>
+  `;
+  document.body.append(bouton, boutonParametres, tiroir);
+  const corps = tiroir.querySelector('.menu-corps');
+
+  const boutonFermer = tiroir.querySelector('#menu-fermer');
+  const panneauxFlottants = new Map();
+  const boutonsFlottants = new Map();
+
+  function fermerPanneauxFlottants() {
+    for (const [id, panneau] of panneauxFlottants) {
+      panneau.hidden = true;
+      boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
+  const ouvrir = (ouvert, pageParametres = false) => {
+    tiroir.classList.toggle('ouvert', ouvert);
+    montrerParametres(ouvert && pageParametres);
+    bouton.setAttribute('aria-expanded', String(ouvert));
+    bouton.setAttribute('aria-label', ouvert ? 'Menu ouvert' : 'Ouvrir les activités');
+    boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
+    if (ouvert) {
+      fermerPanneauxFlottants();
+      arreterCategoriesFlottantes();
+    }
+  };
+
   const categories = [
     {
       id: 'activites',
@@ -46,10 +152,10 @@ export function initMenu(map) {
       aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
       exclusif: true,
       modules: [
-        creerActiviteParapente(map),
+        creerActiviteParapente(map, { onChoisirPoint: () => ouvrir(false) }),
         creerActiviteRandonnee(map),
         creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
-        creerModuleBientot('ski', 'Ski', 'ski', 'Cette activité arrive bientôt. Idées : pistes, remontées, pentes et expositions.'),
+        creerModuleBientot('ski', 'Ski', 'ski', 'À venir : pistes, remontées, pentes et expositions.'),
       ],
       emplacement: 'menu',
     },
@@ -81,63 +187,8 @@ export function initMenu(map) {
     },
   ];
 
-  // ---------- Bouton et tiroir ----------
-  const bouton = document.createElement('button');
-  bouton.id = 'menu-bouton';
-  bouton.type = 'button';
-  bouton.setAttribute('aria-label', 'Ouvrir le menu');
-  bouton.setAttribute('aria-controls', 'menu-tiroir');
-  bouton.setAttribute('aria-expanded', 'false');
-  bouton.innerHTML = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 7h16M4 12h16M4 17h16" />
-    </svg>
-  `;
-
-  const tiroir = document.createElement('aside');
-  tiroir.id = 'menu-tiroir';
-  tiroir.setAttribute('aria-label', 'Menu principal');
-  tiroir.innerHTML = `
-    <div class="menu-entete">
-      <div class="menu-marque">
-        <span class="menu-logotype">
-          <img src="/favicon.svg" alt="" width="34" height="34" />
-          <strong>Montis</strong>
-        </span>
-        <span class="menu-sous-titre">ACTIVITÉS MONTAGNE</span>
-      </div>
-      <button id="menu-fermer" type="button" aria-label="Fermer le menu">${creerIconeMenu('close')}</button>
-    </div>
-    <div class="menu-corps" aria-label="Activités"></div>
-    <div class="menu-pied">
-      <button id="menu-params" type="button" class="btn-secondaire">Paramètres</button>
-    </div>
-    <div class="menu-parametres"></div>
-  `;
-  document.body.append(bouton, tiroir);
-  const corps = tiroir.querySelector('.menu-corps');
-
-  const boutonFermer = tiroir.querySelector('#menu-fermer');
-  const panneauxFlottants = new Map();
-  const boutonsFlottants = new Map();
-
-  function fermerPanneauxFlottants() {
-    for (const [id, panneau] of panneauxFlottants) {
-      panneau.hidden = true;
-      boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
-    }
-  }
-
-  const ouvrir = (ouvert) => {
-    tiroir.classList.toggle('ouvert', ouvert);
-    bouton.setAttribute('aria-expanded', String(ouvert));
-    bouton.setAttribute('aria-label', ouvert ? 'Fermer le menu' : 'Ouvrir le menu');
-    if (ouvert) {
-      fermerPanneauxFlottants();
-      arreterCategoriesFlottantes();
-    }
-  };
   bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
+  boutonParametres.addEventListener('click', () => ouvrir(true, true));
   boutonFermer.addEventListener('click', () => ouvrir(false));
 
   document.addEventListener('keydown', (event) => {
@@ -148,11 +199,16 @@ export function initMenu(map) {
   });
 
   // ---------- Page Paramètres ----------
-  const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
   tiroir
     .querySelector('.menu-parametres')
-    .appendChild(creerPageParametres({ retour: () => montrerParametres(false) }));
-  tiroir.querySelector('#menu-params').addEventListener('click', () => montrerParametres(true));
+    .appendChild(
+      creerPageParametres({
+        retour: () => {
+          montrerParametres(false);
+          boutonParametres.setAttribute('aria-expanded', 'false');
+        },
+      })
+    );
 
   // ---------- Rubriques et modules ----------
   function demarrer(e) {
@@ -206,7 +262,9 @@ export function initMenu(map) {
       boutonOutil.id = `outil-rapide-bouton-${categorie.id}`;
       boutonOutil.setAttribute('aria-controls', `outil-rapide-panneau-${categorie.id}`);
       boutonOutil.setAttribute('aria-expanded', 'false');
+      boutonOutil.setAttribute('aria-label', `Ouvrir les outils ${categorie.titre.toLowerCase()}`);
       boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span>${categorie.titre}</span>`;
+      ajouterAideMaintien(boutonOutil, categorie.titre);
 
       const panneauOutil = document.createElement('aside');
       panneauOutil.className = 'outil-rapide-panneau';

@@ -1,7 +1,7 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 
-export function creerActiviteParapente(map) {
+export function creerActiviteParapente(map, { onChoisirPoint } = {}) {
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
@@ -101,7 +101,7 @@ export function creerActiviteParapente(map) {
       controles.classList.add('para-indicateurs-actifs');
     },
   });
-  const portee = initPortee(map, panneau.querySelector('[data-para-portee]'));
+  const portee = initPortee(map, panneau.querySelector('[data-para-portee]'), { onChoisirPoint });
 
   caseBalises.addEventListener('change', () => donnees.setBalises(caseBalises.checked));
   caseSites.addEventListener('change', () => donnees.setSites(caseSites.checked));
