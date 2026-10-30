@@ -1,15 +1,27 @@
 // Mémoire des réglages (gardés après un rafraîchissement de la page)
 const CLE = 'montis.reglages';
 
-let donnees = {};
-try {
-  donnees = JSON.parse(localStorage.getItem(CLE)) ?? {};
-} catch (e) {
-  donnees = {};
+function lireDonnees() {
+  try {
+    const contenu = localStorage.getItem(CLE);
+    if (!contenu) return {};
+
+    const valeur = JSON.parse(contenu);
+    if (!valeur || typeof valeur !== 'object' || Array.isArray(valeur)) {
+      console.warn('Réglages locaux invalides : les valeurs par défaut seront utilisées.');
+      return {};
+    }
+    return valeur;
+  } catch (e) {
+    console.warn('Réglages locaux illisibles : les valeurs par défaut seront utilisées.', e);
+    return {};
+  }
 }
 
+let donnees = lireDonnees();
+
 export function lire(nom, defaut) {
-  return nom in donnees ? donnees[nom] : defaut;
+  return Object.prototype.hasOwnProperty.call(donnees, nom) ? donnees[nom] : defaut;
 }
 
 export function ecrire(nom, valeur) {
@@ -23,11 +35,11 @@ export function ecrire(nom, valeur) {
 
 // Exécute une action dès que la carte est prête (tout de suite si elle l'est déjà)
 export function quandPret(map, action) {
-  try {
+  if (map.isStyleLoaded()) {
     action();
-  } catch (e) {
-    map.once('load', action);
+    return;
   }
+  map.once('load', action);
 }
 
 // Efface tous les réglages, puis recharge l'appli centrée sur la position de l'utilisateur

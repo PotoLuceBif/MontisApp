@@ -6,7 +6,7 @@ export function creerActiviteParapente(map) {
 
   const panneau = document.createElement('div');
   panneau.innerHTML = `
-    <h2>🪂 Parapente</h2>
+    <h2>Parapente</h2>
     <h3>Affichage</h3>
     <label class="option"><input type="checkbox" id="opt-balises" checked> Balises de vent</label>
     <label class="option"><input type="checkbox" id="opt-sites" checked> Décollages et atterrissages</label>
@@ -24,7 +24,7 @@ export function creerActiviteParapente(map) {
   return {
     id: 'parapente',
     label: 'Parapente',
-    icone: '🪂',
+    icone: 'parapente',
     panneau,
     activer() {
       donnees.setBalises(caseBalises.checked);

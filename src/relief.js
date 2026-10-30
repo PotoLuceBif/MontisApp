@@ -78,7 +78,7 @@ export function creerOptionRelief(map) {
   return {
     id: 'relief',
     label: 'Relief',
-    icone: '⛰️',
+    icone: 'relief',
     panneau,
     activer() {},
     desactiver() {},

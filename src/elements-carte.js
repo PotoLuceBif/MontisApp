@@ -12,7 +12,7 @@ const GROUPES = [
     calques: [
       { cle: 'sommets', label: 'Sommets', aide: 'Noms et altitudes, dès le zoom 9', defaut: false, appliquer: afficherSommets },
       { cle: 'villes', label: 'Villes et villages', aide: 'Noms des communes et des hameaux', defaut: false, appliquer: afficherVilles },
-      { cle: 'refuges', label: 'Refuges et cabanes', aide: 'Refuges gardés et abris, dès le zoom 9', defaut: false, appliquer: afficherRefuges },
+      { cle: 'refuges', label: 'Refuges et cabanes', aide: 'Refuges gardés et abris, dès le zoom 7', defaut: false, appliquer: afficherRefuges },
     ],
   },
    {
@@ -96,6 +96,15 @@ export function creerElementsCarte(map) {
         c.appliquer(map, input.checked);
         ecrire(c.cle, input.checked);
         majOnglets();
+        window.dispatchEvent(new CustomEvent('calque', { detail: { cle: c.cle, actif: input.checked } }));
+      });
+
+      // Reste synchronisé avec les raccourcis d'autres panneaux (ex. activité Randonnée)
+      window.addEventListener('calque', (e) => {
+        if (e.detail.cle === c.cle && input.checked !== e.detail.actif) {
+          input.checked = e.detail.actif;
+          majOnglets();
+        }
       });
     }
   }
@@ -105,7 +114,7 @@ export function creerElementsCarte(map) {
   return {
     id: 'elements',
     label: 'Éléments de la carte',
-    icone: '📍',
+    icone: 'elements',
     panneau,
     activer() {},
     desactiver() {},

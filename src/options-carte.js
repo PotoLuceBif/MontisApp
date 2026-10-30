@@ -45,5 +45,5 @@ export function creerOptionCourbes(map) {
     majCourbes(map);
   });
 
-  return { id: 'courbes', label: 'Courbes de niveau', icone: '〰️', panneau, activer() {}, desactiver() {} };
+  return { id: 'courbes', label: 'Courbes de niveau', icone: 'courbes', panneau, activer() {}, desactiver() {} };
 }

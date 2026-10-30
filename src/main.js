@@ -11,6 +11,7 @@ import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
+import { STYLE_MONTIS } from './style-montis.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -30,16 +31,9 @@ demSource.setupMaplibre(maplibregl);
 const map = new maplibregl.Map({
   container: 'map',
   style: {
-    version: 8,
-    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    ...STYLE_MONTIS,
     sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '© les contributeurs OpenStreetMap',
-      },
+      ...STYLE_MONTIS.sources,
       relief: {
         type: 'raster-dem',
         tiles: [DEM_URL],
@@ -57,7 +51,7 @@ const map = new maplibregl.Map({
       },
     },
     layers: [
-      { id: 'osm', type: 'raster', source: 'osm' },
+      ...STYLE_MONTIS.layers,
       {
         id: 'ombrage',
         type: 'hillshade',

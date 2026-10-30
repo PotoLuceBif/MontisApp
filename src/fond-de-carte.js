@@ -1,4 +1,5 @@
 import { lire, ecrire } from './reglages.js';
+import { CALQUES_MONTIS } from './style-montis.js';
 
 const wmts = (couche, format) =>
   'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
@@ -7,7 +8,18 @@ const wmts = (couche, format) =>
 
 // Pour ajouter un fond : une entrée de plus dans cette liste (zone : 'France' ou 'Monde')
 const FONDS = [
-  { id: 'osm', label: 'OpenStreetMap', zone: 'Monde', photo: false }, // déjà dans le style de départ
+  { id: 'montis', label: 'Montis · relief', zone: 'Monde', photo: false, integre: true },
+  {
+    id: 'osm',
+    label: 'OpenStreetMap',
+    zone: 'Monde',
+    photo: false,
+    source: {
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      maxzoom: 19,
+      attribution: '© les contributeurs OpenStreetMap',
+    },
+  },
   {
     id: 'topo',
     label: 'OpenTopoMap',
@@ -62,7 +74,7 @@ const ZONES = [
   { nom: 'Monde', aide: '' },
 ];
 
-const coucheDe = (f) => (f.id === 'osm' ? 'osm' : `fond-${f.id}`);
+const coucheDe = (f) => (f.integre ? 'montis-background' : `fond-${f.id}`);
 
 // Affiche le fond choisi, cache les autres, adapte les courbes de niveau
 function appliquerFond(map, id) {
@@ -70,9 +82,21 @@ function appliquerFond(map, id) {
 
   FONDS.forEach((f) => {
     if (map.getLayer(coucheDe(f))) {
-      map.setLayoutProperty(coucheDe(f), 'visibility', f.id === choix.id ? 'visible' : 'none');
+      map.setLayoutProperty(
+        coucheDe(f),
+        'visibility',
+        f.id === choix.id ? 'visible' : 'none'
+      );
     }
   });
+  for (const id of CALQUES_MONTIS) {
+    if (id !== 'montis-background' && map.getLayer(id)) {
+      map.setLayoutProperty(id, 'visibility', choix.id === 'montis' ? 'visible' : 'none');
+    }
+  }
+  if (choix.id === 'montis' && map.getLayer('montis-background')) {
+    map.setLayoutProperty('montis-background', 'visibility', 'visible');
+  }
 
   // Sur une photo, les courbes de niveau passent en blanc pour rester lisibles
   if (map.getLayer('courbes')) {
@@ -87,7 +111,7 @@ function appliquerFond(map, id) {
 
 // Rétablit le dernier fond utilisé (appelée depuis main.js au démarrage)
 export function retablirFond(map) {
-  let id = lire('fond', 'osm');
+  let id = lire('fond', 'montis');
   if (!FONDS.some((f) => f.id === id)) id = 'osm';
   try {
     appliquerFond(map, id);
@@ -104,11 +128,11 @@ export function creerFondDeCarte(map) {
     map.addSource(f.id, { type: 'raster', tileSize: 256, ...f.source });
     map.addLayer(
       { id: coucheDe(f), type: 'raster', source: f.id, layout: { visibility: 'none' } },
-      'osm'
+      'montis-landuse'
     );
   }
 
-  let idActif = lire('fond', 'osm');
+  let idActif = lire('fond', 'montis');
   if (!FONDS.some((f) => f.id === idActif)) idActif = 'osm';
 
   let zoneCourante = lire('fond-onglet', null);
@@ -174,5 +198,5 @@ export function creerFondDeCarte(map) {
 
   afficher();
 
-  return { id: 'fond', label: 'Fond de carte', icone: '🗺️', panneau, activer() {}, desactiver() {} };
+  return { id: 'fond', label: 'Fond de carte', icone: 'fond', panneau, activer() {}, desactiver() {} };
 }
