@@ -7,15 +7,16 @@ import { lire, ecrire } from './reglages.js';
 import { creerActiviteRandonnee } from './activite-randonnee.js';
 import { creerActiviteSki } from './activite-ski.js';
 import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
+import { creerCarteVent } from './carte-vent.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
   meteo: '<path d="M7 18h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 9.5 4.2 4.2 0 0 0 7 18Z"/><path d="m9 21-1 2m6-2-1 2m6-2-1 2"/>',
   carte: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/>',
-  parapente: '<path d="M3 9c4-7 14-7 18 0-5-2-13-2-18 0Z"/><path d="m5 9 7 10 7-10"/><circle cx="12" cy="21" r="1"/>',
-  rando: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
-  velo: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="m6 17 4-8h4l4 8m-8-8 3 8h5m-8-11h3"/>',
-  ski: '<path d="m4 20 6-16m4 16 6-16M3 15l4 2m10-2 4 2M8 6l3 2m5-2 3 2"/>',
+  parapente: '<use href="/icons.svg#activity-parapente"/>',
+  rando: '<use href="/icons.svg#activity-randonnee"/>',
+  velo: '<use href="/icons.svg#activity-velo"/>',
+  ski: '<use href="/icons.svg#activity-ski"/>',
   radar: '<path d="M12 12 20 5"/><path d="M5.6 18.4a9 9 0 1 1 12.8 0"/><path d="M8.4 15.6a5 5 0 1 1 7.2 0"/><circle cx="12" cy="12" r="1"/>',
   vent: '<path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/>',
   fond: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/>',
@@ -80,6 +81,8 @@ function creerModuleBientot(id, label, icone, texte) {
 }
 
 export function initMenu(map) {
+  const carteVent = creerCarteVent(map);
+
   // ---------- Bouton et tiroir ----------
   const bouton = document.createElement('button');
   bouton.id = 'menu-bouton';
@@ -155,7 +158,7 @@ export function initMenu(map) {
       aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
       exclusif: true,
       modules: [
-        creerActiviteParapente(map, { onChoisirPoint: () => ouvrir(false) }),
+        creerActiviteParapente(map, { onChoisirPoint: () => ouvrir(false), analyseVent: carteVent }),
         creerActiviteRandonnee(map),
         creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
         creerActiviteSki(map),
@@ -171,7 +174,7 @@ export function initMenu(map) {
       modules: [
         creerConditionsLocales(map),
         creerRadarPluie(map),
-        creerModuleBientot('vent', 'Vent et prévisions', 'vent', 'À venir : choix du modèle de prévision.'),
+        carteVent,
       ],
       emplacement: 'flottant',
     },
@@ -224,6 +227,7 @@ export function initMenu(map) {
     e.ligne.classList.add('actif');
     e.ligne.setAttribute('aria-pressed', 'true');
     e.contenu.style.display = 'block';
+    e.module.retournerAuMenu?.();
     e.module.activer();
   }
 
@@ -233,6 +237,7 @@ export function initMenu(map) {
     e.ligne.setAttribute('aria-pressed', 'false');
     e.contenu.style.display = 'none';
     e.module.desactiver();
+    e.module.retournerAuMenu?.();
   }
 
   const activiteSauvee = lire('menu-activite', null);
@@ -318,6 +323,9 @@ export function initMenu(map) {
       const ligne = document.createElement('button');
       ligne.type = 'button';
       ligne.className = 'menu-ligne';
+      if (['parapente', 'rando', 'velo', 'ski'].includes(module.icone)) {
+        ligne.classList.add('menu-ligne-activite');
+      }
       ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span>${module.label}</span>`;
       ligne.setAttribute('aria-pressed', 'false');
 
@@ -325,6 +333,7 @@ export function initMenu(map) {
       contenu.className = 'menu-contenu';
       contenu.style.display = 'none';
       contenu.appendChild(module.panneau);
+      module.definirEmplacementParDefaut?.(contenu);
 
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);

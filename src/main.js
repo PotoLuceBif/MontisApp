@@ -12,6 +12,7 @@ import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
 import { STYLE_MONTIS } from './style-montis.js';
+import { initEchelleCarte } from './echelle-carte.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -30,6 +31,7 @@ demSource.setupMaplibre(maplibregl);
 
 const map = new maplibregl.Map({
   container: 'map',
+  attributionControl: { compact: true },
   style: {
     ...STYLE_MONTIS,
     sources: {
@@ -70,6 +72,11 @@ const map = new maplibregl.Map({
   maxPitch: 85,
 });
 
+map.once('load', () => {
+  const attribution = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+  if (attribution instanceof HTMLDetailsElement) attribution.open = false;
+});
+
 window.map = map;
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
@@ -84,22 +91,34 @@ map.addControl(
   'top-right'
 );
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+initEchelleCarte(map);
 
 // ===== Mémoire de la position de la carte =====
 const vueSauvee = lire('vue', null);
 
-if (
+const vueSauveeValide =
   vueSauvee &&
-  Number.isFinite(vueSauvee.lng) && Number.isFinite(vueSauvee.lat) &&
+  Number.isFinite(vueSauvee.lng) &&
+  Number.isFinite(vueSauvee.lat) &&
+  Math.abs(vueSauvee.lng) <= 180 &&
   Number.isFinite(vueSauvee.zoom) &&
-  Math.abs(vueSauvee.lat) <= 90
-) {
+  vueSauvee.zoom >= 0 &&
+  vueSauvee.zoom <= 22 &&
+  Math.abs(vueSauvee.lat) <= 90 &&
+  Number.isFinite(vueSauvee.bearing ?? 0) &&
+  Number.isFinite(vueSauvee.pitch ?? 0) &&
+  (vueSauvee.pitch ?? 0) >= 0 &&
+  (vueSauvee.pitch ?? 0) <= 85;
+
+if (vueSauveeValide) {
   map.jumpTo({
     center: [vueSauvee.lng, vueSauvee.lat],
     zoom: vueSauvee.zoom,
     bearing: vueSauvee.bearing ?? 0,
     pitch: vueSauvee.pitch ?? 0,
   });
+} else if (vueSauvee) {
+  console.warn('Vue de carte sauvegardée invalide : la position par défaut sera utilisée.');
 }
 
 map.on('moveend', () => {

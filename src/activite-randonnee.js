@@ -218,16 +218,21 @@ export function creerActiviteRandonnee(map) {
   let marqueursDecouverte = [];
   let routesChargees = [];
   let popupGrappe = null;
+  let minuteurFermetureGrappe = null;
+  let popupResume = null;
+  let minuteurFermetureResume = null;
   let compteurZone = 0;
   let creationActive = false;
   let etapesCreation = [];
+  const historiqueEtapesCreation = [];
   let marqueursEtapes = [];
   let controleurCreation = null;
   let numeroCalculCreation = 0;
   let selection = 0;
   let fiche = null;
-  let ficheCreationOuverte = false;
   let ficheCreationReduite = false;
+  let ficheItineraireReduite = false;
+  let allureParKm = '10:00';
   let curseurCarte = null;
   let ecouteurPose = false;
 
@@ -295,9 +300,15 @@ export function creerActiviteRandonnee(map) {
     </header>
     <p class="note rando-creation-aide" role="status" aria-live="polite">Cliquez sur « Créer un parcours » pour placer le départ.</p>
     <div class="rando-creation-flottante-actions">
-      <button type="button" class="rando-creation-mini-annuler">Retirer le dernier point</button>
-      <button type="button" class="rando-creation-mini-recommencer">Recommencer</button>
-      <button type="button" class="rando-creation-mini-terminer">Terminer</button>
+      <button type="button" class="rando-creation-mini-annuler" aria-label="Annuler la dernière action" title="Annuler la dernière action">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-2"/></svg>
+      </button>
+      <button type="button" class="rando-creation-mini-recommencer" aria-label="Recommencer le parcours" title="Recommencer le parcours">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M19 12a7.5 7.5 0 1 0 1 4"/></svg>
+      </button>
+      <button type="button" class="rando-creation-mini-terminer" aria-label="Terminer la création" title="Terminer la création">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>
+      </button>
     </div>
   `;
   document.body.appendChild(commandesFlottantes);
@@ -309,12 +320,31 @@ export function creerActiviteRandonnee(map) {
   const boutonDeplacer = commandesFlottantes.querySelector('.rando-creation-deplacer');
   const boutonReduire = commandesFlottantes.querySelector('.rando-creation-reduire');
   const boutonFermerCreation = commandesFlottantes.querySelector('.rando-creation-fermer');
+  let popupEtapeCreation = null;
 
   // ---------- Fiche d'itinéraire (en bas de la carte) ----------
   const carte = el('aside');
   carte.id = 'rando-fiche';
   carte.hidden = true;
   document.body.appendChild(carte);
+
+  function actualiserPositionCommandesCreation() {
+    if (
+      !window.matchMedia('(max-width: 700px)').matches
+      || carte.hidden
+      || !fiche
+      || fiche.origine !== 'creation'
+    ) {
+      commandesFlottantes.style.removeProperty('bottom');
+      return;
+    }
+    const zoneFiche = carte.getBoundingClientRect();
+    commandesFlottantes.style.bottom = `${Math.max(150, window.innerHeight - zoneFiche.top + 10)}px`;
+  }
+
+  const observateurFiche = new ResizeObserver(actualiserPositionCommandesCreation);
+  observateurFiche.observe(carte);
+  window.addEventListener('resize', actualiserPositionCommandesCreation);
 
   // ---------- Tracé sur la carte ----------
   function assurerCouches() {
@@ -403,8 +433,16 @@ export function creerActiviteRandonnee(map) {
     boutonCreation.setAttribute('aria-pressed', String(creationActive));
     commandesFlottantes.hidden = !creationActive;
     compteurMiniCreation.textContent = `${etapesCreation.length} point${etapesCreation.length === 1 ? '' : 's'}`;
-    boutonMiniAnnuler.disabled = etapesCreation.length === 0;
+    boutonMiniAnnuler.disabled = historiqueEtapesCreation.length === 0;
     boutonMiniRecommencer.disabled = etapesCreation.length === 0;
+  }
+
+  function memoriserEtapesCreation() {
+    historiqueEtapesCreation.push({
+      etapes: etapesCreation.map((point) => [...point]),
+      nom: nomParcoursCreation,
+    });
+    if (historiqueEtapesCreation.length > 50) historiqueEtapesCreation.shift();
   }
 
   function reduireCommandesCreation(reduit) {
@@ -416,26 +454,90 @@ export function creerActiviteRandonnee(map) {
       : '−';
   }
 
+  function fermerPopupEtapeCreation() {
+    if (!popupEtapeCreation) return;
+    popupEtapeCreation.remove();
+    popupEtapeCreation = null;
+  }
+
+  function ouvrirChoixDepart() {
+    fermerPopupEtapeCreation();
+    const contenu = el('div', 'rando-creation-choix-depart');
+    contenu.append(el('strong', null, 'Point de départ'));
+    if (creationActive && etapesCreation.length > 1 && !parcoursBoucle()) {
+      const boucler = el('button', 'rando-creation-choix-boucler');
+      boucler.type = 'button';
+      boucler.textContent = 'Boucler le parcours';
+      boucler.addEventListener('click', () => {
+        if (etapesCreation.length < 2 || parcoursBoucle()) return;
+        memoriserEtapesCreation();
+        etapesCreation.push([...etapesCreation[0]]);
+        fermerPopupEtapeCreation();
+        afficherEtapesCreation();
+        aideCreation.textContent = 'Parcours bouclé. Ajoutez des étapes pour continuer, bouclez à nouveau ou terminez la création.';
+        calculerParcoursCree();
+      });
+      contenu.append(boucler);
+    }
+    const retirer = el('button', 'rando-creation-choix-retirer');
+    retirer.type = 'button';
+    retirer.textContent = 'Retirer le point 1';
+    retirer.addEventListener('click', () => {
+      fermerPopupEtapeCreation();
+      retirerEtapeCreation(0);
+    });
+    contenu.append(retirer);
+
+    popupEtapeCreation = new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: true,
+      maxWidth: '220px',
+      offset: 18,
+    })
+      .setLngLat(etapesCreation[0])
+      .setDOMContent(contenu)
+      .addTo(map);
+    popupEtapeCreation.on('close', () => { popupEtapeCreation = null; });
+  }
+
+  function parcoursBoucle() {
+    if (etapesCreation.length < 3) return false;
+    const depart = etapesCreation[0];
+    const arrivee = etapesCreation[etapesCreation.length - 1];
+    return depart[0] === arrivee[0] && depart[1] === arrivee[1];
+  }
+
   function afficherEtapesCreation() {
+    fermerPopupEtapeCreation();
     marqueursEtapes.forEach((marqueur) => marqueur.remove());
-    marqueursEtapes = etapesCreation.map((coordonnees, index) => {
+    const boucle = parcoursBoucle();
+    marqueursEtapes = etapesCreation.flatMap((coordonnees, index) => {
+      if (boucle && index === etapesCreation.length - 1) return [];
       const element = el('button', 'rando-creation-etape', String(index + 1));
       element.type = 'button';
-      element.setAttribute('aria-label', `Supprimer l’étape ${index + 1}`);
-      element.title = `Supprimer l’étape ${index + 1}`;
+      if (boucle && index === 0) element.classList.add('boucle');
+      const libellePoint = boucle && index === 0
+        ? 'Point 1, départ et arrivée du parcours bouclé'
+        : `Point ${index + 1}`;
+      element.setAttribute('aria-label', `${libellePoint} : options`);
+      element.title = index === 0
+        ? boucle ? 'Retirer le point 1' : 'Boucler le parcours ou retirer le point 1'
+        : `Retirer le point ${index + 1}`;
       element.addEventListener('click', (event) => {
         event.stopPropagation();
-        retirerEtapeCreation(index);
+        if (index === 0) ouvrirChoixDepart();
+        else retirerEtapeCreation(index);
       });
-      return new maplibregl.Marker({ element, anchor: 'center' })
+      return [new maplibregl.Marker({ element, anchor: 'center' })
         .setLngLat(coordonnees)
-        .addTo(map);
+        .addTo(map)];
     });
     rendreCommandesCreation();
   }
 
   async function calculerParcoursCree() {
     if (etapesCreation.length < 2) return;
+    const boucle = parcoursBoucle();
     if (controleurCreation) controleurCreation.abort();
     const controleur = new AbortController();
     controleurCreation = controleur;
@@ -498,10 +600,14 @@ export function creerActiviteRandonnee(map) {
       };
       dessinerTrace(trace);
       rendreFiche();
-      aideCreation.textContent = `Parcours calculé : ${km(longueur)}. Ajoutez une étape pour modifier le tracé, ou terminez-le.`;
+      aideCreation.textContent = boucle
+        ? `Parcours bouclé : ${km(longueur)}.`
+        : `Parcours calculé : ${km(longueur)}. Ajoutez une étape pour modifier le tracé, ou terminez-le.`;
       await calculerProfil(jeton);
       if (controleurCreation === controleur && numeroCalculCreation === calcul) {
-        aideCreation.textContent = `Parcours calculé : ${km(longueur)}.`;
+        aideCreation.textContent = boucle
+          ? `Parcours bouclé : ${km(longueur)}.`
+          : `Parcours calculé : ${km(longueur)}.`;
       }
     } catch (e) {
       if (e.name === 'AbortError' || controleurCreation !== controleur || numeroCalculCreation !== calcul) return;
@@ -514,6 +620,7 @@ export function creerActiviteRandonnee(map) {
 
   function ajouterEtapeCreation(event) {
     if (!actif || !creationActive) return;
+    memoriserEtapesCreation();
     etapesCreation.push([event.lngLat.lng, event.lngLat.lat]);
     afficherEtapesCreation();
     if (etapesCreation.length < 2) {
@@ -552,13 +659,32 @@ export function creerActiviteRandonnee(map) {
     rendreCommandesCreation();
   }
 
-  function annulerDerniereEtape() {
-    if (!etapesCreation.length) return;
-    retirerEtapeCreation(etapesCreation.length - 1);
+  function annulerDerniereActionCreation() {
+    if (!historiqueEtapesCreation.length) return;
+    const precedent = historiqueEtapesCreation.pop();
+    etapesCreation = precedent.etapes;
+    nomParcoursCreation = precedent.nom;
+    if (controleurCreation) controleurCreation.abort();
+    numeroCalculCreation++;
+    if (etapesCreation.length < 2 && fiche && fiche.origine === 'creation') {
+      fiche = null;
+      rendreFiche();
+      effacerTrace();
+    }
+    afficherEtapesCreation();
+    if (etapesCreation.length >= 2) calculerParcoursCree();
+    else {
+      aideCreation.textContent = etapesCreation.length
+        ? 'Il reste le départ. Ajoutez une étape pour recalculer le parcours.'
+        : creationActive
+          ? 'Cliquez sur la carte pour placer le départ.'
+          : 'Ajoutez des étapes sur la carte pour créer le parcours.';
+    }
   }
 
   function retirerEtapeCreation(index) {
     if (!actif || index < 0 || index >= etapesCreation.length) return;
+    memoriserEtapesCreation();
     etapesCreation.splice(index, 1);
     if (controleurCreation) controleurCreation.abort();
     numeroCalculCreation++;
@@ -595,6 +721,12 @@ export function creerActiviteRandonnee(map) {
     if (!creationActive) actualiserMarqueursDecouverte();
   }
 
+  function recommencerCreation() {
+    if (!etapesCreation.length) return;
+    memoriserEtapesCreation();
+    effacerCreation();
+  }
+
   function fermerCreation() {
     selection++;
     creationActive = false;
@@ -602,6 +734,7 @@ export function creerActiviteRandonnee(map) {
     bloquerFiches(false);
     map.getCanvas().style.cursor = '';
     effacerCreation();
+    historiqueEtapesCreation.length = 0;
     aideCreation.textContent = 'Création fermée. Les étapes et le tracé ont été effacés.';
     rendreCommandesCreation();
     actualiserMarqueursDecouverte();
@@ -687,8 +820,52 @@ export function creerActiviteRandonnee(map) {
     return s;
   }
 
+  function creerStatAllure(distanceMetres) {
+    const allure = el('label', 'rando-stat rando-allure-stat');
+    const champAllure = el('input', 'rando-allure-champ');
+    const dureeAllure = el('strong', 'rando-allure-duree', '—');
+    const libelleAllure = el('span', 'rando-allure-libelle', 'Allure (min/km)');
+    champAllure.type = 'text';
+    champAllure.inputMode = 'numeric';
+    champAllure.autocomplete = 'off';
+    champAllure.placeholder = '10:00';
+    champAllure.value = allureParKm;
+    champAllure.setAttribute('aria-label', 'Temps par kilomètre au format minutes:secondes');
+    champAllure.title = 'Temps par kilomètre au format minutes:secondes';
+    dureeAllure.setAttribute('aria-live', 'polite');
+    dureeAllure.setAttribute('aria-label', 'Durée calculée selon votre allure');
+    allure.append(champAllure, libelleAllure, dureeAllure);
+
+    const actualiserDureeAllure = () => {
+      allureParKm = champAllure.value;
+      const resultat = /^(\d{1,3})(?::([0-5]\d))?$/.exec(allureParKm.trim());
+      const minutes = resultat ? Number(resultat[1]) : 0;
+      const secondes = resultat ? Number(resultat[2] || 0) : 0;
+      const allureHeures = (minutes + secondes / 60) / 60;
+      const valide = Number.isFinite(allureHeures) && allureHeures > 0;
+      champAllure.setAttribute('aria-invalid', String(!valide));
+      dureeAllure.textContent = valide
+        ? `≈ ${formaterDuree((distanceMetres / 1000) * allureHeures)}`
+        : '—';
+    };
+    champAllure.addEventListener('input', actualiserDureeAllure);
+    actualiserDureeAllure();
+    return allure;
+  }
+
+  function creerStatDuree(distanceMetres, montee, descente) {
+    return [
+      stat(
+        `≈ ${formaterDuree(dureeEstimee(distanceMetres, montee, descente))}`,
+        'Durée estimée'
+      ),
+      creerStatAllure(distanceMetres),
+    ];
+  }
+
   function rendreFiche() {
     carte.replaceChildren();
+    requestAnimationFrame(actualiserPositionCommandesCreation);
     if (!fiche) {
       carte.hidden = true;
       carte.classList.remove('rando-fiche-creation');
@@ -697,7 +874,15 @@ export function creerActiviteRandonnee(map) {
     }
     carte.hidden = false;
     carte.classList.toggle('rando-fiche-creation', fiche.origine === 'creation');
-    carte.classList.toggle('fiche-reduite', fiche.origine === 'creation' && ficheCreationReduite);
+    carte.classList.toggle(
+      'rando-fiche-itineraire',
+      fiche.type !== 'gpx' && fiche.origine !== 'creation'
+    );
+    carte.classList.toggle(
+      'fiche-reduite',
+      (fiche.origine === 'creation' && ficheCreationReduite)
+      || (fiche.type !== 'gpx' && fiche.origine !== 'creation' && ficheItineraireReduite)
+    );
 
     if (fiche.type === 'gpx') {
       const entete = el('div', 'rando-entete');
@@ -727,8 +912,10 @@ export function creerActiviteRandonnee(map) {
       }
       entete.append(badge, titres);
       if (fiche.origine === 'creation') {
-        const reduireFiche = el('button', 'rando-fiche-reduire', ficheCreationReduite ? '⌃' : '⌄');
+        const reduireFiche = el('button', 'rando-fiche-reduire');
         reduireFiche.type = 'button';
+        reduireFiche.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+        reduireFiche.classList.toggle('ouverte', !ficheCreationReduite);
         reduireFiche.setAttribute('aria-expanded', String(!ficheCreationReduite));
         reduireFiche.setAttribute(
           'aria-label',
@@ -737,7 +924,7 @@ export function creerActiviteRandonnee(map) {
         reduireFiche.addEventListener('click', () => {
           ficheCreationReduite = !ficheCreationReduite;
           carte.classList.toggle('fiche-reduite', ficheCreationReduite);
-          reduireFiche.textContent = ficheCreationReduite ? '⌃' : '⌄';
+          reduireFiche.classList.toggle('ouverte', !ficheCreationReduite);
           reduireFiche.setAttribute('aria-expanded', String(!ficheCreationReduite));
           reduireFiche.setAttribute(
             'aria-label',
@@ -764,22 +951,16 @@ export function creerActiviteRandonnee(map) {
         stats.append(stat(`−${Math.round(profil.moins).toLocaleString('fr-FR')} m`, 'Dénivelé −'));
         stats.append(stat(metres(profil.max), 'Altitude max'));
         stats.append(stat(metres(profil.min), 'Altitude min'));
-        stats.append(stat(`≈ ${formaterDuree(dureeEstimee(fiche.longueur, profil.plus, profil.moins))}`, 'Durée estimée'));
+        stats.append(...creerStatDuree(fiche.longueur, profil.plus, profil.moins));
+      } else {
+        stats.append(creerStatAllure(fiche.longueur));
       }
       contenuProfil.append(stats);
       if (profil) contenuProfil.append(creerProfil(profil, surSurvol));
       else if (fiche.profil === 'calcul') contenuProfil.append(attente('Calcul du profil d’altitude…'));
       else if (fiche.profil === 'erreur') contenuProfil.append(message('Profil d’altitude indisponible (données de relief injoignables).'));
 
-      if (fiche.origine === 'creation') {
-        const details = el('details', 'rando-fiche-reductible');
-        details.open = ficheCreationOuverte;
-        details.append(el('summary', null, 'Statistiques et profil'), contenuProfil);
-        details.addEventListener('toggle', () => { ficheCreationOuverte = details.open; });
-        carte.append(entete, details);
-      } else {
-        carte.append(entete, contenuProfil);
-      }
+      carte.append(entete, contenuProfil);
       const actions = el('div', 'rando-actions');
       const telecharger = el('button', 'fiche-copier', 'Télécharger le GPX');
       telecharger.type = 'button';
@@ -806,11 +987,30 @@ export function creerActiviteRandonnee(map) {
     titres.append(el('div', 'rando-nom', nom));
     const etapes = (d && d.itinerary) || r.itinerary;
     if (etapes && etapes.length) titres.append(el('div', 'rando-sous', etapes.join(' → ')));
+    const reduire = el('button', 'rando-fiche-reduire');
+    reduire.type = 'button';
+    reduire.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+    reduire.classList.toggle('ouverte', !ficheItineraireReduite);
+    reduire.setAttribute('aria-expanded', String(!ficheItineraireReduite));
+    reduire.setAttribute(
+      'aria-label',
+      ficheItineraireReduite ? 'Afficher le détail de l’itinéraire' : 'Réduire la fiche de l’itinéraire'
+    );
+    reduire.addEventListener('click', () => {
+      ficheItineraireReduite = !ficheItineraireReduite;
+      carte.classList.toggle('fiche-reduite', ficheItineraireReduite);
+      reduire.classList.toggle('ouverte', !ficheItineraireReduite);
+      reduire.setAttribute('aria-expanded', String(!ficheItineraireReduite));
+      reduire.setAttribute(
+        'aria-label',
+        ficheItineraireReduite ? 'Afficher le détail de l’itinéraire' : 'Réduire la fiche de l’itinéraire'
+      );
+    });
     const fermer = el('button', 'fiche-fermer', '✕');
     fermer.type = 'button';
     fermer.setAttribute('aria-label', 'Fermer');
     fermer.addEventListener('click', fermerFiche);
-    entete.append(badge, titres, fermer);
+    entete.append(badge, titres, reduire, fermer);
     carte.append(entete);
 
     if (etat === 'chargement') {
@@ -848,10 +1048,11 @@ export function creerActiviteRandonnee(map) {
       stats.append(stat(`−${Math.round(p.moins).toLocaleString('fr-FR')} m`, 'Dénivelé −'));
       stats.append(stat(metres(p.max), 'Altitude max'));
       stats.append(stat(metres(p.min), 'Altitude min'));
-      stats.append(stat(`≈ ${formaterDuree(dureeEstimee(longueur || p.total, p.plus, p.moins))}`, 'Durée estimée'));
+      stats.append(...creerStatDuree(longueur || p.total, p.plus, p.moins));
     } else if (profil === 'calcul') {
       stats.append(stat('…', 'Dénivelé et altitudes'));
     }
+    if (!p && longueur) stats.append(creerStatAllure(longueur));
     carte.append(stats);
     if (trace.sac != null) {
       carte.append(el('div', 'rando-diff', `Difficulté maximale (échelle SAC) : ${NOMS_SAC[trace.sac]}`));
@@ -901,6 +1102,7 @@ export function creerActiviteRandonnee(map) {
   async function ouvrirItineraire(r) {
     const jeton = ++selection;
     masquerMarqueursDecouverte();
+    ficheItineraireReduite = false;
     fiche = { r, d: null, trace: null, profil: null, etat: 'chargement' };
     effacerTrace();
     surSurvol(null);
@@ -1013,8 +1215,14 @@ export function creerActiviteRandonnee(map) {
   }
 
   function retirerElementsDecouverte() {
+    clearTimeout(minuteurFermetureGrappe);
+    minuteurFermetureGrappe = null;
     if (popupGrappe) popupGrappe.remove();
     popupGrappe = null;
+    clearTimeout(minuteurFermetureResume);
+    minuteurFermetureResume = null;
+    if (popupResume) popupResume.remove();
+    popupResume = null;
     marqueursDecouverte.forEach((marqueur) => marqueur.remove());
     marqueursDecouverte = [];
   }
@@ -1030,55 +1238,245 @@ export function creerActiviteRandonnee(map) {
     routesChargees = [];
   }
 
-  function creerRepereDecouverte(route, coordonnees) {
+  function programmerFermetureResume(delai = 180) {
+    clearTimeout(minuteurFermetureResume);
+    minuteurFermetureResume = window.setTimeout(() => {
+      if (popupResume) popupResume.remove();
+      popupResume = null;
+      minuteurFermetureResume = null;
+      if (popupGrappe) programmerFermetureGrappe();
+    }, delai);
+  }
+
+  function afficherResumeRepere(entree) {
+    clearTimeout(minuteurFermetureResume);
+    minuteurFermetureResume = null;
+    if (popupResume) popupResume.remove();
+
+    const contenu = el('div', 'rando-resume-repere');
+    contenu.append(el('strong', 'rando-resume-titre', titreDe(entree.route)));
+    const stats = el('div', 'rando-resume-stats');
+    const longueur = Number(entree.details?.route?.length);
+    const echantillon = echantillonner(entree.trace.chaine);
+    const total = longueur > 0 ? longueur : echantillon.total;
+    const ajouterStat = (valeur, libelle) => {
+      const ligne = el('div', 'rando-resume-ligne');
+      ligne.append(el('span', null, libelle), el('strong', null, valeur));
+      stats.append(ligne);
+    };
+    ajouterStat(km(total), 'Distance');
+    if (entree.resumeAltitude) {
+      ajouterStat(`+${metres(entree.resumeAltitude.plus)}`, 'Dénivelé +');
+      ajouterStat(`−${metres(entree.resumeAltitude.moins)}`, 'Dénivelé −');
+      ajouterStat(metres(entree.resumeAltitude.max), 'Altitude max');
+      ajouterStat(metres(entree.resumeAltitude.min), 'Altitude min');
+    } else if (entree.erreurResumeAltitude) {
+      ajouterStat('Indisponible', 'Dénivelé et altitudes');
+    } else {
+      ajouterStat('Calcul…', 'Dénivelé et altitudes');
+    }
+    contenu.append(stats);
+
+    const popup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      closeOnMove: true,
+      maxWidth: '260px',
+      offset: [0, 0],
+      className: 'rando-resume-popup',
+    })
+      .setLngLat(entree.coordonnees)
+      .setDOMContent(contenu)
+      .addTo(map);
+    popupResume = popup;
+    if (popupGrappe) {
+      const boundsCarte = map.getContainer().getBoundingClientRect();
+      const boundsGrappe = popupGrappe.getElement().getBoundingClientRect();
+      const boundsResume = popup.getElement().getBoundingClientRect();
+      const point = map.project(entree.coordonnees);
+      const pointX = boundsCarte.left + point.x;
+      const pointY = boundsCarte.top + point.y;
+      const espaceDroite = boundsCarte.right - boundsGrappe.right;
+      const espaceGauche = boundsGrappe.left - boundsCarte.left;
+      const aDroite = espaceDroite >= boundsResume.width + 12 || espaceDroite >= espaceGauche;
+      const centreX = aDroite
+        ? boundsGrappe.right + 12 + boundsResume.width / 2
+        : boundsGrappe.left - 12 - boundsResume.width / 2;
+      const centreY = (boundsGrappe.top + boundsGrappe.bottom) / 2;
+      popup.setOffset([centreX - pointX, centreY - pointY]);
+    }
+    popup.on('close', () => {
+      if (popupResume === popup) popupResume = null;
+    });
+
+    if (entree.resumeAltitude || entree.erreurResumeAltitude || entree.calculResumeAltitude) return;
+    entree.calculResumeAltitude = (async () => {
+      const pas = Math.max(1, Math.ceil(echantillon.points.length / 100));
+      const pointsAltitude = echantillon.points.filter((_, index) => index % pas === 0);
+      const dernierPoint = echantillon.points[echantillon.points.length - 1];
+      if (pointsAltitude[pointsAltitude.length - 1] !== dernierPoint) {
+        pointsAltitude.push(dernierPoint);
+      }
+      if (pointsAltitude.length < 2) throw new Error('Tracé trop court');
+      const brutes = await altitudesDuTrace(pointsAltitude, total);
+      const lisses = lisser(brutes, 2);
+      const { plus, moins } = denivele(lisses, 3);
+      return { plus, moins, min: Math.min(...lisses), max: Math.max(...lisses) };
+    })();
+    entree.calculResumeAltitude
+      .then((resume) => {
+        entree.resumeAltitude = resume;
+        if (popupResume === popup) afficherResumeRepere(entree);
+      })
+      .catch((erreur) => {
+        console.warn(`Résumé d’altitude indisponible pour l’itinéraire ${entree.route.id} :`, erreur);
+        entree.erreurResumeAltitude = true;
+        if (popupResume === popup) afficherResumeRepere(entree);
+      })
+      .finally(() => {
+        entree.calculResumeAltitude = null;
+      });
+  }
+
+  function creerRepereDecouverte(entree) {
+    const { route, coordonnees } = entree;
     const element = el('button', 'rando-repere');
     element.type = 'button';
-    element.setAttribute('aria-label', `Afficher ${titreDe(route)}`);
-    element.title = titreDe(route);
+    element.setAttribute('aria-label', `Afficher le résumé de ${titreDe(route)}; sélectionner pour ouvrir le parcours`);
+    element.title = 'Survoler ou maintenir appuyé pour afficher le résumé';
     const nom = el('span', 'rando-repere-nom', titreDe(route));
     element.innerHTML =
       '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="rando-repere-trace" d="m15 31 5-11 5 11 5-11 4 9"/></svg>';
     element.appendChild(nom);
+    element.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'touch') afficherResumeRepere(entree);
+    });
+    element.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'touch') programmerFermetureResume();
+    });
+    element.addEventListener('focus', () => {
+      if (element.matches(':focus-visible')) afficherResumeRepere(entree);
+    });
+    element.addEventListener('blur', () => programmerFermetureResume());
+    element.addEventListener('contextmenu', (event) => event.preventDefault());
+    let appuiLong = false;
+    let minuteurAppuiLong = null;
+    let ignorerClicAppuiLong = false;
+    element.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'touch') return;
+      appuiLong = false;
+      minuteurAppuiLong = window.setTimeout(() => {
+        appuiLong = true;
+        afficherResumeRepere(entree);
+      }, 550);
+    });
+    const terminerAppuiLong = () => {
+      clearTimeout(minuteurAppuiLong);
+      minuteurAppuiLong = null;
+      if (!appuiLong) return;
+      ignorerClicAppuiLong = true;
+      window.setTimeout(() => { ignorerClicAppuiLong = false; }, 500);
+      programmerFermetureResume(3500);
+    };
+    element.addEventListener('pointerup', terminerAppuiLong);
+    element.addEventListener('pointercancel', terminerAppuiLong);
     element.addEventListener('click', (event) => {
       event.stopPropagation();
+      if (ignorerClicAppuiLong) {
+        event.preventDefault();
+        ignorerClicAppuiLong = false;
+        return;
+      }
+      if (popupResume) popupResume.remove();
       ouvrirItineraire(route);
     });
     return new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat(coordonnees).addTo(map);
   }
 
+  function programmerFermetureGrappe() {
+    if (popupResume) return;
+    clearTimeout(minuteurFermetureGrappe);
+    minuteurFermetureGrappe = window.setTimeout(() => {
+      if (popupGrappe) popupGrappe.remove();
+      popupGrappe = null;
+      minuteurFermetureGrappe = null;
+    }, 350);
+  }
+
+  function afficherGroupeDecouverte(routes, coordonnees) {
+    clearTimeout(minuteurFermetureGrappe);
+    minuteurFermetureGrappe = null;
+    if (popupGrappe) popupGrappe.remove();
+
+    const contenu = el('div', 'rando-groupe-liste');
+    contenu.appendChild(el('strong', 'rando-groupe-titre', `${routes.length} randonnées à proximité`));
+    routes.forEach((entree) => {
+      const { route } = entree;
+      const choix = el('button', 'rando-groupe-choix', titreDe(route));
+      choix.type = 'button';
+      choix.addEventListener('pointerenter', (event) => {
+        if (event.pointerType !== 'touch') afficherResumeRepere(entree);
+      });
+      choix.addEventListener('pointerleave', (event) => {
+        if (event.pointerType !== 'touch') programmerFermetureResume();
+      });
+      choix.addEventListener('focus', () => {
+        if (choix.matches(':focus-visible')) afficherResumeRepere(entree);
+      });
+      choix.addEventListener('blur', () => programmerFermetureResume());
+      choix.addEventListener('click', () => {
+        if (popupResume) popupResume.remove();
+        if (popupGrappe) popupGrappe.remove();
+        popupGrappe = null;
+        ouvrirItineraire(route);
+      });
+      contenu.appendChild(choix);
+    });
+    const popup = new maplibregl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      closeOnMove: false,
+      maxWidth: '300px',
+      offset: 8,
+    })
+      .setLngLat(coordonnees)
+      .setDOMContent(contenu)
+      .addTo(map);
+    popupGrappe = popup;
+    const elementPopup = popup.getElement();
+    elementPopup.addEventListener('pointerenter', () => {
+      clearTimeout(minuteurFermetureGrappe);
+      minuteurFermetureGrappe = null;
+    });
+    elementPopup.addEventListener('pointerleave', programmerFermetureGrappe);
+    popup.on('close', () => {
+      if (popupGrappe === popup) {
+        popupGrappe = null;
+        if (popupResume) popupResume.remove();
+      }
+    });
+  }
+
   function creerGroupeDecouverte(routes, coordonnees) {
     const element = el('button', 'rando-groupe');
     element.type = 'button';
-    element.setAttribute('aria-label', `${routes.length} randonnées regroupées. Touchez pour zoomer ou choisir un parcours.`);
+    element.setAttribute('aria-label', `${routes.length} randonnées regroupées. Survolez ou touchez pour afficher la liste.`);
+    element.title = `${routes.length} randonnées — afficher la liste`;
     element.innerHTML =
       `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${routes.length}</span>`;
+    element.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'touch') afficherGroupeDecouverte(routes, coordonnees);
+    });
+    element.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'touch') programmerFermetureGrappe();
+    });
+    element.addEventListener('focus', () => {
+      if (element.matches(':focus-visible')) afficherGroupeDecouverte(routes, coordonnees);
+    });
+    element.addEventListener('blur', () => programmerFermetureGrappe());
     element.addEventListener('click', (event) => {
       event.stopPropagation();
-      if (map.getZoom() < 15) {
-        map.easeTo({
-          center: coordonnees,
-          zoom: Math.min(16, map.getZoom() + 2),
-        });
-        return;
-      }
-
-      const contenu = el('div', 'rando-groupe-liste');
-      contenu.appendChild(el('strong', 'rando-groupe-titre', `${routes.length} randonnées à proximité`));
-      routes.forEach((route) => {
-        const choix = el('button', 'rando-groupe-choix', titreDe(route));
-        choix.type = 'button';
-        choix.addEventListener('click', () => {
-          if (popupGrappe) popupGrappe.remove();
-          popupGrappe = null;
-          ouvrirItineraire(route);
-        });
-        contenu.appendChild(choix);
-      });
-      popupGrappe = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '300px' })
-        .setLngLat(coordonnees)
-        .setDOMContent(contenu)
-        .addTo(map);
-      popupGrappe.on('close', () => { popupGrappe = null; });
+      afficherGroupeDecouverte(routes, coordonnees);
     });
     return new maplibregl.Marker({ element, anchor: 'center' })
       .setLngLat(coordonnees)
@@ -1126,9 +1524,10 @@ export function creerActiviteRandonnee(map) {
         [0, 0]
       );
       if (groupe.length === 1) {
-        marqueursDecouverte.push(creerRepereDecouverte(groupe[0].route, coordonnees));
+        groupe[0].coordonnees = coordonnees;
+        marqueursDecouverte.push(creerRepereDecouverte(groupe[0]));
       } else {
-        marqueursDecouverte.push(creerGroupeDecouverte(groupe.map((entree) => entree.route), coordonnees));
+        marqueursDecouverte.push(creerGroupeDecouverte(groupe, coordonnees));
       }
     });
   }
@@ -1208,7 +1607,7 @@ export function creerActiviteRandonnee(map) {
             sansTrace++;
             console.warn(`Aucun départ visible pour positionner l’itinéraire ${route.id}.`);
           } else {
-            ancrages[index] = { route, coordonnees };
+            ancrages[index] = { route, details, trace, coordonnees };
           }
         } catch (e) {
           if (e.name === 'AbortError') return;
@@ -1375,8 +1774,8 @@ export function creerActiviteRandonnee(map) {
 
   boutonZone.addEventListener('click', majZone);
   boutonCreation.addEventListener('click', basculerCreation);
-  boutonMiniAnnuler.addEventListener('click', annulerDerniereEtape);
-  boutonMiniRecommencer.addEventListener('click', effacerCreation);
+  boutonMiniAnnuler.addEventListener('click', annulerDerniereActionCreation);
+  boutonMiniRecommencer.addEventListener('click', recommencerCreation);
   boutonMiniTerminer.addEventListener('click', basculerCreation);
   boutonFermerCreation.addEventListener('click', fermerCreation);
   let clicApresDeplacement = false;
@@ -1461,6 +1860,7 @@ export function creerActiviteRandonnee(map) {
   function desactiver() {
     actif = false;
     creationActive = false;
+    fermerPopupEtapeCreation();
     bloquerFiches(false);
     map.getCanvas().style.cursor = '';
     if (controleurCreation) controleurCreation.abort();

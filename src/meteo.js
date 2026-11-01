@@ -10,8 +10,11 @@ const INTERVALLE_ANIMATION = 800;
 const MAX_ZOOM_RADAR = 7;
 const SOURCES = ['rainviewer', 'meteosuisse'];
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
+const API_GEOCODAGE = 'https://photon.komoot.io/reverse';
+const API_RECHERCHE_GEOCODAGE = 'https://photon.komoot.io/api/';
 const METEO_LOCATION = 'meteo-position';
 const DELAI_PREVISIONS = 15000;
+const TYPES_LIEU = ['city', 'town', 'village', 'hamlet', 'locality', 'municipality'];
 
 function formaterHeure(timestamp) {
   return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -355,10 +358,82 @@ function lirePositionMeteo() {
   return null;
 }
 
+function distanceEntrePositions(a, b) {
+  const radians = Math.PI / 180;
+  const deltaLatitude = (b.latitude - a.latitude) * radians;
+  const deltaLongitude = (b.longitude - a.longitude) * radians;
+  const sinusLatitude = Math.sin(deltaLatitude / 2);
+  const sinusLongitude = Math.sin(deltaLongitude / 2);
+  const valeur =
+    sinusLatitude ** 2 +
+    Math.cos(a.latitude * radians) * Math.cos(b.latitude * radians) * sinusLongitude ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(Math.min(1, valeur)));
+}
+
+function nomVilleDepuisGeocodage(features) {
+  for (const feature of features) {
+    const proprietes = feature?.properties;
+    for (const type of TYPES_LIEU) {
+      const nom = proprietes?.[type];
+      if (typeof nom === 'string' && nom.trim()) return nom.trim();
+    }
+
+    const nom = proprietes?.name;
+    if (
+      proprietes?.osm_key === 'place' &&
+      TYPES_LIEU.includes(proprietes.osm_value) &&
+      typeof nom === 'string' &&
+      nom.trim()
+    ) {
+      return nom.trim();
+    }
+  }
+  return '';
+}
+
+function codePostalDepuisGeocodage(features, nomVille, codePays) {
+  const normaliser = (valeur) => valeur.trim().toLocaleLowerCase('fr');
+  const villeNormalisee = normaliser(nomVille);
+  const paysNormalise = typeof codePays === 'string' ? codePays.toLowerCase() : '';
+  const code = features.find((feature) => {
+    const proprietes = feature?.properties;
+    const postal = proprietes?.postcode;
+    const paysFeature =
+      typeof proprietes?.countrycode === 'string'
+        ? proprietes.countrycode.toLowerCase()
+        : '';
+    const memePays =
+      !paysNormalise || !paysFeature || paysFeature === paysNormalise;
+    const memeVille = [
+      proprietes?.name,
+      proprietes?.city,
+      proprietes?.town,
+      proprietes?.village,
+      proprietes?.hamlet,
+    ].some((nom) => typeof nom === 'string' && normaliser(nom) === villeNormalisee);
+    return (
+      memePays &&
+      memeVille &&
+      (typeof postal === 'string' || typeof postal === 'number') &&
+      String(postal).trim()
+    );
+  })?.properties?.postcode;
+  return code ? String(code).trim() : '';
+}
+
 export function creerConditionsLocales(map) {
   const panneau = document.createElement('div');
   panneau.className = 'meteo-locale';
   panneau.innerHTML = `
+    <section class="meteo-actuelle" hidden aria-label="Conditions actuelles"></section>
+    <section class="meteo-horaire" hidden aria-label="Prévisions heure par heure">
+      <h3>Prochaines 24 heures</h3>
+      <div class="meteo-heures"></div>
+    </section>
+    <section class="meteo-jours" hidden aria-label="Prévisions sur cinq jours">
+      <h3>Les 5 prochains jours</h3>
+      <div class="meteo-jours-liste" role="group" aria-label="Choisir un jour pour afficher le détail horaire"></div>
+    </section>
     <section class="meteo-emplacement" aria-label="Lieu des prévisions">
       <div class="meteo-emplacement-entete">
         <div>
@@ -373,26 +448,23 @@ export function creerConditionsLocales(map) {
           <span>Déplacer le point sur la carte</span>
         </button>
       </div>
-      <p class="meteo-coordonnees">En attente du chargement des coordonnées…</p>
+      <p class="meteo-coordonnees">
+        <span class="meteo-coordonnees-valeurs">En attente du chargement des coordonnées…</span>
+        <span class="meteo-lieu-proche" hidden></span>
+        <span class="meteo-code-postal" hidden></span>
+      </p>
       <p class="meteo-emplacement-aide">Par défaut, les prévisions concernent le centre de la carte. Pour les déplacer, clique sur le bouton puis à l’endroit voulu sur la carte. Le repère indique le point utilisé.</p>
     </section>
     <p class="meteo-locale-statut" role="status" aria-live="polite">Prévisions calculées au centre de la carte.</p>
     <button type="button" class="meteo-reessayer" hidden>Réessayer le chargement</button>
-    <section class="meteo-actuelle" hidden aria-label="Conditions actuelles"></section>
-    <section class="meteo-jours" hidden aria-label="Prévisions sur cinq jours">
-      <h3>Les 5 prochains jours</h3>
-      <div class="meteo-jours-liste" role="group" aria-label="Choisir un jour pour afficher le détail horaire"></div>
-    </section>
-    <section class="meteo-horaire" hidden aria-label="Prévisions heure par heure">
-      <h3>Prochaines 24 heures</h3>
-      <div class="meteo-heures"></div>
-    </section>
     <p class="meteo-credit">Prévisions : <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · CC BY 4.0 · usage gratuit non commercial</p>
   `;
 
   const boutonChoisir = panneau.querySelector('.meteo-choisir');
   const lieu = panneau.querySelector('.meteo-locale-lieu');
-  const coordonnees = panneau.querySelector('.meteo-coordonnees');
+  const valeursCoordonnees = panneau.querySelector('.meteo-coordonnees-valeurs');
+  const lieuProche = panneau.querySelector('.meteo-lieu-proche');
+  const codePostal = panneau.querySelector('.meteo-code-postal');
   const statut = panneau.querySelector('.meteo-locale-statut');
   const boutonReessayer = panneau.querySelector('.meteo-reessayer');
   const actuelle = panneau.querySelector('.meteo-actuelle');
@@ -414,6 +486,116 @@ export function creerConditionsLocales(map) {
   let previsionsJournalieres = null;
   let dateSelectionnee = null;
   let heureActuelle = null;
+  let nomVilleProche = '';
+
+  function afficherCoordonnees(position) {
+    valeursCoordonnees.textContent =
+      `${position.latitude.toFixed(3)}°, ${position.longitude.toFixed(3)}°`;
+
+    const source = map.getSource('osm-vecteur');
+    const classesLieu = new Set(['city', 'town', 'village', 'hamlet']);
+    const candidats = source
+      ? map.querySourceFeatures('osm-vecteur', { sourceLayer: 'place' })
+      : [];
+    let nomProche = '';
+    let distanceProche = Infinity;
+
+    for (const candidat of candidats) {
+      const proprietes = candidat.properties;
+      const coordonneesLieu = candidat.geometry?.type === 'Point'
+        ? candidat.geometry.coordinates
+        : null;
+      const nom = proprietes?.['name:fr'] || proprietes?.name;
+      if (
+        !classesLieu.has(proprietes?.class) ||
+        typeof nom !== 'string' ||
+        !nom.trim() ||
+        !coordonneesLieu ||
+        !Number.isFinite(coordonneesLieu[0]) ||
+        !Number.isFinite(coordonneesLieu[1])
+      ) {
+        continue;
+      }
+
+      const distance = distanceEntrePositions(position, {
+        longitude: coordonneesLieu[0],
+        latitude: coordonneesLieu[1],
+      });
+      if (distance < distanceProche) {
+        distanceProche = distance;
+        nomProche = nom.trim();
+      }
+    }
+
+    nomVilleProche = nomProche;
+    lieuProche.textContent = nomProche ? `· ${nomProche}` : '';
+    lieuProche.hidden = !nomProche;
+  }
+
+  async function chargerCodePostal(position, requete) {
+    codePostal.textContent = '· Recherche du code postal…';
+    codePostal.hidden = false;
+    const params = new URLSearchParams({
+      lat: String(position.latitude),
+      lon: String(position.longitude),
+    });
+
+    try {
+      const reponse = await fetch(`${API_GEOCODAGE}?${params}`, { signal: requete.signal });
+      if (!reponse.ok) {
+        throw new Error(`Le service de géocodage répond avec le statut ${reponse.status}.`);
+      }
+
+      const donnees = await reponse.json();
+      if (requete.signal.aborted || controleur !== requete || !actif) return;
+      const features = Array.isArray(donnees?.features) ? donnees.features : [];
+      const nomGeocode = nomVilleDepuisGeocodage(features);
+      if (nomGeocode) {
+        nomVilleProche = nomGeocode;
+        lieuProche.textContent = `· ${nomGeocode}`;
+        lieuProche.hidden = false;
+      }
+
+      let code = features
+        .map((feature) => feature?.properties?.postcode)
+        .find(
+          (valeur) =>
+            (typeof valeur === 'string' || typeof valeur === 'number') &&
+            String(valeur).trim()
+        );
+      if (!code && nomVilleProche) {
+        const pays = features.find((feature) => feature?.properties?.countrycode)
+          ?.properties?.countrycode;
+        const paramsRecherche = new URLSearchParams({
+          q: pays ? `${nomVilleProche}, ${pays}` : nomVilleProche,
+          limit: '5',
+        });
+        const reponseRecherche = await fetch(
+          `${API_RECHERCHE_GEOCODAGE}?${paramsRecherche}`,
+          { signal: requete.signal }
+        );
+        if (!reponseRecherche.ok) {
+          throw new Error(
+            `Le service de géocodage répond avec le statut ${reponseRecherche.status}.`
+          );
+        }
+        const resultats = await reponseRecherche.json();
+        if (requete.signal.aborted || controleur !== requete || !actif) return;
+        const resultatsVille = Array.isArray(resultats?.features) ? resultats.features : [];
+        code = codePostalDepuisGeocodage(resultatsVille, nomVilleProche, pays);
+      }
+      if (!code) {
+        codePostal.textContent = '· Code postal indisponible';
+        return;
+      }
+
+      codePostal.textContent = `· ${String(code).trim()}`;
+    } catch (erreur) {
+      if (requete.signal.aborted || controleur !== requete || !actif) return;
+      codePostal.textContent = '· Code postal indisponible';
+      console.warn('Recherche du code postal impossible :', erreur);
+    }
+  }
 
   function annulerSelection() {
     if (!selectionEnCours) return;
@@ -493,12 +675,26 @@ export function creerConditionsLocales(map) {
       temperature.textContent = Number.isFinite(donnees.temperature_2m[index])
         ? `${Math.round(donnees.temperature_2m[index])}°`
         : '—';
-      const pluie = document.createElement('span');
-      pluie.textContent = Number.isFinite(donnees.precipitation_probability[index])
+      const probabilite = document.createElement('span');
+      probabilite.textContent = Number.isFinite(donnees.precipitation_probability[index])
         ? `${Math.round(donnees.precipitation_probability[index])} %`
         : '— %';
-      pluie.title = `Probabilité de précipitation : ${pluie.textContent}`;
-      carte.append(heureLocale, symbole, temperature, pluie);
+      probabilite.title = `Probabilité de précipitation : ${probabilite.textContent}`;
+      const pluie = document.createElement('span');
+      pluie.textContent = Number.isFinite(donnees.rain?.[index])
+        ? `${donnees.rain[index].toFixed(1)} mm pluie`
+        : '— mm pluie';
+      const neige = document.createElement('span');
+      neige.textContent = Number.isFinite(donnees.snowfall?.[index])
+        ? `${donnees.snowfall[index].toFixed(1)} cm neige`
+        : '— cm neige';
+      const vent = document.createElement('span');
+      vent.textContent = Number.isFinite(donnees.wind_gusts_10m?.[index])
+        ? `Raf. ${Math.round(donnees.wind_gusts_10m[index])} km/h`
+        : Number.isFinite(donnees.wind_speed_10m?.[index])
+          ? `Vent ${Math.round(donnees.wind_speed_10m[index])} km/h`
+          : 'Vent —';
+      carte.append(heureLocale, symbole, temperature, probabilite, pluie, neige, vent);
       heures.appendChild(carte);
     }
 
@@ -605,6 +801,8 @@ export function creerConditionsLocales(map) {
       'temperature_2m',
       'precipitation_probability',
       'precipitation',
+      'rain',
+      'snowfall',
       'weather_code',
     ];
     if (
@@ -626,8 +824,6 @@ export function creerConditionsLocales(map) {
     heureActuelle = actuel.time;
     previsionsHoraires = hourly;
     lieu.textContent = positionChoisie ? 'Point choisi sur la carte' : 'Centre de la carte';
-    coordonnees.textContent =
-      `${position.latitude.toFixed(3)}°, ${position.longitude.toFixed(3)}°`;
 
     actuelle.replaceChildren();
     const condition = document.createElement('p');
@@ -689,8 +885,8 @@ export function creerConditionsLocales(map) {
     previsionsJournalieres = null;
     dateSelectionnee = null;
     lieu.textContent = positionChoisie ? 'Point choisi sur la carte' : 'Centre de la carte';
-    coordonnees.textContent =
-      `${position.latitude.toFixed(3)}°, ${position.longitude.toFixed(3)}°`;
+    afficherCoordonnees(position);
+    void chargerCodePostal(position, requete);
     const marqueurPosition = [position.longitude, position.latitude];
     if (!marqueur) {
       marqueur = new Marker({ color: '#4debd4' });
@@ -701,7 +897,7 @@ export function creerConditionsLocales(map) {
       latitude: String(position.latitude),
       longitude: String(position.longitude),
       current: 'temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      hourly: 'temperature_2m,precipitation_probability,precipitation,weather_code,freezing_level_height',
+      hourly: 'temperature_2m,precipitation_probability,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,freezing_level_height',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max',
       forecast_days: '5',
       timezone: 'auto',
