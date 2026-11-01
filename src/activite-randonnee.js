@@ -26,7 +26,7 @@ const ZOOM_MIN_ZONE = 7;
 const PARALLELISME_REPERES = 2;
 const DISTANCE_GRAPPE_PX = 56;
 const URL_CALCUL_ITINERAIRE = 'https://valhalla1.openstreetmap.de/route';
-const MAX_ETAPES_CREATION = 12;
+const MAX_ETAPES_PAR_CALCUL = 10;
 const COULEUR_TRACE = '#4debd4';
 const TAILLE_MAX_GPX = 10 * 1024 * 1024;
 const LATITUDE_MAX_MERCATOR = 85.05112878;
@@ -233,46 +233,36 @@ export function creerActiviteRandonnee(map) {
   // ---------- Panneau du menu ----------
   const panneau = el('div', 'rando');
   panneau.innerHTML = `
-    <section class="rando-creation">
-      <strong>Créer un parcours</strong>
-      <p class="note rando-creation-intro">Choisissez un départ puis ajoutez des étapes sur la carte pour suivre les chemins existants.</p>
-      <label class="rando-creation-nom">
-        Nom du parcours
-        <input type="text" class="rando-creation-champ" maxlength="80" value="Mon parcours">
-      </label>
-      <button type="button" class="rando-creation-demarrer">Commencer sur la carte</button>
-      <div class="rando-creation-actions">
-        <button type="button" class="rando-creation-annuler" disabled>Annuler la dernière étape</button>
-        <button type="button" class="rando-creation-effacer" disabled>Effacer le parcours</button>
-      </div>
-      <p class="note rando-creation-aide" role="status" aria-live="polite">
-        Cliquez sur « Commencer sur la carte » pour placer le départ.
-      </p>
-      <small class="rando-creation-attribution">
-        Valhalla (profil piéton) · chemins cartographiés par OpenStreetMap, selon la couverture. Les étapes sont transmises au service de calcul ; vérifiez le terrain avant de partir.
-      </small>
-    </section>
     <input type="text" class="rando-champ" placeholder="Rechercher une randonnée ou un parcours…"
       autocomplete="off" spellcheck="false" inputmode="search" aria-label="Rechercher un itinéraire">
-    <button type="button" class="rando-zone-bouton">Rechercher dans cette zone</button>
+    <div class="rando-actions-principales" role="group" aria-label="Actions randonnée">
+      <button type="button" class="rando-creation-demarrer rando-action-principale" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 6.5 8.5 4l7 2.5L21 4v13.5L15.5 20l-7-2.5L3 20V6.5Z"/><path d="M8.5 4v13.5M15.5 6.5V20M12 9.5l2 2-2 2-2-2 2-2Z"/></svg>
+        <span>Créer un parcours</span>
+      </button>
+      <button type="button" class="rando-zone-bouton rando-action-principale">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
+        <span class="rando-zone-libelle">Rechercher ici</span>
+      </button>
+      <label class="rando-importer rando-action-principale">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M5 13v6h14v-6"/></svg>
+        <span>Importer un GPX</span>
+        <input type="file" class="rando-fichier" accept=".gpx,application/gpx+xml,application/xml,text/xml">
+      </label>
+    </div>
+    <p class="note rando-import-message" role="status" aria-live="polite"></p>
     <p class="note rando-aide" role="status" aria-live="polite" hidden></p>
     <div class="rando-liste" hidden></div>
     <details class="rando-outils">
-      <summary>Importer un GPX et autres options</summary>
+      <summary>Autres options</summary>
       <div class="rando-outils-contenu">
-        <label class="rando-importer">
-          <span>Importer un fichier GPX</span>
-          <span class="rando-import-action">Choisir un fichier</span>
-          <input type="file" class="rando-fichier" accept=".gpx,application/gpx+xml,application/xml,text/xml">
-        </label>
-        <p class="note rando-import-message" role="status" aria-live="polite"></p>
         <div class="rando-options">
           <label class="option-case"><input type="checkbox" id="rando-refuges"> Refuges
             <small>Même réglage que dans Éléments de la carte</small></label>
           <label class="option-case"><input type="checkbox" id="rando-apercu"> Aperçu des sentiers
             <small>Superpose tous les sentiers balisés (Waymarked Trails)</small></label>
         </div>
-        <p class="note">Itinéraires : © contributeurs OpenStreetMap · Waymarked Trails</p>
+        <p class="note">Création : Valhalla (profil piéton), chemins OpenStreetMap. Vérifiez le terrain avant de partir.<br>Itinéraires : © contributeurs OpenStreetMap · Waymarked Trails</p>
       </div>
     </details>
   `;
@@ -284,13 +274,40 @@ export function creerActiviteRandonnee(map) {
   const liste = panneau.querySelector('.rando-liste');
   const caseRefuges = panneau.querySelector('#rando-refuges');
   const caseApercu = panneau.querySelector('#rando-apercu');
-  const champNomCreation = panneau.querySelector('.rando-creation-champ');
   const boutonCreation = panneau.querySelector('.rando-creation-demarrer');
-  const boutonAnnulerEtape = panneau.querySelector('.rando-creation-annuler');
-  const boutonEffacerCreation = panneau.querySelector('.rando-creation-effacer');
-  const aideCreation = panneau.querySelector('.rando-creation-aide');
+  const libelleCreation = boutonCreation.querySelector('span');
+  const libelleZone = panneau.querySelector('.rando-zone-libelle');
+  let nomParcoursCreation = 'Mon parcours';
   caseRefuges.checked = !!lire('refuges', false);
   caseApercu.checked = !!lire('rando-apercu', false);
+
+  const commandesFlottantes = el('aside', 'rando-creation-flottante');
+  commandesFlottantes.hidden = true;
+  commandesFlottantes.setAttribute('aria-label', 'Commandes de création du parcours');
+  commandesFlottantes.innerHTML = `
+    <header class="rando-creation-flottante-entete">
+      <button type="button" class="rando-creation-deplacer" aria-label="Déplacer les commandes du parcours">
+        <span>Parcours</span><strong class="rando-creation-compteur"></strong>
+      </button>
+      <button type="button" class="rando-creation-reduire" aria-expanded="true" aria-label="Réduire les commandes">−</button>
+      <button type="button" class="rando-creation-fermer" aria-label="Fermer et effacer le parcours">×</button>
+    </header>
+    <p class="note rando-creation-aide" role="status" aria-live="polite">Cliquez sur « Créer un parcours » pour placer le départ.</p>
+    <div class="rando-creation-flottante-actions">
+      <button type="button" class="rando-creation-mini-annuler">Retirer le dernier point</button>
+      <button type="button" class="rando-creation-mini-recommencer">Recommencer</button>
+      <button type="button" class="rando-creation-mini-terminer">Terminer</button>
+    </div>
+  `;
+  document.body.appendChild(commandesFlottantes);
+  const boutonMiniAnnuler = commandesFlottantes.querySelector('.rando-creation-mini-annuler');
+  const boutonMiniRecommencer = commandesFlottantes.querySelector('.rando-creation-mini-recommencer');
+  const boutonMiniTerminer = commandesFlottantes.querySelector('.rando-creation-mini-terminer');
+  const compteurMiniCreation = commandesFlottantes.querySelector('.rando-creation-compteur');
+  const aideCreation = commandesFlottantes.querySelector('.rando-creation-aide');
+  const boutonDeplacer = commandesFlottantes.querySelector('.rando-creation-deplacer');
+  const boutonReduire = commandesFlottantes.querySelector('.rando-creation-reduire');
+  const boutonFermerCreation = commandesFlottantes.querySelector('.rando-creation-fermer');
 
   // ---------- Fiche d'itinéraire (en bas de la carte) ----------
   const carte = el('aside');
@@ -377,14 +394,23 @@ export function creerActiviteRandonnee(map) {
   }
 
   function rendreCommandesCreation() {
-    boutonCreation.textContent = creationActive
-      ? 'Terminer le parcours'
+    libelleCreation.textContent = creationActive
+      ? 'Terminer'
       : etapesCreation.length
-        ? 'Continuer sur la carte'
-        : 'Commencer sur la carte';
-    boutonAnnulerEtape.disabled = !creationActive || etapesCreation.length === 0;
-    boutonEffacerCreation.disabled = etapesCreation.length === 0;
+        ? 'Reprendre'
+        : 'Créer un parcours';
     boutonCreation.setAttribute('aria-pressed', String(creationActive));
+    commandesFlottantes.hidden = !creationActive;
+    compteurMiniCreation.textContent = `${etapesCreation.length} point${etapesCreation.length === 1 ? '' : 's'}`;
+    boutonMiniAnnuler.disabled = etapesCreation.length === 0;
+    boutonMiniRecommencer.disabled = etapesCreation.length === 0;
+  }
+
+  function reduireCommandesCreation(reduit) {
+    commandesFlottantes.classList.toggle('reduit', reduit);
+    boutonReduire.setAttribute('aria-expanded', String(!reduit));
+    boutonReduire.setAttribute('aria-label', reduit ? 'Afficher les commandes' : 'Réduire les commandes');
+    boutonReduire.textContent = reduit ? '+' : '−';
   }
 
   function afficherEtapesCreation() {
@@ -392,8 +418,12 @@ export function creerActiviteRandonnee(map) {
     marqueursEtapes = etapesCreation.map((coordonnees, index) => {
       const element = el('button', 'rando-creation-etape', String(index + 1));
       element.type = 'button';
-      element.setAttribute('aria-label', `Étape ${index + 1}`);
-      element.addEventListener('click', (event) => event.stopPropagation());
+      element.setAttribute('aria-label', `Supprimer l’étape ${index + 1}`);
+      element.title = `Supprimer l’étape ${index + 1}`;
+      element.addEventListener('click', (event) => {
+        event.stopPropagation();
+        retirerEtapeCreation(index);
+      });
       return new maplibregl.Marker({ element, anchor: 'center' })
         .setLngLat(coordonnees)
         .addTo(map);
@@ -408,44 +438,51 @@ export function creerActiviteRandonnee(map) {
     controleurCreation = controleur;
     const calcul = ++numeroCalculCreation;
     const jeton = ++selection;
-    const nom = champNomCreation.value.trim() || 'Mon parcours';
+    const nom = nomParcoursCreation.trim() || 'Mon parcours';
+    nomParcoursCreation = nom;
     if (fiche && fiche.origine === 'creation') {
       fiche = null;
       rendreFiche();
     }
     effacerTrace();
-    aideCreation.textContent = 'Calcul du chemin piéton…';
+    const nombreCalculs = Math.ceil((etapesCreation.length - 1) / (MAX_ETAPES_PAR_CALCUL - 1));
 
     try {
-      const requete = {
-        locations: etapesCreation.map(([lon, lat]) => ({ lon, lat })),
-        costing: 'pedestrian',
-        units: 'kilometers',
-      };
-      const url = `${URL_CALCUL_ITINERAIRE}?json=${encodeURIComponent(JSON.stringify(requete))}`;
-      const reponse = await fetch(url, { signal: controleur.signal });
-      if (!reponse.ok) throw new Error(`Le service de calcul répond HTTP ${reponse.status}.`);
-      const resultat = await reponse.json();
-      const trajet = resultat.trip;
-      if (!trajet || trajet.status !== 0 || !Array.isArray(trajet.legs)) {
-        throw new Error(trajet?.status_message || 'Aucun chemin praticable trouvé entre ces étapes.');
-      }
       const coordonnees = [];
-      for (const troncon of trajet.legs) {
-        const ligne = decoderPolyligne6(troncon.shape);
-        if (coordonnees.length && ligne.length && distance(coordonnees[coordonnees.length - 1], ligne[0]) < 1) {
-          ligne.shift();
+      let longueur = 0;
+      for (let debut = 0, numeroCalcul = 1; debut < etapesCreation.length - 1; debut += MAX_ETAPES_PAR_CALCUL - 1, numeroCalcul++) {
+        aideCreation.textContent = nombreCalculs > 1
+          ? `Calcul du tronçon ${numeroCalcul}/${nombreCalculs}…`
+          : 'Calcul du chemin piéton…';
+        const locations = etapesCreation
+          .slice(debut, debut + MAX_ETAPES_PAR_CALCUL)
+          .map(([lon, lat]) => ({ lon, lat }));
+        const requete = { locations, costing: 'pedestrian', units: 'kilometers' };
+        const url = `${URL_CALCUL_ITINERAIRE}?json=${encodeURIComponent(JSON.stringify(requete))}`;
+        const reponse = await fetch(url, { signal: controleur.signal });
+        if (!reponse.ok) throw new Error(`Le service de calcul répond HTTP ${reponse.status}.`);
+        const resultat = await reponse.json();
+        if (controleur.signal.aborted || controleurCreation !== controleur || numeroCalculCreation !== calcul) return;
+        const trajet = resultat.trip;
+        if (!trajet || trajet.status !== 0 || !Array.isArray(trajet.legs)) {
+          throw new Error(trajet?.status_message || 'Aucun chemin praticable trouvé entre ces étapes.');
         }
-        coordonnees.push(...ligne);
+        for (const troncon of trajet.legs) {
+          const ligne = decoderPolyligne6(troncon.shape);
+          if (coordonnees.length && ligne.length && distance(coordonnees[coordonnees.length - 1], ligne[0]) < 1) {
+            ligne.shift();
+          }
+          coordonnees.push(...ligne);
+        }
+        longueur += trajet.legs.reduce(
+          (total, troncon) => total + (Number(troncon.summary?.length) || 0) * 1000,
+          0
+        );
       }
       if (coordonnees.length < 2) {
         throw new Error('Le service n’a pas renvoyé de tracé exploitable.');
       }
 
-      let longueur = trajet.legs.reduce(
-        (total, troncon) => total + (Number(troncon.summary?.length) || 0) * 1000,
-        0
-      );
       if (!(longueur > 0)) longueur = echantillonnerLignes([coordonnees]).total;
       const trace = { lignes: [coordonnees], chaine: coordonnees };
       fiche = {
@@ -474,14 +511,10 @@ export function creerActiviteRandonnee(map) {
 
   function ajouterEtapeCreation(event) {
     if (!actif || !creationActive) return;
-    if (etapesCreation.length >= MAX_ETAPES_CREATION) {
-      aideCreation.textContent = `La création est limitée à ${MAX_ETAPES_CREATION} étapes pour ce parcours.`;
-      return;
-    }
     etapesCreation.push([event.lngLat.lng, event.lngLat.lat]);
     afficherEtapesCreation();
     if (etapesCreation.length < 2) {
-      aideCreation.textContent = 'Départ ajouté. Cliquez sur un chemin pour choisir la prochaine étape.';
+      aideCreation.textContent = 'Départ ajouté. Cliquez sur un chemin pour choisir la prochaine étape, ou touchez son numéro pour le retirer.';
       return;
     }
     calculerParcoursCree();
@@ -506,7 +539,9 @@ export function creerActiviteRandonnee(map) {
       aideCreation.textContent = etapesCreation.length
         ? 'Cliquez sur la carte pour ajouter une étape au parcours.'
         : 'Cliquez sur la carte pour placer le départ, puis ajoutez des étapes sur le chemin.';
-      if (window.matchMedia('(max-width: 640px)').matches) {
+      const mobile = window.matchMedia('(max-width: 640px)').matches;
+      reduireCommandesCreation(mobile);
+      if (mobile) {
         document.getElementById('menu-fermer')?.click();
       }
     }
@@ -514,11 +549,16 @@ export function creerActiviteRandonnee(map) {
   }
 
   function annulerDerniereEtape() {
-    if (!creationActive || !etapesCreation.length) return;
-    etapesCreation.pop();
+    if (!etapesCreation.length) return;
+    retirerEtapeCreation(etapesCreation.length - 1);
+  }
+
+  function retirerEtapeCreation(index) {
+    if (!actif || index < 0 || index >= etapesCreation.length) return;
+    etapesCreation.splice(index, 1);
     if (controleurCreation) controleurCreation.abort();
     numeroCalculCreation++;
-    if (fiche && fiche.origine === 'creation') {
+    if (etapesCreation.length < 2 && fiche && fiche.origine === 'creation') {
       fiche = null;
       rendreFiche();
       effacerTrace();
@@ -527,8 +567,10 @@ export function creerActiviteRandonnee(map) {
     if (etapesCreation.length >= 2) calculerParcoursCree();
     else {
       aideCreation.textContent = etapesCreation.length
-        ? 'Départ conservé. Ajoutez une autre étape pour recalculer le parcours.'
-        : 'Cliquez sur la carte pour placer le départ.';
+        ? 'Il reste le départ. Ajoutez une étape pour recalculer le parcours.'
+        : creationActive
+          ? 'Cliquez sur la carte pour placer le départ.'
+          : 'Ajoutez des étapes sur la carte pour créer le parcours.';
     }
   }
 
@@ -536,16 +578,28 @@ export function creerActiviteRandonnee(map) {
     if (controleurCreation) controleurCreation.abort();
     numeroCalculCreation++;
     etapesCreation = [];
+    nomParcoursCreation = 'Mon parcours';
     if (fiche && fiche.origine === 'creation') {
       fiche = null;
       rendreFiche();
-      effacerTrace();
     }
+    effacerTrace();
     afficherEtapesCreation();
     aideCreation.textContent = creationActive
       ? 'Parcours effacé. Cliquez sur la carte pour placer le départ.'
       : 'Parcours effacé.';
     if (!creationActive) actualiserMarqueursDecouverte();
+  }
+
+  function fermerCreation() {
+    selection++;
+    creationActive = false;
+    bloquerFiches(false);
+    map.getCanvas().style.cursor = '';
+    effacerCreation();
+    aideCreation.textContent = 'Création fermée. Les étapes et le tracé ont été effacés.';
+    rendreCommandesCreation();
+    actualiserMarqueursDecouverte();
   }
 
   function cadrer(trace) {
@@ -643,7 +697,27 @@ export function creerActiviteRandonnee(map) {
       const badge = el('span', 'rando-badge', fiche.origine === 'creation' ? 'Créé' : 'GPX');
       badge.style.background = COULEUR_TRACE;
       const titres = el('div', 'rando-titres');
-      titres.append(el('div', 'rando-nom', fiche.nom));
+      if (fiche.origine === 'creation') {
+        const champNomFiche = el('input', 'rando-nom-edition');
+        champNomFiche.type = 'text';
+        champNomFiche.maxLength = 80;
+        champNomFiche.value = fiche.nom;
+        champNomFiche.setAttribute('aria-label', 'Nom du parcours');
+        champNomFiche.addEventListener('input', () => {
+          fiche.nom = champNomFiche.value;
+          nomParcoursCreation = champNomFiche.value;
+        });
+        champNomFiche.addEventListener('blur', () => {
+          if (!champNomFiche.value.trim()) {
+            champNomFiche.value = 'Mon parcours';
+            fiche.nom = champNomFiche.value;
+            nomParcoursCreation = champNomFiche.value;
+          }
+        });
+        titres.append(champNomFiche);
+      } else {
+        titres.append(el('div', 'rando-nom', fiche.nom));
+      }
       entete.append(badge, titres);
       const fermer = el('button', 'fiche-fermer', '✕');
       fermer.type = 'button';
@@ -683,10 +757,9 @@ export function creerActiviteRandonnee(map) {
       const telecharger = el('button', 'fiche-copier', 'Télécharger le GPX');
       telecharger.type = 'button';
       telecharger.disabled = !profil;
-      const nom = fiche.nom;
       if (profil) {
         telecharger.addEventListener('click', () =>
-          telechargerGpx(nom, profil.points, profil.altsBrutes));
+          telechargerGpx(fiche.nom, profil.points, profil.altsBrutes));
       }
       actions.append(telecharger);
       carte.append(actions);
@@ -785,6 +858,10 @@ export function creerActiviteRandonnee(map) {
   }
 
   function fermerFiche() {
+    if (fiche && fiche.origine === 'creation') {
+      fermerCreation();
+      return;
+    }
     selection++;
     fiche = null;
     effacerTrace();
@@ -1159,7 +1236,7 @@ export function creerActiviteRandonnee(map) {
     if (messageDetailsZone && texte) aide.textContent += ` ${messageDetailsZone}`;
     aide.hidden = !texte;
     boutonZone.disabled = etatZone === 'chargement';
-    boutonZone.textContent = etatZone === 'chargement' ? 'Recherche…' : 'Rechercher dans cette zone';
+    libelleZone.textContent = etatZone === 'chargement' ? 'Recherche…' : 'Rechercher ici';
   }
 
   // ---------- Itinéraires de la zone visible ----------
@@ -1271,12 +1348,37 @@ export function creerActiviteRandonnee(map) {
 
   boutonZone.addEventListener('click', majZone);
   boutonCreation.addEventListener('click', basculerCreation);
-  boutonAnnulerEtape.addEventListener('click', annulerDerniereEtape);
-  boutonEffacerCreation.addEventListener('click', effacerCreation);
-  champNomCreation.addEventListener('input', () => {
-    if (fiche && fiche.origine === 'creation') fiche.nom = champNomCreation.value.trim() || 'Mon parcours';
-    rendreFiche();
+  boutonMiniAnnuler.addEventListener('click', annulerDerniereEtape);
+  boutonMiniRecommencer.addEventListener('click', effacerCreation);
+  boutonMiniTerminer.addEventListener('click', basculerCreation);
+  boutonFermerCreation.addEventListener('click', fermerCreation);
+  boutonReduire.addEventListener('click', () => {
+    reduireCommandesCreation(!commandesFlottantes.classList.contains('reduit'));
   });
+  let debutDeplacement = null;
+  boutonDeplacer.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    const rect = commandesFlottantes.getBoundingClientRect();
+    debutDeplacement = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+    commandesFlottantes.style.left = `${rect.left}px`;
+    commandesFlottantes.style.top = `${rect.top}px`;
+    commandesFlottantes.style.right = 'auto';
+    commandesFlottantes.style.bottom = 'auto';
+    boutonDeplacer.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  boutonDeplacer.addEventListener('pointermove', (event) => {
+    if (!debutDeplacement) return;
+    const largeur = commandesFlottantes.offsetWidth;
+    const hauteur = commandesFlottantes.offsetHeight;
+    const gauche = Math.max(8, Math.min(innerWidth - largeur - 8, debutDeplacement.left + event.clientX - debutDeplacement.x));
+    const haut = Math.max(8, Math.min(innerHeight - hauteur - 8, debutDeplacement.top + event.clientY - debutDeplacement.y));
+    commandesFlottantes.style.left = `${gauche}px`;
+    commandesFlottantes.style.top = `${haut}px`;
+  });
+  const terminerDeplacement = () => { debutDeplacement = null; };
+  boutonDeplacer.addEventListener('pointerup', terminerDeplacement);
+  boutonDeplacer.addEventListener('pointercancel', terminerDeplacement);
   map.on('click', ajouterEtapeCreation);
 
   // ---------- Options : refuges (partagé avec Éléments de la carte) et aperçu ----------
