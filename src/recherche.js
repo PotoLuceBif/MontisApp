@@ -4,7 +4,8 @@ import { lire, ecrire } from './reglages.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
-const NB_RESULTATS = 12;
+const NB_RESULTATS_AFFICHES = 12;
+const NB_RESULTATS_RECHERCHE = 30;
 const NB_RECENTS = 6;
 const CLE_RECENTS = 'recherches-recentes';
 
@@ -18,6 +19,7 @@ const ICONE_REPERE =
 const CATEGORIES = [
   { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), nom: 'Sommet', icone: '⛰️', zoom: 13 },
   { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports') || (k === 'site' && v === 'piste'), nom: 'Station de ski', icone: '🎿', zoom: 12 },
+  { test: (k, v) => k === 'place' && v === 'locality', nom: 'Lieu-dit', icone: '📍', zoom: 14 },
   { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), nom: 'Col', icone: '⛰️', zoom: 13 },
   { test: (k, v) => k === 'natural' && v === 'glacier', nom: 'Glacier', icone: '🧊', zoom: 12 },
   { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), nom: 'Lac', icone: '💧', zoom: 13 },
@@ -45,6 +47,16 @@ function categorie(p) {
   return CATEGORIES.find((c) => c.test(p.osm_key, p.osm_value)) || TYPES[p.type] || TYPES.other;
 }
 
+function groupeRecherche(p, cat) {
+  if (cat.nom === 'Station de ski') return 'station';
+  if (p.type === 'locality' || (p.osm_key === 'place' && p.osm_value === 'locality')) return 'lieu-dit';
+  if (
+    (p.osm_key === 'place' && ['village', 'hamlet'].includes(p.osm_value)) ||
+    ['village', 'hamlet'].includes(p.type)
+  ) return 'village';
+  return null;
+}
+
 // Transforme un résultat du service en objet simple, réutilisable (et mémorisable)
 function normaliser(f) {
   const p = f.properties || {};
@@ -65,7 +77,17 @@ function normaliser(f) {
     zoom: cat.zoom,
     bounds: grandeZone ? [[e[0], e[3]], [e[2], e[1]]] : null,
     cle: `${p.osm_type || ''}${p.osm_id || ''}`,
+    groupe: groupeRecherche(p, cat),
   };
+}
+
+function equilibrerResultats(items) {
+  const groupes = ['village', 'station', 'lieu-dit'];
+  const prioritaires = groupes
+    .map((groupe) => items.find((item) => item.groupe === groupe))
+    .filter(Boolean);
+  const selectionnes = new Set(prioritaires);
+  return [...prioritaires, ...items.filter((item) => !selectionnes.has(item))];
 }
 
 // Reconnaît des coordonnées tapées à la main : « 45.88, 6.87 »
@@ -253,7 +275,7 @@ export function initRecherche(map) {
 
     const c = map.getCenter();
     const url =
-      `${URL_PHOTON}?q=${encodeURIComponent(q)}&limit=${NB_RESULTATS}&lang=fr` +
+      `${URL_PHOTON}?q=${encodeURIComponent(q)}&limit=${NB_RESULTATS_RECHERCHE}&lang=fr` +
       `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`;
 
     try {
@@ -274,7 +296,9 @@ export function initRecherche(map) {
 
       attente.hidden = true;
       requeteAffichee = q;
-      if (items.length) dessiner(items, { credit: true });
+      if (items.length) {
+        dessiner(equilibrerResultats(items).slice(0, NB_RESULTATS_AFFICHES), { credit: true });
+      }
       else afficherMessage(`Aucun résultat pour « ${q} »`);
     } catch (e) {
       if (e.name === 'AbortError') return;

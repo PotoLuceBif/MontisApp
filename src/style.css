@@ -379,14 +379,15 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .rando-outils-contenu { padding-top: 8px; }
 .rando-creation {
   display: grid;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 7px;
+  margin: 4px 0 14px;
   padding: 12px;
-  border: 1px solid color-mix(in srgb, #4debd4 35%, var(--bord));
-  border-radius: 10px;
-  background: linear-gradient(145deg, color-mix(in srgb, #4debd4 7%, var(--surface-2)), var(--surface));
+  border: 1px solid color-mix(in srgb, #4debd4 48%, var(--bord));
+  border-radius: 12px;
+  background: linear-gradient(145deg, color-mix(in srgb, #4debd4 9%, var(--surface-2)), var(--surface));
 }
-.rando-creation > strong { font-size: 13px; }
+.rando-creation > strong { font-size: 15px; }
+.rando-creation-intro { margin: 0; font-size: 12px; }
 .rando-creation-nom { display: grid; gap: 4px; color: var(--texte-2); font-size: 11px; }
 .rando-creation-champ {
   width: 100%;
@@ -409,6 +410,12 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   font: 650 12px system-ui, sans-serif;
   cursor: pointer;
 }
+.rando-creation-demarrer {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-texte);
+}
+.rando-creation-demarrer:hover { filter: brightness(1.08); }
 .rando-creation-demarrer[aria-pressed="true"] { border-color: #ff59d6; }
 .rando-creation-actions { display: flex; gap: 6px; }
 .rando-creation-actions button { flex: 1; }
@@ -876,6 +883,20 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 }
 #fiche { top: 88px; right: 16px; }
 #rando-fiche { bottom: 22px; }
+.rando-fiche-reductible { margin: 0 14px; }
+.rando-fiche-reductible > summary {
+  padding: 8px 0;
+  border-top: 1px solid var(--bord);
+  color: var(--texte-2);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.rando-fiche-reductible > summary::marker { color: var(--accent); }
+.rando-fiche-profil { max-height: min(38vh, 300px); overflow-y: auto; }
+.rando-fiche-profil .rando-stats { padding-right: 0; padding-left: 0; }
+.rando-fiche-profil .rando-profil { padding-right: 0; padding-left: 0; }
+#rando-fiche.rando-fiche-creation { max-width: 440px; }
 .fiche-entete, .rando-entete { padding: 16px 14px 12px 18px; }
 .fiche-nom, .rando-nom { font-size: 16px; letter-spacing: -0.015em; }
 .fiche-copier, .rando-actions button {
@@ -985,8 +1006,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   .maplibregl-ctrl-top-right { top: 66px; right: 10px; }
   .maplibregl-ctrl-bottom-left { bottom: max(10px, env(safe-area-inset-bottom)); left: 10px; }
   .maplibregl-ctrl-group button { width: 38px; height: 38px; }
-  body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-top-right > .maplibregl-ctrl-group,
-  body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-bottom-left { display: none; }
+  body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-top-right > .maplibregl-ctrl-group { display: none; }
+  body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-bottom-left {
+    z-index: 22;
+    top: max(66px, env(safe-area-inset-top));
+    right: 10px;
+    bottom: auto;
+    left: auto;
+  }
 }
 
 @media (max-width: 360px) {
@@ -996,6 +1023,13 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+@media (min-width: 701px) {
+  body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-bottom-left {
+    z-index: 16;
+    left: calc(min(352px, 88vw) + 12px);
+  }
 }
 
 /* Navigation principale par espaces */

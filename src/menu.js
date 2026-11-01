@@ -194,6 +194,11 @@ export function initMenu(map) {
   boutonParametres.addEventListener('click', () => ouvrir(true, true));
   boutonFermer.addEventListener('click', () => ouvrir(false));
 
+  map.on('click', () => {
+    fermerPanneauxFlottants();
+    ouvrir(false);
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       fermerPanneauxFlottants();

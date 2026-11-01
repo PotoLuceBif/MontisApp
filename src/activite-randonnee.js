@@ -226,38 +226,40 @@ export function creerActiviteRandonnee(map) {
   let numeroCalculCreation = 0;
   let selection = 0;
   let fiche = null;
+  let ficheCreationOuverte = false;
   let curseurCarte = null;
   let ecouteurPose = false;
 
   // ---------- Panneau du menu ----------
   const panneau = el('div', 'rando');
   panneau.innerHTML = `
+    <section class="rando-creation">
+      <strong>Créer un parcours</strong>
+      <p class="note rando-creation-intro">Choisissez un départ puis ajoutez des étapes sur la carte pour suivre les chemins existants.</p>
+      <label class="rando-creation-nom">
+        Nom du parcours
+        <input type="text" class="rando-creation-champ" maxlength="80" value="Mon parcours">
+      </label>
+      <button type="button" class="rando-creation-demarrer">Commencer sur la carte</button>
+      <div class="rando-creation-actions">
+        <button type="button" class="rando-creation-annuler" disabled>Annuler la dernière étape</button>
+        <button type="button" class="rando-creation-effacer" disabled>Effacer le parcours</button>
+      </div>
+      <p class="note rando-creation-aide" role="status" aria-live="polite">
+        Cliquez sur « Commencer sur la carte » pour placer le départ.
+      </p>
+      <small class="rando-creation-attribution">
+        Valhalla (profil piéton) · chemins cartographiés par OpenStreetMap, selon la couverture. Les étapes sont transmises au service de calcul ; vérifiez le terrain avant de partir.
+      </small>
+    </section>
     <input type="text" class="rando-champ" placeholder="Rechercher une randonnée ou un parcours…"
       autocomplete="off" spellcheck="false" inputmode="search" aria-label="Rechercher un itinéraire">
     <button type="button" class="rando-zone-bouton">Rechercher dans cette zone</button>
     <p class="note rando-aide" role="status" aria-live="polite" hidden></p>
     <div class="rando-liste" hidden></div>
     <details class="rando-outils">
-      <summary>Outils complémentaires</summary>
+      <summary>Importer un GPX et autres options</summary>
       <div class="rando-outils-contenu">
-        <section class="rando-creation">
-          <strong>Créer un parcours</strong>
-          <label class="rando-creation-nom">
-            Nom du parcours
-            <input type="text" class="rando-creation-champ" maxlength="80" value="Mon parcours">
-          </label>
-          <button type="button" class="rando-creation-demarrer">Commencer sur la carte</button>
-          <div class="rando-creation-actions">
-            <button type="button" class="rando-creation-annuler" disabled>Annuler la dernière étape</button>
-            <button type="button" class="rando-creation-effacer" disabled>Effacer le parcours</button>
-          </div>
-          <p class="note rando-creation-aide" role="status" aria-live="polite">
-            Ajoutez des étapes sur la carte pour suivre les chemins existants.
-          </p>
-          <small class="rando-creation-attribution">
-            Valhalla (profil piéton) · chemins cartographiés par OpenStreetMap, selon la couverture. Les étapes sont transmises au service de calcul ; vérifiez le terrain avant de partir.
-          </small>
-        </section>
         <label class="rando-importer">
           <span>Importer un fichier GPX</span>
           <span class="rando-import-action">Choisir un fichier</span>
@@ -630,9 +632,11 @@ export function creerActiviteRandonnee(map) {
     carte.replaceChildren();
     if (!fiche) {
       carte.hidden = true;
+      carte.classList.remove('rando-fiche-creation');
       return;
     }
     carte.hidden = false;
+    carte.classList.toggle('rando-fiche-creation', fiche.origine === 'creation');
 
     if (fiche.type === 'gpx') {
       const entete = el('div', 'rando-entete');
@@ -649,6 +653,7 @@ export function creerActiviteRandonnee(map) {
       );
       fermer.addEventListener('click', fermerFiche);
       entete.append(fermer);
+      const contenuProfil = el('div', 'rando-fiche-profil');
       const stats = el('div', 'rando-stats');
       stats.append(stat(km(fiche.longueur), 'Distance'));
       stats.append(stat(String(fiche.trace.lignes.length), 'Segments'));
@@ -660,10 +665,20 @@ export function creerActiviteRandonnee(map) {
         stats.append(stat(metres(profil.min), 'Altitude min'));
         stats.append(stat(`≈ ${formaterDuree(dureeEstimee(fiche.longueur, profil.plus, profil.moins))}`, 'Durée estimée'));
       }
-      carte.append(entete, stats);
-      if (profil) carte.append(creerProfil(profil, surSurvol));
-      else if (fiche.profil === 'calcul') carte.append(attente('Calcul du profil d’altitude…'));
-      else if (fiche.profil === 'erreur') carte.append(message('Profil d’altitude indisponible (données de relief injoignables).'));
+      contenuProfil.append(stats);
+      if (profil) contenuProfil.append(creerProfil(profil, surSurvol));
+      else if (fiche.profil === 'calcul') contenuProfil.append(attente('Calcul du profil d’altitude…'));
+      else if (fiche.profil === 'erreur') contenuProfil.append(message('Profil d’altitude indisponible (données de relief injoignables).'));
+
+      if (fiche.origine === 'creation') {
+        const details = el('details', 'rando-fiche-reductible');
+        details.open = ficheCreationOuverte;
+        details.append(el('summary', null, 'Statistiques et profil'), contenuProfil);
+        details.addEventListener('toggle', () => { ficheCreationOuverte = details.open; });
+        carte.append(entete, details);
+      } else {
+        carte.append(entete, contenuProfil);
+      }
       const actions = el('div', 'rando-actions');
       const telecharger = el('button', 'fiche-copier', 'Télécharger le GPX');
       telecharger.type = 'button';
