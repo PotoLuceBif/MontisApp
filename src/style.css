@@ -508,8 +508,33 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   color: var(--accent-texte);
 }
 .rando-creation-flottante-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
-.rando-creation-flottante.reduit { width: min(190px, calc(100vw - 24px)); }
+.rando-creation-flottante.reduit {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  gap: 0;
+  padding: 1px;
+  border-radius: 50%;
+}
+.rando-creation-flottante.reduit .rando-creation-flottante-entete { justify-content: center; }
+.rando-creation-flottante.reduit .rando-creation-deplacer,
+.rando-creation-flottante.reduit .rando-creation-fermer,
+.rando-creation-flottante.reduit .rando-creation-aide,
 .rando-creation-flottante.reduit .rando-creation-flottante-actions { display: none; }
+.rando-creation-flottante.reduit .rando-creation-reduire {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--accent);
+  cursor: grab;
+  touch-action: none;
+}
+.rando-creation-reduire svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .rando-creation-etape {
   display: grid;
   width: 23px;
@@ -961,6 +986,25 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .rando-fiche-profil .rando-stats { padding-right: 0; padding-left: 0; }
 .rando-fiche-profil .rando-profil { padding-right: 0; padding-left: 0; }
 #rando-fiche.rando-fiche-creation { max-width: 440px; }
+.rando-fiche-creation.fiche-reduite { box-sizing: border-box; max-width: min(360px, calc(100vw - 24px)); padding-bottom: 0; overflow: hidden; }
+.rando-fiche-creation.fiche-reduite .rando-entete { align-items: center; padding-top: 8px; padding-bottom: 8px; }
+.rando-fiche-creation.fiche-reduite .rando-fiche-reductible,
+.rando-fiche-creation.fiche-reduite .rando-actions { display: none; }
+.rando-fiche-reduire {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--bord);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font: 700 20px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+.rando-fiche-reduire:hover { border-color: var(--accent); color: var(--accent); }
+body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flottante { bottom: 180px; }
 .fiche-entete, .rando-entete { padding: 16px 14px 12px 18px; }
 .fiche-nom, .rando-nom { font-size: 16px; letter-spacing: -0.015em; }
 .fiche-copier, .rando-actions button {
@@ -1057,6 +1101,17 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
     max-height: min(60vh, 560px);
     padding-bottom: max(12px, env(safe-area-inset-bottom));
     border-radius: 18px 18px 0 0;
+  }
+  #rando-fiche.rando-fiche-creation.fiche-reduite,
+  body:has(#menu-tiroir.ouvert) #rando-fiche.rando-fiche-creation.fiche-reduite {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
+    max-height: none;
+    border-radius: 14px;
+  }
+  body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flottante {
+    bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
   }
   #rando-fiche::before {
     display: block;
@@ -1930,22 +1985,52 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 }
 
 .ski { display: grid; gap: 14px; }
+.ski-recherche-conteneur { position: relative; z-index: 2; }
+.ski-recherche {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--bord);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--texte);
+  font: 13px system-ui, sans-serif;
+}
+.ski-recherche::placeholder { color: var(--texte-2); }
+.ski-recherche:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ski-actualiser {
-  display: inline-flex;
-  min-height: 34px;
-  flex: none;
+  display: flex;
+  width: 100%;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
-  padding: 0 9px;
+  padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--bord));
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--accent-doux);
   color: var(--accent);
-  font: 650 11px system-ui, sans-serif;
+  font: 650 12px system-ui, sans-serif;
   cursor: pointer;
 }
 .ski-actualiser:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.08); }
 .ski-actualiser:disabled { opacity: 0.65; cursor: wait; }
+.ski-annuler {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border: 1px solid var(--bord);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font: 600 12px system-ui, sans-serif;
+  cursor: pointer;
+}
+.ski-annuler[hidden] { display: none; }
+.ski-annuler:hover { border-color: var(--accent); color: var(--texte); }
 .ski-compteur {
   display: flex;
   align-items: baseline;
@@ -1954,7 +2039,21 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 }
 .ski-compteur strong { color: var(--accent); font-size: 23px; line-height: 1; }
 .ski-compteur span { color: var(--texte-2); font-size: 11px; }
-.ski-liste { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; }
+.ski-liste {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  left: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
+  overscroll-behavior: contain;
+}
+.ski-liste[hidden] { display: none; }
+.ski-suggestion-message { padding: 12px; color: var(--texte-2); font-size: 12px; }
 .ski-station-ligne {
   display: flex;
   width: 100%;
@@ -1962,19 +2061,20 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
   align-items: center;
   gap: 10px;
   padding: 7px 9px;
-  border: 1px solid var(--bord);
-  border-radius: 10px;
-  background: var(--surface-2);
+  border: 0;
+  border-bottom: 1px solid var(--bord);
+  border-radius: 0;
+  background: var(--surface);
   color: var(--texte);
   text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
 }
 .ski-station-ligne:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+  border-color: var(--bord);
   background: color-mix(in srgb, var(--accent) 7%, var(--surface-2));
 }
+.ski-station-ligne[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 13%, var(--surface-2)); }
 .ski-station-icone {
   display: grid;
   width: 34px;

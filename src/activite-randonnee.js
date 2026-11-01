@@ -227,6 +227,7 @@ export function creerActiviteRandonnee(map) {
   let selection = 0;
   let fiche = null;
   let ficheCreationOuverte = false;
+  let ficheCreationReduite = false;
   let curseurCarte = null;
   let ecouteurPose = false;
 
@@ -409,8 +410,10 @@ export function creerActiviteRandonnee(map) {
   function reduireCommandesCreation(reduit) {
     commandesFlottantes.classList.toggle('reduit', reduit);
     boutonReduire.setAttribute('aria-expanded', String(!reduit));
-    boutonReduire.setAttribute('aria-label', reduit ? 'Afficher les commandes' : 'Réduire les commandes');
-    boutonReduire.textContent = reduit ? '+' : '−';
+    boutonReduire.setAttribute('aria-label', reduit ? 'Afficher les commandes du parcours' : 'Réduire en bulle');
+    boutonReduire.innerHTML = reduit
+      ? '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14.5 5.5 4 4M4 20l4.3-1 10.8-10.8a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>'
+      : '−';
   }
 
   function afficherEtapesCreation() {
@@ -532,6 +535,7 @@ export function creerActiviteRandonnee(map) {
       actualiserMarqueursDecouverte();
     } else {
       if (fiche && fiche.origine !== 'creation') fermerFiche();
+      if (!etapesCreation.length) ficheCreationReduite = false;
       creationActive = true;
       masquerMarqueursDecouverte();
       bloquerFiches(true);
@@ -594,6 +598,7 @@ export function creerActiviteRandonnee(map) {
   function fermerCreation() {
     selection++;
     creationActive = false;
+    ficheCreationReduite = false;
     bloquerFiches(false);
     map.getCanvas().style.cursor = '';
     effacerCreation();
@@ -687,10 +692,12 @@ export function creerActiviteRandonnee(map) {
     if (!fiche) {
       carte.hidden = true;
       carte.classList.remove('rando-fiche-creation');
+      carte.classList.remove('fiche-reduite');
       return;
     }
     carte.hidden = false;
     carte.classList.toggle('rando-fiche-creation', fiche.origine === 'creation');
+    carte.classList.toggle('fiche-reduite', fiche.origine === 'creation' && ficheCreationReduite);
 
     if (fiche.type === 'gpx') {
       const entete = el('div', 'rando-entete');
@@ -719,6 +726,26 @@ export function creerActiviteRandonnee(map) {
         titres.append(el('div', 'rando-nom', fiche.nom));
       }
       entete.append(badge, titres);
+      if (fiche.origine === 'creation') {
+        const reduireFiche = el('button', 'rando-fiche-reduire', ficheCreationReduite ? '⌃' : '⌄');
+        reduireFiche.type = 'button';
+        reduireFiche.setAttribute('aria-expanded', String(!ficheCreationReduite));
+        reduireFiche.setAttribute(
+          'aria-label',
+          ficheCreationReduite ? 'Afficher le détail du parcours' : 'Réduire la fiche du parcours'
+        );
+        reduireFiche.addEventListener('click', () => {
+          ficheCreationReduite = !ficheCreationReduite;
+          carte.classList.toggle('fiche-reduite', ficheCreationReduite);
+          reduireFiche.textContent = ficheCreationReduite ? '⌃' : '⌄';
+          reduireFiche.setAttribute('aria-expanded', String(!ficheCreationReduite));
+          reduireFiche.setAttribute(
+            'aria-label',
+            ficheCreationReduite ? 'Afficher le détail du parcours' : 'Réduire la fiche du parcours'
+          );
+        });
+        entete.append(reduireFiche);
+      }
       const fermer = el('button', 'fiche-fermer', '✕');
       fermer.type = 'button';
       fermer.setAttribute(
@@ -1352,33 +1379,54 @@ export function creerActiviteRandonnee(map) {
   boutonMiniRecommencer.addEventListener('click', effacerCreation);
   boutonMiniTerminer.addEventListener('click', basculerCreation);
   boutonFermerCreation.addEventListener('click', fermerCreation);
+  let clicApresDeplacement = false;
   boutonReduire.addEventListener('click', () => {
+    if (clicApresDeplacement) {
+      clicApresDeplacement = false;
+      return;
+    }
     reduireCommandesCreation(!commandesFlottantes.classList.contains('reduit'));
   });
   let debutDeplacement = null;
-  boutonDeplacer.addEventListener('pointerdown', (event) => {
+  const demarrerDeplacement = (event) => {
     if (event.button !== 0) return;
     const rect = commandesFlottantes.getBoundingClientRect();
-    debutDeplacement = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
-    commandesFlottantes.style.left = `${rect.left}px`;
-    commandesFlottantes.style.top = `${rect.top}px`;
-    commandesFlottantes.style.right = 'auto';
-    commandesFlottantes.style.bottom = 'auto';
-    boutonDeplacer.setPointerCapture(event.pointerId);
+    debutDeplacement = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, deplace: false };
+    event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
+  };
+  boutonDeplacer.addEventListener('pointerdown', demarrerDeplacement);
+  boutonReduire.addEventListener('pointerdown', (event) => {
+    if (commandesFlottantes.classList.contains('reduit')) demarrerDeplacement(event);
   });
-  boutonDeplacer.addEventListener('pointermove', (event) => {
+  commandesFlottantes.addEventListener('pointermove', (event) => {
     if (!debutDeplacement) return;
+    const deltaX = event.clientX - debutDeplacement.x;
+    const deltaY = event.clientY - debutDeplacement.y;
+    if (!debutDeplacement.deplace && (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)) {
+      debutDeplacement.deplace = true;
+      commandesFlottantes.style.right = 'auto';
+      commandesFlottantes.style.bottom = 'auto';
+    }
+    if (!debutDeplacement.deplace) return;
     const largeur = commandesFlottantes.offsetWidth;
     const hauteur = commandesFlottantes.offsetHeight;
-    const gauche = Math.max(8, Math.min(innerWidth - largeur - 8, debutDeplacement.left + event.clientX - debutDeplacement.x));
-    const haut = Math.max(8, Math.min(innerHeight - hauteur - 8, debutDeplacement.top + event.clientY - debutDeplacement.y));
+    const gauche = Math.max(8, Math.min(innerWidth - largeur - 8, debutDeplacement.left + deltaX));
+    const haut = Math.max(8, Math.min(innerHeight - hauteur - 8, debutDeplacement.top + deltaY));
     commandesFlottantes.style.left = `${gauche}px`;
     commandesFlottantes.style.top = `${haut}px`;
   });
-  const terminerDeplacement = () => { debutDeplacement = null; };
-  boutonDeplacer.addEventListener('pointerup', terminerDeplacement);
-  boutonDeplacer.addEventListener('pointercancel', terminerDeplacement);
+  const terminerDeplacement = () => {
+    if (!debutDeplacement) return;
+    clicApresDeplacement = debutDeplacement.deplace;
+    debutDeplacement = null;
+  };
+  const annulerDeplacement = () => {
+    debutDeplacement = null;
+    clicApresDeplacement = false;
+  };
+  commandesFlottantes.addEventListener('pointerup', terminerDeplacement);
+  commandesFlottantes.addEventListener('pointercancel', annulerDeplacement);
   map.on('click', ajouterEtapeCreation);
 
   // ---------- Options : refuges (partagé avec Éléments de la carte) et aperçu ----------

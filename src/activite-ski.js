@@ -1,11 +1,11 @@
 import * as maplibregl from 'maplibre-gl';
 
 const SERVEURS_OVERPASS = [
-  'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ];
+const URL_PHOTON = 'https://photon.komoot.io/api/';
 const ZOOM_MIN = 7.5;
 const DISTANCE_GROUPE_PX = 56;
 
@@ -74,7 +74,7 @@ async function interrogerOverpass(requete, signal) {
       throw annulation;
     }
     const controleur = new AbortController();
-    const delai = setTimeout(() => controleur.abort(), 8000);
+    const delai = setTimeout(() => controleur.abort(), 30_000);
     const annuler = () => controleur.abort();
     signal.addEventListener('abort', annuler, { once: true });
     try {
@@ -117,13 +117,21 @@ export function creerActiviteSki(map) {
       <p>Explorez les stations référencées près de la zone affichée.</p>
     </section>
 
+    <div class="ski-recherche-conteneur">
+      <input class="ski-recherche" type="search" placeholder="Rechercher une station…"
+        autocomplete="off" spellcheck="false" aria-label="Rechercher une station de ski"
+        role="combobox" aria-autocomplete="list" aria-controls="ski-liste" aria-expanded="false">
+      <div class="ski-liste" id="ski-liste" role="listbox" hidden></div>
+    </div>
+    <button class="ski-actualiser" type="button">Rechercher dans cette zone</button>
+    <button class="ski-annuler" type="button" hidden>Annuler la recherche</button>
+
     <section class="para-statut ski-statut" data-etat="attente" aria-label="État des stations de ski">
       <div class="para-statut-entete">
         <div class="para-statut-titre">
           <span class="para-indicateur" aria-hidden="true"></span>
           <strong>Stations de ski</strong>
         </div>
-        <button class="ski-actualiser" type="button">Rechercher dans cette zone</button>
       </div>
       <p class="para-statut-message" role="status" aria-live="polite">
         Déplacez la carte sur un massif, puis lancez une recherche.
@@ -135,16 +143,6 @@ export function creerActiviteSki(map) {
       <span>stations dans la zone</span>
     </div>
 
-    <section class="para-section ski-resultats" aria-labelledby="ski-resultats-titre">
-      <div class="para-section-entete">
-        <span>01</span>
-        <h3 id="ski-resultats-titre">À proximité</h3>
-      </div>
-      <div class="ski-liste" data-ski-liste>
-        <p class="ski-vide">Les stations trouvées apparaîtront ici.</p>
-      </div>
-    </section>
-
     <p class="ski-securite">
       Données cartographiques © OpenStreetMap. Les stations et leurs informations peuvent être incomplètes ;
       vérifiez les ouvertures et conditions auprès des sources officielles.
@@ -153,13 +151,24 @@ export function creerActiviteSki(map) {
 
   const statut = panneau.querySelector('.ski-statut');
   const message = panneau.querySelector('.para-statut-message');
+  const champRecherche = panneau.querySelector('.ski-recherche');
   const actualiser = panneau.querySelector('.ski-actualiser');
+  const annulerRecherche = panneau.querySelector('.ski-annuler');
   const compteur = panneau.querySelector('[data-ski-compteur]');
-  const liste = panneau.querySelector('[data-ski-liste]');
+  const libelleCompteur = panneau.querySelector('.ski-compteur span');
+  const liste = panneau.querySelector('.ski-liste');
   let actif = false;
   let controleur = null;
+  let controleurRecherche = null;
+  let minuteurRecherche = null;
   let popupStation = null;
   let stations = [];
+  let stationsZone = [];
+  let recherche = '';
+  let etatRecherche = 'vide';
+  let resultatsRecherche = [];
+  let suggestionActive = -1;
+  let suggestionsFermees = false;
   let stationSelectionnee = null;
   let marqueursStations = [];
   let ecouteurCarte = false;
@@ -270,7 +279,7 @@ export function creerActiviteSki(map) {
     element.setAttribute('aria-label', `Afficher la station ${station.nom}`);
     element.title = station.nom;
     element.innerHTML =
-      '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 15v17m-7-13 14 9m0-9-14 9m3-12 4 3 4-3m-8 18 4-3 4 3"/></svg>';
+      '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 14v20m-8.66-15 17.32 10m0-10-17.32 10m8.66-15-2.5 2.5M24 14l2.5 2.5M24 34l-2.5-2.5m2.5 2.5 2.5-2.5m-11.16-13 3.4.9m-3.4-.9.9 3.4m15.42 6.2-3.4-.9m3.4.9-.9-3.4m.9-6.2-3.4.9m3.4-.9-.9 3.4m-15.42 6.2 3.4-.9m-3.4.9.9-3.4"/></svg>';
     const nom = document.createElement('span');
     nom.className = 'rando-repere-nom';
     nom.textContent = station.nom;
@@ -355,18 +364,60 @@ export function creerActiviteSki(map) {
   }
 
   function rendreListe() {
-    compteur.textContent = String(stations.length);
-    if (!stations.length) {
-      liste.innerHTML = '<p class="ski-vide">Aucune station référencée dans cette zone. Essayez une zone voisine ou la barre de recherche.</p>';
+    if (recherche.length < 2) {
+      fermerSuggestions();
+      compteur.textContent = String(stationsZone.length);
+      libelleCompteur.textContent = 'stations dans la zone';
       return;
     }
 
+    compteur.textContent = String(resultatsRecherche.length);
+    libelleCompteur.textContent = 'suggestions';
+    if (suggestionsFermees) {
+      fermerSuggestions();
+      return;
+    }
+    liste.hidden = false;
+    champRecherche.setAttribute('aria-expanded', 'true');
+    suggestionActive = -1;
+    champRecherche.removeAttribute('aria-activedescendant');
+    if (etatRecherche === 'chargement') {
+      afficherEtatSuggestions('Recherche des stations…');
+    } else if (etatRecherche === 'erreur') {
+      afficherEtatSuggestions('Recherche indisponible. Vérifiez votre connexion et réessayez.');
+    } else if (!resultatsRecherche.length) {
+      afficherEtatSuggestions(`Aucune station trouvée pour « ${recherche} ».`);
+    } else {
+      rendreStations(resultatsRecherche);
+    }
+  }
+
+  function afficherEtatSuggestions(texte) {
+    const option = document.createElement('div');
+    option.className = 'ski-suggestion-message';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-disabled', 'true');
+    option.textContent = texte;
+    liste.replaceChildren(option);
+  }
+
+  function fermerSuggestions() {
+    liste.hidden = true;
+    champRecherche.setAttribute('aria-expanded', 'false');
+    champRecherche.removeAttribute('aria-activedescendant');
+    suggestionActive = -1;
+  }
+
+  function rendreStations(features) {
     const fragment = document.createDocumentFragment();
-    for (const feature of stations) {
+    for (const [index, feature] of features.entries()) {
       const station = feature.properties;
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'ski-station-ligne';
+      item.id = `ski-suggestion-${index}`;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', String(index === suggestionActive));
       const icone = document.createElement('span');
       icone.className = 'ski-station-icone';
       icone.setAttribute('aria-hidden', 'true');
@@ -384,13 +435,87 @@ export function creerActiviteSki(map) {
       fleche.textContent = '›';
       item.append(icone, texte, fleche);
       item.addEventListener('click', () => {
-        const coordonnees = feature.geometry.coordinates;
-        map.flyTo({ center: coordonnees, zoom: Math.max(map.getZoom(), 13), duration: 900 });
-        afficherPopup(station, coordonnees);
+        choisirStation(feature);
       });
       fragment.appendChild(item);
     }
     liste.replaceChildren(fragment);
+  }
+
+  function choisirStation(feature) {
+    const station = feature.properties;
+    const coordonnees = feature.geometry.coordinates;
+    champRecherche.value = station.nom;
+    recherche = '';
+    resultatsRecherche = [];
+    stations = [feature];
+    fermerSuggestions();
+    compteur.textContent = '1';
+    libelleCompteur.textContent = 'station sélectionnée';
+    actualiserMarqueurs();
+    map.flyTo({ center: coordonnees, zoom: Math.max(map.getZoom(), 13), duration: 900 });
+    afficherPopup(station, coordonnees);
+  }
+
+  function activerSuggestion(index) {
+    const options = liste.querySelectorAll('[role="option"]:not([aria-disabled="true"])');
+    if (!options.length) return;
+    suggestionActive = (index + options.length) % options.length;
+    options.forEach((option, i) => option.setAttribute('aria-selected', String(i === suggestionActive)));
+    champRecherche.setAttribute('aria-activedescendant', options[suggestionActive].id);
+  }
+
+  async function chercherStations(texte) {
+    if (controleurRecherche) controleurRecherche.abort();
+    const nouveauControleur = new AbortController();
+    controleurRecherche = nouveauControleur;
+    etatRecherche = 'chargement';
+    resultatsRecherche = [];
+    rendreListe();
+    const centre = map.getCenter();
+    const url = `${URL_PHOTON}?q=${encodeURIComponent(texte)}&limit=30&lang=fr&lat=${centre.lat.toFixed(3)}&lon=${centre.lng.toFixed(3)}`;
+
+    try {
+      const reponse = await fetch(url, { signal: nouveauControleur.signal });
+      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+      const donnees = await reponse.json();
+      if (controleurRecherche !== nouveauControleur || recherche !== texte) return;
+      resultatsRecherche = (donnees.features || [])
+        .filter((feature) => {
+          const proprietes = feature.properties || {};
+          return (
+            (proprietes.osm_key === 'leisure' && proprietes.osm_value === 'ski_resort') ||
+            (proprietes.osm_key === 'landuse' && proprietes.osm_value === 'winter_sports') ||
+            (proprietes.osm_key === 'site' && proprietes.osm_value === 'piste')
+          );
+        })
+        .filter((feature) =>
+          feature.geometry?.type === 'Point' &&
+          feature.geometry.coordinates?.length === 2 &&
+          feature.geometry.coordinates.every(Number.isFinite) &&
+          feature.properties?.name
+        )
+        .map((feature) => ({
+          type: 'Feature',
+          id: `${feature.properties.osm_type || ''}/${feature.properties.osm_id || feature.properties.name}`,
+          geometry: feature.geometry,
+          properties: {
+            nom: feature.properties.name,
+            ele: feature.properties.ele || '',
+            operateur: feature.properties.operator || '',
+            site: feature.properties.website || '',
+          },
+        }));
+      etatRecherche = 'ok';
+      stations = resultatsRecherche;
+      actualiserMarqueurs();
+      rendreListe();
+    } catch (erreur) {
+      if (erreur.name === 'AbortError' || controleurRecherche !== nouveauControleur) return;
+      etatRecherche = 'erreur';
+      console.warn('Recherche de stations de ski :', erreur);
+      rendreListe();
+    }
   }
 
   async function rechercherZone() {
@@ -401,6 +526,13 @@ export function creerActiviteSki(map) {
       return;
     }
 
+    clearTimeout(minuteurRecherche);
+    if (controleurRecherche) controleurRecherche.abort();
+    champRecherche.value = '';
+    recherche = '';
+    etatRecherche = 'vide';
+    resultatsRecherche = [];
+    stations = stationsZone;
     if (controleur) controleur.abort();
     const nouveauControleur = new AbortController();
     controleur = nouveauControleur;
@@ -415,12 +547,14 @@ export function creerActiviteSki(map) {
       `nwr["site"="piste"](${sud},${ouest},${nord},${est}););out tags center;`;
     actualiser.disabled = true;
     actualiser.textContent = 'Recherche…';
+    annulerRecherche.hidden = false;
     statut.dataset.etat = 'chargement';
     statut.setAttribute('aria-busy', 'true');
     message.textContent = 'Recherche des stations dans la zone affichée…';
     stationSelectionnee = null;
     if (popupStation) popupStation.remove();
     stations = [];
+    stationsZone = [];
     retirerMarqueurs();
     compteur.textContent = '0';
     rendreListe();
@@ -429,13 +563,14 @@ export function creerActiviteSki(map) {
       const elements = await interrogerOverpass(requete, nouveauControleur.signal);
       if (!actif || controleur !== nouveauControleur) return;
       const donnees = geojsonStations(elements, bornes);
-      stations = donnees.features;
+      stationsZone = donnees.features;
+      if (recherche.length < 2) stations = stationsZone;
       assurerCouches();
       rendreListe();
       actualiserMarqueurs();
       statut.dataset.etat = 'ok';
-      message.textContent = stations.length
-        ? `${stations.length} station${stations.length > 1 ? 's' : ''} repérée${stations.length > 1 ? 's' : ''} dans la zone affichée.`
+      message.textContent = stationsZone.length
+        ? `${stationsZone.length} station${stationsZone.length > 1 ? 's' : ''} repérée${stationsZone.length > 1 ? 's' : ''} dans la zone affichée.`
         : 'Aucune station trouvée dans cette zone. Vous pouvez essayer une zone voisine.';
     } catch (erreur) {
       if (erreur.name === 'AbortError') return;
@@ -447,9 +582,69 @@ export function creerActiviteSki(map) {
       if (controleur !== nouveauControleur) return;
       actualiser.disabled = false;
       actualiser.textContent = 'Rechercher dans cette zone';
+      annulerRecherche.hidden = true;
       statut.setAttribute('aria-busy', 'false');
     }
   }
+
+  annulerRecherche.addEventListener('click', () => {
+    if (!controleur) return;
+    controleur.abort();
+    controleur = null;
+    actualiser.disabled = false;
+    actualiser.textContent = 'Rechercher dans cette zone';
+    annulerRecherche.hidden = true;
+    statut.dataset.etat = 'attente';
+    statut.setAttribute('aria-busy', 'false');
+    message.textContent = 'Recherche annulée.';
+  });
+
+  champRecherche.addEventListener('input', () => {
+    recherche = champRecherche.value.trim();
+    suggestionsFermees = false;
+    clearTimeout(minuteurRecherche);
+    if (recherche.length < 2) {
+      if (controleurRecherche) controleurRecherche.abort();
+      etatRecherche = 'vide';
+      resultatsRecherche = [];
+      stations = stationsZone;
+      actualiserMarqueurs();
+      rendreListe();
+      return;
+    }
+    etatRecherche = 'chargement';
+    resultatsRecherche = [];
+    stations = [];
+    actualiserMarqueurs();
+    rendreListe();
+    minuteurRecherche = setTimeout(() => chercherStations(recherche), 350);
+  });
+
+  champRecherche.addEventListener('focus', () => {
+    if (recherche.length >= 2) {
+      suggestionsFermees = false;
+      rendreListe();
+    }
+  });
+
+  champRecherche.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' && !liste.hidden) {
+      event.preventDefault();
+      activerSuggestion(suggestionActive + 1);
+    } else if (event.key === 'ArrowUp' && !liste.hidden) {
+      event.preventDefault();
+      activerSuggestion(suggestionActive < 0 ? liste.querySelectorAll('[role="option"]:not([aria-disabled="true"])').length - 1 : suggestionActive - 1);
+    } else if (event.key === 'Enter' && suggestionActive >= 0) {
+      event.preventDefault();
+      const feature = resultatsRecherche[suggestionActive];
+      if (feature) choisirStation(feature);
+    } else if (event.key === 'Escape' && !liste.hidden) {
+      suggestionsFermees = true;
+      fermerSuggestions();
+    }
+  });
+
+  liste.addEventListener('mousedown', (event) => event.preventDefault());
 
   actualiser.addEventListener('click', rechercherZone);
 
@@ -465,14 +660,24 @@ export function creerActiviteSki(map) {
     desactiver() {
       actif = false;
       if (controleur) controleur.abort();
+      clearTimeout(minuteurRecherche);
+      if (controleurRecherche) controleurRecherche.abort();
+      champRecherche.value = '';
+      recherche = '';
+      etatRecherche = 'vide';
+      resultatsRecherche = [];
+      suggestionsFermees = true;
       stationSelectionnee = null;
       if (popupStation) popupStation.remove();
       retirerMarqueurs();
       stations = [];
+      stationsZone = [];
       compteur.textContent = '—';
-      liste.innerHTML = '<p class="ski-vide">Les stations trouvées apparaîtront ici.</p>';
+      fermerSuggestions();
+      liste.replaceChildren();
       actualiser.disabled = false;
       actualiser.textContent = 'Rechercher dans cette zone';
+      annulerRecherche.hidden = true;
       statut.dataset.etat = 'attente';
       statut.setAttribute('aria-busy', 'false');
       message.textContent = 'Déplacez la carte sur un massif, puis lancez une recherche.';
