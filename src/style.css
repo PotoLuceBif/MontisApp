@@ -3019,11 +3019,22 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 #menu-bouton:active { transform: scale(0.96); }
 
 /* ===== Commandes flottantes : même forme, léger effet de verre ===== */
+/* Fond presque opaque avec un léger relief : à 90 %, le beige de la carte remontait et
+   donnait un gris délavé. Même matière pour toutes les commandes posées sur la carte. */
 #menu-parametres-bouton, #bascule-mode, .rech-champ, .maplibregl-ctrl-group, .outil-rapide-bouton {
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  box-shadow: var(--ombre);
+  border-color: color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--surface) 97%, transparent);
+  box-shadow: var(--ombre), inset 0 1px 0 color-mix(in srgb, var(--texte) 7%, transparent);
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
   backdrop-filter: blur(12px) saturate(1.3);
+}
+:root[data-theme='cyberpunk'] .maplibregl-ctrl-group {
+  border-color: color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--surface) 97%, transparent);
 }
 .outil-rapide-bouton { border-radius: var(--rayon); }
 .maplibregl-ctrl-scale { border-radius: 0 0 5px 5px; border-width: 0 1px 1px; background: color-mix(in srgb, var(--surface) 78%, transparent); }
