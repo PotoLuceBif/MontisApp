@@ -27,7 +27,7 @@ const COMMANDES = [
   ['annuler', 'Annuler', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'],
   ['retablir', 'Rétablir', '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>'],
   ['libre', 'Tracé libre, en ligne droite', '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>'],
-  ['boucle', 'Revenir au départ', '<path d="M17 2.5 21 6.500 17 10.500"/><path d="M3 12V9.500a3 3 0 0 1 3-3h15"/><path d="M7 21.500 3 17.500 7 13.500"/><path d="M21 12v2.500a3 3 0 0 1-3 3H3"/>'],
+  ['boucle', 'Boucler le parcours', '<path d="M17 2.5 21 6.500 17 10.500"/><path d="M3 12V9.500a3 3 0 0 1 3-3h15"/><path d="M7 21.500 3 17.500 7 13.500"/><path d="M21 12v2.500a3 3 0 0 1-3 3H3"/>'],
   ['allerRetour', 'Aller-retour par le même chemin', '<path d="M4 8h14l-4-4"/><path d="M20 16H6l4 4"/>'],
   ['effacer', 'Tout effacer', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'],
 ];
@@ -303,6 +303,18 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const etape = etapes[index];
     const contenu = document.createElement('div');
     contenu.className = 'parcours-popup';
+    const derniere = etapes[etapes.length - 1];
+    const dejaBoucle = etapes.length > 2 && derniere.lng === etape.lng && derniere.lat === etape.lat;
+    if (index === 0 && etapes.length > 1 && !dejaBoucle) {
+      const boucle = document.createElement('button');
+      boucle.type = 'button';
+      boucle.textContent = 'Boucler le parcours';
+      boucle.addEventListener('click', () => {
+        fermerPopup();
+        boucler();
+      });
+      contenu.append(boucle);
+    }
     if (index > 0) {
       const libre = document.createElement('button');
       libre.type = 'button';

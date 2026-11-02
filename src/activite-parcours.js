@@ -24,7 +24,7 @@ const ICONES = {
 function ecritures(texte) {
   const [, prefixe, reste] = /^([a-z]{1,4})\s*(\d.*)$/i.exec(texte) ?? [];
   if (!prefixe) return [texte];
-  return [...new Set([texte, `${prefixe.toUpperCase()} ${reste}`, `${prefixe.toUpperCase()}${reste}`])];
+  return [...new Set([`${prefixe.toUpperCase()} ${reste}`, `${prefixe.toUpperCase()}${reste}`, texte])];
 }
 const icone = (dessin) => `<svg aria-hidden="true" viewBox="0 0 24 24">${dessin}</svg>`;
 
