@@ -1,6 +1,6 @@
 import { lire, ecrire } from './reglages.js';
 import { CALQUES_MONTIS } from './style-montis.js';
-import { surLangue, t, ti } from './i18n.js';
+import { surLangue, t, ti, poser } from './i18n.js';
 
 const wmts = (couche, format) =>
   'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
@@ -177,7 +177,7 @@ export function creerFondDeCarte(map) {
     const cleAide = ZONES.find((z) => z.nom === zoneCourante).aide;
     aide.textContent = cleAide ? t(cleAide) : '';
     aide.style.display = aide.textContent ? 'block' : 'none';
-    actuel.textContent = t('fond.actuel', { nom: nomFond(FONDS.find((f) => f.id === idActif)) });
+    poser(actuel, 'fond.actuel', { nom: nomFond(FONDS.find((f) => f.id === idActif)) });
 
     liste.innerHTML = '';
     for (const f of FONDS.filter((x) => x.zone === zoneCourante)) {
@@ -193,7 +193,7 @@ export function creerFondDeCarte(map) {
         idActif = f.id;
         appliquerFond(map, idActif);
         ecrire('fond', idActif);
-        actuel.textContent = t('fond.actuel', { nom: nomFond(f) });
+        poser(actuel, 'fond.actuel', { nom: nomFond(f) });
       });
 
       const nom = document.createElement('span');

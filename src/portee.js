@@ -5,7 +5,7 @@ import { estHorsLigne } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { depuisAltitude, formatAltitude, formatDistance, formatSurface, nombre, uniteAltitude, versAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ta, ti, tt } from './i18n.js';
+import { t, ta, ti, tt, poser } from './i18n.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -313,7 +313,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     onFermer: () => onFermer(),
     onRetour,
   });
-  panneau.titre.textContent = t('portee.titre');
+  poser(panneau.titre, 'portee.titre');
   const conteneur = panneau.corps;
   conteneur.innerHTML = `
     <div class="pt">
@@ -550,7 +550,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       const valeur = Number(borne.dataset.ptBorne);
       borne.textContent = valeur ? `${formatAltitude(valeur, { pas: 10 })} +` : formatAltitude(0);
     });
-    panneau.titre.textContent = t('portee.titre');
+    poser(panneau.titre, 'portee.titre');
     panneau.definirResume({ nom: t('portee.titre') });
     if (point && grille) recalculer();
     else if (!point) afficherResultat(t(MESSAGE_ACCUEIL));

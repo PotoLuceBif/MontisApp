@@ -813,7 +813,7 @@ export function creerVisiteStation(map, {
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.dataset.fond = id;
-      bouton.textContent = t(cle);
+      poser(bouton, cle);
       bouton.setAttribute('aria-pressed', String(id === idFond));
       bouton.addEventListener('click', () => {
         definirFond(id);

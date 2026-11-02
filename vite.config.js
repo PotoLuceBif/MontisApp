@@ -42,8 +42,12 @@ function serviceWorker() {
   };
 }
 
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+
 export default defineConfig({
   plugins: [serviceWorker()],
+  // Version affichée dans les Paramètres
+  define: { __VERSION_MONTIS__: JSON.stringify(version) },
   server: {
     proxy: {
       '/ffvl': {

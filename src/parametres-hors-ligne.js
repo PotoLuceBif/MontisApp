@@ -114,11 +114,11 @@ export function creerSectionHorsLigne(section) {
       const nom = el('strong');
       nom.textContent = zone.nom;
       const info = el('small');
-      info.textContent = t('hl.zone-detail', { taille: formatTaille(zone.octets), date: dateLisible(zone.date) });
+      poser(info, 'hl.zone-detail', { taille: formatTaille(zone.octets), date: dateLisible(zone.date) });
       texte.append(nom, info);
       if (zone.manquantes) {
         const alerte = el('small', 'zh-zone-alerte');
-        alerte.textContent = t('zh.incomplete', { n: zone.manquantes });
+        poser(alerte, 'zh.incomplete', { n: zone.manquantes });
         texte.append(alerte);
       }
       const supprimer = el('button', 'zh-zone-bouton zh-zone-supprimer');

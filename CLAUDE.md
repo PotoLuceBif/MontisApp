@@ -52,6 +52,8 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 - Modules ES, noms en français (`creerPanneauCarte`, `chargerPrevisions`). Fabriques en `creerX` ou `initX`, qui reçoivent `map` et renvoient leur interface.
 - Un module de menu expose `{ id, label, icone, panneau, activer(), desactiver() }`, et `menu.js` l'orchestre. Pour ajouter une activité ou un outil, ajouter une entrée dans `categories`.
+- Texte d'interface : `poser(element, 'clé', variables)` plutôt que `textContent = t(…)`, pour qu'il suive un changement de langue (voir l'en-tête de `i18n.js`).
+- Version : `version` de `package.json`, affichée en bas des Paramètres. Chaque version publiée a son tag git (`v1.0.0-alpha.1`…).
 - Commentaires courts, seulement pour expliquer un pourquoi. Le DOM se construit à la main (`createElement` ou `innerHTML`).
 - Tout le CSS est dans `src/style.css`, avec les thèmes (`data-theme`) en variables. Thèmes : cyberpunk (par défaut), clair, sombre, auto.
 
@@ -75,7 +77,7 @@ public/
   data/                 Données locales (voir Données locales)
   icons/                Icônes PWA ; activites/ : icônes des quatre activités
   logos/                Logo et logotype Montis
-  pins/                 Pins SVG ; png/ : versions @2x, pas utilisées par le code à ce jour
+  pins/                 Pins SVG
   manifest.webmanifest  Manifeste PWA
 src/                    Tout le code (détail ci-dessous)
 ```
@@ -197,10 +199,9 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
-- `public/pins/png/` n'est pas utilisé par le code, mais alourdit le cache hors ligne d'environ 230 Ko.
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
 - Aucun test automatique.
-- Quelques messages de statut ne changent de langue qu'à la prochaine actualisation.
+- Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
 **Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.

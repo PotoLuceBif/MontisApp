@@ -8,7 +8,7 @@ import { dateComplete, etatStation, texteAge } from './balises-sources.js';
 import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ta, ti, tt } from './i18n.js';
+import { t, ta, ti, tt, poser } from './i18n.js';
 
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
@@ -120,7 +120,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     fiche.style.setProperty('--vent-couleur', etat === 'actif' ? couleurInterface(station.moyenne) : 'var(--texte-2)');
     $('.bf-nom').textContent = station.nom;
     // Sans réseau, un relevé récent n'est plus du direct, quel que soit son âge
-    $('.bf-etat').textContent = t(etat === 'actif' && estHorsLigne() ? 'bf.enregistre' : LIBELLES_ETAT[etat]);
+    poser($('.bf-etat'), etat === 'actif' && estHorsLigne() ? 'bf.enregistre' : LIBELLES_ETAT[etat]);
     const avecCap = Number.isFinite(station.direction);
     $('.bf-rose-dessin').innerHTML = cadranVent(avecCap ? (station.direction + 180) % 360 : null, 0, '', true);
     $('.bf-provenance').textContent = avecCap ? texteProvenance(station.direction) : t('bf.direction-inconnue');
@@ -166,16 +166,16 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
       element.hidden = rien;
     });
     if (rien) {
-      note.textContent = t('bf.aucun-24h');
+      poser(note, 'bf.aucun-24h');
       note.hidden = false;
       return;
     }
     const visibles = graphique.definir(historique, periode);
     const debut = Date.now() - periode * 60 * 60 * 1000;
     if (!visibles.length) {
-      note.textContent = t('bf.aucun-periode', { n: periode });
+      poser(note, 'bf.aucun-periode', { n: periode });
     } else if (visibles[0].date - debut > COUVERTURE_TOLEREE) {
-      note.textContent = t('bf.pas-avant', { heure: heureCourte(visibles[0].date) });
+      poser(note, 'bf.pas-avant', { heure: heureCourte(visibles[0].date) });
     } else {
       note.textContent = '';
     }
@@ -200,7 +200,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
       element.hidden = false;
     });
     graphique.definir([], periode);
-    note.textContent = t('bf.chargement');
+    poser(note, 'bf.chargement');
     note.hidden = false;
     try {
       const points = await source.historique(demandee, requete.signal);

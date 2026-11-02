@@ -79,7 +79,7 @@ export function creerActiviteVelo(map, outils) {
     typeDe: ({ carte, name, ref }) => (GRAVEL.test(`${name} ${ref}`) ? t('velo.gravel') : carte === 'mtb' ? t('velo.vtt') : t('velo.velo')),
     aPropos: 'velo.a-propos',
     entrees: (_, { itineraires, clients }) => [
-      { libelle: 'EuroVélo', sous: 'velo.eurovelo-sous', ouvrir: () => itineraires.ouvrirCatalogue(catalogueEuroVelo(map, clients.cycling)) },
+      { libelle: 'velo.eurovelo', sous: 'velo.eurovelo-sous', ouvrir: () => itineraires.ouvrirCatalogue(catalogueEuroVelo(map, clients.cycling)) },
     ],
     sections(_, { editeur, itineraires }) {
       bikeParks.definirMasque(() => editeur.ouvert || itineraires.ouvert);

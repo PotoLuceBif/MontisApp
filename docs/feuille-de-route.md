@@ -55,7 +55,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 Prérequis à tout le reste : sans eux, chaque ajout alourdit et fragilise l'appli.
 
-- [ ] **0.1 Ménage.** Supprimer `public/pins/png/`, traduire les messages de statut qui ne changent de langue qu'à l'actualisation, mettre CLAUDE.md à jour. *Fini quand* la preview en anglais n'affiche plus de français.
+- [x] **0.1 Ménage.** Supprimer `public/pins/png/`, traduire les messages de statut qui ne changent de langue qu'à l'actualisation, mettre CLAUDE.md à jour. *Fini quand* la preview en anglais n'affiche plus de français.
 - [ ] **0.2 Découpage du bundle.** Charger chaque activité et chaque outil à la demande (`import()` dans `menu.js`). Mesurer le JavaScript initial avant et après. *Fini quand* l'alerte des 500 Ko disparaît et que chaque menu s'ouvre toujours, en ligne comme hors ligne (le service worker doit précharger les morceaux).
 - [ ] **0.3 Tests automatiques.** Vitest, `npm test`, premiers tests sur `unites.js`, `vent-calcul.js`, `portee.js`, `parcours-analyse.js`. *Fini quand* `npm test` passe et que la commande figure dans CLAUDE.md.
 - [ ] **0.4 Captures automatiques.** Script Playwright qui ouvre l'appli au format téléphone (et ordinateur), parcourt les écrans clés et enregistre des captures, pour que Claude vérifie chaque lot visuellement avant de pousser. *Fini quand* une commande produit les captures d'un parcours type.

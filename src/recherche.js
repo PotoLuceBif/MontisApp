@@ -2,7 +2,7 @@ import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
   import { obtenirBarre } from './barre-haut.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
-import { t, ta } from './i18n.js';
+import { t, ta, poser } from './i18n.js';
 import { langue } from './preferences.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -203,7 +203,7 @@ export function initRecherche(map) {
   function creerCredit() {
     const credit = document.createElement('div');
     credit.className = 'rech-credit';
-    credit.textContent = t('rech.credit');
+    poser(credit, 'rech.credit');
     return credit;
   }
 
@@ -334,19 +334,19 @@ export function initRecherche(map) {
     actions.className = 'rech-popup-actions';
     const copier = document.createElement('button');
     copier.type = 'button';
-    copier.textContent = t('lieu.copier');
+    poser(copier, 'lieu.copier');
     copier.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(texteCoord);
-        copier.textContent = t('lieu.copie');
+        poser(copier, 'lieu.copie');
       } catch (e) {
-        copier.textContent = t('lieu.indisponible');
+        poser(copier, 'lieu.indisponible');
       }
-      setTimeout(() => (copier.textContent = t('lieu.copier')), 1500);
+      setTimeout(() => (poser(copier, 'lieu.copier')), 1500);
     });
     const retirer = document.createElement('button');
     retirer.type = 'button';
-    retirer.textContent = t('rech.retirer');
+    poser(retirer, 'rech.retirer');
     retirer.addEventListener('click', effacerTout);
     actions.append(copier, retirer);
 

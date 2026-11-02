@@ -263,7 +263,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       features: point ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [point.lng, point.lat] }, properties: {} }] : [],
     });
     if (!point) {
-      lecture.textContent = t('editeur.lire-profil');
+      poser(lecture, 'editeur.lire-profil');
       return;
     }
     const pente = analyse.pentes[index];
@@ -325,7 +325,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (index === 0 && etapes.length > 1 && !dejaBoucle) {
       const boucle = document.createElement('button');
       boucle.type = 'button';
-      boucle.textContent = t('editeur.boucler');
+      poser(boucle, 'editeur.boucler');
       boucle.addEventListener('click', () => {
         fermerPopup();
         boucler();
@@ -335,7 +335,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (index > 0) {
       const libre = document.createElement('button');
       libre.type = 'button';
-      libre.textContent = t(etape.mode === 'libre' ? 'editeur.suivre-chemins' : 'editeur.ligne-droite');
+      poser(libre, etape.mode === 'libre' ? 'editeur.suivre-chemins' : 'editeur.ligne-droite');
       libre.addEventListener('click', () => {
         fermerPopup();
         memoriser();
@@ -347,7 +347,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const retirer = document.createElement('button');
     retirer.type = 'button';
     retirer.className = 'parcours-popup-retirer';
-    retirer.textContent = t('editeur.supprimer-point');
+    poser(retirer, 'editeur.supprimer-point');
     retirer.addEventListener('click', () => {
       fermerPopup();
       memoriser();
@@ -457,7 +457,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       if (etape.mode === 'libre') {
         etape.troncon = tronconLibre(de, vers);
       } else {
-        message.textContent = t('editeur.calcul');
+        poser(message, 'editeur.calcul');
         try {
           if (estHorsLigne()) throw new Error('hors ligne');
           const troncon = await calculerTroncon(de, vers, pratique, requete.signal);
@@ -484,11 +484,12 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     programmerAnalyse();
     rendreRepartition();
     if (echecs) {
-      message.textContent = estHorsLigne() ? t('editeur.hors-ligne-droit') : t('editeur.echecs', { n: echecs });
+      if (estHorsLigne()) poser(message, 'editeur.hors-ligne-droit');
+      else poser(message, 'editeur.echecs', { n: echecs });
     } else if (etapes.length < 2) {
-      message.textContent = t(etapes.length ? 'editeur.point-suivant' : 'editeur.poser-depart');
+      poser(message, etapes.length ? 'editeur.point-suivant' : 'editeur.poser-depart');
     } else {
-      message.textContent = t(secours ? 'editeur.secours' : 'editeur.ajouter');
+      poser(message, secours ? 'editeur.secours' : 'editeur.ajouter');
     }
     if (edition) {
       if (etapes.length) stockage.ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
@@ -531,7 +532,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         console.warn('Profil du parcours :', erreur);
         analyse = null;
         profil.definir(null);
-        lecture.textContent = t(estHorsLigne() ? 'editeur.relief-hors-ligne' : 'editeur.relief-indisponible');
+        poser(lecture, estHorsLigne() ? 'editeur.relief-hors-ligne' : 'editeur.relief-indisponible');
         dessinerTrace();
       }
     }, ATTENTE_ANALYSE);
@@ -572,7 +573,8 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       plus: analyse?.plus ?? null,
       etapes: compacter(etapes),
     });
-    message.textContent = reussi ? t('editeur.enregistre', { nom }) : t('editeur.stockage-plein');
+    if (reussi) poser(message, 'editeur.enregistre', { nom });
+    else poser(message, 'editeur.stockage-plein');
     if (reussi) {
       stockage.effacerBrouillon();
       onEnregistre();
@@ -669,7 +671,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       bouton.type = 'button';
       const portage = activite.portage && pente >= PENTE_PORTAGE;
       bouton.className = `parcours-alerte${portage ? ' parcours-alerte-forte' : ''}`;
-      bouton.textContent = t('editeur.passage', {
+      poser(bouton, 'editeur.passage', {
         type: t(portage ? 'editeur.portage' : pente > 0 ? 'editeur.montee' : 'editeur.descente'),
         pente: `${pente > 0 ? '+' : ''}${Math.round(pente)}`,
         longueur: formatLongueur(longueur),
@@ -693,7 +695,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (passages.length > PASSAGES_AFFICHES) {
       const ligne = document.createElement('p');
       ligne.className = 'parcours-alerte-suite';
-      ligne.textContent = t('editeur.autres-passages', { n: passages.length - PASSAGES_AFFICHES });
+      poser(ligne, 'editeur.autres-passages', { n: passages.length - PASSAGES_AFFICHES });
       elements.push(ligne);
     }
     if (activite.portage && repartition?.marches) ajouterTexte(t('editeur.marches', { longueur: formatLongueur(repartition.marches) }));
@@ -815,7 +817,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       $('[data-unite-allure]').textContent = uniteAllure();
       majAideAllure();
     }
-    if (!analyse) lecture.textContent = t('editeur.lire-profil');
+    if (!analyse) poser(lecture, 'editeur.lire-profil');
     if (etapes.length) dessinerMarqueurs();
     rendre();
     if (repartition) {
@@ -873,7 +875,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         analyse = null;
         jetonAnalyse += 1;
         blocAnalyse.hidden = true;
-        message.textContent = t(longueur > LONGUEUR_MAX_DETAIL ? 'editeur.long-variantes' : 'editeur.long-morceaux', { distance: km(longueur) });
+        poser(message, longueur > LONGUEUR_MAX_DETAIL ? 'editeur.long-variantes' : 'editeur.long-morceaux', { distance: km(longueur) });
         panneau.definirResume({ detail: km(longueur), valeur: '', unite: '' });
         dessinerTrace();
         cadrer(lignesEnsemble.flat());

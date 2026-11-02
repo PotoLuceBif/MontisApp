@@ -3,7 +3,7 @@
 import { lire, ecrire } from './reglages.js';
 import { formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ta } from './i18n.js';
+import { t, ta, poser } from './i18n.js';
 
 const ZOOM_POSITION = 14;
 const ZOOM_FICHE = 12.5;
@@ -68,9 +68,9 @@ export function creerPosition(map, [lng, lat]) {
   copier.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(texte);
-      copier.textContent = t('lieu.copie');
+      poser(copier, 'lieu.copie');
     } catch {
-      copier.textContent = t('lieu.indisponible');
+      poser(copier, 'lieu.indisponible');
     }
   });
   const zoomer = el('button', 'fiche-copier', t('lieu.zoomer'));
