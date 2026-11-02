@@ -53,14 +53,6 @@ body { font-family: var(--police); color: var(--texte); }
 input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--accent); }
 
 /* ===== Balises de vent (parapente) ===== */
-.balise { width: 34px; height: 34px; position: relative; cursor: pointer; }
-.balise svg { width: 34px; height: 34px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)); }
-.balise span {
-  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  font: 700 11px var(--police); color: #fff; text-shadow: 0 0 3px #000;
-  pointer-events: none;
-}
-.balise-perimee { opacity: 0.55; }
 
 /* ===== Barre du haut : 2D | 3D et recherche ===== */
 #barre-haut {
@@ -2130,6 +2122,46 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .para-bouton-principal:hover:not(:disabled) { filter: brightness(1.06); }
 .para-legende { display: flex; flex-wrap: wrap; gap: 7px 12px; }
 .para-legende > span { display: inline-flex; align-items: center; gap: 5px; color: var(--texte-2); font-size: 11px; }
+.para-fleche {
+  width: 16px; height: 6px; flex: none; border: 1.5px solid rgba(8, 12, 24, .82); border-radius: 3px; background: var(--vent-couleur);
+}
+.menu-contenu .para-legende-note { margin: 0; font-size: 11px; }
+.menu-contenu .para-etat-erreur { color: #e05b67; }
+.para-source { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.para-source select {
+  min-height: 34px; padding: 4px 7px; border: 1px solid var(--bord); border-radius: 7px;
+  background: var(--surface); color: var(--texte); font: 600 12px var(--police);
+}
+.para-balises { display: grid; gap: 6px; }
+.para-balises[hidden] { display: none; }
+.para-balises h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.para-balises-liste { display: grid; gap: 5px; }
+.para-balise {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; width: 100%; min-height: 48px; padding: 6px 9px;
+  border: 1px solid var(--bord); border-radius: 9px; background: var(--surface); color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.para-balise:hover { border-color: var(--accent); }
+.para-balise strong { font-size: 12px; font-weight: 650; }
+.para-balise small { color: var(--texte-2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.para-balise-texte { display: grid; min-width: 0; gap: 1px; }
+.para-balise-texte strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.para-balise-vitesse { display: grid; justify-items: end; gap: 1px; white-space: nowrap; }
+.balise-popup { width: 250px; max-width: 100%; }
+.balise-popup > p { margin: 3px 0 0; }
+.balise-popup .balise-releve { color: var(--texte-2); font-size: 11px; }
+.balise-popup .balise-releve-ancien { color: #c9791a; font-weight: 650; }
+.balise-historique { display: grid; gap: 4px; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--bord); }
+.balise-historique strong { font-size: 12px; }
+.balise-historique p { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.35; }
+.balise-graphique { display: block; width: 100%; height: 58px; }
+.balise-graphique polygon { fill: var(--accent); opacity: .18; }
+.balise-graphique polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.balise-reperes { display: flex; justify-content: space-between; color: var(--texte-2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.balise-reperes span { display: grid; justify-items: center; gap: 1px; }
+.balise-reperes svg { width: 15px; height: 15px; fill: var(--texte); }
+.balise-popup .balise-description { margin-top: 8px; color: var(--texte-2); font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.balise-popup .balise-source { margin-top: 8px; color: var(--texte-2); font-size: 11px; }
+.balise-popup .balise-source a { color: var(--accent); font-weight: 650; }
 .para-point { width: 7px; height: 7px; border-radius: 50%; }
 .para-point-vert { background: #2e9e4f; }
 .para-point-bleu { background: #1f6fd1; }

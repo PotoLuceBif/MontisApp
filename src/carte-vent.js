@@ -8,11 +8,11 @@ import {
   creerChamp,
   depuisComposantes,
   lireChamp,
-  pointCardinal,
   ventAHauteur,
 } from './vent-calcul.js';
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
 const SOURCE_VENT = 'vent-previsions';
@@ -33,14 +33,6 @@ const MAILLE_RELIEF = 36;
 const FLECHES_PAR_COTE = 5;
 const FLECHES_PAR_COTE_COUCHE_SEULE = 10;
 const METRES_PAR_DEGRE = 111320;
-const PALETTES = {
-  clair: ['#248a4b', '#c68b00', '#df6718', '#c93636'],
-  sombre: ['#43c98b', '#edc653', '#f28a50', '#ff647c'],
-  cyberpunk: ['#4debd4', '#ffe45c', '#ff9b45', '#ff5da2'],
-};
-// Couleurs des flèches sur la carte : vives et cernées de sombre pour rester lisibles
-// sur tous les fonds, quel que soit le thème de l'application
-const PALETTE_CARTE = ['#2ef2b4', '#ffe94d', '#ff9a2e', '#ff5580'];
 const LIBELLE_HAUTEUR = (hauteur) => `${hauteur.toLocaleString('fr-FR')} m`;
 const PALIERS_LEGENDE = [
   { vitesse: 5, libelle: '0–9 km/h' },
@@ -128,28 +120,6 @@ function creerGrilleVolume(centre, demi) {
   };
 }
 
-// Cadran orienté : la flèche montre où va le vent et le repère N suit la vue.
-// `repere` : 'carte' suit la rotation de la carte, sinon l'angle de la vue en degrés.
-function cadranVent(flux, repere, classe = '') {
-  const attributFlux = Number.isFinite(flux) ? ` data-flux="${flux}"` : '';
-  const attributRepere = repere === 'carte' ? ' data-repere="carte"' : '';
-  const angle = repere === 'carte' ? 0 : repere;
-  const graduations = [45, 90, 135, 180, 225, 270, 315]
-    .map((degres) => `<path d="M32 4.5V8" transform="rotate(${degres} 32 32)"/>`).join('');
-  return `<svg class="vent-cadran ${classe}" viewBox="0 0 64 64" aria-hidden="true"${attributFlux}${attributRepere}>
-    <g class="vent-cadran-rose" transform="rotate(${-angle} 32 32)">
-      <circle cx="32" cy="32" r="29"/>${graduations}
-      <text x="32" y="13.5" text-anchor="middle">N</text>
-    </g>
-    <path class="vent-cadran-fleche" d="M32 13 45 33 36 30V52H28V30L19 33Z" transform="rotate(${(flux ?? 0) - angle} 32 32)"${Number.isFinite(flux) ? '' : ' hidden'}/>
-  </svg>`;
-}
-
-const texteProvenance = (provenance) => {
-  const point = pointCardinal(provenance);
-  return `${point.length === 1 && point !== 'S' && point !== 'N' ? 'de l’' : 'du '}${point} · ${Math.round(provenance)}°`;
-};
-
 function formaterHeure(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
@@ -191,7 +161,7 @@ export function creerCarteVent(map) {
       </select></label>
       <div class="vent-resume" aria-label="Résumé du vent">
         <div class="vent-resume-direction">
-          ${cadranVent(null, 'carte', 'vent-cadran-grand')}
+          ${cadranVent(null, 0, 'vent-cadran-grand')}
           <small data-vent-provenance>—</small>
         </div>
         <div class="vent-resume-valeur"><span>Vent moyen</span><strong data-vent-moyen>—</strong></div>
@@ -308,12 +278,8 @@ export function creerCarteVent(map) {
     pastille.style.setProperty('--vent-couleur', PALETTE_CARTE[index]);
   });
 
-  function couleurVitesse(vitesse) {
-    const couleurs = PALETTES[document.documentElement.dataset.theme] || PALETTES.clair;
-    return vitesse < 10 ? couleurs[0] : vitesse < 20 ? couleurs[1] : vitesse < 30 ? couleurs[2] : couleurs[3];
-  }
-
-  const couleurCarte = (vitesse) => PALETTE_CARTE[vitesse < 10 ? 0 : vitesse < 20 ? 1 : vitesse < 30 ? 2 : 3];
+  const couleurVitesse = couleurInterface;
+  const couleurCarte = (vitesse) => PALETTE_CARTE[palierVent(vitesse)];
 
   const coucheVent = creerCoucheVent(map, {
     couleur: couleurCarte,
@@ -343,18 +309,6 @@ export function creerCarteVent(map) {
       detailVolume.innerHTML = `${cadranVent(fleche.flux, volume.rotation, 'vent-cadran-petit')}<span><strong>${Math.round(fleche.vitesse)} km/h</strong> à ${LIBELLE_HAUTEUR(fleche.hauteur)} du sol · ${texteProvenance(fleche.provenance)}</span>`;
     },
   });
-
-  // Le cadran est dans le référentiel de l'écran : une carte tournée le fait tourner aussi
-  function orienterCadrans() {
-    const cap = map.getBearing();
-    [panneau, map.getContainer()].forEach((conteneur) => {
-      conteneur.querySelectorAll('.vent-cadran[data-repere="carte"]').forEach((cadran) => {
-        cadran.querySelector('.vent-cadran-rose').setAttribute('transform', `rotate(${-cap} 32 32)`);
-        const flux = Number(cadran.dataset.flux);
-        if (Number.isFinite(flux)) cadran.querySelector('.vent-cadran-fleche').setAttribute('transform', `rotate(${flux - cap} 32 32)`);
-      });
-    });
-  }
 
   // ---------- Échéance, commune à la carte et au volume ----------
   const echeance = () => Number(curseurTemps.value);
@@ -440,9 +394,10 @@ export function creerCarteVent(map) {
     resumeRafales.textContent = rafaleMax === null ? '—' : `${Math.round(rafaleMax)} km/h`;
     resumeProvenance.textContent = texteProvenance(provenance);
     cadranResume.dataset.flux = String(flux);
-    cadranResume.querySelector('.vent-cadran-fleche').removeAttribute('hidden');
+    const flecheResume = cadranResume.querySelector('.vent-cadran-fleche');
+    flecheResume.removeAttribute('hidden');
+    flecheResume.setAttribute('transform', `rotate(${flux} 32 32)`);
     cadranResume.style.setProperty('--vent-couleur', couleurVitesse(moyenne));
-    orienterCadrans();
     resumeMoyen.style.color = couleurVitesse(moyenne);
     if (rafaleMax === null) resumeRafales.style.removeProperty('color');
     else resumeRafales.style.color = couleurVitesse(rafaleMax);
@@ -724,7 +679,7 @@ export function creerCarteVent(map) {
   }
 
   function appliquerPalette() {
-    const couleurs = PALETTES[document.documentElement.dataset.theme] || PALETTES.clair;
+    const couleurs = paletteInterface();
     panneau.querySelectorAll('[data-volume-vitesse]').forEach((pastille, index) => {
       pastille.style.setProperty('--vent-couleur', couleurs[index]);
     });
@@ -785,7 +740,7 @@ export function creerCarteVent(map) {
     const direction = document.createElement('div');
     direction.className = 'vent-carte-popup-direction';
     direction.style.setProperty('--vent-couleur', couleurVitesse(proprietes.vitesse));
-    direction.innerHTML = `${cadranVent(proprietes.flux, 'carte', 'vent-cadran-moyen')}<div><strong>${Math.round(proprietes.vitesse)} km/h</strong><small>${texteProvenance(proprietes.provenance)}</small></div>`;
+    direction.innerHTML = `${cadranVent(proprietes.flux, 0, 'vent-cadran-moyen')}<div><strong>${Math.round(proprietes.vitesse)} km/h</strong><small>${texteProvenance(proprietes.provenance)}</small></div>`;
     const rafales = document.createElement('p');
     rafales.textContent = `Rafales au sol : ${Number.isFinite(rafalesProches) ? `${Math.round(rafalesProches)} km/h` : 'indisponibles'}`;
     const altitude = document.createElement('p');
@@ -795,7 +750,6 @@ export function creerCarteVent(map) {
       .setLngLat(feature.geometry.coordinates)
       .setDOMContent(contenu)
       .addTo(map);
-    orienterCadrans();
   }
 
   function afficherDonnees(reponses, positions, heureCible, grille, continu = false) {
@@ -923,7 +877,6 @@ export function creerCarteVent(map) {
     else void chargerVent();
   });
   map.on('moveend', mettreAJourAlerte);
-  map.on('rotate', orienterCadrans);
   map.on('style.load', () => {
     if (!actif) return;
     assurerCouche();

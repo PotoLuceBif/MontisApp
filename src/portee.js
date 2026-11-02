@@ -415,5 +415,10 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     }
   }
 
-  return { reinitialiser };
+  return {
+    reinitialiser,
+    get enAttente() {
+      return attente;
+    },
+  };
 }
