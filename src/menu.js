@@ -6,6 +6,7 @@ import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
 import { creerActiviteRandonnee } from './activite-randonnee.js';
 import { creerActiviteSki } from './activite-ski.js';
+import { creerActiviteVelo } from './activite-velo.js';
 import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
 import { creerCarteVent } from './carte-vent.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
@@ -81,13 +82,6 @@ function ajouterAideMaintien(bouton, libelle) {
     },
     true
   );
-}
-
-// Module « à venir » : une ligne dans le menu avec un petit texte
-function creerModuleBientot(id, label, icone, texte) {
-  const panneau = document.createElement('div');
-  panneau.innerHTML = `<p>${texte}</p>`;
-  return { id, label, icone, panneau, activer() {}, desactiver() {} };
 }
 
 export function initMenu(map) {
@@ -175,7 +169,7 @@ export function initMenu(map) {
       modules: [
         creerActiviteParapente(map, { fermerMenu, analyseVent: carteVent }),
         creerActiviteRandonnee(map),
-        creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
+        creerActiviteVelo(map, { fermerMenu }),
         creerActiviteSki(map),
       ],
       emplacement: 'menu',

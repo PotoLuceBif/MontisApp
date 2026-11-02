@@ -40,7 +40,7 @@ function el(balise, classe, texte) {
   return e;
 }
 
-const titreDe = (r) => {
+export const titreDe = (r) => {
   const ref = r.ref || '';
   const nom = r.name || '';
   if (ref && nom && !nom.includes(ref)) return `${ref} · ${nom}`;
@@ -115,7 +115,7 @@ function echantillonnerLignes(lignes) {
   return { points, total };
 }
 
-function lireGpx(contenu, nomFichier) {
+export function lireGpx(contenu, nomFichier) {
   const documentXml = new DOMParser().parseFromString(contenu, 'application/xml');
   if (
     documentXml.getElementsByTagName('parsererror').length ||
@@ -172,7 +172,7 @@ function lireGpx(contenu, nomFichier) {
   return { nom, trace: { lignes: lignesTrace, chaine }, longueur };
 }
 
-function decoderPolyligne6(polyligne) {
+export function decoderPolyligne6(polyligne) {
   if (typeof polyligne !== 'string') throw new Error('Le service a renvoyé un tracé invalide.');
   const points = [];
   let index = 0;
