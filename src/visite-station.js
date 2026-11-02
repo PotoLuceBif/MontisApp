@@ -6,6 +6,7 @@ import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
 
 const SOURCE_PISTES = 'visite-pistes';
+const SOURCE_MASQUE = 'visite-masque';
 // Le décor autour des pistes : la neige des stations, ou l'été des bike parks
 const DECORS = {
   hiver: {
@@ -15,10 +16,13 @@ const DECORS = {
     brume: '#e4ebe6', sol: '#eef0e2', forets: '#9dbb8a', eau: '#b4d6e8', ombre: '#8f9a84', accent: '#b4bca6', courbes: '#8a7a5c', routes: '#b5ae9e',
   },
 };
-const MARGE_ZONE_M = 3000; // autour des pistes, la zone de la station
+const MARGE_ZONE_M = 2000; // autour des pistes, la zone de la station
 // Depuis cette zone : tout reste lisible jusqu'à NET, puis s'estompe et disparaît à LOIN
-const DISTANCE_NETTE_M = 7000;
-const DISTANCE_LOIN_M = 18000;
+const DISTANCE_NETTE_M = 3000;
+const DISTANCE_LOIN_M = 10000;
+// La carte s'arrête là, avec un bord fondu ; la caméra, elle, reste libre
+const RAYON_CARTE_M = 100_000;
+const MARGE_TUILES_M = 8000; // les tuiles vont un peu au-delà, pour que le bord fondu les recouvre
 // Ce qui ne sert qu'à se repérer de près. Le sol (forêts, eau, relief) reste jusqu'à l'horizon
 const COUCHES_PROCHES = new Set([
   'visite-courbes', 'visite-courbes-altitude', 'visite-batiments', 'visite-routes',
@@ -31,8 +35,8 @@ const brouillard = (couleur) => ({
   'horizon-color': couleur,
   'fog-color': couleur,
   'sky-horizon-blend': 0.7,
-  'horizon-fog-blend': 0.6,
-  'fog-ground-blend': 0.55,
+  'horizon-fog-blend': 0.7,
+  'fog-ground-blend': 0.45,
   'atmosphere-blend': 0,
 });
 const SATELLITE = { id: 'satellite', libelle: 'Satellite', source: SOURCE_SATELLITE };
@@ -404,9 +408,9 @@ function limitesDe(features) {
   return limites;
 }
 
-// Zone de la visite : le cadre des pistes, agrandi de la marge et aux coins arrondis
-function zoneDe(limites) {
-  const margeLat = MARGE_ZONE_M / METRES_PAR_DEGRE;
+// Le cadre des pistes, agrandi de la marge et aux coins arrondis
+function contourAutour(limites, marge) {
+  const margeLat = marge / METRES_PAR_DEGRE;
   const margeLng = margeLat / Math.cos((limites.getCenter().lat * Math.PI) / 180);
   const [ouest, sud, est, nord] = limites.toArray().flat();
   const coins = [
@@ -421,10 +425,46 @@ function zoneDe(limites) {
       return [lng + Math.cos(angle) * margeLng, lat + Math.sin(angle) * margeLat];
     }));
   contour.push(contour[0]);
-  // Le cadre où l'on s'arrête de télécharger ce qui s'estompe de toute façon
-  const loinLat = (DISTANCE_LOIN_M + MARGE_ZONE_M) / METRES_PAR_DEGRE;
-  const loinLng = loinLat / Math.cos((limites.getCenter().lat * Math.PI) / 180);
-  return { contour, cadre: [ouest - loinLng, sud - loinLat, est + loinLng, nord + loinLat] };
+  return contour;
+}
+
+function cadreAutour(limites, marge) {
+  const margeLat = marge / METRES_PAR_DEGRE;
+  const margeLng = margeLat / Math.cos((limites.getCenter().lat * Math.PI) / 180);
+  const [ouest, sud, est, nord] = limites.toArray().flat();
+  return [ouest - margeLng, sud - margeLat, est + margeLng, nord + margeLat];
+}
+
+// Hors de la carte, la brume ; le trait flouté adoucit la frontière
+function donneesMasque(contour) {
+  const monde = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [monde, contour] } },
+      { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: contour } },
+    ],
+  };
+}
+
+function calquesMasque(couleur) {
+  const largeurBord = ['interpolate', ['exponential', 2], ['zoom'], 5, 30, 12, 900];
+  return [
+    {
+      id: 'visite-masque',
+      type: 'fill',
+      source: SOURCE_MASQUE,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: { 'fill-color': couleur },
+    },
+    {
+      id: 'visite-masque-bord',
+      type: 'line',
+      source: SOURCE_MASQUE,
+      filter: ['==', ['geometry-type'], 'LineString'],
+      paint: { 'line-color': couleur, 'line-width': largeurBord, 'line-blur': largeurBord },
+    },
+  ];
 }
 
 // Estompe selon la distance à la zone : évaluée une fois par tuile, sans coût à chaque image
@@ -465,6 +505,32 @@ export function creerVisiteStation(map, {
   let idFond = fonds.some(({ id }) => id === lire(CLES.fond, '')) ? lire(CLES.fond, '') : fonds[0].id;
   const choixFond = new Set();
 
+  // Dès que le domaine sort de l'écran, un geste suffit pour y revenir
+  const pastilleRetour = document.createElement('button');
+  pastilleRetour.type = 'button';
+  pastilleRetour.className = 'visite-retour';
+  pastilleRetour.hidden = true;
+  pastilleRetour.textContent = ete ? 'Revenir au bike park' : 'Revenir à la station';
+  pastilleRetour.addEventListener('click', () => recentrer());
+  document.body.append(pastilleRetour);
+
+  function majPastilleRetour() {
+    if (!enCours?.limites) {
+      pastilleRetour.hidden = true;
+      return;
+    }
+    const centre = enCours.limites.getCenter();
+    const { x, y } = map.project(centre);
+    const { clientWidth, clientHeight } = map.getContainer();
+    const aLEcran = map.getBounds().contains(centre) && x >= 0 && x <= clientWidth && y >= 0 && y <= clientHeight;
+    pastilleRetour.hidden = aLEcran;
+  }
+
+  function recentrer() {
+    if (!enCours?.cadrage) return;
+    map.flyTo({ ...enCours.cadrage, pitch: etat.mode3D ? enCours.cadrage.pitch : 0, duration: 1500, essential: true });
+  }
+
   function fermerPopup() {
     if (popup) popup.remove();
     popup = null;
@@ -495,15 +561,15 @@ export function creerVisiteStation(map, {
     map.getCanvas().style.cursor = surObjet ? 'pointer' : '';
   }
 
-  function copierSource(idSource, cadre) {
+  function copierSource(idSource, cadre, cadreCarte) {
     const source = map.getSource(idSource);
     const options = {
       type: source.type,
       tiles: source.tiles,
       minzoom: source.minzoom,
       maxzoom: source.maxzoom,
+      bounds: idSource === 'courbes' ? cadre : cadreCarte, // au-delà, les courbes sont déjà effacées
     };
-    if (idSource === 'courbes') options.bounds = cadre; // au-delà, elles sont déjà effacées
     if (source.attribution) options.attribution = source.attribution;
     if (source.type === 'raster-dem') Object.assign(options, { tileSize: source.tileSize, encoding: source.encoding });
     map.addSource(SOURCES_LIMITEES[idSource], options);
@@ -513,8 +579,12 @@ export function creerVisiteStation(map, {
   // tuiles (cause d'un plantage du placement des textes).
   function creerCalques(donnees, communes) {
     if (!map.hasImage(ICONE_SOMMET)) map.addImage(ICONE_SOMMET, creerIconeSommet(), { pixelRatio: 2 });
-    const { contour, cadre } = zoneDe(limitesDe(donnees.features));
-    Object.keys(SOURCES_LIMITEES).forEach((id) => copierSource(id, cadre));
+    const limitesPistes = limitesDe(donnees.features);
+    const contour = contourAutour(limitesPistes, MARGE_ZONE_M);
+    const cadre = cadreAutour(limitesPistes, MARGE_ZONE_M + DISTANCE_LOIN_M);
+    const cadreCarte = cadreAutour(limitesPistes, RAYON_CARTE_M + MARGE_TUILES_M);
+    Object.keys(SOURCES_LIMITEES).forEach((id) => copierSource(id, cadre, cadreCarte));
+    map.addSource(SOURCE_MASQUE, { type: 'geojson', data: donneesMasque(contourAutour(limitesPistes, RAYON_CARTE_M)) });
     map.addSource(SOURCE_PENTES, {
       type: 'raster',
       tiles: [URL_PENTES],
@@ -531,6 +601,7 @@ export function creerVisiteStation(map, {
 
     const calques = [
       ...calquesDecor(decor, courbesVisibles, pentesVisibles),
+      ...calquesMasque(decor.brume),
       ...calquesPistes(communes, courbesVisibles),
     ].map((calque) => {
       const source = SOURCES_LIMITEES[calque.source];
@@ -540,8 +611,11 @@ export function creerVisiteStation(map, {
     calques.forEach((calque) => map.addLayer(calque));
     // Les fonds en image, juste au-dessus de la couleur du sol
     fonds.filter(({ source }) => source && map.getSource(source)).forEach(({ id, source }) => {
-      map.addLayer({ id: `visite-image-${id}`, type: 'raster', source, layout: { visibility: 'none' } }, 'visite-forets');
+      const { tiles, tileSize, maxzoom, attribution: credit } = map.getSource(source);
+      map.addSource(`visite-image-${id}`, { type: 'raster', tiles, tileSize, maxzoom, bounds: cadreCarte, attribution: credit });
+      map.addLayer({ id: `visite-image-${id}`, type: 'raster', source: `visite-image-${id}`, layout: { visibility: 'none' } }, 'visite-forets');
     });
+    enCours.limites = limitesPistes;
     idsCalques = map.getStyle().layers.map(({ id }) => id).filter((id) => id.startsWith('visite-'));
     appliquerFondVisite();
   }
@@ -595,7 +669,8 @@ export function creerVisiteStation(map, {
   function retirerCalques() {
     idsCalques.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
     idsCalques = [];
-    [...Object.values(SOURCES_LIMITEES), SOURCE_PENTES, SOURCE_PISTES].forEach((id) => {
+    const images = fonds.map(({ id }) => `visite-image-${id}`);
+    [...Object.values(SOURCES_LIMITEES), ...images, SOURCE_PENTES, SOURCE_MASQUE, SOURCE_PISTES].forEach((id) => {
       if (map.getSource(id)) map.removeSource(id);
     });
   }
@@ -646,6 +721,7 @@ export function creerVisiteStation(map, {
       imposerCiel(brouillard(decor.brume));
       map.on('click', surClic);
       map.on('mousemove', surSurvol);
+      map.on('moveend', majPastilleRetour);
     }
 
     const etroit = map.getContainer().clientWidth <= 640;
@@ -661,14 +737,13 @@ export function creerVisiteStation(map, {
       pitch: INCLINAISON,
     });
     const rapproche = etroit ? ZOOM_RAPPROCHE_ETROIT : ZOOM_RAPPROCHE;
-    map.flyTo({
+    enCours.cadrage = {
       center: camera?.center ?? limites.getCenter(),
       zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, (camera?.zoom ?? ZOOM_MIN) + rapproche)),
       bearing: donnees.cap,
       pitch: INCLINAISON,
-      duration: 2600,
-      essential: true,
-    });
+    };
+    map.flyTo({ ...enCours.cadrage, duration: 2600, essential: true });
   }
 
   function quitter({ restaurer = true } = {}) {
@@ -678,6 +753,8 @@ export function creerVisiteStation(map, {
     fermerPopup();
     map.off('click', surClic);
     map.off('mousemove', surSurvol);
+    map.off('moveend', majPastilleRetour);
+    pastilleRetour.hidden = true;
     map.getCanvas().style.cursor = '';
     retirerCalques();
     etat.enVisite = false;
@@ -765,7 +842,15 @@ export function creerVisiteStation(map, {
       surChangement();
     });
 
-    bloc.append(choix, courbes, pentes, legende);
+    const recentrage = document.createElement('button');
+    recentrage.type = 'button';
+    recentrage.className = 'ski-visite-calque';
+    recentrage.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>';
+    recentrage.append('Recentrer');
+    recentrage.title = ete ? 'Revenir sur le bike park' : 'Revenir sur la station';
+    recentrage.addEventListener('click', () => recentrer());
+
+    bloc.append(choix, courbes, pentes, recentrage, legende);
     choixFond.add(bloc);
     return bloc;
   }
