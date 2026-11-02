@@ -9,8 +9,6 @@ import { t, ta, ti, tt } from './i18n.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
-const PAS_M = 50;
-const NB_RAYONS = 1440;
 const TAILLE_MAX_GRILLE = 400;
 const CLE_FINESSE = 'montis.finesse';
 
@@ -125,6 +123,64 @@ export function altitude(lon, lat, z) {
 }
 
 // ---------- Calcul de la zone atteignable ----------
+// 16 directions (dont les « sauts de cavalier ») : l'écart avec la ligne droite reste sous 3 %,
+// contre 8 % avec les seules 8 cases voisines
+const VOISINS = [
+  [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+  [2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2],
+].map(([di, dj]) => [di, dj, Math.hypot(di, dj)]);
+
+// File de priorité minimale (tas binaire) sur des indices de cellules
+function creerTas(capacite) {
+  let cles = new Float64Array(capacite);
+  let valeurs = new Int32Array(capacite);
+  let n = 0;
+  const agrandir = () => {
+    const c = new Float64Array(cles.length * 2);
+    const v = new Int32Array(cles.length * 2);
+    c.set(cles);
+    v.set(valeurs);
+    cles = c;
+    valeurs = v;
+  };
+  return {
+    get taille() {
+      return n;
+    },
+    ajouter(valeur, cle) {
+      if (n === cles.length) agrandir();
+      let k = n++;
+      while (k > 0) {
+        const parent = (k - 1) >> 1;
+        if (cles[parent] <= cle) break;
+        cles[k] = cles[parent];
+        valeurs[k] = valeurs[parent];
+        k = parent;
+      }
+      cles[k] = cle;
+      valeurs[k] = valeur;
+    },
+    extraire() {
+      const sommet = valeurs[0];
+      n -= 1;
+      const cle = cles[n];
+      const valeur = valeurs[n];
+      let k = 0;
+      for (;;) {
+        let enfant = 2 * k + 1;
+        if (enfant >= n) break;
+        if (enfant + 1 < n && cles[enfant + 1] < cles[enfant]) enfant += 1;
+        if (cles[enfant] >= cle) break;
+        cles[k] = cles[enfant];
+        valeurs[k] = valeurs[enfant];
+        k = enfant;
+      }
+      cles[k] = cle;
+      valeurs[k] = valeur;
+      return sommet;
+    },
+  };
+}
 async function calculerPortee(lon, lat, finesse, h0) {
   const rayonM = Math.max(500, Math.min(MAX_KM * 1000, h0 * finesse));
   const z = rayonM <= 12000 ? 12 : 11;
@@ -132,34 +188,8 @@ async function calculerPortee(lon, lat, finesse, h0) {
 
   const kLat = 111320;
   const kLon = 111320 * Math.cos((lat * Math.PI) / 180);
-  const nPas = Math.floor(rayonM / PAS_M);
 
-  // 1) Pour chaque rayon : finesse minimale nécessaire pour atteindre chaque pas
-  const tables = new Array(NB_RAYONS);
-  const longueurs = new Int32Array(NB_RAYONS);
-  for (let r = 0; r < NB_RAYONS; r++) {
-    const cap = (2 * Math.PI * r) / NB_RAYONS;
-    const sx = Math.sin(cap);
-    const cy = Math.cos(cap);
-    const tab = new Float32Array(nPas);
-    let fmax = 0;
-    let n = 0;
-    for (let k = 1; k <= nPas; k++) {
-      const d = k * PAS_M;
-      const sol = altitude(lon + (d * sx) / kLon, lat + (d * cy) / kLat, z);
-      const dh = h0 - sol;
-      if (!(dh > 0)) break; // le relief est plus haut que le départ
-      const freq = d / dh;
-      if (freq > fmax) fmax = freq;
-      if (fmax > finesse) break; // hors de portée avec cette finesse
-      tab[k - 1] = fmax;
-      n = k;
-    }
-    tables[r] = tab;
-    longueurs[r] = n;
-  }
-
-  // 2) Grille de cellules (une cellule = un pixel de l'image)
+  // 1) Grille de cellules (une cellule = un pixel de l'image) et relief de chacune
   const tailleCell = Math.max(40, (2 * rayonM) / TAILLE_MAX_GRILLE);
   const N = Math.ceil((2 * rayonM) / tailleCell);
   const dLat = tailleCell / kLat;
@@ -169,11 +199,52 @@ async function calculerPortee(lon, lat, finesse, h0) {
   const east = west + N * dLon;
   const south = north - N * dLat;
 
-  const agl = new Float32Array(N * N).fill(NaN);
-  const fmin = new Float32Array(N * N);
   const solGrille = new Float32Array(N * N);
-  const dist = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      solGrille[j * N + i] = altitude(west + (i + 0.5) * dLon, north - (j + 0.5) * dLat, z);
+    }
+  }
 
+  // 2) Chemin le plus court en vol plané (Dijkstra). La voile peut tourner : contourner un
+  // relief ou suivre une vallée coûte de la distance, donc de la hauteur. Une cellule n'est
+  // franchissable que si la voile y passe encore au-dessus du sol. La distance ne fait que
+  // croître : la première arrivée sur une cellule est la plus haute possible.
+  const dist = new Float32Array(N * N).fill(Infinity);
+  const fmin = new Float32Array(N * N);
+  const fige = new Uint8Array(N * N);
+  const tas = creerTas(N * N);
+  const i0 = Math.min(N - 1, Math.max(0, Math.floor((lon - west) / dLon)));
+  const j0 = Math.min(N - 1, Math.max(0, Math.floor((north - lat) / dLat)));
+  const depart = j0 * N + i0;
+  dist[depart] = 0;
+  tas.ajouter(depart, 0);
+  while (tas.taille) {
+    const idx = tas.extraire();
+    if (fige[idx]) continue;
+    fige[idx] = 1;
+    const i = idx % N;
+    const j = (idx - i) / N;
+    const d0 = dist[idx];
+    for (const [di, dj, longueur] of VOISINS) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue;
+      const voisin = nj * N + ni;
+      if (fige[voisin]) continue;
+      const d = d0 + longueur * tailleCell;
+      if (d > rayonM || !(d < dist[voisin])) continue;
+      const dh = h0 - solGrille[voisin];
+      if (!(dh > 0) || d / dh > finesse) continue; // la voile toucherait le sol
+      dist[voisin] = d;
+      fmin[voisin] = Math.max(fmin[idx], d / dh);
+      tas.ajouter(voisin, d);
+    }
+  }
+
+  // 3) Image : couleur selon la hauteur restante au-dessus du sol
+  const agl = new Float32Array(N * N).fill(NaN);
+  const direct = new Float32Array(N * N);
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = N;
   const ctx = canvas.getContext('2d');
@@ -183,42 +254,30 @@ async function calculerPortee(lon, lat, finesse, h0) {
   let dMax = 0;
   let capMax = 0;
 
-  for (let j = 0; j < N; j++) {
-    for (let i = 0; i < N; i++) {
-      const lo = west + (i + 0.5) * dLon;
-      const la = north - (j + 0.5) * dLat;
-      const dx = (lo - lon) * kLon;
-      const dy = (la - lat) * kLat;
-      const d = Math.hypot(dx, dy);
-      const k = Math.max(1, Math.round(d / PAS_M));
-      if (k > nPas) continue;
+  for (let idx = 0; idx < N * N; idx++) {
+    if (!fige[idx]) continue;
+    const hauteur = h0 - dist[idx] / finesse - solGrille[idx];
+    if (!(hauteur >= 0)) continue;
+    const i = idx % N;
+    const j = (idx - i) / N;
+    const dx = (i - i0) * tailleCell;
+    const dy = (j0 - j) * tailleCell;
+    const d = Math.hypot(dx, dy);
+    agl[idx] = hauteur;
+    direct[idx] = d;
+    nb++;
+    if (d > dMax) {
+      dMax = d;
       let b = Math.atan2(dx, dy);
       if (b < 0) b += 2 * Math.PI;
-      const r = Math.round((b / (2 * Math.PI)) * NB_RAYONS) % NB_RAYONS;
-      if (k > longueurs[r]) continue;
-
-      const sol = altitude(lo, la, z);
-      const hauteur = h0 - d / finesse - sol; // hauteur de la voile au-dessus du sol
-      if (!(hauteur >= 0)) continue;
-
-      const idx = j * N + i;
-      agl[idx] = hauteur;
-      fmin[idx] = tables[r][k - 1];
-      solGrille[idx] = sol;
-      dist[idx] = d;
-      nb++;
-      if (d > dMax) {
-        dMax = d;
-        capMax = (b * 180) / Math.PI;
-      }
-
-      const [rr, gg, bb] = couleurAgl(hauteur);
-      const p = idx * 4;
-      img.data[p] = rr;
-      img.data[p + 1] = gg;
-      img.data[p + 2] = bb;
-      img.data[p + 3] = 255;
+      capMax = (b * 180) / Math.PI;
     }
+    const [rr, gg, bb] = couleurAgl(hauteur);
+    const p = idx * 4;
+    img.data[p] = rr;
+    img.data[p + 1] = gg;
+    img.data[p + 2] = bb;
+    img.data[p + 3] = 255;
   }
 
   if (nb === 0) return { vide: true };
@@ -235,7 +294,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
       [west, south],
     ],
     reliefComplet,
-    grille: { N, west, north, dLon, dLat, agl, fmin, sol: solGrille, dist },
+    grille: { N, west, north, dLon, dLat, agl, fmin, sol: solGrille, dist: direct, chemin: dist },
     dMax,
     capMax,
     aireKm2: (nb * tailleCell * tailleCell) / 1e6,

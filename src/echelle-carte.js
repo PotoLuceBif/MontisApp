@@ -90,6 +90,8 @@ export function initEchelleCarte(map) {
         { x: panneau.right + marge, y: panneau.top },
       ]),
       { x: carte.left + marge, y: carte.bottom - hauteur - marge },
+      // Juste au-dessus de ce qui occupe le bas (crédits dépliés, fiche) : l'échelle reste en bas
+      ...obstacles.map((obstacle) => ({ x: carte.left + marge, y: obstacle.top - hauteur - marge })),
       { x: carte.right - largeur - marge, y: carte.bottom - hauteur - marge },
       { x: carte.left + marge, y: carte.top + marge },
       { x: carte.right - largeur - marge, y: carte.top + marge },
@@ -118,7 +120,9 @@ export function initEchelleCarte(map) {
           score: obstacles.reduce((total, obstacle) => total + aireRecouvrement(boite, obstacle), 0),
         };
       })
-      .sort((a, b) => a.score - b.score)[0];
+      // À recouvrement égal, la place la plus proche du coin bas gauche habituel
+      .sort((a, b) => a.score - b.score
+        || Math.hypot(a.x - carte.left, carte.bottom - a.y) - Math.hypot(b.x - carte.left, carte.bottom - b.y))[0];
 
     const decalageGauche = boiteEchelle.left - boitePosition.left;
     const decalageHaut = boiteEchelle.top - boitePosition.top;

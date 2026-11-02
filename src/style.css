@@ -2883,7 +2883,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .ski-fiche-recherche input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ski-fiche-recherche .rando-liste { max-height: min(280px, 40vh); margin-top: 8px; }
 @media (max-width: 700px) {
-  body:has(:is(#ski-fiche, #bikepark-fiche):not([hidden])) .maplibregl-ctrl-bottom-left { display: none; }
+  /* Fiche dépliée : elle passe devant les boutons de la carte et les accès Météo et Carte */
+  :is(#ski-fiche, #bikepark-fiche):not(.fiche-reduite) { z-index: 14; }
   :is(#ski-fiche, #bikepark-fiche).fiche-reduite,
   body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche).fiche-reduite {
     right: 12px;
