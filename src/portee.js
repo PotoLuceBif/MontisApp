@@ -242,12 +242,13 @@ async function calculerPortee(lon, lat, finesse, h0) {
 const ICONE_PORTEE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>';
 const MESSAGE_ACCUEIL = 'Touchez la carte pour placer le point de départ.';
 
-export function initPortee(map, { onFermer = () => {} } = {}) {
+export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'portee-panneau-reduit',
     libelle: 'portée de vol',
     classe: 'bf-outil',
     onFermer: () => onFermer(),
+    onRetour,
   });
   panneau.titre.textContent = 'Portée de vol';
   const conteneur = panneau.corps;

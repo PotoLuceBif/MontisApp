@@ -15,11 +15,12 @@ const LIBELLES_ETAT = { actif: 'En direct', ancien: 'Relevé ancien', hs: 'Hors 
 
 const kmh = (valeur) => (Number.isFinite(valeur) ? String(Math.round(valeur)) : '—');
 
-export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
+export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'balise-fiche-reduite',
     libelle: 'fiche de la balise',
     onFermer: () => fermer(),
+    onRetour,
     onAgrandi: () => {
       if (station) garderBaliseVisible();
     },

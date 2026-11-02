@@ -930,8 +930,9 @@ export function creerCarteVent(map) {
     icone: 'vent',
     panneau: panneauMenu,
     surCarte: true,
-    activer({ onFermer } = {}) {
+    activer({ onFermer, onRetour } = {}) {
       fermeture = onFermer;
+      panneauCarte.definirRetour(onRetour ?? null);
       panneauCarte.afficher();
       actif = true;
       assurerCouche();

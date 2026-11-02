@@ -86,13 +86,13 @@ function dessinerPastille(palier, moyenne) {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
+export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche } = {}) {
   let stations = [];
   let source = null;
   let visible = false;
   let zoomCalcule = null;
 
-  const fiche = creerFicheBalise(map, { onFermer: () => marquerSelection(null) });
+  const fiche = creerFicheBalise(map, { onFermer: () => marquerSelection(null), onRetour: onRetourFiche });
 
   function imageManche(station, etat) {
     if (etat === 'hs') return '';

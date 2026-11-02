@@ -1,4 +1,4 @@
-// Parcours vélo sur la carte : points déplaçables, routage selon la pratique, annuler / rétablir.
+// Parcours sur la carte, commun aux activités : points déplaçables, routage selon la pratique, annuler / rétablir.
 import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { bloquerFiches } from './fiche.js';
@@ -8,17 +8,11 @@ import { distance } from './rando-api.js';
 import { telechargerGpx } from './rando-profil.js';
 import { formaterDuree } from './rando-profil.js';
 import { paletteInterface } from './vent-cadran.js';
-import { PRATIQUES, calculerTroncon, tronconLibre } from './velo-routage.js';
-import { DIFFICULTES, PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './velo-analyse.js';
-import { creerProfilVelo } from './velo-profil.js';
-import { compacter, ecrireBrouillon, effacerBrouillon, enregistrerParcours, lireBrouillon } from './velo-parcours.js';
+import { calculerTroncon, tronconLibre } from './parcours-routage.js';
+import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
+import { creerProfilParcours } from './parcours-profil.js';
+import { compacter } from './parcours-stockage.js';
 
-const SOURCE_TRACE = 'velo-trace';
-const COUCHE_CONTOUR = 'velo-trace-contour';
-const COUCHE_TRACE = 'velo-trace-ligne';
-const COUCHE_LIBRE = 'velo-trace-libre';
-const SOURCE_CURSEUR = 'velo-curseur';
-const COUCHE_CURSEUR = 'velo-curseur-point';
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
 const LONGUEUR_MAX_DETAIL = 400000; // m : au-delà, le profil demanderait des centaines de tuiles de relief
@@ -57,11 +51,22 @@ function legende(parts, total) {
     .join('');
 }
 
-export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique = () => {}, onFermer = () => {}, onEnregistre = () => {} }) {
-  let pratique = pratiqueInitiale;
+export function creerEditeurParcours(map, { activite, stockage, onFermer = () => {}, onRetour = () => {}, onEnregistre = () => {} }) {
+  const SOURCE_TRACE = `${activite.id}-trace`;
+  const COUCHE_CONTOUR = `${activite.id}-trace-contour`;
+  const COUCHE_TRACE = `${activite.id}-trace-ligne`;
+  const COUCHE_LIBRE = `${activite.id}-trace-libre`;
+  const SOURCE_CURSEUR = `${activite.id}-curseur`;
+  const COUCHE_CURSEUR = `${activite.id}-curseur-point`;
+  const { pratiques, difficulte: echelle } = activite;
+  const { niveaux: DIFFICULTES } = echelle;
+  // Le choix de pratique ne pilote que le routage : il vit ici, pas dans le menu
+  let pratique = pratiques[lire(`${activite.id}-pratique`, activite.pratiqueDefaut)] ?? pratiques[activite.pratiqueDefaut];
+  let retourCourant = onRetour;
+  let onAnalyse = null;
   let etapes = []; // { lng, lat, mode: 'route' | 'libre' | 'fixe', troncon } ; troncon : ce qui y mène
   let edition = false;
-  let modeLibre = lire('velo-libre', false) === true;
+  let modeLibre = lire(`${activite.id}-libre`, false) === true;
   let passe = [];
   let futur = [];
   let marqueurs = [];
@@ -74,55 +79,57 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   let repartition = null;
   let jetonAnalyse = 0;
   let minuteurAnalyse = null;
-  let modeCouleur = MODES_COULEUR.some(([id]) => id === lire('velo-couleur', '')) ? lire('velo-couleur', '') : 'pratique';
+  let modeCouleur = MODES_COULEUR.some(([id]) => id === lire(`${activite.id}-couleur`, '')) ? lire(`${activite.id}-couleur`, '') : 'pratique';
 
   const panneau = creerPanneauCarte({
-    cle: 'velo-panneau-reduit',
-    libelle: 'parcours vélo',
-    classe: 'bf-outil bf-velo',
+    cle: `${activite.id}-panneau-reduit`,
+    libelle: activite.libelle,
+    classe: 'bf-outil bf-parcours',
     onFermer: () => onFermer(),
+    onRetour: () => retourCourant?.(),
   });
   panneau.corps.innerHTML = `
-    <div class="velo-pratiques velo-pratiques-panneau" role="group" aria-label="Pratique">
-      ${Object.values(PRATIQUES).map(({ id, libelle }) => `<button type="button" data-pratique="${id}" aria-pressed="false">${libelle}</button>`).join('')}
+    <div class="parcours-pratiques parcours-pratiques-panneau" role="group" aria-label="Pratique"${Object.keys(pratiques).length < 2 ? ' hidden' : ''}>
+      ${Object.values(pratiques).map(({ id, libelle }) => `<button type="button" data-pratique="${id}" aria-pressed="false">${libelle}</button>`).join('')}
     </div>
-    <div class="velo-commandes" role="group" aria-label="Modifier le parcours">
+    <div class="parcours-commandes" role="group" aria-label="Modifier le parcours">
       ${COMMANDES.map(([id, libelle, dessin]) => `<button type="button" data-commande="${id}" aria-label="${libelle}" title="${libelle}"><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
     </div>
-    <p class="velo-etat" role="status" aria-live="polite"></p>
-    <div class="velo-analyse" hidden>
-      <div class="velo-stats">
-        <div class="velo-stat velo-stat-principale"><span>Distance</span><strong data-v="distance">—</strong></div>
-        <div class="velo-stat velo-stat-principale"><span>Durée estimée</span><strong data-v="duree">—</strong></div>
-        <div class="velo-stat"><span>D+</span><strong data-v="plus">—</strong></div>
-        <div class="velo-stat"><span>D−</span><strong data-v="moins">—</strong></div>
-        <div class="velo-stat"><span>Alt. max</span><strong data-v="max">—</strong></div>
-        <div class="velo-stat"><span>Alt. min</span><strong data-v="min">—</strong></div>
-        <div class="velo-stat"><span>Pente max</span><strong data-v="pente">—</strong></div>
+    <p class="parcours-etat" role="status" aria-live="polite"></p>
+    <div class="parcours-analyse" hidden>
+      <div class="parcours-stats">
+        <div class="parcours-stat parcours-stat-principale"><span>Distance</span><strong data-v="distance">—</strong></div>
+        <div class="parcours-stat parcours-stat-principale"><span>Durée estimée</span><strong data-v="duree">—</strong></div>
+        <div class="parcours-stat"><span>D+</span><strong data-v="plus">—</strong></div>
+        <div class="parcours-stat"><span>D−</span><strong data-v="moins">—</strong></div>
+        <div class="parcours-stat"><span>Alt. max</span><strong data-v="max">—</strong></div>
+        <div class="parcours-stat"><span>Alt. min</span><strong data-v="min">—</strong></div>
+        <div class="parcours-stat"><span>Pente max</span><strong data-v="pente">—</strong></div>
       </div>
-      <div class="velo-profil">
-        <p class="velo-lecture">Touchez le profil pour lire un point du tracé.</p>
-        <canvas class="velo-graphique" tabindex="0" role="img" aria-label="Profil du parcours coloré selon la pente. Glisser ou utiliser les flèches du clavier pour lire un point."></canvas>
-        <div class="velo-legende-pente" aria-hidden="true"></div>
+      <div class="parcours-profil">
+        <p class="parcours-lecture">Touchez le profil pour lire un point du tracé.</p>
+        <canvas class="parcours-graphique" tabindex="0" role="img" aria-label="Profil du parcours coloré selon la pente. Glisser ou utiliser les flèches du clavier pour lire un point."></canvas>
+        <div class="parcours-legende-pente" aria-hidden="true"></div>
       </div>
-      <div class="velo-alertes" hidden></div>
-      <div class="velo-repartition" data-bloc="surfaces" hidden><h4>Surfaces</h4><div class="velo-barre"></div><div class="velo-legende"></div></div>
-      <div class="velo-repartition" data-bloc="difficulte" hidden><h4>Difficulté VTT <small>(échelle OpenStreetMap)</small></h4><div class="velo-barre"></div><div class="velo-legende"></div></div>
-      <label class="velo-couleur"><span>Colorer le tracé selon</span><select>
+      <div class="parcours-alertes" hidden></div>
+      <div class="parcours-repartition" data-bloc="surfaces" hidden><h4>Surfaces</h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
+      <div class="parcours-repartition" data-bloc="difficulte" hidden><h4>${echelle.titre} <small>${echelle.note}</small></h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
+      <label class="parcours-couleur"><span>Colorer le tracé selon</span><select>
         ${MODES_COULEUR.map(([id, libelle]) => `<option value="${id}">${libelle}</option>`).join('')}
       </select></label>
     </div>
-    <label class="velo-nom"><span>Nom</span><input type="text" maxlength="60" placeholder="Nom du parcours"></label>
-    <div class="velo-pied">
-      <button type="button" class="para-bouton velo-terminer">Terminer</button>
-      <button type="button" class="para-bouton para-bouton-principal velo-enregistrer">Enregistrer</button>
-      <button type="button" class="para-bouton velo-gpx" disabled>GPX</button>
+    <label class="parcours-nom"><span>Nom</span><input type="text" maxlength="60" placeholder="Nom du parcours"></label>
+    <div class="parcours-pied">
+      <button type="button" class="para-bouton parcours-terminer">Terminer</button>
+      <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer">Enregistrer</button>
+      <button type="button" class="para-bouton parcours-gpx" disabled>GPX</button>
     </div>
-    <p class="velo-source" hidden></p>
+    <div class="pc-infos" hidden></div>
+    <p class="parcours-source" hidden></p>
   `;
   panneau.titre.textContent = nom;
   panneau.definirResume({
-    rose: '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3.500"/><circle cx="18" cy="17" r="3.500"/><path d="m6 17 4-8h6l2 8M10 9 9 6H7M16 9l-1-3h3"/></svg>',
+    rose: activite.icone,
     nom,
     detail: '',
     valeur: '',
@@ -130,20 +137,20 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   });
   const $ = (selecteur) => panneau.corps.querySelector(selecteur);
   const commande = (id) => $(`[data-commande="${id}"]`);
-  const message = $('.velo-etat');
+  const message = $('.parcours-etat');
   const boutonsPratique = [...panneau.corps.querySelectorAll('[data-pratique]')];
-  const blocAnalyse = $('.velo-analyse');
-  const lecture = $('.velo-lecture');
-  const selecteurCouleur = $('.velo-couleur select');
-  const boutonTerminer = $('.velo-terminer');
-  const boutonGpx = $('.velo-gpx');
-  const boutonEnregistrer = $('.velo-enregistrer');
-  const champNom = $('.velo-nom input');
-  const source = $('.velo-source');
+  const blocAnalyse = $('.parcours-analyse');
+  const lecture = $('.parcours-lecture');
+  const selecteurCouleur = $('.parcours-couleur select');
+  const boutonTerminer = $('.parcours-terminer');
+  const boutonGpx = $('.parcours-gpx');
+  const boutonEnregistrer = $('.parcours-enregistrer');
+  const champNom = $('.parcours-nom input');
+  const source = $('.parcours-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
 
-  const profil = creerProfilVelo($('.velo-graphique'), {
+  const profil = creerProfilParcours($('.parcours-graphique'), {
     onCurseur: (index) => afficherCurseur(index),
   });
 
@@ -203,7 +210,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       let couleur = VOIES.inconnu.couleur;
       if (modeCouleur === 'pente') couleur = couleurs[palierPente(pentes[i])];
       else if (modeCouleur === 'surface' && portion) couleur = VOIES[portion.voie].couleur;
-      else if (modeCouleur === 'difficulte' && portion && portion.difficulte !== null && portion.difficulte !== undefined) couleur = DIFFICULTES[palierDifficulte(portion.difficulte)].couleur;
+      else if (modeCouleur === 'difficulte' && portion && portion.difficulte !== null && portion.difficulte !== undefined) couleur = DIFFICULTES[palierDifficulte(portion.difficulte, DIFFICULTES)].couleur;
       features.push({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: [[points[i].lng, points[i].lat], [points[i + 1].lng, points[i + 1].lat]] },
@@ -272,8 +279,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       const dernier = index === etapes.length - 1 && index > 0;
       const element = document.createElement('button');
       element.type = 'button';
-      element.className = `velo-etape${index === 0 ? ' velo-etape-depart' : dernier ? ' velo-etape-arrivee' : ''}`;
-      element.style.setProperty('--velo-couleur', pratique.couleur);
+      element.className = `parcours-etape${index === 0 ? ' parcours-etape-depart' : dernier ? ' parcours-etape-arrivee' : ''}`;
+      element.style.setProperty('--parcours-couleur', pratique.couleur);
       element.textContent = index === 0 ? 'D' : dernier ? 'A' : String(index);
       element.setAttribute('aria-label', index === 0 ? 'Départ' : dernier ? 'Arrivée' : `Point ${index}`);
       if (!edition && index !== 0 && !dernier) element.hidden = true;
@@ -294,7 +301,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     fermerPopup();
     const etape = etapes[index];
     const contenu = document.createElement('div');
-    contenu.className = 'velo-popup';
+    contenu.className = 'parcours-popup';
     if (index > 0) {
       const libre = document.createElement('button');
       libre.type = 'button';
@@ -309,7 +316,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     }
     const retirer = document.createElement('button');
     retirer.type = 'button';
-    retirer.className = 'velo-popup-retirer';
+    retirer.className = 'parcours-popup-retirer';
     retirer.textContent = 'Supprimer ce point';
     retirer.addEventListener('click', () => {
       fermerPopup();
@@ -429,7 +436,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
           if (troncon.source === 'valhalla') secours = true;
         } catch (erreur) {
           if (requete.signal.aborted) return;
-          console.warn('Tronçon vélo non calculé :', erreur);
+          console.warn('Tronçon non calculé :', erreur);
           etape.troncon = { ...tronconLibre(de, vers), pratique: pratique.id };
           echecs += 1;
         }
@@ -442,7 +449,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
 
   function apresCalcul({ secours, echecs }) {
     const tronconsPlats = etapes.slice(1).flatMap(({ troncon }) => troncon?.troncons ?? []);
-    repartition = repartir(tronconsPlats);
+    repartition = repartir(tronconsPlats, DIFFICULTES);
     const total = repartition.total;
     programmerAnalyse();
     rendreRepartition();
@@ -458,8 +465,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         : 'Touchez la carte pour ajouter un point, ou le tracé pour y insérer un passage.';
     }
     if (edition) {
-      if (etapes.length) ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
-      else effacerBrouillon();
+      if (etapes.length) stockage.ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
+      else stockage.effacerBrouillon();
     }
     boutonEnregistrer.disabled = etapes.length < 2;
     panneau.definirResume({ detail: total ? km(total) : 'Touchez la carte', valeur: total ? (total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '', unite: total ? 'km' : '' });
@@ -492,9 +499,10 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         rendreAlertes();
         dessinerTrace();
         boutonGpx.disabled = false;
+        onAnalyse?.(analyse);
       } catch (erreur) {
         if (jeton !== jetonAnalyse) return;
-        console.warn('Profil vélo :', erreur);
+        console.warn('Profil du parcours :', erreur);
         analyse = null;
         profil.definir(null);
         lecture.textContent = estHorsLigne()
@@ -503,6 +511,22 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         dessinerTrace();
       }
     }, ATTENTE_ANALYSE);
+  }
+
+  // Ce que la fiche d'un itinéraire ajoute : difficulté, liens
+  function rendreInfos(infos) {
+    const bloc = $('.pc-infos');
+    bloc.hidden = !infos.length;
+    bloc.replaceChildren(...infos.map(({ texte, lien }) => {
+      const element = document.createElement(lien ? 'a' : 'p');
+      element.textContent = texte;
+      if (lien) {
+        element.href = lien;
+        element.target = '_blank';
+        element.rel = 'noopener noreferrer';
+      }
+      return element;
+    }));
   }
 
   function definirNom(nouveau) {
@@ -515,7 +539,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   function enregistrer() {
     if (etapes.length < 2) return;
     idParcours = idParcours ?? String(Date.now());
-    const reussi = enregistrerParcours({
+    const reussi = stockage.enregistrer({
       id: idParcours,
       nom,
       pratique: pratique.id,
@@ -528,7 +552,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       ? `« ${nom} » est dans Mes parcours.`
       : 'Enregistrement impossible : l’espace du navigateur est plein. Supprimez un ancien parcours.';
     if (reussi) {
-      effacerBrouillon();
+      stockage.effacerBrouillon();
       onEnregistre();
     }
   }
@@ -601,14 +625,14 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
 
   // Ce qui peut surprendre sur le terrain : pentes, marches, sentiers très techniques
   function rendreAlertes() {
-    const bloc = $('.velo-alertes');
+    const bloc = $('.parcours-alertes');
     const elements = [];
     const passages = analyse ? passagesRaides(analyse, pratique.seuilRaide) : [];
     passages.slice(0, PASSAGES_AFFICHES).forEach(({ indice, d, longueur, pente }) => {
       const bouton = document.createElement('button');
       bouton.type = 'button';
-      const portage = pente >= PENTE_PORTAGE;
-      bouton.className = `velo-alerte${portage ? ' velo-alerte-forte' : ''}`;
+      const portage = activite.portage && pente >= PENTE_PORTAGE;
+      bouton.className = `parcours-alerte${portage ? ' parcours-alerte-forte' : ''}`;
       bouton.textContent = `${portage ? 'Portage probable' : pente > 0 ? 'Montée raide' : 'Descente raide'} · ${pente > 0 ? '+' : ''}${Math.round(pente)} % sur ${metres(longueur)} · km ${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}`;
       bouton.addEventListener('click', () => {
         profil.placerDepuisCarte(indice);
@@ -620,19 +644,19 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     });
     const ajouterTexte = (texte) => {
       const ligne = document.createElement('p');
-      ligne.className = 'velo-alerte velo-alerte-forte';
+      ligne.className = 'parcours-alerte parcours-alerte-forte';
       ligne.textContent = texte;
       elements.push(ligne);
     };
     if (passages.length > PASSAGES_AFFICHES) {
       const ligne = document.createElement('p');
-      ligne.className = 'velo-alerte-suite';
+      ligne.className = 'parcours-alerte-suite';
       ligne.textContent = `Et ${passages.length - PASSAGES_AFFICHES} autre${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} passage${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} raide${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''}.`;
       elements.push(ligne);
     }
-    if (repartition?.marches) ajouterTexte(`Marches sur le tracé : ${metres(repartition.marches)}`);
+    if (activite.portage && repartition?.marches) ajouterTexte(`Marches sur le tracé : ${metres(repartition.marches)}`);
     const techniques = repartition?.difficultes.at(-1) ?? 0;
-    if (techniques) ajouterTexte(`Sentier très technique (S4 ou plus) : ${metres(techniques)}`);
+    if (techniques) ajouterTexte(`${echelle.texteTechnique} : ${metres(techniques)}`);
     bloc.replaceChildren(...elements);
     bloc.hidden = !elements.length;
   }
@@ -643,9 +667,9 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     const connues = total - voies.inconnu;
     blocSurfaces.hidden = !connues;
     if (connues) {
-      const parts = Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle, couleur, longueur: voies[id] }));
-      blocSurfaces.querySelector('.velo-barre').innerHTML = barre(parts, total);
-      blocSurfaces.querySelector('.velo-legende').innerHTML = legende(parts, total);
+      const parts = Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle: activite.libelleVoies?.[id] ?? libelle, couleur, longueur: voies[id] }));
+      blocSurfaces.querySelector('.parcours-barre').innerHTML = barre(parts, total);
+      blocSurfaces.querySelector('.parcours-legende').innerHTML = legende(parts, total);
     }
     const blocDifficulte = $('[data-bloc="difficulte"]');
     const cotes = difficultes.reduce((somme, longueur) => somme + longueur, 0);
@@ -653,12 +677,12 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     if (cotes) {
       const parts = DIFFICULTES.map(({ libelle, couleur }, index) => ({ libelle, couleur, longueur: difficultes[index] }));
       parts.push({ libelle: 'Non coté', couleur: VOIES.inconnu.couleur, longueur: total - cotes });
-      blocDifficulte.querySelector('.velo-barre').innerHTML = barre(parts, total);
-      blocDifficulte.querySelector('.velo-legende').innerHTML = legende(parts, total);
+      blocDifficulte.querySelector('.parcours-barre').innerHTML = barre(parts, total);
+      blocDifficulte.querySelector('.parcours-legende').innerHTML = legende(parts, total);
     }
     const couleurs = paletteInterface();
     const bornes = ['0', ...PALIERS_PENTE.map(String)];
-    $('.velo-legende-pente').innerHTML = couleurs.map((couleur, index) => `<span><i style="background: ${couleur}"></i>${index < PALIERS_PENTE.length ? `${bornes[index]}–${PALIERS_PENTE[index]}` : `${PALIERS_PENTE.at(-1)}+`}</span>`).join('') + '<span>%</span>';
+    $('.parcours-legende-pente').innerHTML = couleurs.map((couleur, index) => `<span><i style="background: ${couleur}"></i>${index < PALIERS_PENTE.length ? `${bornes[index]}–${PALIERS_PENTE[index]}` : `${PALIERS_PENTE.at(-1)}+`}</span>`).join('') + '<span>%</span>';
   }
 
   // Lecture seule : la carte redevient libre, un toucher sur le tracé lit le profil
@@ -666,7 +690,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     edition = valeurEdition;
     map.getCanvas().style.cursor = edition ? 'crosshair' : '';
     boutonTerminer.textContent = edition ? 'Terminer' : 'Modifier';
-    panneau.element.classList.toggle('bf-velo-lecture', !edition);
+    panneau.element.classList.toggle('bf-parcours-lecture', !edition);
     fermerPopup();
     dessinerMarqueurs();
   }
@@ -692,7 +716,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       afficherCurseur(indice);
       return;
     }
-    if (event.originalEvent?.target?.closest?.('.velo-etape')) return;
+    if (event.originalEvent?.target?.closest?.('.parcours-etape')) return;
     if (popup) {
       fermerPopup();
       return;
@@ -711,7 +735,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   });
   selecteurCouleur.addEventListener('change', () => {
     modeCouleur = selecteurCouleur.value;
-    ecrire('velo-couleur', modeCouleur);
+    ecrire(`${activite.id}-couleur`, modeCouleur);
     dessinerTrace();
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
@@ -722,7 +746,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   commande('retablir').addEventListener('click', () => restaurer(futur, passe));
   commande('libre').addEventListener('click', () => {
     modeLibre = !modeLibre;
-    ecrire('velo-libre', modeLibre);
+    ecrire(`${activite.id}-libre`, modeLibre);
     rendre();
   });
   commande('boucle').addEventListener('click', boucler);
@@ -735,7 +759,9 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   });
   boutonsPratique.forEach((bouton) => {
     bouton.addEventListener('click', () => {
-      onPratique(bouton.dataset.pratique);
+      pratique = pratiques[bouton.dataset.pratique];
+      ecrire(`${activite.id}-pratique`, pratique.id);
+      recalculer();
     });
   });
 
@@ -743,50 +769,45 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     get ouvert() {
       return panneau.ouvert;
     },
-    definirPratique(id) {
-      pratique = PRATIQUES[id];
-      if (panneau.ouvert) recalculer();
-    },
     // Itinéraire balisé ou trace importée : consultation d'abord, modification ensuite si besoin
-    ouvrirTrace({ nom: nomTrace, chaine, lignes, lien }) {
+    ouvrirTrace({ nom: nomTrace, chaine, lignes, avecSauts = false, lien, meta = '', infos = [], onRetour: retour = null, onAnalyse: rappel = null }) {
       controleur?.abort();
+      retourCourant = retour ?? onRetour;
+      onAnalyse = rappel;
+      passe = [];
+      futur = [];
+      idParcours = null;
+      definirNom(nomTrace);
+      panneau.meta.textContent = meta;
+      source.hidden = !lien;
+      if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
+      rendreInfos(infos);
+      bloquerFiches(true);
       const longueur = (lignes ?? [chaine]).reduce((total, ligne) => {
         let somme = total;
         for (let i = 1; i < ligne.length; i += 1) somme += distance(ligne[i - 1], ligne[i]);
         return somme;
       }, 0);
-      if (longueur > LONGUEUR_MAX_DETAIL) {
+      if (longueur > LONGUEUR_MAX_DETAIL || avecSauts || chaine.length < 2) {
         etapes = [];
-        idParcours = null;
-        passe = [];
-        futur = [];
         lignesEnsemble = lignes ?? [chaine];
-        definirNom(nomTrace);
-        source.hidden = !lien;
-        if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
-        bloquerFiches(true);
         panneau.afficher();
-        panneau.element.classList.add('bf-velo-ensemble');
+        panneau.element.classList.add('bf-parcours-ensemble');
         definirEdition(false);
         analyse = null;
         jetonAnalyse += 1;
         blocAnalyse.hidden = true;
-        message.textContent = `Environ ${km(longueur)} avec les variantes. Sur un itinéraire aussi long, le profil et l’export ne sont pas proposés : ouvrez plutôt un tronçon.`;
+        message.textContent = longueur > LONGUEUR_MAX_DETAIL
+          ? `Environ ${km(longueur)} avec les variantes. Sur un itinéraire aussi long, le profil et l’export ne sont pas proposés.`
+          : `Environ ${km(longueur)}. Cet itinéraire a des variantes ou des morceaux séparés : son profil ne serait pas juste, il n’est pas calculé.`;
         panneau.definirResume({ detail: km(longueur), valeur: '', unite: '' });
         dessinerTrace();
         cadrer(lignesEnsemble.flat());
         return;
       }
       lignesEnsemble = null;
-      panneau.element.classList.remove('bf-velo-ensemble');
+      panneau.element.classList.remove('bf-parcours-ensemble');
       etapes = etapesDepuisChaine(chaine);
-      idParcours = null;
-      passe = [];
-      futur = [];
-      definirNom(nomTrace);
-      source.hidden = !lien;
-      if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
-      bloquerFiches(true);
       panneau.afficher();
       definirEdition(false);
       recalculer();
@@ -796,8 +817,13 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     ouvrirEnregistre(parcours) {
       controleur?.abort();
       lignesEnsemble = null;
-      panneau.element.classList.remove('bf-velo-ensemble');
+      panneau.element.classList.remove('bf-parcours-ensemble');
       etapes = parcours.etapes.map((etape) => ({ ...etape }));
+      if (pratiques[parcours.pratique]) pratique = pratiques[parcours.pratique];
+      retourCourant = onRetour;
+      onAnalyse = null;
+      panneau.meta.textContent = '';
+      rendreInfos([]);
       idParcours = parcours.id;
       passe = [];
       futur = [];
@@ -812,8 +838,12 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     // Reprend le parcours en cours s'il y en a un : le téléphone a pu fermer l'app entre-temps
     ouvrirCreation() {
       lignesEnsemble = null;
-      panneau.element.classList.remove('bf-velo-ensemble');
-      const brouillon = lireBrouillon();
+      panneau.element.classList.remove('bf-parcours-ensemble');
+      retourCourant = onRetour;
+      onAnalyse = null;
+      panneau.meta.textContent = '';
+      rendreInfos([]);
+      const brouillon = stockage.lireBrouillon();
       if (edition && etapes.length) {
         /* déjà en cours */
       } else if (brouillon?.etapes?.length) {
@@ -833,13 +863,17 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       definirEdition(true);
       recalculer();
     },
+    // Cède la place à un autre panneau du même menu, sans rien laisser sur la carte
+    fermerSansQuitter() {
+      if (panneau.ouvert || etapes.length || lignesEnsemble) this.fermer();
+    },
     fermer() {
       controleur?.abort();
       controleur = null;
       edition = false;
       idParcours = null;
       lignesEnsemble = null;
-      panneau.element.classList.remove('bf-velo-ensemble');
+      panneau.element.classList.remove('bf-parcours-ensemble');
       bloquerFiches(false);
       panneau.masquer();
       fermerPopup();

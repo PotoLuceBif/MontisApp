@@ -17,7 +17,7 @@ const ICONE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><cir
 const km = (valeur) => `${valeur.toLocaleString('fr-FR', { maximumFractionDigits: valeur < 10 ? 1 : 0 })} km`;
 const sansAccent = (texte) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
+export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => {} }) {
   const visite = creerVisiteStation(map, {
     ete: true,
     dossier: '/data/bike-parks',
@@ -32,15 +32,19 @@ export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
     libelle: 'visite du bike park',
     classe: 'bf-outil bf-bikepark',
     onFermer: () => quitter(),
+    onRetour: () => {
+      quitter();
+      void ouvrirListe();
+    },
   });
   panneau.corps.innerHTML = `
-    <div class="velo-stats velo-stats-park">
-      <div class="velo-stat"><span>Pistes</span><strong data-bp="pistes"></strong></div>
-      <div class="velo-stat"><span>Longueur</span><strong data-bp="km"></strong></div>
-      <div class="velo-stat"><span>Remontées</span><strong data-bp="remontees"></strong></div>
+    <div class="parcours-stats parcours-stats-park">
+      <div class="parcours-stat"><span>Pistes</span><strong data-bp="pistes"></strong></div>
+      <div class="parcours-stat"><span>Longueur</span><strong data-bp="km"></strong></div>
+      <div class="parcours-stat"><span>Remontées</span><strong data-bp="remontees"></strong></div>
     </div>
-    <div class="velo-repartition"><div class="velo-barre" data-bp="barre"></div><div class="velo-legende" data-bp="legende"></div></div>
-    <p class="velo-etat">Touchez une piste pour lire son nom et sa longueur.</p>
+    <div class="parcours-repartition"><div class="parcours-barre" data-bp="barre"></div><div class="parcours-legende" data-bp="legende"></div></div>
+    <p class="parcours-etat">Touchez une piste pour lire son nom et sa longueur.</p>
     <details class="rando-outils">
       <summary>À savoir</summary>
       <div class="rando-outils-contenu">
@@ -50,14 +54,24 @@ export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
   `;
   const champ = (id) => panneau.corps.querySelector(`[data-bp="${id}"]`);
 
+  const panneauListe = creerPanneauCarte({
+    cle: 'bikepark-liste-reduite',
+    libelle: 'liste des bike parks',
+    classe: 'bf-outil bf-liste',
+    onFermer: () => panneauListe.masquer(),
+    onRetour: () => ouvrirMenu(),
+  });
+  panneauListe.titre.textContent = 'Bike parks';
+  panneauListe.definirResume({ rose: ICONE, nom: 'Bike parks', detail: 'Touchez pour choisir', valeur: '', unite: '' });
+  const conteneur = panneauListe.corps;
   conteneur.innerHTML = `
-    <input type="text" class="rando-champ velo-park-recherche" placeholder="Chercher un bike park…" autocomplete="off" spellcheck="false" inputmode="search" aria-label="Chercher un bike park">
-    <p class="note velo-park-message" role="status" aria-live="polite" hidden></p>
-    <div class="rando-liste velo-park-liste"></div>
+    <input type="text" class="rando-champ parcours-park-recherche" placeholder="Chercher un bike park…" autocomplete="off" spellcheck="false" inputmode="search" aria-label="Chercher un bike park">
+    <p class="note parcours-park-message" role="status" aria-live="polite" hidden></p>
+    <div class="pc-liste parcours-park-liste"></div>
   `;
-  const recherche = conteneur.querySelector('.velo-park-recherche');
-  const message = conteneur.querySelector('.velo-park-message');
-  const liste = conteneur.querySelector('.velo-park-liste');
+  const recherche = conteneur.querySelector('.parcours-park-recherche');
+  const message = conteneur.querySelector('.parcours-park-message');
+  const liste = conteneur.querySelector('.parcours-park-liste');
 
   function afficherMessage(texte) {
     message.textContent = texte;
@@ -82,6 +96,7 @@ export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
       if (demande !== jeton) return;
       afficherMessage('');
       fermerMenu();
+      panneauListe.masquer();
       panneau.titre.textContent = park.nom;
       panneau.meta.textContent = park.lieu;
       champ('pistes').textContent = String(park.pistes);
@@ -117,23 +132,22 @@ export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
     liste.replaceChildren(...trouves.map((park) => {
       const item = document.createElement('button');
       item.type = 'button';
-      item.className = 'rando-item velo-item';
-      const textes = document.createElement('span');
-      textes.className = 'rando-item-textes';
+      item.className = 'pc-ligne';
       const nom = document.createElement('span');
-      nom.className = 'rando-item-nom';
+      nom.className = 'pc-ligne-nom';
       nom.textContent = park.nom;
       const sous = document.createElement('span');
-      sous.className = 'rando-item-sous';
-      sous.textContent = `${park.pistes} pistes · ${km(park.km)}${park.lieu ? ` · ${park.lieu}` : ''}`;
-      textes.append(nom, sous);
-      item.append(textes);
+      sous.className = 'pc-ligne-valeur';
+      sous.textContent = `${park.pistes} pistes · ${km(park.km)}`;
+      item.append(nom, sous);
       item.addEventListener('click', () => void visiter(park));
       return item;
     }));
   }
 
-  async function charger() {
+  async function ouvrirListe() {
+    fermerMenu();
+    panneauListe.afficher();
     if (parks) {
       rendre();
       return;
@@ -152,5 +166,11 @@ export function creerBikeParks(map, { conteneur, fermerMenu = () => {} }) {
 
   recherche.addEventListener('input', rendre);
 
-  return { charger, quitter };
+  return {
+    ouvrirListe,
+    quitter() {
+      quitter();
+      panneauListe.masquer();
+    },
+  };
 }

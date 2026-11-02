@@ -1,6 +1,6 @@
 // Profil d'un parcours, coloré selon la pente. Le toucher y lit un point précis du tracé.
 import { paletteInterface } from './vent-cadran.js';
-import { palierPente } from './velo-analyse.js';
+import { palierPente } from './parcours-analyse.js';
 
 const MARGE_GAUCHE = 40;
 const MARGE_DROITE = 8;
@@ -8,7 +8,7 @@ const MARGE_HAUT = 8;
 const HAUTEUR_AXE = 18;
 const PAS_KM = [0.5, 1, 2, 5, 10, 20, 50, 100, 200];
 
-export function creerProfilVelo(canvas, { onCurseur = () => {} } = {}) {
+export function creerProfilParcours(canvas, { onCurseur = () => {} } = {}) {
   const ctx = canvas.getContext('2d');
   let analyse = null;
   let curseur = null;

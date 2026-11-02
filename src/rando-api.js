@@ -12,7 +12,7 @@ export const niveau = (groupe) =>
   NIVEAUX[groupe] || { court: 'Autre', couleur: '#6b706c', grand: false };
 
 // Échelle de difficulté SAC (marquage des chemins)
-const ORDRE_SAC = [
+export const ORDRE_SAC = [
   'hiking',
   'mountain_hiking',
   'demanding_mountain_hiking',
@@ -28,6 +28,13 @@ export const NOMS_SAC = [
   'T5 · Randonnée alpine exigeante',
   'T6 · Randonnée alpine difficile',
 ];
+
+export const titreDe = (r) => {
+  const ref = r.ref || '';
+  const nom = r.name || '';
+  if (ref && nom && !nom.includes(ref)) return `${ref} · ${nom}`;
+  return nom || ref || 'Itinéraire sans nom';
+};
 
 // ---------- Conversions et distances ----------
 export const mercatorVersLngLat = ([x, y]) => [

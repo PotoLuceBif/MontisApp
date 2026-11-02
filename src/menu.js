@@ -158,6 +158,13 @@ export function initMenu(map) {
     fermerPanneauxFlottants();
     ouvrir(false);
   };
+  const ouvrirMenu = () => ouvrir(true);
+  // Revenir à un menu flottant sans rien arrêter de ce qui tourne sur la carte
+  const ouvrirFlottant = (id) => {
+    fermerPanneauxFlottants();
+    panneauxFlottants.get(id).hidden = false;
+    boutonsFlottants.get(id).setAttribute('aria-expanded', 'true');
+  };
 
   const categories = [
     {
@@ -167,9 +174,9 @@ export function initMenu(map) {
       aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
       exclusif: true,
       modules: [
-        creerActiviteParapente(map, { fermerMenu, analyseVent: carteVent }),
+        creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent: carteVent }),
         creerActiviteRandonnee(map),
-        creerActiviteVelo(map, { fermerMenu }),
+        creerActiviteVelo(map, { fermerMenu, ouvrirMenu }),
         creerActiviteSki(map),
       ],
       emplacement: 'menu',
@@ -197,7 +204,7 @@ export function initMenu(map) {
         creerFondDeCarte(map),
         creerOptionRelief(map), // inclut les courbes de niveau
         creerElementsCarte(map),
-        creerCartesHorsLigne(map, { fermerMenu }),
+        creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') }),
       ],
       emplacement: 'flottant',
     },
@@ -242,6 +249,7 @@ export function initMenu(map) {
       onFermer: () => {
         if (e.actif) arreter(e);
       },
+      onRetour: () => ouvrirFlottant('meteo'),
     });
   }
 

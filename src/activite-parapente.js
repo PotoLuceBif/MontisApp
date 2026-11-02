@@ -9,7 +9,7 @@ const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
 
 const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
-export function creerActiviteParapente(map, { fermerMenu, analyseVent } = {}) {
+export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent } = {}) {
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
@@ -138,8 +138,9 @@ export function creerActiviteParapente(map, { fermerMenu, analyseVent } = {}) {
     onDonnees: rendreBalises,
     // Pendant le choix du point de départ de la portée, un clic ne doit rien ouvrir d'autre
     peutOuvrirBalise: () => !portee.enAttente,
+    onRetourFiche: ouvrirMenu,
   });
-  const portee = initPortee(map, { onFermer: () => choisirVue(null) });
+  const portee = initPortee(map, { onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
 
   if (choixSource) {
     choixSource.value = donnees.sourceActive.id;
@@ -166,7 +167,7 @@ export function creerActiviteParapente(map, { fermerMenu, analyseVent } = {}) {
   map.on('moveend', rendreBalises);
 
   function ouvrirOutil() {
-    if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null) });
+    if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
     else if (vueActive === 'portee') portee.ouvrir();
   }
 

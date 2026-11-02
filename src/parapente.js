@@ -49,7 +49,7 @@ function sitesEnGeoJSON(sites) {
   return { type: 'FeatureCollection', features };
 }
 
-export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise } = {}) {
+export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise, onRetourFiche } = {}) {
   let balisesVisibles = false;
   let sitesVisibles = false;
   let actif = false;
@@ -63,7 +63,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let dateEnregistree = null;
   let source = SOURCES_BALISES.find(({ id }) => id === lire('balises-source', '')) ?? SOURCES_BALISES[0];
   const couchesSites = ['decollages', 'atterrissages', 'sites-noms'];
-  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise });
+  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche });
 
   function majVisibilite() {
     couchesSites.forEach((id) => {

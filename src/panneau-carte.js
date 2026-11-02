@@ -4,10 +4,11 @@ import { lire, ecrire } from './reglages.js';
 
 const SEUIL_GESTE = 28; // px
 const CROIX = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const FLECHE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>';
 
 let panneauOuvert = null;
 
-export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => {}, onAgrandi = () => {} }) {
+export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => {}, onAgrandi = () => {}, onRetour = null }) {
   const element = document.createElement('aside');
   element.className = `bf ${classe}`.trim();
   element.hidden = true;
@@ -15,6 +16,7 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
   element.innerHTML = `
     <button type="button" class="bf-poignee" aria-hidden="true" tabindex="-1"></button>
     <div class="bf-barre">
+      <button type="button" class="bf-retour" aria-label="Retour" title="Retour" hidden>${FLECHE}</button>
       <button type="button" class="bf-resume" aria-label="Agrandir : ${libelle}">
         <span class="bf-resume-rose"></span>
         <span class="bf-resume-texte"><strong></strong><small></small></span>
@@ -24,6 +26,7 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
       <button type="button" class="bf-fermer" aria-label="Fermer : ${libelle}">${CROIX}</button>
     </div>
     <header class="bf-entete">
+      <button type="button" class="bf-retour" aria-label="Retour" title="Retour" hidden>${FLECHE}</button>
       <div class="bf-titres">
         <h3 class="bf-nom"></h3>
         <p class="bf-meta"></p>
@@ -54,6 +57,12 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
   }
 
   element.querySelectorAll('.bf-fermer').forEach((bouton) => bouton.addEventListener('click', () => onFermer()));
+  let retour = onRetour;
+  const majRetour = () => element.querySelectorAll('.bf-retour').forEach((bouton) => {
+    bouton.hidden = !retour;
+  });
+  element.querySelectorAll('.bf-retour').forEach((bouton) => bouton.addEventListener('click', () => retour?.()));
+  majRetour();
   $('.bf-reduire').addEventListener('click', () => basculer(true));
   $('.bf-poignee').addEventListener('click', () => {
     if (!gesteFait) basculer(!reduit);
@@ -66,7 +75,7 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
   // Glisser le haut du panneau vers le bas le réduit, vers le haut l'agrandit
   element.addEventListener('pointerdown', (event) => {
     const prise = event.target.closest('.bf-poignee, .bf-barre, .bf-entete');
-    departGeste = prise && !event.target.closest('.bf-fermer, .bf-reduire') ? event.clientY : null;
+    departGeste = prise && !event.target.closest('.bf-fermer, .bf-reduire, .bf-retour') ? event.clientY : null;
     gesteFait = false;
   });
   element.addEventListener('pointerup', (event) => {
@@ -101,6 +110,10 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
       if (panneauOuvert === panneau) panneauOuvert = null;
     },
     demanderFermeture: () => onFermer(),
+    definirRetour(nouveau) {
+      retour = nouveau;
+      majRetour();
+    },
     // Le contenu du bandeau réduit
     definirResume({ rose, nom, detail, valeur, unite }) {
       if (rose !== undefined) $('.bf-resume-rose').innerHTML = rose;

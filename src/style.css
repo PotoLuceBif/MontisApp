@@ -2189,111 +2189,175 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 }
 .bf-fermer:hover, .bf-reduire:hover { background: var(--surface-2); color: var(--texte); }
 .bf-fermer svg, .bf-reduire svg, .bf-chevron { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.bf-poignee, .bf-barre, .bf-reduire { display: none; }
-.velo { display: grid; min-width: 0; gap: 10px; }
-.velo .rando-actions-principales, .velo .rando-outils { margin: 0; }
-.velo-pratiques { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); }
-.velo-pratiques button { min-height: 36px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--texte-2); font: 650 12px var(--police); cursor: pointer; }
-.velo-pratiques button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
-.velo-pratiques button:focus-visible, .velo-commandes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.bf-velo { width: 372px; }
-.bf-velo .bf-corps { gap: 11px; }
-.velo-commandes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
-.velo-commandes button {
+.bf-poignee, .bf-barre { display: none; }
+.bf-reduire { display: grid; }
+.bf.bf-reduite { gap: 2px; padding: 8px 8px 8px 12px; }
+.bf.bf-reduite > :not(.bf-poignee, .bf-barre) { display: none; }
+.bf.bf-reduite .bf-barre { display: flex; align-items: center; gap: 2px; touch-action: none; }
+.bf-resume {
+  display: grid; flex: 1; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; min-height: 44px; padding: 0;
+  border: 0; background: transparent; color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.bf-resume-rose:empty { display: none; }
+.bf-resume-texte { display: grid; min-width: 0; gap: 1px; }
+.bf-resume-texte strong { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.bf-resume-texte small { overflow: hidden; color: var(--texte-2); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bf-resume-vent { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bf-resume-vent b { color: var(--vent-couleur); font-size: 20px; font-weight: 700; }
+.bf-resume-vent i { color: var(--texte-2); font-size: 11px; font-style: normal; }
+.bf-resume .bf-chevron { color: var(--texte-2); }
+.pt-icone { display: block; width: 32px; height: 32px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pc-puces { display: flex; flex-wrap: wrap; gap: 5px; }
+.pc-puces button {
+  min-height: 34px; padding: 0 13px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface); color: var(--texte-2); font: 650 12px var(--police); cursor: pointer;
+}
+.pc-puces button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+.pc-puces button:focus-visible, .pc-entree:focus-visible, .pc-ligne:focus-visible, .bf-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pc-entrees { display: grid; gap: 5px; }
+.pc-entrees:empty, .pc-options:empty { display: none; }
+.pc-entree {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 50px; padding: 6px 8px 6px 12px;
+  border: 1px solid var(--bord); border-radius: 9px; background: var(--surface); color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.pc-entree:hover { border-color: var(--accent); }
+.pc-entree span { display: grid; min-width: 0; gap: 1px; }
+.pc-entree strong { font-size: 13px; font-weight: 650; }
+.pc-entree small { color: var(--texte-2); font-size: 11px; }
+.pc-entree svg { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pc-liste { display: grid; min-width: 0; gap: 4px; }
+.pc-ligne {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; width: 100%; min-height: 44px; padding: 6px 10px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.pc-ligne:hover { border-color: var(--accent); }
+.pc-ligne[aria-current='true'] { border-color: var(--accent); background: var(--accent-doux); }
+.pc-ligne-nom { display: -webkit-box; overflow: hidden; font-size: 12.5px; font-weight: 600; line-height: 1.3; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pc-ligne-valeur { color: var(--texte-2); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pc-ligne-proche { grid-column: 1 / -1; justify-self: start; padding: 0 6px; border-radius: 999px; background: var(--accent-doux); color: var(--accent); font-size: 10.5px; font-weight: 700; }
+.pc-ligne-catalogue { grid-template-columns: 42px minmax(0, 1fr); }
+.pc-ligne-catalogue b { color: var(--accent); font-size: 12.5px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.pc-groupe-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pc-groupe-stats[hidden], .pc-groupe-tout[hidden], .pc-liste-message[hidden], .pc-liste-note[hidden], .pc-infos[hidden], .parcours-pratiques-panneau[hidden] { display: none; }
+.pc-groupe-stats strong { font-size: 18px; }
+.bf-liste .note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; }
+.bf-liste .bf-corps { gap: 9px; }
+.pc-infos { display: grid; gap: 3px; font-size: 12px; }
+.pc-infos p { margin: 0; color: var(--texte-2); }
+.pc-infos a { color: var(--accent); font-weight: 650; }
+.bf-retour {
+  display: grid; flex: none; place-items: center; width: 36px; height: 36px; margin: -6px 2px 0 -6px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--texte); cursor: pointer;
+}
+.bf-retour[hidden] { display: none; }
+.bf-retour:hover { background: var(--surface-2); }
+.bf-retour svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bf-barre .bf-retour { margin: 0; }
+.bf-titres { flex: 1; }
+.parcours { display: grid; min-width: 0; gap: 10px; }
+.parcours .rando-actions-principales, .parcours .rando-outils { margin: 0; }
+.parcours-pratiques { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); }
+.parcours-pratiques button { min-height: 36px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--texte-2); font: 650 12px var(--police); cursor: pointer; }
+.parcours-pratiques button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
+.parcours-pratiques button:focus-visible, .parcours-commandes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bf-parcours { width: 372px; }
+.bf-parcours .bf-corps { gap: 11px; }
+.parcours-commandes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.parcours-commandes button {
   display: grid; place-items: center; min-height: 40px; padding: 0; border: 1px solid var(--bord); border-radius: 8px;
   background: var(--surface-2); color: var(--texte); cursor: pointer;
 }
-.velo-commandes button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.velo-commandes button:disabled { opacity: .35; cursor: default; }
-.velo-commandes button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
-.velo-commandes svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.velo-etat { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
-.velo-analyse { display: grid; min-width: 0; gap: 12px; }
-.velo-analyse[hidden] { display: none; }
-.velo-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 8px; }
-.velo-stat { display: grid; min-width: 0; gap: 1px; }
-.velo-stat span { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
-.velo-stat strong { color: var(--texte); font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.velo-stat-principale { grid-column: span 2; }
-.velo-stat-principale:nth-child(2) { grid-column: span 3; }
-.velo-stat-principale strong { color: var(--vent-couleur); font-size: 24px; letter-spacing: -.01em; line-height: 1.1; }
-.velo-profil { display: grid; min-width: 0; gap: 5px; padding-top: 10px; border-top: 1px solid var(--bord); }
-.velo-lecture { display: flex; align-items: center; gap: 4px; min-height: 22px; margin: 0; color: var(--texte-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-.velo-lecture strong { color: var(--texte); }
-.velo-graphique { display: block; width: 100%; height: 150px; touch-action: pan-y; cursor: crosshair; border-radius: 6px; }
-.velo-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.velo-legende-pente, .velo-legende { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
-.velo-legende-pente span, .velo-legende span { display: inline-flex; align-items: center; gap: 4px; }
-.velo-legende-pente i, .velo-legende i { width: 9px; height: 9px; flex: none; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
-.velo-repartition { display: grid; gap: 5px; }
-.velo-repartition[hidden] { display: none; }
-.velo-repartition h4 { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 650; text-transform: none; letter-spacing: 0; }
-.velo-repartition h4 small { color: var(--texte-2); font-size: 11px; font-weight: 500; }
-.velo-barre { display: flex; height: 9px; overflow: hidden; border-radius: 5px; background: var(--surface-2); }
-.velo-barre i { display: block; height: 100%; }
-.velo-couleur { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
-.velo-couleur select {
+.parcours-commandes button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.parcours-commandes button:disabled { opacity: .35; cursor: default; }
+.parcours-commandes button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.parcours-commandes svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.parcours-etat { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.parcours-analyse { display: grid; min-width: 0; gap: 12px; }
+.parcours-analyse[hidden] { display: none; }
+.parcours-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 8px; }
+.parcours-stat { display: grid; min-width: 0; gap: 1px; }
+.parcours-stat span { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
+.parcours-stat strong { color: var(--texte); font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.parcours-stat-principale { grid-column: span 2; }
+.parcours-stat-principale:nth-child(2) { grid-column: span 3; }
+.parcours-stat-principale strong { color: var(--vent-couleur); font-size: 24px; letter-spacing: -.01em; line-height: 1.1; }
+.parcours-profil { display: grid; min-width: 0; gap: 5px; padding-top: 10px; border-top: 1px solid var(--bord); }
+.parcours-lecture { display: flex; align-items: center; gap: 4px; min-height: 22px; margin: 0; color: var(--texte-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.parcours-lecture strong { color: var(--texte); }
+.parcours-graphique { display: block; width: 100%; height: 150px; touch-action: pan-y; cursor: crosshair; border-radius: 6px; }
+.parcours-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.parcours-legende-pente, .parcours-legende { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.parcours-legende-pente span, .parcours-legende span { display: inline-flex; align-items: center; gap: 4px; }
+.parcours-legende-pente i, .parcours-legende i { width: 9px; height: 9px; flex: none; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
+.parcours-repartition { display: grid; gap: 5px; }
+.parcours-repartition[hidden] { display: none; }
+.parcours-repartition h4 { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.parcours-repartition h4 small { color: var(--texte-2); font-size: 11px; font-weight: 500; }
+.parcours-barre { display: flex; height: 9px; overflow: hidden; border-radius: 5px; background: var(--surface-2); }
+.parcours-barre i { display: block; height: 100%; }
+.parcours-couleur { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.parcours-couleur select {
   flex: none; min-width: 110px; min-height: 36px; padding: 5px 7px; border: 1px solid var(--bord); border-radius: 7px;
   background: var(--surface); color: var(--texte); font: 600 12px var(--police);
 }
-.velo-source { margin: 0; color: var(--texte-2); font-size: 11.5px; }
-.velo-source[hidden] { display: none; }
-.velo-source a { color: var(--accent); font-weight: 650; }
+.parcours-source { margin: 0; color: var(--texte-2); font-size: 11.5px; }
+.parcours-source[hidden] { display: none; }
+.parcours-source a { color: var(--accent); font-weight: 650; }
 .velo .note { margin: 0; }
-.velo-item { width: 100%; border: 0; border-bottom: 1px solid var(--bord); background: transparent; color: var(--texte); font: inherit; text-align: left; }
-.velo-item .rando-item-nom, .velo-item .rando-item-sous { display: block; }
-.velo-nom { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--texte-2); font-size: 12px; }
-.velo-nom input, .velo-parcours-champ {
+.parcours-item { width: 100%; border: 0; border-bottom: 1px solid var(--bord); background: transparent; color: var(--texte); font: inherit; text-align: left; }
+.parcours-item .rando-item-nom, .parcours-item .rando-item-sous { display: block; }
+.parcours-nom { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.parcours-nom input, .parcours-parcours-champ {
   box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; padding: 5px 8px; border: 1px solid var(--bord); border-radius: 7px;
   background: var(--surface); color: var(--texte); font: 600 13px var(--police);
 }
-.velo-mes { display: grid; gap: 6px; }
-.velo-mes[hidden] { display: none; }
-.velo-mes h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
-.velo-mes-liste { display: grid; gap: 5px; }
-.velo-parcours {
+.parcours-mes { display: grid; gap: 6px; }
+.parcours-mes[hidden] { display: none; }
+.parcours-mes h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.parcours-mes-liste { display: grid; gap: 5px; }
+.parcours-parcours {
   display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 5px 7px 5px 5px;
   border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
 }
-.velo-parcours-texte { display: grid; min-width: 0; gap: 2px; min-height: 40px; padding: 2px 5px; border: 0; background: transparent; color: var(--texte); font: inherit; text-align: left; cursor: pointer; }
-.velo-parcours-texte strong { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.velo-parcours-texte small { overflow: hidden; color: var(--texte-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.velo-parcours .zh-zone-bouton svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.velo-alertes { display: grid; gap: 4px; }
-.velo-alertes[hidden] { display: none; }
-.velo-alerte {
+.parcours-parcours-texte { display: grid; min-width: 0; gap: 2px; min-height: 40px; padding: 2px 5px; border: 0; background: transparent; color: var(--texte); font: inherit; text-align: left; cursor: pointer; }
+.parcours-parcours-texte strong { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.parcours-parcours-texte small { overflow: hidden; color: var(--texte-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.parcours-parcours .zh-zone-bouton svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.parcours-alertes { display: grid; gap: 4px; }
+.parcours-alertes[hidden] { display: none; }
+.parcours-alerte {
   display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 6px 9px; border: 0; border-left: 3px solid #d99522; border-radius: 5px;
   background: color-mix(in srgb, #d99522 12%, transparent); color: var(--texte); font: 500 12px/1.35 var(--police); text-align: left; font-variant-numeric: tabular-nums;
 }
-button.velo-alerte { cursor: pointer; }
-.velo-alerte-forte { border-left-color: #e05b67; background: color-mix(in srgb, #e05b67 13%, transparent); }
-.velo-alerte-suite { margin: 0; color: var(--texte-2); font-size: 11.5px; }
+button.parcours-alerte { cursor: pointer; }
+.parcours-alerte-forte { border-left-color: #e05b67; background: color-mix(in srgb, #e05b67 13%, transparent); }
+.parcours-alerte-suite { margin: 0; color: var(--texte-2); font-size: 11.5px; }
 .velo .option-case { margin: 0; }
-.velo-repli .rando-outils-contenu { display: grid; gap: 7px; }
-.velo-ev-liste { display: grid; gap: 4px; max-height: 240px; overflow-y: auto; }
-.velo-ev {
+.parcours-repli .rando-outils-contenu { display: grid; gap: 7px; }
+.parcours-ev-liste { display: grid; gap: 4px; max-height: 240px; overflow-y: auto; }
+.parcours-ev {
   display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 40px; padding: 4px 9px;
   border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); color: var(--texte); font: 500 12.5px var(--police); text-align: left; cursor: pointer;
 }
-.velo-ev b { color: var(--accent); font-weight: 750; font-variant-numeric: tabular-nums; }
-.velo-ev[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); }
-.velo-stats-park { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.velo-stats-park .velo-stat strong { font-size: 18px; }
-.bf-bikepark .velo-source { line-height: 1.4; }
-.velo-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
-.bf-velo-lecture .velo-commandes, .bf-velo-lecture .velo-pratiques-panneau, .bf-velo-lecture .velo-etat { display: none; }
-.bf-velo-lecture.bf-velo-ensemble .velo-etat { display: block; }
-.bf-velo-ensemble :is(.velo-pied, .velo-nom) { display: none; }
-.velo-etape {
+.parcours-ev b { color: var(--accent); font-weight: 750; font-variant-numeric: tabular-nums; }
+.parcours-ev[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); }
+.parcours-stats-park { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.parcours-stats-park .parcours-stat strong { font-size: 18px; }
+.bf-bikepark .parcours-source { line-height: 1.4; }
+.parcours-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.bf-parcours-lecture .parcours-commandes, .bf-parcours-lecture .parcours-pratiques-panneau, .bf-parcours-lecture .parcours-etat { display: none; }
+.bf-parcours-lecture.bf-parcours-ensemble .parcours-etat { display: block; }
+.bf-parcours-ensemble :is(.parcours-pied, .parcours-nom) { display: none; }
+.parcours-etape {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%;
-  background: var(--velo-couleur); color: #0b111b; box-shadow: 0 1px 5px rgba(0, 0, 0, .55); font: 800 12px var(--police); cursor: grab; touch-action: none;
+  background: var(--parcours-couleur); color: #0b111b; box-shadow: 0 1px 5px rgba(0, 0, 0, .55); font: 800 12px var(--police); cursor: grab; touch-action: none;
 }
-.velo-etape[hidden] { display: none; }
-.velo-etape-depart { background: #1fbf85; }
-.velo-etape-arrivee { background: #ff5580; }
-.velo-popup { display: grid; gap: 5px; min-width: 190px; }
-.velo-popup button { min-height: 38px; padding: 0 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte); font: 600 12.5px var(--police); cursor: pointer; }
-.velo-popup .velo-popup-retirer { color: #e05b67; }
+.parcours-etape[hidden] { display: none; }
+.parcours-etape-depart { background: #1fbf85; }
+.parcours-etape-arrivee { background: #ff5580; }
+.parcours-popup { display: grid; gap: 5px; min-width: 190px; }
+.parcours-popup button { min-height: 38px; padding: 0 10px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte); font: 600 12.5px var(--police); cursor: pointer; }
+.parcours-popup .parcours-popup-retirer { color: #e05b67; }
 .hl-pastille {
   position: fixed; top: 74px; left: 12px; z-index: 13; padding: 4px 10px; border: 1px solid var(--bord); border-radius: 999px;
   background: var(--surface); color: var(--texte); box-shadow: var(--ombre); font: 650 11.5px var(--police); pointer-events: none;
@@ -2404,35 +2468,19 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
     top: auto; right: 0; bottom: 0; left: 0; z-index: 20; width: 100%; max-width: none; max-height: 74dvh; gap: 12px;
     padding: 14px 16px max(14px, env(safe-area-inset-bottom)); border-width: 1px 0 0; border-radius: 16px 16px 0 0;
   }
-  body:has(#menu-tiroir.ouvert) .bf { display: none; }
+  body:has(#menu-tiroir.ouvert) .bf, body:has(.outil-rapide-panneau:not([hidden])) .bf { display: none; }
   :root[data-reseau='hors-ligne'] .bf { top: auto; max-height: 74dvh; }
-  .bf-outil .pt-icone { stroke-linecap: round; stroke-linejoin: round; }
   body:has(.bf:not([hidden])) .maplibregl-ctrl-bottom-left { visibility: hidden; } /* placée par echelle-carte.js, elle passerait dessus */
   body:has(.bf-reduite:not([hidden])) .maplibregl-ctrl-bottom-right { bottom: calc(74px + env(safe-area-inset-bottom)); }
   .bf-poignee { display: block; justify-self: center; width: 64px; height: 18px; margin: -10px 0 -8px; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: none; }
   .bf-poignee::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto; border-radius: 4px; background: var(--bord); }
   .bf-entete { touch-action: none; }
-  .bf-reduire { display: grid; }
-  .bf.bf-reduite { gap: 2px; padding: 10px 8px max(8px, env(safe-area-inset-bottom)) 12px; }
-  .bf.bf-reduite > :not(.bf-poignee, .bf-barre) { display: none; }
-  .bf.bf-reduite .bf-barre { display: flex; align-items: center; gap: 2px; touch-action: none; }
-  .bf-resume {
-    display: grid; flex: 1; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; min-width: 0; min-height: 44px; padding: 0;
-    border: 0; background: transparent; color: var(--texte); font: inherit; text-align: left; cursor: pointer;
-  }
-  .bf-resume-texte { display: grid; min-width: 0; gap: 1px; }
-  .bf-resume-texte strong { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-  .bf-resume-texte small { overflow: hidden; color: var(--texte-2); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .bf-resume-vent { white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .bf-resume-vent b { color: var(--vent-couleur); font-size: 20px; font-weight: 700; }
-  .bf-resume-vent i { color: var(--texte-2); font-size: 11px; font-style: normal; }
-  .pt-icone { display: block; width: 32px; height: 32px; fill: none; stroke: var(--accent); stroke-width: 1.8; }
+  .bf.bf-reduite { padding: 10px 8px max(8px, env(safe-area-inset-bottom)) 12px; }
   .bf-outil .vent-cadran-grand { width: 56px; height: 56px; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-canvas { max-height: 28dvh; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-detail { display: none; }
-  .bf-resume .bf-chevron { color: var(--texte-2); }
   /* Pendant l'édition, la carte passe d'abord : le détail vient avec « Terminer » */
-  .bf-velo:not(.bf-velo-lecture) :is(.velo-profil, .velo-repartition, .velo-couleur, .velo-nom, .velo-alertes) { display: none; }
+  .bf-parcours:not(.bf-parcours-lecture) :is(.parcours-profil, .parcours-repartition, .parcours-couleur, .parcours-nom, .parcours-alertes) { display: none; }
   .bf-rose-dessin { width: 92px; height: 92px; }
   .bf-valeur-principale strong { font-size: 30px; }
   .bf-graphique { height: 176px; }

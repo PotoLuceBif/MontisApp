@@ -183,7 +183,7 @@ async function supprimerTuiles(zone, autres) {
   await Promise.all(clesDeZone(zone).filter((cle) => !gardees.has(cle)).map((cle) => cache.delete(cle)));
 }
 
-export function creerCartesHorsLigne(map, { fermerMenu = () => {} } = {}) {
+export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   let zones = lireZones();
   let controleur = null;
   let bornesCadre = null;
@@ -262,6 +262,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {} } = {}) {
     classe: 'bf-outil',
     onFermer: () => quitter(),
     onAgrandi: () => majCadre(),
+    onRetour: () => ouvrirMenu(),
   });
   panneau.titre.textContent = 'Télécharger une zone';
   panneau.corps.innerHTML = `

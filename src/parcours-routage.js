@@ -1,17 +1,41 @@
-// Pratiques du vélo et calcul d'un tronçon. BRouter d'abord : lui seul indique surfaces et
+// Calcul d'un tronçon selon la pratique. BRouter d'abord : lui seul indique surfaces et
 // difficulté. Valhalla en secours : BRouter abandonne au-delà de 3 s de calcul (longues distances).
-import { decoderPolyligne6 } from './activite-randonnee.js';
-import { distance } from './rando-api.js';
+import { ORDRE_SAC, distance } from './rando-api.js';
+
+export function decoderPolyligne6(polyligne) {
+  if (typeof polyligne !== 'string') throw new Error('Le service a renvoyé un tracé invalide.');
+  const points = [];
+  let index = 0;
+  let latitude = 0;
+  let longitude = 0;
+  const lireDelta = () => {
+    let resultat = 0;
+    let decalage = 0;
+    let code;
+    do {
+      if (index >= polyligne.length || decalage > 30) {
+        throw new Error('Le service a renvoyé un tracé invalide.');
+      }
+      code = polyligne.charCodeAt(index++) - 63;
+      if (code < 0 || code > 0x3f) throw new Error('Le service a renvoyé un tracé invalide.');
+      resultat |= (code & 0x1f) << decalage;
+      decalage += 5;
+    } while (code >= 0x20);
+    return resultat & 1 ? ~(resultat >> 1) : resultat >> 1;
+  };
+
+  while (index < polyligne.length) {
+    latitude += lireDelta();
+    longitude += lireDelta();
+    points.push([longitude / 1e6, latitude / 1e6]);
+  }
+  if (points.length < 2) throw new Error('Le service n’a pas trouvé de chemin entre ces points.');
+  return points;
+}
 
 const URL_BROUTER = 'https://brouter.de/brouter';
 const URL_VALHALLA = 'https://valhalla1.openstreetmap.de/route';
 const ATTENTE_REPRISE = 1500; // ms : BRouter répond « réessayez plus tard » quand on insiste
-
-export const PRATIQUES = {
-  vtt: { id: 'vtt', libelle: 'VTT', brouter: 'mtb', valhalla: 'Mountain', couleur: '#ff8a3d', vitesse: 14, montee: 500, seuilRaide: 20, itineraires: ['mtb'], calque: 'mtb' },
-  gravel: { id: 'gravel', libelle: 'Gravel', brouter: 'gravel', valhalla: 'Cross', couleur: '#e3b341', vitesse: 19, montee: 600, seuilRaide: 14, itineraires: ['cycling', 'mtb'], calque: 'cycling' },
-  route: { id: 'route', libelle: 'Route', brouter: 'fastbike', valhalla: 'Road', couleur: '#4aa8ff', vitesse: 25, montee: 800, seuilRaide: 12, itineraires: ['cycling'], calque: 'cycling' },
-};
 
 const REVETUS = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'cobblestone', 'chipseal']);
 const NON_REVETUS = new Set(['gravel', 'fine_gravel', 'compacted', 'dirt', 'earth', 'ground', 'grass', 'mud', 'sand', 'rock', 'pebblestone', 'unpaved', 'wood']);
@@ -19,7 +43,7 @@ const ROUTES = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary',
 const SENTIERS = new Set(['path', 'footway', 'bridleway', 'steps']);
 
 // Une chaîne « highway=path surface=ground mtb:scale=2 » devient un type de voie et une difficulté
-export function classerVoie(wayTags = '') {
+export function classerVoie(wayTags = '', echelle = 'mtb') {
   const tags = Object.fromEntries(String(wayTags).split(' ').map((paire) => paire.split('=')));
   const { highway, surface } = tags;
   let voie = 'inconnu';
@@ -27,8 +51,8 @@ export function classerVoie(wayTags = '') {
   else if (SENTIERS.has(highway)) voie = 'single';
   else if (highway === 'track' || NON_REVETUS.has(surface)) voie = 'chemin';
   else if (ROUTES.has(highway)) voie = 'asphalte';
-  const echelle = Number.parseInt(tags['mtb:scale'], 10);
-  return { voie, difficulte: Number.isFinite(echelle) ? echelle : null, marches: highway === 'steps' };
+  const brute = echelle === 'sac' ? ORDRE_SAC.indexOf(tags.sac_scale) : Number.parseInt(tags['mtb:scale'], 10);
+  return { voie, difficulte: Number.isFinite(brute) && brute >= 0 ? brute : null, marches: highway === 'steps' };
 }
 
 export function longueurLigne(ligne) {
@@ -63,15 +87,14 @@ async function appelerBrouter(de, vers, pratique, signal, reprise = true) {
   const [entetes, ...lignes] = trace.properties.messages ?? [[]];
   const colDistance = entetes.indexOf('Distance');
   const colTags = entetes.indexOf('WayTags');
-  const troncons = lignes.map((ligne) => ({ longueur: Number(ligne[colDistance]) || 0, ...classerVoie(ligne[colTags]) }));
+  const troncons = lignes.map((ligne) => ({ longueur: Number(ligne[colDistance]) || 0, ...classerVoie(ligne[colTags], pratique.echelle) }));
   return { geom, troncons, source: 'brouter' };
 }
 
 async function appelerValhalla(de, vers, pratique, signal) {
   const requete = {
     locations: [{ lon: de[0], lat: de[1] }, { lon: vers[0], lat: vers[1] }],
-    costing: 'bicycle',
-    costing_options: { bicycle: { bicycle_type: pratique.valhalla } },
+    ...pratique.valhalla,
     units: 'kilometers',
   };
   const reponse = await fetch(`${URL_VALHALLA}?json=${encodeURIComponent(JSON.stringify(requete))}`, { signal });
@@ -87,7 +110,7 @@ export async function calculerTroncon(de, vers, pratique, signal) {
     return await appelerBrouter(de, vers, pratique, signal);
   } catch (erreur) {
     if (erreur.name === 'AbortError') throw erreur;
-    console.warn('Routage vélo, passage au secours :', erreur);
+    console.warn('Routage, passage au secours :', erreur);
     return appelerValhalla(de, vers, pratique, signal);
   }
 }

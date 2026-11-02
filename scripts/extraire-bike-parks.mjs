@@ -117,7 +117,7 @@ const stations = toutes.filter(({ properties }) => PAYS_FRONTALIERS.includes(pro
 // Villages que les données de ski rangent dans un grand domaine : leurs pistes garderaient un autre nom
 const portes = toutes.find(({ properties }) => properties.nom === 'Les Portes du Soleil');
 stations.push({
-  geometry: { coordinates: [6.84, 46.27] },
+  geometry: { coordinates: [6.79, 46.225] }, // le bike park, à Pré-la-Joux : à 6 km du village
   properties: { id: 'chatel', nom: 'Châtel', lieu: 'Haute-Savoie', ski: portes?.properties.id },
 });
 const secteurs = new Map();

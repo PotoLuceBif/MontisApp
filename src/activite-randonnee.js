@@ -10,8 +10,11 @@ import {
   detailsItineraire,
   extraireTrace,
   echantillonner,
+  titreDe,
   NOMS_SAC,
 } from './rando-api.js';
+import { lireGpx } from './parcours-gpx.js';
+import { decoderPolyligne6 } from './parcours-routage.js';
 import {
   altitudesDuTrace,
   lisser,
@@ -29,7 +32,6 @@ const URL_CALCUL_ITINERAIRE = 'https://valhalla1.openstreetmap.de/route';
 const MAX_ETAPES_PAR_CALCUL = 10;
 const COULEUR_TRACE = '#4debd4';
 const TAILLE_MAX_GPX = 10 * 1024 * 1024;
-const LATITUDE_MAX_MERCATOR = 85.05112878;
 
 const vide = () => ({ type: 'FeatureCollection', features: [] });
 
@@ -39,13 +41,6 @@ function el(balise, classe, texte) {
   if (texte != null) e.textContent = texte;
   return e;
 }
-
-export const titreDe = (r) => {
-  const ref = r.ref || '';
-  const nom = r.name || '';
-  if (ref && nom && !nom.includes(ref)) return `${ref} · ${nom}`;
-  return nom || ref || 'Itinéraire sans nom';
-};
 
 function lienWikipedia(tag) {
   if (!tag) return null;
@@ -113,94 +108,6 @@ function echantillonnerLignes(lignes) {
     });
   }
   return { points, total };
-}
-
-export function lireGpx(contenu, nomFichier) {
-  const documentXml = new DOMParser().parseFromString(contenu, 'application/xml');
-  if (
-    documentXml.getElementsByTagName('parsererror').length ||
-    documentXml.documentElement.localName !== 'gpx'
-  ) {
-    throw new Error('Le fichier ne contient pas un GPX valide.');
-  }
-
-  const lirePoints = (element, nomPoint) => {
-    const points = [];
-    for (const point of element.getElementsByTagNameNS('*', nomPoint)) {
-      const longitude = point.getAttribute('lon');
-      const latitude = point.getAttribute('lat');
-      if (longitude == null || !longitude.trim() || latitude == null || !latitude.trim()) continue;
-      const lng = Number(longitude);
-      const lat = Number(latitude);
-      if (
-        !Number.isFinite(lng) || lng < -180 || lng > 180 ||
-        !Number.isFinite(lat) || lat < -LATITUDE_MAX_MERCATOR || lat > LATITUDE_MAX_MERCATOR
-      ) continue;
-      points.push([lng, lat]);
-    }
-    return points;
-  };
-
-  const lignesTrace = [];
-  for (const segment of documentXml.getElementsByTagNameNS('*', 'trkseg')) {
-    const points = lirePoints(segment, 'trkpt');
-    if (points.length > 1) lignesTrace.push(points);
-  }
-  if (!lignesTrace.length) {
-    for (const route of documentXml.getElementsByTagNameNS('*', 'rte')) {
-      const points = lirePoints(route, 'rtept');
-      if (points.length > 1) lignesTrace.push(points);
-    }
-  }
-  if (!lignesTrace.length) {
-    throw new Error('Aucun tracé valide trouvé (il faut au moins deux points GPS).');
-  }
-
-  const chaine = lignesTrace.flat();
-  const longueur = lignesTrace.reduce((total, ligne) => {
-    for (let i = 1; i < ligne.length; i++) total += distance(ligne[i - 1], ligne[i]);
-    return total;
-  }, 0);
-  if (longueur <= 0) throw new Error('Le tracé ne contient pas de distance exploitable.');
-
-  const metadata = documentXml.getElementsByTagNameNS('*', 'metadata')[0];
-  const nomGpx =
-    metadata?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim() ||
-    documentXml.getElementsByTagNameNS('*', 'trk')[0]?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim() ||
-    documentXml.getElementsByTagNameNS('*', 'rte')[0]?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim();
-  const nom = nomGpx || nomFichier.replace(/\.gpx$/i, '') || 'Parcours importé';
-  return { nom, trace: { lignes: lignesTrace, chaine }, longueur };
-}
-
-export function decoderPolyligne6(polyligne) {
-  if (typeof polyligne !== 'string') throw new Error('Le service a renvoyé un tracé invalide.');
-  const points = [];
-  let index = 0;
-  let latitude = 0;
-  let longitude = 0;
-  const lireDelta = () => {
-    let resultat = 0;
-    let decalage = 0;
-    let code;
-    do {
-      if (index >= polyligne.length || decalage > 30) {
-        throw new Error('Le service a renvoyé un tracé invalide.');
-      }
-      code = polyligne.charCodeAt(index++) - 63;
-      if (code < 0 || code > 0x3f) throw new Error('Le service a renvoyé un tracé invalide.');
-      resultat |= (code & 0x1f) << decalage;
-      decalage += 5;
-    } while (code >= 0x20);
-    return resultat & 1 ? ~(resultat >> 1) : resultat >> 1;
-  };
-
-  while (index < polyligne.length) {
-    latitude += lireDelta();
-    longitude += lireDelta();
-    points.push([longitude / 1e6, latitude / 1e6]);
-  }
-  if (points.length < 2) throw new Error('Le service n’a pas trouvé de chemin entre ces points.');
-  return points;
 }
 
 export function creerActiviteRandonnee(map) {
