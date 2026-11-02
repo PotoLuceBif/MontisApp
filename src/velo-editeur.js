@@ -11,6 +11,7 @@ import { paletteInterface } from './vent-cadran.js';
 import { PRATIQUES, calculerTroncon, tronconLibre } from './velo-routage.js';
 import { DIFFICULTES, PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, repartir } from './velo-analyse.js';
 import { creerProfilVelo } from './velo-profil.js';
+import { compacter, ecrireBrouillon, effacerBrouillon, enregistrerParcours, lireBrouillon } from './velo-parcours.js';
 
 const SOURCE_TRACE = 'velo-trace';
 const COUCHE_CONTOUR = 'velo-trace-contour';
@@ -53,7 +54,7 @@ function legende(parts, total) {
     .join('');
 }
 
-export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique = () => {}, onFermer = () => {} }) {
+export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique = () => {}, onFermer = () => {}, onEnregistre = () => {} }) {
   let pratique = pratiqueInitiale;
   let etapes = []; // { lng, lat, mode: 'route' | 'libre' | 'fixe', troncon } ; troncon : ce qui y mène
   let edition = false;
@@ -64,6 +65,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   let popup = null;
   let controleur = null;
   let nom = 'Nouveau parcours';
+  let idParcours = null;
   let analyse = null;
   let repartition = null;
   let jetonAnalyse = 0;
@@ -105,8 +107,10 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         ${MODES_COULEUR.map(([id, libelle]) => `<option value="${id}">${libelle}</option>`).join('')}
       </select></label>
     </div>
+    <label class="velo-nom"><span>Nom</span><input type="text" maxlength="60" placeholder="Nom du parcours"></label>
     <div class="velo-pied">
       <button type="button" class="para-bouton velo-terminer">Terminer</button>
+      <button type="button" class="para-bouton para-bouton-principal velo-enregistrer">Enregistrer</button>
       <button type="button" class="para-bouton velo-gpx" disabled>GPX</button>
     </div>
     <p class="velo-source" hidden></p>
@@ -128,6 +132,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   const selecteurCouleur = $('.velo-couleur select');
   const boutonTerminer = $('.velo-terminer');
   const boutonGpx = $('.velo-gpx');
+  const boutonEnregistrer = $('.velo-enregistrer');
+  const champNom = $('.velo-nom input');
   const source = $('.velo-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
@@ -441,6 +447,11 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         ? 'Tracé de secours : surfaces et difficulté indisponibles sur ce tronçon.'
         : 'Touchez la carte pour ajouter un point, ou le tracé pour y insérer un passage.';
     }
+    if (edition) {
+      if (etapes.length) ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
+      else effacerBrouillon();
+    }
+    boutonEnregistrer.disabled = etapes.length < 2;
     panneau.definirResume({ detail: total ? km(total) : 'Touchez la carte', valeur: total ? (total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '', unite: total ? 'km' : '' });
     rendre();
   }
@@ -487,6 +498,28 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     nom = nouveau;
     panneau.titre.textContent = nom;
     panneau.definirResume({ nom });
+    if (champNom.value !== nom) champNom.value = nom;
+  }
+
+  function enregistrer() {
+    if (etapes.length < 2) return;
+    idParcours = idParcours ?? String(Date.now());
+    const reussi = enregistrerParcours({
+      id: idParcours,
+      nom,
+      pratique: pratique.id,
+      date: Date.now(),
+      total: repartition?.total ?? 0,
+      plus: analyse?.plus ?? null,
+      etapes: compacter(etapes),
+    });
+    message.textContent = reussi
+      ? `« ${nom} » est dans Mes parcours.`
+      : 'Enregistrement impossible : l’espace du navigateur est plein. Supprimez un ancien parcours.';
+    if (reussi) {
+      effacerBrouillon();
+      onEnregistre();
+    }
   }
 
   // Tout le détail du tracé, avec l'altitude du profil au même endroit
@@ -626,6 +659,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
   boutonGpx.addEventListener('click', exporterGpx);
+  boutonEnregistrer.addEventListener('click', enregistrer);
+  champNom.addEventListener('input', () => definirNom(champNom.value.trim() || 'Parcours sans nom'));
   commande('annuler').addEventListener('click', () => restaurer(passe, futur));
   commande('retablir').addEventListener('click', () => restaurer(futur, passe));
   commande('libre').addEventListener('click', () => {
@@ -659,6 +694,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     ouvrirTrace({ nom: nomTrace, chaine, lien }) {
       controleur?.abort();
       etapes = etapesDepuisChaine(chaine);
+      idParcours = null;
       passe = [];
       futur = [];
       definirNom(nomTrace);
@@ -670,13 +706,37 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       recalculer();
       cadrer(chaine);
     },
+    // Un parcours enregistré se rouvre tel quel : son tracé n'a pas à être recalculé
+    ouvrirEnregistre(parcours) {
+      controleur?.abort();
+      etapes = parcours.etapes.map((etape) => ({ ...etape }));
+      idParcours = parcours.id;
+      passe = [];
+      futur = [];
+      definirNom(parcours.nom);
+      source.hidden = true;
+      bloquerFiches(true);
+      panneau.afficher();
+      definirEdition(false);
+      recalculer();
+      cadrer(etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []));
+    },
+    // Reprend le parcours en cours s'il y en a un : le téléphone a pu fermer l'app entre-temps
     ouvrirCreation() {
-      if (etapes.length && !edition) {
+      const brouillon = lireBrouillon();
+      if (edition && etapes.length) {
+        /* déjà en cours */
+      } else if (brouillon?.etapes?.length) {
+        etapes = brouillon.etapes.map((etape) => ({ ...etape }));
+        idParcours = null;
+        definirNom(brouillon.nom || 'Nouveau parcours');
+      } else {
         etapes = [];
-        passe = [];
-        futur = [];
+        idParcours = null;
+        definirNom('Nouveau parcours');
       }
-      definirNom('Nouveau parcours');
+      passe = [];
+      futur = [];
       source.hidden = true;
       bloquerFiches(true);
       panneau.afficher();
@@ -687,6 +747,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       controleur?.abort();
       controleur = null;
       edition = false;
+      idParcours = null;
       bloquerFiches(false);
       panneau.masquer();
       fermerPopup();

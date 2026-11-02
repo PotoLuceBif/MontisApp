@@ -2242,6 +2242,23 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .velo .note { margin: 0; }
 .velo-item { width: 100%; border: 0; border-bottom: 1px solid var(--bord); background: transparent; color: var(--texte); font: inherit; text-align: left; }
 .velo-item .rando-item-nom, .velo-item .rando-item-sous { display: block; }
+.velo-nom { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.velo-nom input, .velo-parcours-champ {
+  box-sizing: border-box; width: 100%; min-width: 0; min-height: 36px; padding: 5px 8px; border: 1px solid var(--bord); border-radius: 7px;
+  background: var(--surface); color: var(--texte); font: 600 13px var(--police);
+}
+.velo-mes { display: grid; gap: 6px; }
+.velo-mes[hidden] { display: none; }
+.velo-mes h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.velo-mes-liste { display: grid; gap: 5px; }
+.velo-parcours {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; padding: 5px 7px 5px 5px;
+  border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
+}
+.velo-parcours-texte { display: grid; min-width: 0; gap: 2px; min-height: 40px; padding: 2px 5px; border: 0; background: transparent; color: var(--texte); font: inherit; text-align: left; cursor: pointer; }
+.velo-parcours-texte strong { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.velo-parcours-texte small { overflow: hidden; color: var(--texte-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.velo-parcours .zh-zone-bouton svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .velo-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .bf-velo-lecture .velo-commandes, .bf-velo-lecture .velo-pratiques-panneau, .bf-velo-lecture .velo-etat { display: none; }
 .velo-etape {
@@ -2392,7 +2409,7 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-detail { display: none; }
   .bf-resume .bf-chevron { color: var(--texte-2); }
   /* Pendant l'édition, la carte passe d'abord : le détail vient avec « Terminer » */
-  .bf-velo:not(.bf-velo-lecture) :is(.velo-profil, .velo-repartition, .velo-couleur) { display: none; }
+  .bf-velo:not(.bf-velo-lecture) :is(.velo-profil, .velo-repartition, .velo-couleur, .velo-nom) { display: none; }
   .bf-rose-dessin { width: 92px; height: 92px; }
   .bf-valeur-principale strong { font-size: 30px; }
   .bf-graphique { height: 176px; }
