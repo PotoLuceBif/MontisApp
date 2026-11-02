@@ -18,7 +18,7 @@ const LIBELLES_ETAT = { actif: 'bf.direct', ancien: 'bf.ancien', hs: 'bf.hs' };
 
 const kmh = (valeur) => (Number.isFinite(valeur) ? valeurVent(valeur) : '—');
 
-export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } = {}) {
+export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, onApercu = () => {} } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'balise-fiche-reduite',
     libelle: 'panneau.balise',
@@ -91,6 +91,8 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     onCurseur(point) {
       legende.hidden = Boolean(point);
       lecture.hidden = !point;
+      // La manche de la carte rejoue le relevé lu sur le graphique
+      onApercu(point && station ? { id: station.id, ...point } : null);
       if (!point) return;
       $('[data-bf-c-heure]').textContent = heureCourte(point.date);
       $('[data-bf-c-moyen]').textContent = kmh(point.moyenne);
@@ -264,6 +266,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
   function fermer() {
     if (!panneau.ouvert) return;
     panneau.masquer();
+    onApercu(null);
     station = null;
     jetonAltitude += 1;
     controleur?.abort();

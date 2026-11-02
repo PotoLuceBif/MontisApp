@@ -2288,7 +2288,11 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .ski-visite-calques .visite-fonds { display: grid; flex-basis: 100%; grid-template-columns: none; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
 .ski-visite-calque[hidden] { display: none; }
 .ski-fiche-contenu > .ski-conditions-note { padding: 0 14px; }
-.visite-recentrer { margin-left: auto; width: 36px; padding: 0; justify-content: center; }
+/* Rond parfait, à la hauteur des pastilles voisines */
+.ski-visite-calque.visite-recentrer {
+  box-sizing: border-box; flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; margin-left: auto; padding: 0;
+  justify-content: center; border-radius: 50%; aspect-ratio: 1;
+}
 .ski-niveau-inconnu { background: #6f7884; }
 .pc-ligne-sous { grid-column: 1 / -1; color: var(--texte-2); font-size: 11px; line-height: 1.3; }
 .pc-section .rando-actions-principales { margin: 0; grid-template-columns: minmax(0, 1fr); }
@@ -2831,10 +2835,11 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .ski-visite-calques { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 7px; padding: 0 14px 10px; }
 .ski-visite-calque {
   display: inline-flex;
-  min-height: 32px;
+  box-sizing: border-box;
+  min-height: 36px;
   align-items: center;
   gap: 6px;
-  padding: 4px 11px 4px 8px;
+  padding: 4px 12px 4px 9px;
   border: 1px solid var(--bord);
   border-radius: 99px;
   background: var(--surface-2);
