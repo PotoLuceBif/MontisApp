@@ -204,7 +204,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - FFVL : en attente d'une clé et d'un relais serveur.
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Si OpenFreeMap ne répond pas (TileJSON `planet`), MapLibre n'émet jamais `load` : aucune couche ni aucun menu n'apparaît.
-- Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
+- MapLibre est dans un fichier à part (`vite.config.js`), mais les activités ne sont pas encore chargées à la demande.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
 **Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.
