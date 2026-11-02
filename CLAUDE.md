@@ -13,9 +13,10 @@ npm ci            # installer (Node 22.12 ou plus récent, exigé par Vite 8)
 npm run dev       # développement
 npm run build     # build de production dans dist/, avec /sw.js généré
 npm run preview   # sert dist/ : seul moyen de tester le service worker et le hors-ligne
+npm test          # tests automatiques (Vitest, dans tests/)
 ```
 
-Il n'y a ni tests automatiques ni linter : `npm run build` est le seul contrôle automatique. Il ne détecte pas une erreur d'exécution, donc une modification d'interface se vérifie dans un navigateur quand c'est possible. En développement, la carte est accessible par `window.map`.
+`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie dans un navigateur quand c'est possible. En développement, la carte est accessible par `window.map`.
 
 Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VITE_FFVL=1` active le code FFVL, qui suppose un relais serveur inexistant à ce jour.
 
@@ -43,7 +44,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 ## Workflow
 
 - Chaque tâche sur sa propre branche, créée depuis `main`.
-- `npm run build` doit passer avant de pousser.
+- `npm test` et `npm run build` doivent passer avant de pousser.
 - Commits clairs en français, au présent, sans préfixe : « Ajoute les EuroVelo et la visite des bike parks ».
 - Ne jamais commiter de secret. Toute variable `VITE_` finit lisible dans le JavaScript livré : une vraie clé d'API doit rester côté serveur, derrière un relais.
 - Linux distingue les majuscules, contrairement à Windows : respecter la casse exacte dans les imports et les chemins d'assets.
@@ -125,7 +126,7 @@ src/                    Tout le code (détail ci-dessous)
 | `activite-parapente.js`, `parapente.js` | Menu de l'activité ; balises et sites |
 | `balises-sources.js`, `balises-couche.js` | Sources de relevés ; pastilles et manches à air sur la carte |
 | `balise-fiche.js`, `balise-graphique.js` | Fiche d'une balise ; graphique de son évolution |
-| `portee.js` | Portée de vol depuis un point, selon la finesse et le relief |
+| `portee.js`, `portee-calcul.js` | Portée de vol depuis un point ; calcul pur du chemin le plus court (testé) |
 
 **Randonnée et Vélo**
 | Fichier | Rôle |
@@ -201,7 +202,6 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - FFVL : en attente d'une clé et d'un relais serveur.
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
-- Aucun test automatique.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
 **Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.
