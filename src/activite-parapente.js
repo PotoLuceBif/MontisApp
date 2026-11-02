@@ -9,12 +9,12 @@ const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
 
 const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
-export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}) {
+export function creerActiviteParapente(map, { fermerMenu, analyseVent } = {}) {
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
     <div class="rando-actions-principales" role="group" aria-label="Outils parapente">
-      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="portee" aria-pressed="true">
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="portee" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>
         <span>Portée de vol</span>
       </button>
@@ -27,14 +27,6 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
         <span>Sites et balises</span>
       </button>
     </div>
-
-    <section class="para-vue" data-para-contenu="portee" aria-label="Portée de vol">
-      <div data-para-portee></div>
-    </section>
-
-    <section class="para-vue" data-para-contenu="vent" aria-label="Analyse du vent" hidden>
-      <div class="para-analyse-vent"></div>
-    </section>
 
     <section class="para-vue" data-para-contenu="sites" aria-label="Sites et balises" hidden>
       <div class="para-source">
@@ -85,9 +77,9 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
   const boutonActualiser = panneau.querySelector('.para-actualiser');
   const caseBalises = panneau.querySelector('[data-para-layer-balises]');
   const caseSites = panneau.querySelector('[data-para-layer-sites]');
-  const hoteVent = panneau.querySelector('.para-analyse-vent');
   let actif = false;
-  let vueActive = 'portee';
+  const vueLue = lire('para-vue', null);
+  let vueActive = ['portee', 'vent', 'sites'].includes(vueLue) ? vueLue : null;
 
   const coche = (nom, defaut) => lire(nom, defaut) !== false;
   caseBalises.checked = coche('balises-visibles', true);
@@ -130,7 +122,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       }
       ligne.append(texte, vitesse);
       ligne.addEventListener('click', () => {
-        onChoisirPoint?.(); // sur téléphone, le panneau cacherait la carte
+        fermerMenu?.(); // sur téléphone, le menu cacherait la carte
         donnees.centrerSurBalise(station.id);
       });
       return ligne;
@@ -147,7 +139,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     // Pendant le choix du point de départ de la portée, un clic ne doit rien ouvrir d'autre
     peutOuvrirBalise: () => !portee.enAttente,
   });
-  const portee = initPortee(map, panneau.querySelector('[data-para-portee]'), { onChoisirPoint });
+  const portee = initPortee(map, { onFermer: () => choisirVue(null) });
 
   if (choixSource) {
     choixSource.value = donnees.sourceActive.id;
@@ -173,29 +165,47 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
   map.on('moveend', rendreBalises);
 
-  function choisirVue(nom) {
-    if (nom === vueActive) return;
-    vueActive = nom;
-    boutonsVue.forEach((bouton) => {
-      bouton.setAttribute('aria-pressed', String(bouton.dataset.paraVue === nom));
-    });
-    contenusVue.forEach((contenu) => {
-      contenu.hidden = contenu.dataset.paraContenu !== nom;
-    });
-    synchroniserCarte();
-    rendreBalises();
-
-    if (nom === 'vent') {
-      analyseVent.monterDans(hoteVent);
-      if (actif) analyseVent.activer();
-    } else {
-      analyseVent.desactiver();
-      analyseVent.retournerAuMenu();
-    }
+  function ouvrirOutil() {
+    if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null) });
+    else if (vueActive === 'portee') portee.ouvrir();
   }
 
+  function afficherVue() {
+    boutonsVue.forEach((bouton) => {
+      bouton.setAttribute('aria-pressed', String(bouton.dataset.paraVue === vueActive));
+    });
+    contenusVue.forEach((contenu) => {
+      contenu.hidden = contenu.dataset.paraContenu !== vueActive;
+    });
+  }
+
+  // Portée et vent s'ouvrent sur la carte ; les balises gardent leur liste dans le menu.
+  // `null` : aucun outil ouvert.
+  function choisirVue(nom) {
+    if (nom === vueActive) return;
+    if (vueActive === 'vent') analyseVent.desactiver();
+    if (vueActive === 'portee') portee.fermer();
+    vueActive = nom;
+    ecrire('para-vue', nom);
+    afficherVue();
+    synchroniserCarte();
+    rendreBalises();
+    if (!actif) return;
+    ouvrirOutil();
+    if (nom === 'vent' || nom === 'portee') fermerMenu?.();
+  }
+
+  afficherVue();
+
   boutonsVue.forEach((bouton) => {
-    bouton.addEventListener('click', () => choisirVue(bouton.dataset.paraVue));
+    bouton.addEventListener('click', () => {
+      const nom = bouton.dataset.paraVue;
+      if (nom === vueActive) {
+        choisirVue(null);
+        return;
+      }
+      choisirVue(nom);
+    });
   });
 
   return {
@@ -208,18 +218,14 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       synchroniserCarte();
       donnees.demarrer();
       rendreBalises();
-      if (vueActive === 'vent') {
-        analyseVent.monterDans(hoteVent);
-        analyseVent.activer();
-      }
+      ouvrirOutil();
     },
     desactiver() {
       actif = false;
       donnees.arreter();
       synchroniserCarte();
-      analyseVent.desactiver();
-      analyseVent.retournerAuMenu();
-      portee.reinitialiser();
+      if (vueActive === 'vent') analyseVent.desactiver();
+      if (vueActive === 'portee') portee.fermer();
     },
   };
 }

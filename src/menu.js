@@ -158,6 +158,11 @@ export function initMenu(map) {
     }
   };
 
+  const fermerMenu = () => {
+    fermerPanneauxFlottants();
+    ouvrir(false);
+  };
+
   const categories = [
     {
       id: 'activites',
@@ -166,7 +171,7 @@ export function initMenu(map) {
       aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
       exclusif: true,
       modules: [
-        creerActiviteParapente(map, { onChoisirPoint: () => ouvrir(false), analyseVent: carteVent }),
+        creerActiviteParapente(map, { fermerMenu, analyseVent: carteVent }),
         creerActiviteRandonnee(map),
         creerModuleBientot('velo', 'Vélo', 'velo', 'Cette activité arrive bientôt. Idées : sentiers VTT, dénivelé, profil d’altitude.'),
         creerActiviteSki(map),
@@ -235,8 +240,12 @@ export function initMenu(map) {
     e.ligne.classList.add('actif');
     e.ligne.setAttribute('aria-pressed', 'true');
     e.contenu.style.display = 'block';
-    e.module.retournerAuMenu?.();
-    e.module.activer();
+    // Un outil posé sur la carte se ferme lui-même : le menu doit le savoir
+    e.module.activer({
+      onFermer: () => {
+        if (e.actif) arreter(e);
+      },
+    });
   }
 
   function arreter(e) {
@@ -245,7 +254,6 @@ export function initMenu(map) {
     e.ligne.setAttribute('aria-pressed', 'false');
     e.contenu.style.display = 'none';
     e.module.desactiver();
-    e.module.retournerAuMenu?.();
   }
 
   const activiteSauvee = lire('menu-activite', null);
@@ -341,7 +349,6 @@ export function initMenu(map) {
       contenu.className = 'menu-contenu';
       contenu.style.display = 'none';
       contenu.appendChild(module.panneau);
-      module.definirEmplacementParDefaut?.(contenu);
 
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);
@@ -361,6 +368,7 @@ export function initMenu(map) {
           ecrire('menu-activite', module.id);
         }
         demarrer(etat);
+        if (module.surCarte) fermerMenu();
       });
     }
     etatsParCategorie.set(categorie.id, etats);

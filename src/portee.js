@@ -1,4 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
+import { lire, ecrire } from './reglages.js';
+import { creerPanneauCarte } from './panneau-carte.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -230,25 +232,47 @@ async function calculerPortee(lon, lat, finesse, h0) {
 }
 
 // ---------- Interface ----------
-export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
+const ICONE_PORTEE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>';
+const MESSAGE_ACCUEIL = 'Touchez la carte pour placer le point de départ.';
+
+export function initPortee(map, { onFermer = () => {} } = {}) {
+  const panneau = creerPanneauCarte({
+    cle: 'portee-panneau-reduit',
+    libelle: 'portée de vol',
+    classe: 'bf-outil',
+    onFermer: () => onFermer(),
+  });
+  panneau.titre.textContent = 'Portée de vol';
+  const conteneur = panneau.corps;
   conteneur.innerHTML = `
     <div class="pt">
-      <div class="pt-boutons">
-        <button type="button" id="pt-choisir" class="para-bouton para-bouton-principal">Choisir le départ</button>
-        <button type="button" id="pt-effacer" class="para-bouton">Effacer</button>
+      <div class="pt-point">
+        <p id="pt-resultat" role="status" aria-live="polite">${MESSAGE_ACCUEIL}</p>
+        <button type="button" id="pt-effacer" aria-label="Effacer le point et la zone" title="Effacer le point et la zone" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <p id="pt-resultat" role="status" aria-live="polite">Choisissez un point de départ sur la carte.</p>
+      <div class="pt-finesse">
+        <label for="pt-finesse">Finesse de la voile</label>
+        <div class="pt-pas">
+          <button type="button" data-pt-pas="-0.5" aria-label="Diminuer la finesse">−</button>
+          <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8" inputmode="decimal">
+          <button type="button" data-pt-pas="0.5" aria-label="Augmenter la finesse">+</button>
+        </div>
+      </div>
       <div class="pt-champs">
-        <label>Finesse <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8"></label>
-        <label>Altitude (m) <input id="pt-sol" type="number" step="10"></label>
-        <label>Hauteur (m) <input id="pt-haut" type="number" min="0" step="50" value="0"></label>
+        <label>Altitude (m) <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
+        <label>Hauteur / sol (m) <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
       </div>
       <div class="pt-legende" hidden>
         <div class="pt-degrade"></div>
         <div class="pt-echelle"><span>0 m</span><span>Hauteur au-dessus du sol</span><span>600 m +</span></div>
       </div>
-      <p class="note">Calcul théorique en air calme, en ligne droite, sans thermique ni vent. Ce n’est pas un outil de décision de vol.
-      Utilisez une finesse réaliste (finesse sol), pas celle du constructeur. Pour une transition en vol, indiquez la hauteur de départ au-dessus du sol.</p>
+      <details class="rando-outils">
+        <summary>À savoir</summary>
+        <div class="rando-outils-contenu">
+          <p class="note">Calcul théorique en air calme, en ligne droite, sans thermique ni vent. Ce n’est pas un outil de décision de vol.
+          Utilisez une finesse réaliste (finesse sol), pas celle du constructeur. Pour une transition en vol, indiquez la hauteur de départ au-dessus du sol.</p>
+        </div>
+      </details>
     </div>
   `;
 
@@ -257,6 +281,7 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   const inHaut = conteneur.querySelector('#pt-haut');
   const resultat = conteneur.querySelector('#pt-resultat');
   const legende = conteneur.querySelector('.pt-legende');
+  const boutonEffacer = conteneur.querySelector('#pt-effacer');
 
   try {
     const memo = localStorage.getItem(CLE_FINESSE);
@@ -264,6 +289,7 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   } catch {
     /* stockage indisponible : on ignore */
   }
+  inHaut.value = String(Number(lire('portee-hauteur', 0)) || 0);
 
   const infobulle = document.createElement('div');
   infobulle.className = 'pt-infobulle';
@@ -271,9 +297,17 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
 
   let point = null;
   let marqueur = null;
-  let attente = false;
+  let actif = false;
   let compteur = 0;
   let grille = null;
+
+  function afficherResultat(texte, court = texte) {
+    resultat.textContent = texte;
+    boutonEffacer.hidden = !point;
+    panneau.definirResume({ detail: court, valeur: inFinesse.value, unite: 'finesse' });
+  }
+
+  panneau.definirResume({ rose: ICONE_PORTEE, nom: 'Portée de vol', detail: MESSAGE_ACCUEIL, valeur: inFinesse.value, unite: 'finesse' });
 
   function afficherImage(url, coordinates) {
     legende.hidden = false;
@@ -327,42 +361,39 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
 
   function reinitialiser() {
     point = null;
-    attente = false;
     compteur++;
     masquerInfo();
-    map.getCanvas().style.cursor = '';
     if (marqueur) marqueur.remove();
     retirerZone();
-    resultat.textContent = 'Choisissez un point de départ sur la carte.';
+    inSol.value = '';
+    afficherResultat(MESSAGE_ACCUEIL);
   }
 
-  conteneur.querySelector('#pt-choisir').addEventListener('click', () => {
-    attente = true;
-    map.getCanvas().style.cursor = 'crosshair';
-    resultat.textContent = 'Cliquez sur la carte pour placer le point de départ.';
-    onChoisirPoint?.();
-  });
-  conteneur.querySelector('#pt-effacer').addEventListener('click', reinitialiser);
+  boutonEffacer.addEventListener('click', reinitialiser);
 
+  conteneur.querySelectorAll('[data-pt-pas]').forEach((bouton) => {
+    bouton.addEventListener('click', () => {
+      const valeur = (parseFloat(inFinesse.value) || 8) + Number(bouton.dataset.ptPas);
+      inFinesse.value = String(Math.max(2, Math.min(20, valeur)));
+      inFinesse.dispatchEvent(new Event('change'));
+    });
+  });
+
+  // Tant que l'outil est ouvert, toucher la carte place ou déplace le point de départ
   map.on('click', async (e) => {
-    if (!attente) {
-      afficherInfo(e); // sur téléphone : un appui affiche le détail
-      return;
-    }
-    attente = false;
-    map.getCanvas().style.cursor = '';
+    if (!actif || document.querySelector('#menu-tiroir.ouvert')) return;
     const depart = [e.lngLat.lng, e.lngLat.lat];
     point = depart;
     if (!marqueur) marqueur = new maplibregl.Marker({ color: '#5a1fc0' });
     marqueur.setLngLat(point).addTo(map);
-    resultat.textContent = 'Lecture du relief…';
+    afficherResultat('Lecture du relief…');
     try {
       await preparerTuiles(depart[0], depart[1], 200, 12);
     } catch (err) {
       if (point !== depart) return;
       inSol.value = '';
       retirerZone();
-      resultat.textContent = err.message;
+      afficherResultat(err.message);
       return;
     }
     if (point !== depart) return; // effacé ou remplacé pendant la lecture
@@ -378,10 +409,14 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     } catch {
       /* ignoré */
     }
+    panneau.definirResume({ valeur: inFinesse.value });
     recalculer();
   });
   inSol.addEventListener('change', recalculer);
-  inHaut.addEventListener('change', recalculer);
+  inHaut.addEventListener('change', () => {
+    ecrire('portee-hauteur', parseFloat(inHaut.value) || 0);
+    recalculer();
+  });
 
   async function recalculer() {
     if (!point) return;
@@ -389,36 +424,49 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     const sol = parseFloat(inSol.value);
     const haut = parseFloat(inHaut.value) || 0;
     if (!(finesse > 1) || isNaN(sol)) {
-      resultat.textContent = 'Renseignez une finesse et une altitude valides.';
+      afficherResultat('Renseignez une finesse et une altitude valides.');
       return;
     }
     const mon = ++compteur;
-    resultat.textContent = 'Calcul en cours…';
+    afficherResultat('Calcul en cours…');
     try {
       const res = await calculerPortee(point[0], point[1], finesse, sol + haut);
       if (mon !== compteur) return;
       if (res.vide) {
         retirerZone();
-        resultat.textContent = 'Aucune zone atteignable depuis ce point avec cette finesse.';
+        afficherResultat('Aucune zone atteignable depuis ce point avec cette finesse.');
         return;
       }
       grille = res.grille;
       afficherImage(res.url, res.coordinates);
-      resultat.textContent =
-        `Portée max : ${(res.dMax / 1000).toFixed(1)} km (cap ${Math.round(res.capMax)}°) · ` +
-        `surface : ${res.aireKm2.toFixed(0)} km²`;
+      const distance = `${(res.dMax / 1000).toFixed(1)} km`;
+      afficherResultat(
+        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${res.aireKm2.toFixed(0)} km²`,
+        `Portée max ${distance}, cap ${Math.round(res.capMax)}°`
+      );
     } catch (err) {
       if (mon !== compteur) return;
       console.warn('Portée :', err);
       retirerZone();
-      resultat.textContent = err.code === 'relief' ? err.message : 'Erreur de calcul (voir la console).';
+      afficherResultat(err.code === 'relief' ? err.message : 'Calcul impossible pour ce point.');
     }
   }
 
   return {
-    reinitialiser,
+    ouvrir() {
+      actif = true;
+      panneau.afficher();
+      map.getCanvas().style.cursor = 'crosshair';
+    },
+    fermer() {
+      actif = false;
+      panneau.masquer();
+      map.getCanvas().style.cursor = '';
+      reinitialiser();
+    },
+    // Tant que l'outil est ouvert, un clic sur la carte lui revient
     get enAttente() {
-      return attente;
+      return actif;
     },
   };
 }
