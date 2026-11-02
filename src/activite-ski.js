@@ -1,15 +1,13 @@
-import * as maplibregl from 'maplibre-gl';
 import { distance } from './rando-api.js';
 import { creerVisiteStation } from './visite-station.js';
 import { lire, ecrire } from './reglages.js';
+import { contientMot, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
 import { chargerNeige, creerBlocNeige, chargerRisque, creerBlocRisque } from './ski-conditions.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
-const DISTANCE_GROUPE_PX = 56;
 const MAX_RESULTATS = 25;
 const ZOOM_STATION = 12.5;
-const ZOOM_LISTE_GROUPE = 13;
 const DISTANCE_DOUBLON_M = 5000;
 const DISTANCE_DOMAINE_PROCHE_M = 10000;
 const ZOOM_POSITION = 14;
@@ -46,42 +44,11 @@ const NIVEAUX = [
   ['noire', 'Noires'],
 ];
 
-// Écritures équivalentes : « St » et « Saint », « 3 Vallées » et « Trois Vallées »…
-const EQUIVALENTS = { st: 'saint', ste: 'sainte', 2: 'deux', 3: 'trois', 4: 'quatre', 7: 'sept' };
-
 function el(balise, classe, texte) {
   const e = document.createElement(balise);
   if (classe) e.className = classe;
   if (texte != null) e.textContent = texte;
   return e;
-}
-
-function normaliser(texte) {
-  return String(texte)
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/œ/g, 'oe')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .split(' ')
-    .map((mot) => EQUIVALENTS[mot] || mot)
-    .join(' ');
-}
-
-const contientMot = (texte, mot) => ` ${texte}`.includes(` ${mot}`);
-
-// Plus le score est bas, plus la station correspond ; null si elle ne correspond pas
-function scoreRecherche(entree, requete) {
-  const { nom, lieu } = entree;
-  const mots = requete.split(' ');
-  if (nom === requete) return 0;
-  if (nom.startsWith(requete)) return 1;
-  if (contientMot(nom, requete)) return 2;
-  if (mots.every((mot) => contientMot(nom, mot))) return 3;
-  if (nom.includes(requete)) return 4;
-  if (mots.every((mot) => contientMot(nom, mot) || contientMot(lieu, mot))) return 5;
-  return null;
 }
 
 const tailleStation = ({ properties: s }) => (s.kmAlpin || 0) + (s.kmNordique || 0) + (s.remontees || 0);
@@ -176,10 +143,20 @@ export function creerActiviteSki(map) {
   let filtre = lire('ski-filtre', 'tous');
   let favoris = lire('ski-favoris', []);
   const visite = creerVisiteStation(map);
-  let marqueurs = [];
-  let popupGroupe = null;
-  let minuteurFermetureGroupe = null;
-  let popupResume = null;
+  const reperes = creerReperesZone(map, {
+    dessin: '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 14v20m-8.66-15 17.32 10m0-10-17.32 10m8.66-15-2.5 2.5M24 14l2.5 2.5M24 34l-2.5-2.5m2.5 2.5 2.5-2.5m-11.16-13 3.4.9m-3.4-.9.9 3.4m15.42 6.2-3.4-.9m3.4.9-.9-3.4m.9-6.2-3.4.9m3.4-.9-.9 3.4m-15.42 6.2 3.4-.9m-3.4.9.9-3.4"/></svg>',
+    titreGroupe: (nombre) => `${nombre} stations à proximité`,
+    libelleGroupe: (nombre) => `${nombre} stations regroupées.`,
+    resume({ properties: station }) {
+      const lignes = [];
+      if (station.kmAlpin) lignes.push(['Pistes alpines', km(station.kmAlpin)]);
+      if (station.kmNordique) lignes.push(['Ski de fond', km(station.kmNordique)]);
+      if (station.remontees) lignes.push(['Remontées', String(station.remontees)]);
+      if (station.altMax) lignes.push(['Altitude max', metres(station.altMax)]);
+      return lignes;
+    },
+    surChoix: (feature, deplacer) => ouvrirStation(feature, deplacer),
+  });
 
   // ---------- Panneau du menu ----------
   const panneau = el('div', 'rando ski');
@@ -689,217 +666,9 @@ export function creerActiviteSki(map) {
   }
 
   // ---------- Repères sur la carte ----------
-  function fermerPopups() {
-    clearTimeout(minuteurFermetureGroupe);
-    minuteurFermetureGroupe = null;
-    if (popupGroupe) popupGroupe.remove();
-    popupGroupe = null;
-    if (popupResume) popupResume.remove();
-    popupResume = null;
-  }
-
-  function retirerMarqueurs() {
-    fermerPopups();
-    marqueurs.forEach((marqueur) => marqueur.remove());
-    marqueurs = [];
-  }
-
-  function afficherResume(feature) {
-    if (popupResume) popupResume.remove();
-    const station = feature.properties;
-    const contenu = el('div', 'rando-resume-repere');
-    contenu.append(el('strong', 'rando-resume-titre', station.nom));
-    const stats = el('div', 'rando-resume-stats');
-    const ajouterStat = (libelle, valeur) => {
-      const ligne = el('div', 'rando-resume-ligne');
-      ligne.append(el('span', null, libelle), el('strong', null, valeur));
-      stats.append(ligne);
-    };
-    if (station.kmAlpin) ajouterStat('Pistes alpines', km(station.kmAlpin));
-    if (station.kmNordique) ajouterStat('Ski de fond', km(station.kmNordique));
-    if (station.remontees) ajouterStat('Remontées', String(station.remontees));
-    if (station.altMax) ajouterStat('Altitude max', metres(station.altMax));
-    if (stats.children.length) contenu.append(stats);
-    popupResume = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      offset: [0, -50],
-      maxWidth: '260px',
-      className: 'rando-resume-popup',
-    })
-      .setLngLat(feature.geometry.coordinates)
-      .setDOMContent(contenu)
-      .addTo(map);
-  }
-
-  function fermerResume() {
-    if (popupResume) popupResume.remove();
-    popupResume = null;
-  }
-
-  function creerRepere(feature) {
-    const station = feature.properties;
-    const element = el('button', 'rando-repere ski-repere');
-    element.type = 'button';
-    element.classList.toggle('selectionne', feature === stationChoisie);
-    element.setAttribute('aria-label', `Ouvrir la fiche de ${station.nom}`);
-    element.innerHTML =
-      '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 14v20m-8.66-15 17.32 10m0-10-17.32 10m8.66-15-2.5 2.5M24 14l2.5 2.5M24 34l-2.5-2.5m2.5 2.5 2.5-2.5m-11.16-13 3.4.9m-3.4-.9.9 3.4m15.42 6.2-3.4-.9m3.4.9-.9-3.4m.9-6.2-3.4.9m3.4-.9-.9 3.4m-15.42 6.2 3.4-.9m-3.4.9.9-3.4"/></svg>';
-    element.append(el('span', 'rando-repere-nom', station.nom));
-    element.addEventListener('pointerenter', (event) => {
-      if (event.pointerType !== 'touch') afficherResume(feature);
-    });
-    element.addEventListener('pointerleave', (event) => {
-      if (event.pointerType !== 'touch') fermerResume();
-    });
-    element.addEventListener('focus', () => {
-      if (element.matches(':focus-visible')) afficherResume(feature);
-    });
-    element.addEventListener('blur', fermerResume);
-    element.addEventListener('click', (event) => {
-      event.stopPropagation();
-      fermerResume();
-      ouvrirStation(feature, false);
-    });
-    return new maplibregl.Marker({ element, anchor: 'bottom' })
-      .setLngLat(feature.geometry.coordinates)
-      .addTo(map);
-  }
-
-  function programmerFermetureGroupe() {
-    clearTimeout(minuteurFermetureGroupe);
-    minuteurFermetureGroupe = window.setTimeout(() => {
-      if (popupGroupe) popupGroupe.remove();
-      popupGroupe = null;
-      minuteurFermetureGroupe = null;
-    }, 350);
-  }
-
-  function afficherGroupe(features, coordonnees) {
-    clearTimeout(minuteurFermetureGroupe);
-    minuteurFermetureGroupe = null;
-    if (popupGroupe) popupGroupe.remove();
-
-    const contenu = el('div', 'rando-groupe-liste ski-groupe-liste');
-    contenu.append(el('strong', 'rando-groupe-titre', `${features.length} stations à proximité`));
-    for (const feature of features) {
-      const choix = el('button', 'rando-groupe-choix ski-groupe-choix', feature.properties.nom);
-      choix.type = 'button';
-      choix.addEventListener('click', () => {
-        if (popupGroupe) popupGroupe.remove();
-        popupGroupe = null;
-        ouvrirStation(feature, true);
-      });
-      contenu.append(choix);
-    }
-    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '300px', offset: 8 })
-      .setLngLat(coordonnees)
-      .setDOMContent(contenu)
-      .addTo(map);
-    popupGroupe = popup;
-    const elementPopup = popup.getElement();
-    elementPopup.addEventListener('pointerenter', () => {
-      clearTimeout(minuteurFermetureGroupe);
-      minuteurFermetureGroupe = null;
-    });
-    elementPopup.addEventListener('pointerleave', programmerFermetureGroupe);
-    popup.on('close', () => {
-      if (popupGroupe === popup) popupGroupe = null;
-    });
-  }
-
-  function zoomerSurGroupe(features) {
-    const limites = new maplibregl.LngLatBounds();
-    features.forEach((feature) => limites.extend(feature.geometry.coordinates));
-    map.fitBounds(limites, { padding: 90, maxZoom: ZOOM_LISTE_GROUPE, duration: 700 });
-  }
-
-  function creerRepereGroupe(features, coordonnees) {
-    const element = el('button', 'rando-groupe ski-groupe');
-    element.type = 'button';
-    element.setAttribute('aria-label', `${features.length} stations regroupées. Touchez pour zoomer ou choisir une station.`);
-    element.innerHTML =
-      `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${features.length}</span>`;
-    element.addEventListener('pointerenter', (event) => {
-      if (event.pointerType !== 'touch') afficherGroupe(features, coordonnees);
-    });
-    element.addEventListener('pointerleave', (event) => {
-      if (event.pointerType !== 'touch') programmerFermetureGroupe();
-    });
-    element.addEventListener('focus', () => {
-      if (element.matches(':focus-visible')) afficherGroupe(features, coordonnees);
-    });
-    element.addEventListener('blur', programmerFermetureGroupe);
-    element.addEventListener('click', (event) => {
-      event.stopPropagation();
-      if (map.getZoom() >= ZOOM_LISTE_GROUPE) {
-        afficherGroupe(features, coordonnees);
-        return;
-      }
-      fermerPopups();
-      zoomerSurGroupe(features);
-    });
-    return new maplibregl.Marker({ element, anchor: 'center' })
-      .setLngLat(coordonnees)
-      .addTo(map);
-  }
-
-  // Les plus grandes stations servent de centre de groupe ; la grille évite de comparer
-  // chaque station à toutes les autres quand la zone en contient des milliers.
-  function grouper(entrees) {
-    const rayon2 = DISTANCE_GROUPE_PX * DISTANCE_GROUPE_PX;
-    const grille = new Map();
-    const groupes = [];
-    for (const entree of entrees) {
-      const colonne = Math.floor(entree.pixel.x / DISTANCE_GROUPE_PX);
-      const ligne = Math.floor(entree.pixel.y / DISTANCE_GROUPE_PX);
-      let meilleur = null;
-      let meilleurEcart = rayon2;
-      for (let dx = -1; dx <= 1; dx++) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (const groupe of grille.get(`${colonne + dx}:${ligne + dy}`) || []) {
-            const ecartX = groupe[0].pixel.x - entree.pixel.x;
-            const ecartY = groupe[0].pixel.y - entree.pixel.y;
-            const ecart = ecartX * ecartX + ecartY * ecartY;
-            if (ecart <= meilleurEcart) {
-              meilleur = groupe;
-              meilleurEcart = ecart;
-            }
-          }
-        }
-      }
-      if (meilleur) {
-        meilleur.push(entree);
-      } else {
-        const groupe = [entree];
-        groupes.push(groupe);
-        const cle = `${colonne}:${ligne}`;
-        if (!grille.has(cle)) grille.set(cle, []);
-        grille.get(cle).push(groupe);
-      }
-    }
-    return groupes;
-  }
-
-  function stationsVisibles() {
-    const { clientWidth: largeur, clientHeight: hauteur } = map.getContainer();
-    return stationsFiltrees()
-      .map((feature) => ({ feature, pixel: map.project(feature.geometry.coordinates) }))
-      .filter(({ pixel }) => pixel.x >= 0 && pixel.x <= largeur && pixel.y >= 0 && pixel.y <= hauteur);
-  }
-
   function actualiserMarqueurs() {
-    retirerMarqueurs();
-    if (!actif || etatVisite === 'active') return;
-    const visibles = stationsVisibles().filter(({ feature }) => feature !== stationChoisie);
-    for (const groupe of grouper(visibles)) {
-      if (groupe.length === 1) {
-        marqueurs.push(creerRepere(groupe[0].feature));
-      } else {
-        marqueurs.push(creerRepereGroupe(groupe.map(({ feature }) => feature), groupe[0].feature.geometry.coordinates));
-      }
-    }
-    if (stationChoisie) marqueurs.push(creerRepere(stationChoisie));
+    if (!actif || etatVisite === 'active') reperes.retirer();
+    else reperes.actualiser(stationsFiltrees(), stationChoisie);
   }
 
   // ---------- Recherche dans la zone visible ----------
@@ -940,16 +709,8 @@ export function creerActiviteSki(map) {
       return;
     }
 
-    const limites = map.getBounds();
-    const { clientWidth: largeur, clientHeight: hauteur } = map.getContainer();
-    stationsZone = index
-      .map(({ feature }) => feature)
-      .filter((feature) => {
-        if (!limites.contains(feature.geometry.coordinates)) return false;
-        const pixel = map.project(feature.geometry.coordinates);
-        return pixel.x >= 0 && pixel.x <= largeur && pixel.y >= 0 && pixel.y <= hauteur;
-      });
-    limitesZone = limites;
+    stationsZone = lieuxDansLaVue(map, index.map(({ feature }) => feature));
+    limitesZone = map.getBounds();
     zonePerimee = false;
     etatZone = 'ok';
     rendreZone();
@@ -1273,7 +1034,7 @@ export function creerActiviteSki(map) {
       stationChoisie = null;
       conditions = {};
       rendreFiche();
-      retirerMarqueurs();
+      reperes.retirer();
       rendreZone();
     },
   };

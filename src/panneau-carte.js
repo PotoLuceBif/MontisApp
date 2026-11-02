@@ -104,10 +104,12 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
       element.hidden = false;
       element.scrollTop = 0;
       element.classList.toggle('bf-reduite', reduit);
+      window.dispatchEvent(new Event('panneau-carte'));
     },
     masquer() {
       element.hidden = true;
       if (panneauOuvert === panneau) panneauOuvert = null;
+      window.dispatchEvent(new Event('panneau-carte'));
     },
     demanderFermeture: () => onFermer(),
     definirRetour(nouveau) {

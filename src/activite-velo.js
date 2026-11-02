@@ -95,7 +95,10 @@ export function creerActiviteVelo(map, outils) {
     entrees: (_, { itineraires, clients }) => [
       { libelle: 'EuroVélo', sous: 'Les 17 grands itinéraires européens', ouvrir: () => itineraires.ouvrirCatalogue(catalogueEuroVelo(map, clients.cycling)) },
     ],
-    sections: () => [bikeParks.section],
+    sections(_, { editeur, itineraires }) {
+      bikeParks.definirMasque(() => editeur.ouvert || itineraires.ouvert);
+      return [bikeParks.section];
+    },
     options(_, { appliquerCalque }) {
       const option = document.createElement('label');
       option.className = 'option-case';
@@ -108,6 +111,6 @@ export function creerActiviteVelo(map, outils) {
       });
       return option;
     },
-    crochets: () => ({ desactiver: () => bikeParks.quitter() }),
+    crochets: () => ({ activer: () => bikeParks.activer(), desactiver: () => bikeParks.desactiver() }),
   }, outils);
 }
