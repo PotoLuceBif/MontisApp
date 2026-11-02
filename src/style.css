@@ -2278,6 +2278,9 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .parcours-stat { display: grid; min-width: 0; gap: 1px; }
 .parcours-stat span { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
 .parcours-stat strong { color: var(--texte); font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.parcours-allure { grid-column: 1 / -1; grid-template-columns: auto 72px minmax(0, 1fr); align-items: center; gap: 8px; }
+.parcours-allure input { min-width: 0; min-height: 34px; padding: 0 8px; border: 1px solid var(--bord); border-radius: 7px; background: var(--surface); color: var(--texte); font: 600 13px var(--police); font-variant-numeric: tabular-nums; }
+.parcours-allure input[aria-invalid='true'] { border-color: #ff6b6b; }
 .parcours-stat-principale { grid-column: span 2; }
 .parcours-stat-principale:nth-child(2) { grid-column: span 3; }
 .parcours-stat-principale strong { color: var(--vent-couleur); font-size: 24px; letter-spacing: -.01em; line-height: 1.1; }
@@ -2366,7 +2369,7 @@ button.parcours-alerte { cursor: pointer; }
 .hl-pastille[hidden] { display: none; }
 :root[data-reseau='hors-ligne'] .bf { top: 106px; max-height: calc(100dvh - 128px); }
 body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
-:root[data-reseau='hors-ligne'] :is([data-reseau-requis], .rech-champ, .rando-creation-demarrer, .vent-zone-actualiser, .para-actualiser, .zh-nouvelle, .zh-lancer) {
+:root[data-reseau='hors-ligne'] :is([data-reseau-requis], .rech-champ, .parcours-zone, .vent-zone-actualiser, .para-actualiser, .zh-nouvelle, .zh-lancer) {
   opacity: .45; filter: grayscale(1); pointer-events: none;
 }
 .zh { display: grid; min-width: 0; gap: 9px; }

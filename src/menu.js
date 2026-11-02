@@ -175,7 +175,7 @@ export function initMenu(map) {
       exclusif: true,
       modules: [
         creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent: carteVent }),
-        creerActiviteRandonnee(map),
+        creerActiviteRandonnee(map, { fermerMenu, ouvrirMenu }),
         creerActiviteVelo(map, { fermerMenu, ouvrirMenu }),
         creerActiviteSki(map),
       ],

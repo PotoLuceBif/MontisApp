@@ -21,6 +21,15 @@ export const ECHELLE_VTT = {
     { libelle: 'S4+', couleur: '#ff4fd8' },
   ],
 };
+export const ECHELLE_SAC = {
+  niveaux: [
+    { libelle: 'T1', couleur: '#43c98b' },
+    { libelle: 'T2', couleur: '#4aa8ff' },
+    { libelle: 'T3', couleur: '#ff5580' },
+    { libelle: 'T4', couleur: '#b98bff' },
+    { libelle: 'T5+', couleur: '#ff4fd8' },
+  ],
+};
 export const palierDifficulte = (valeur, niveaux) => Math.min(niveaux.length - 1, valeur);
 
 export const palierPente = (pente) => {
@@ -87,7 +96,7 @@ export async function analyserTrace(chaine, pratique) {
     moins,
     altitudeMax: Math.max(...alts),
     altitudeMin: Math.min(...alts),
-    penteMax: Math.max(0, ...pentes),
+    penteMax: Math.max(0, ...pentes.map(Math.abs)),
     duree: pratique.duree(total, plus, moins),
   };
 }

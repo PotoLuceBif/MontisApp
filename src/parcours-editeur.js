@@ -105,6 +105,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         <div class="parcours-stat"><span>Alt. max</span><strong data-v="max">—</strong></div>
         <div class="parcours-stat"><span>Alt. min</span><strong data-v="min">—</strong></div>
         <div class="parcours-stat"><span>Pente max</span><strong data-v="pente">—</strong></div>
+        ${activite.allure ? `<label class="parcours-stat parcours-allure"><span>Allure (min/km)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="10:00" value="${lire(`${activite.id}-allure`, '10:00')}" title="Temps par kilomètre au format minutes:secondes" aria-label="Temps par kilomètre au format minutes:secondes"><strong aria-live="polite">—</strong></label>` : ''}
       </div>
       <div class="parcours-profil">
         <p class="parcours-lecture">Touchez le profil pour lire un point du tracé.</p>
@@ -115,7 +116,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <div class="parcours-repartition" data-bloc="surfaces" hidden><h4>Surfaces</h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
       <div class="parcours-repartition" data-bloc="difficulte" hidden><h4>${echelle.titre} <small>${echelle.note}</small></h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
       <label class="parcours-couleur"><span>Colorer le tracé selon</span><select>
-        ${MODES_COULEUR.map(([id, libelle]) => `<option value="${id}">${libelle}</option>`).join('')}
+        ${MODES_COULEUR.map(([id, libelle]) => `<option value="${id}">${id === 'pratique' && Object.keys(pratiques).length < 2 ? 'Couleur unie' : libelle}</option>`).join('')}
       </select></label>
     </div>
     <label class="parcours-nom"><span>Nom</span><input type="text" maxlength="60" placeholder="Nom du parcours"></label>
@@ -621,9 +622,23 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     valeur('min').textContent = metres(altitudeMin);
     valeur('pente').textContent = `${Math.round(penteMax)} %`;
     panneau.definirResume({ detail: `${km(total)} · D+ ${metres(plus)} · ${formaterDuree(duree)}` });
+    rendreAllure();
+  }
+
+  // Le clavier numérique n'a pas de deux-points : « 10,30 » est aussi accepté
+  function rendreAllure() {
+    const champ = $('.parcours-allure input');
+    if (!champ || !analyse) return;
+    const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(champ.value.trim());
+    const heuresParKm = resultat ? (Number(resultat[1]) + Number(resultat[2] || 0) / 60) / 60 : 0;
+    champ.setAttribute('aria-invalid', String(!(heuresParKm > 0)));
+    $('.parcours-allure strong').textContent = heuresParKm > 0 ? `≈ ${formaterDuree((analyse.total / 1000) * heuresParKm)}` : '—';
+    if (heuresParKm > 0) ecrire(`${activite.id}-allure`, champ.value.trim());
   }
 
   // Ce qui peut surprendre sur le terrain : pentes, marches, sentiers très techniques
+  $('.parcours-allure input')?.addEventListener('input', rendreAllure);
+
   function rendreAlertes() {
     const bloc = $('.parcours-alertes');
     const elements = [];

@@ -1,11 +1,13 @@
 // Grands itinéraires découpés en tronçons (EuroVelo, GR…) : un panneau qui donne l'ensemble, puis une
 // liste compacte. Un tronçon s'ouvre dans la fiche habituelle ; la flèche retour ramène à la liste.
 import { creerPanneauCarte } from './panneau-carte.js';
-import { distance, extraireTrace, niveau, titreDe } from './rando-api.js';
+import { distance, extraireTrace, niveau, partDesSauts, titreDe } from './rando-api.js';
 
 const PARALLELE = 3;
 const MEMOIRE_MAX = 80;
-const SAUT_MAX = 300; // m : au-delà, deux morceaux ne se suivent pas et le profil n'aurait pas de sens
+const SAUT_MAX = 5000; // m : au-delà, deux morceaux ne se suivent pas et le profil n'aurait pas de sens
+const PART_SAUTS_MAX = 0.35;
+const PART_SAUTS_NOTEE = 0.05; // ces raccords comptent déjà dans la longueur annoncée par les données
 // Le nom d'un itinéraire entier ne précise ni partie ni étape : on évite d'en charger les ~10 Mo pour rien
 const NOM_DE_TRONCON = /part|partie|tron[cç]on|etapa|section|france|deel|teil|[–,→]|\d{2}|verbindung|variant/i;
 
@@ -15,6 +17,7 @@ const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
 export const estIntegral = (route) => !NOM_DE_TRONCON.test(route.name ?? '');
 
 export function aDesSauts(chaine) {
+  if (partDesSauts(chaine) > PART_SAUTS_MAX) return true;
   for (let i = 1; i < chaine.length; i += 1) {
     if (distance(chaine[i - 1], chaine[i]) > SAUT_MAX) return true;
   }
@@ -141,7 +144,10 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
         avecSauts: aDesSauts(trace.chaine),
         lien: `https://${hote}/#route?id=${route.id}`,
         meta: [typeDe(route), court, etapes?.length ? etapes.join(' → ') : null].filter(Boolean).join(' · '),
-        infos: activite.infosRoute?.(details, trace) ?? [],
+        infos: [
+          ...(partDesSauts(trace.chaine) > PART_SAUTS_NOTEE ? [{ texte: 'Tracé incomplet dans OpenStreetMap : les trous sont franchis en ligne droite, distance et profil sont approximatifs.' }] : []),
+          ...(activite.infosRoute?.(details, trace) ?? []),
+        ],
         onRetour: depuisGroupe && groupe ? () => reafficherGroupe() : null,
         onAnalyse: ({ plus }) => noterDenivele(route, plus),
       });
@@ -320,6 +326,9 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
   }
 
   return {
+    get ouvert() {
+      return panneau.ouvert;
+    },
     ouvrirRoute,
     ouvrirGroupe,
     ouvrirCatalogue(nouveau) {

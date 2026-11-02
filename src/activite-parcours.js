@@ -5,10 +5,12 @@ import { clientItineraires, niveau, titreDe } from './rando-api.js';
 import { lireGpx } from './parcours-gpx.js';
 import { creerStockageParcours } from './parcours-stockage.js';
 import { creerEditeurParcours } from './parcours-editeur.js';
-import { creerItineraires } from './parcours-itineraires.js';
+import { creerItineraires, estIntegral } from './parcours-itineraires.js';
+import { creerDecouverte } from './parcours-decouverte.js';
 import { dateLisible } from './hors-ligne.js';
 
 const ZOOM_MIN_ZONE = 7;
+const REPERES_MAX = 40;
 const TAILLE_MAX_GPX = 10 * 1024 * 1024;
 const GROUPES_REGROUPABLES = new Set(['INT', 'NAT', 'REG']);
 const ICONES = {
@@ -71,6 +73,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   function fermerTout() {
     itineraires.fermer();
     editeur.fermer();
+    decouverte.actualiser();
   }
 
   const editeur = creerEditeurParcours(map, {
@@ -82,7 +85,23 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   });
   const typeDe = (route) => activite.typeDe(route);
   const itineraires = creerItineraires(map, {
-    activite, editeur, clients, typeDe, ouvrirMenu, fermerMenu, onFermerTout: fermerTout, signaler: afficherMessage,
+    activite,
+    editeur,
+    clients,
+    typeDe,
+    fermerMenu,
+    onFermerTout: fermerTout,
+    signaler: afficherMessage,
+    ouvrirMenu() {
+      ouvrirMenu();
+      decouverte.actualiser();
+    },
+  });
+  const decouverte = creerDecouverte(map, {
+    clients,
+    nomPluriel: activite.nomPluriel,
+    ouvrirRoute: itineraires.ouvrirRoute,
+    masque: () => editeur.ouvert || itineraires.ouvert,
   });
 
   function afficherMessage(texte) {
@@ -149,6 +168,20 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     liste.hidden = !lignes.length;
     if (derniereDemande) afficherMessage(lignes.length ? '' : vide);
     liste.replaceChildren(...lignes.map(ligneResultat));
+    if (derniereDemande === chercherDansLaZone) void poserReperes(routes);
+    else decouverte.retirer();
+  }
+
+  // Une EuroVelo entière pèse des Mo : ses tronçons suffisent à la repérer
+  async function poserReperes(routes) {
+    const aPoser = routes.filter((route) => route.group !== 'INT' || !estIntegral(route)).slice(0, REPERES_MAX);
+    if (!aPoser.length) {
+      decouverte.retirer();
+      return;
+    }
+    const resultat = await decouverte.charger(aPoser, (termines, total) => afficherMessage(`Positionnement des départs… ${termines}/${total}`));
+    if (!resultat) return;
+    afficherMessage(resultat.manquants ? `${resultat.affiches} repère${resultat.affiches > 1 ? 's' : ''} sur la carte, ${resultat.manquants} hors de la zone ou sans tracé.` : '');
   }
 
   // Une carte d'itinéraires en panne n'empêche pas les autres de répondre
@@ -249,6 +282,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ouvrir.addEventListener('click', () => {
       fermerMenu();
       itineraires.fermer();
+      decouverte.masquer();
       editeur.ouvrirEnregistre(parcours);
     });
     const renommer = document.createElement('button');
@@ -310,6 +344,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       afficherMessage('');
       fermerMenu();
       itineraires.fermer();
+      decouverte.masquer();
       editeur.ouvrirTrace({ nom, chaine: trace.chaine, lignes: trace.lignes, meta: 'Trace importée' });
     } catch (erreur) {
       console.warn('Import GPX :', erreur);
@@ -322,6 +357,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   $('.parcours-creer').addEventListener('click', () => {
     fermerMenu();
     itineraires.fermer();
+    decouverte.masquer();
     editeur.ouvrirCreation();
   });
   $('.parcours-zone').addEventListener('click', chercherDansLaZone);
@@ -358,6 +394,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     activer() {
       actif = true;
       appliquerCalque();
+      decouverte.activer();
       crochets.activer?.();
     },
     desactiver() {
@@ -365,6 +402,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       appliquerCalque();
       controleurListe?.abort();
       crochets.desactiver?.();
+      decouverte.desactiver();
       fermerTout();
     },
   };

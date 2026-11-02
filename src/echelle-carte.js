@@ -2,7 +2,6 @@ const SELECTEURS_OBSTACLES = [
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
-  '#rando-fiche',
   '.rando-creation-flottante',
   '#barre-haut',
   '#bascule-mode',
@@ -16,7 +15,6 @@ const SELECTEURS_PANNEAUX = [
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
-  '#rando-fiche',
   '.rando-creation-flottante',
 ];
 

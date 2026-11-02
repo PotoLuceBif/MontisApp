@@ -115,12 +115,12 @@ export function clientItineraires(carte) {
   };
 }
 
-const randonnee = clientItineraires('hiking');
-export const { chercher, dansLaZone } = randonnee;
-export const detailsItineraire = randonnee.details;
 
 // ---------- Extraction du tracé ----------
 // Parcourt la structure de l'itinéraire et récolte tous les tronçons (objets ayant une géométrie)
+const PARTIES_MAX = 60;
+const SAUT_MIN = 300; // m : en dessous, c'est le raccord normal de deux chemins voisins
+
 function recolter(noeud, sortie, profondeur = 0) {
   if (!noeud || typeof noeud !== 'object' || profondeur > 8) return;
   if (Array.isArray(noeud)) {
@@ -161,6 +161,59 @@ function assembler(troncons) {
   return chaine;
 }
 
+// Les parties d'une relation ne sont pas forcément rangées dans l'ordre du chemin : on garde
+// l'enchaînement qui saute le moins, en partant de chaque partie tour à tour
+function ordonnerParties(parties) {
+  if (parties.length < 2 || parties.length > PARTIES_MAX) return parties.flat();
+  let meilleur = null;
+  let moindre = Infinity;
+  for (let depart = 0; depart < parties.length; depart += 1) {
+    for (const sens of [false, true]) {
+      const premiere = sens ? [...parties[depart]].reverse() : parties[depart];
+      const restantes = parties.filter((_, index) => index !== depart);
+      const suite = [premiere];
+      let fin = premiere[premiere.length - 1];
+      let sauts = 0;
+      while (restantes.length && sauts < moindre) {
+        let choix = 0;
+        let ecart = Infinity;
+        let inverser = false;
+        restantes.forEach((partie, index) => {
+          const versDebut = distance(fin, partie[0]);
+          const versFin = distance(fin, partie[partie.length - 1]);
+          if (Math.min(versDebut, versFin) < ecart) {
+            ecart = Math.min(versDebut, versFin);
+            choix = index;
+            inverser = versFin < versDebut;
+          }
+        });
+        const [partie] = restantes.splice(choix, 1);
+        const orientee = inverser ? [...partie].reverse() : partie;
+        suite.push(orientee);
+        fin = orientee[orientee.length - 1];
+        sauts += ecart;
+      }
+      if (sauts < moindre) {
+        moindre = sauts;
+        meilleur = suite;
+      }
+    }
+  }
+  return meilleur.flat();
+}
+
+// Ce que les raccords ajoutent au tracé : au-delà de quelques pour cent, un profil serait faux
+export function partDesSauts(chaine) {
+  let total = 0;
+  let sauts = 0;
+  for (let i = 1; i < chaine.length; i += 1) {
+    const ecart = distance(chaine[i - 1], chaine[i]);
+    total += ecart;
+    if (ecart > SAUT_MIN) sauts += ecart;
+  }
+  return total > 0 ? sauts / total : 0;
+}
+
 export function extraireTrace(details) {
   const route = details.route || {};
   const principaux = [];
@@ -182,7 +235,14 @@ export function extraireTrace(details) {
     if (i > sac) sac = i;
   }
 
-  return { lignes, chaine: assembler(principaux), sac: sac >= 0 ? sac : null };
+  const racine = Array.isArray(route.main) ? route.main : [route.main];
+  const parties = racine.map((partie) => {
+    const troncons = [];
+    recolter(partie, troncons);
+    return assembler(troncons);
+  }).filter((chaine) => chaine.length > 1);
+  const chaine = parties.length ? ordonnerParties(parties) : assembler(principaux);
+  return { lignes, chaine, sac: sac >= 0 ? sac : null };
 }
 
 // Rééchantillonne la ligne à intervalles réguliers (500 points au maximum)

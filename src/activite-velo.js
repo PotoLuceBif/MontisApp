@@ -76,6 +76,7 @@ export function creerActiviteVelo(map, outils) {
     icone: '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3.500"/><circle cx="18" cy="17" r="3.500"/><path d="m6 17 4-8h6l2 8M10 9 9 6H7M16 9l-1-3h3"/></svg>',
     couleurGroupe: '#7a86ff',
     libelle: 'parcours vélo',
+    nomPluriel: 'itinéraires',
     placeholder: 'Rechercher un itinéraire vélo ou VTT…',
     pratiques: PRATIQUES,
     pratiqueDefaut: 'vtt',
