@@ -1,12 +1,13 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 import { lire, ecrire } from './reglages.js';
-import { FFVL_ACTIVE, SOURCES_BALISES } from './balises-sources.js';
-import { texteAge } from './balises-couche.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, texteProvenance } from './vent-cadran.js';
+import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, PALETTE_BALISES, SOURCES_BALISES, couleurBalise, texteAge } from './balises-sources.js';
+import { cadranVent, texteProvenance } from './vent-cadran.js';
 
 const BALISES_LISTEES = 6;
-const PALIERS = ['0–9', '10–19', '20–29', '30+'];
+const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
+
+const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
 export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}) {
   const panneau = document.createElement('div');
@@ -44,12 +45,13 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       </div>
       <p class="note para-etat" role="status" aria-live="polite"></p>
       <label class="option-case"><input type="checkbox" data-para-layer-balises> Balises de vent
-        <small>Relevés en temps réel, touchez une balise pour voir son évolution</small></label>
+        <small>Relevés en temps réel, touchez une balise pour ouvrir sa fiche</small></label>
       <div class="para-legende" aria-label="Vent moyen en kilomètres par heure">
-        ${PALIERS.map((palier, index) => `<span><i class="para-fleche" style="--vent-couleur: ${PALETTE_CARTE[index]}"></i> ${palier} km/h</span>`).join('')}
-        <span><i class="para-fleche" style="--vent-couleur: #a7b0bb"></i> Relevé de plus de 2 h</span>
+        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_BALISES[index])} ${palier}</span>`).join('')}
+        <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
+        <span><i class="para-hs">×</i> Hors service</span>
       </div>
-      <p class="note para-legende-note">La flèche pointe où va le vent, le chiffre donne le vent moyen.</p>
+      <p class="note para-legende-note">La manche pointe où va le vent. Vent moyen en km/h, rafale en orange si l’écart est marqué.</p>
       <div class="para-balises" hidden>
         <h3>Balises de la zone</h3>
         <div class="para-balises-liste"></div>
@@ -106,7 +108,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       const ligne = document.createElement('button');
       ligne.type = 'button';
       ligne.className = 'para-balise';
-      ligne.style.setProperty('--vent-couleur', couleurInterface(station.moyenne));
+      ligne.style.setProperty('--vent-couleur', couleurBalise(station.moyenne));
       ligne.insertAdjacentHTML('beforeend', cadranVent((station.direction + 180) % 360, 0, 'vent-cadran-petit'));
       const texte = document.createElement('span');
       texte.className = 'para-balise-texte';

@@ -56,7 +56,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let actualisation = null;
   let derniereActualisation = 0;
   let nombreSites = 0;
-  let statistiques = { total: 0, anciennes: 0 };
+  let statistiques = { recentes: 0, anciennes: 0, horsService: 0 };
   let donneesDejaChargees = false;
   let source = SOURCES_BALISES.find(({ id }) => id === lire('balises-source', '')) ?? SOURCES_BALISES[0];
   const couchesSites = ['decollages', 'atterrissages', 'sites-noms'];
@@ -161,10 +161,10 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
 
   function messageReussite(heure) {
     if (!balisesVisibles) return `Mis à jour à ${heure} · ${nombreSites} sites.`;
-    const recentes = statistiques.total - statistiques.anciennes;
-    const { anciennes } = statistiques;
+    const { recentes, anciennes, horsService } = statistiques;
     return `Mis à jour à ${heure} · ${recentes} ${recentes > 1 ? 'balises récentes' : 'balise récente'}`
-      + (anciennes ? `, ${anciennes} ${anciennes > 1 ? 'anciennes' : 'ancienne'}.` : '.')
+      + (anciennes ? `, ${anciennes} ${anciennes > 1 ? 'anciennes' : 'ancienne'}` : '')
+      + (horsService ? `, ${horsService} hors service.` : '.')
       + (FFVL_ACTIVE ? ` Sites : ${nombreSites}.` : '');
   }
 

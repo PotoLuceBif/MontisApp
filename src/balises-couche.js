@@ -1,273 +1,306 @@
-// Balises de vent sur la carte : une couche de symboles plutôt qu'un marqueur par station,
-// car les réseaux comptent des centaines de balises. La carte écarte celles qui se chevauchent.
-import { Popup } from 'maplibre-gl';
-import { PALETTE_CARTE, cadranVent, couleurInterface, palierVent, texteProvenance } from './vent-cadran.js';
+// Balises de vent sur la carte : une pastille avec la vitesse, et une manche à air qui en sort
+// dans le sens du vent. Deux couches de symboles, car la pastille reste droite quand la manche
+// tourne ; on écarte nous-mêmes les balises trop proches pour que les deux restent appariées.
+import { creerFicheBalise } from './balise-fiche.js';
+import {
+  COULEUR_BALISE_INACTIVE,
+  PALETTE_BALISES,
+  etatStation,
+  palierBalise,
+  rafaleMarquee,
+} from './balises-sources.js';
 
 const SOURCE = 'balises-vent';
-const COUCHE = 'balises-vent-symboles';
-const AGE_ANCIEN = 2 * 60 * 60 * 1000; // grisée au-delà
-const AGE_MAX = 24 * 60 * 60 * 1000; // masquée au-delà : la station ne répond plus
-const COULEUR_ANCIENNE = '#a7b0bb';
-const TOLERANCE_CLIC = 14;
-const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
-const POINTS_DIRECTION = 5;
-const MARGE_HAUT_FICHE = 76; // hauteur de la barre de recherche et des boutons
+const COUCHE_SELECTION = 'balises-vent-selection';
+const COUCHE_MANCHE = 'balises-vent-manches';
+const COUCHE_PASTILLE = 'balises-vent-pastilles';
+const COUCHES_CLIC = [COUCHE_PASTILLE, COUCHE_MANCHE];
+const TOLERANCE_CLIC = 12;
+const CELLULE_ECART = 46; // px : une seule balise par case de cette taille
+const RANG_ETAT = { actif: 0, ancien: 1, hs: 2 };
+const LONGUEURS_MANCHE = [23, 27, 30, 33, 35]; // px depuis le mât : la manche se gonfle avec le vent
+const TAILLE_MANCHE = 72;
+const COULEUR_CERNE = 'rgba(8, 12, 24, .88)';
+const COULEUR_RAFALE = '#ffb155';
+const FOND_PASTILLE = '#111728';
+const FOND_PASTILLE_INACTIVE = '#2b303d';
 
-const estAncienne = (station) => Date.now() - station.date > AGE_ANCIEN;
+const police = () => getComputedStyle(document.body).fontFamily;
 
-export function texteAge(date) {
-  const minutes = Math.max(0, Math.round((Date.now() - date) / 60000));
-  if (minutes < 1) return 'à l’instant';
-  if (minutes < 60) return `il y a ${minutes} min`;
-  return `il y a ${Math.round(minutes / 60)} h`;
-}
-
-function dessinerIcone(couleur) {
-  const taille = 64;
+function dessinerManche(couleur, longueur) {
   const canvas = document.createElement('canvas');
-  canvas.width = taille;
-  canvas.height = taille;
+  canvas.width = TAILLE_MANCHE * 2;
+  canvas.height = TAILLE_MANCHE * 2;
   const ctx = canvas.getContext('2d');
   ctx.scale(2, 2);
-  const fleche = new Path2D('M16 3 26 20 18.5 17.5V29H13.5V17.5L6 20Z');
+  const centre = TAILLE_MANCHE / 2;
+  const depart = centre - 6;
+  const pointe = centre - longueur;
+  const demiBase = 7.5;
+  const demiPointe = 3.6;
+  const contour = new Path2D();
+  contour.moveTo(centre - demiBase, depart);
+  contour.lineTo(centre - demiPointe, pointe);
+  contour.lineTo(centre + demiPointe, pointe);
+  contour.lineTo(centre + demiBase, depart);
+  contour.closePath();
   ctx.lineJoin = 'round';
   ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(8, 12, 24, .85)';
-  ctx.stroke(fleche);
-  ctx.fillStyle = couleur;
-  ctx.fill(fleche);
-  return ctx.getImageData(0, 0, taille, taille);
+  ctx.strokeStyle = COULEUR_CERNE;
+  ctx.stroke(contour);
+  ctx.save();
+  ctx.clip(contour);
+  // Bandes alternées, comme une vraie manche à air
+  const bandes = 5;
+  const hauteurBande = (depart - pointe) / bandes;
+  for (let index = 0; index < bandes; index += 1) {
+    ctx.fillStyle = index % 2 ? '#f6f8fc' : couleur;
+    ctx.fillRect(centre - demiBase, depart - (index + 1) * hauteurBande, demiBase * 2, hauteurBande + 0.5);
+  }
+  ctx.restore();
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-const heureCourte = (date) =>
-  new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(date).replace(':', 'h');
-
-// Bande entre le minimum et les rafales, trait pour le vent moyen, puis le cap à intervalles réguliers
-function graphiqueHistorique(points) {
-  const largeur = 240;
-  const hauteur = 58;
-  const debut = points[0].date;
-  const duree = points.at(-1).date - debut || 1;
-  const maximum = Math.max(10, ...points.map(({ rafale, moyenne }) => (Number.isFinite(rafale) ? rafale : moyenne)));
-  const x = (date) => (((date - debut) / duree) * largeur).toFixed(1);
-  const y = (valeur) => (hauteur - 2 - (valeur / maximum) * (hauteur - 6)).toFixed(1);
-  const haut = points.map(({ date, rafale, moyenne }) => `${x(date)},${y(Number.isFinite(rafale) ? rafale : moyenne)}`);
-  const bas = points.map(({ date, minimum, moyenne }) => `${x(date)},${y(Number.isFinite(minimum) ? minimum : moyenne)}`).reverse();
-  const ligne = points.map(({ date, moyenne }) => `${x(date)},${y(moyenne)}`).join(' ');
-  const reperes = Array.from({ length: POINTS_DIRECTION }, (_, index) =>
-    points[Math.round((index * (points.length - 1)) / (POINTS_DIRECTION - 1))]);
-  return `
-    <svg class="balise-graphique" viewBox="0 0 ${largeur} ${hauteur}" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points="${[...haut, ...bas].join(' ')}"/>
-      <polyline points="${ligne}" vector-effect="non-scaling-stroke"/>
-    </svg>
-    <div class="balise-reperes">
-      ${reperes.map(({ date, direction }) => `<span>${Number.isFinite(direction)
-    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 15 13.5 13V21H10.5V13L5 15Z" transform="rotate(${(direction + 180) % 360} 12 12)"/></svg>`
-    : ''}${heureCourte(date)}</span>`).join('')}
-    </div>
-    <p class="balise-historique-echelle">Jusqu’à ${Math.round(maximum)} km/h · la bande va du vent minimum aux rafales</p>`;
+// id : balise-pastille|couleur (palier ou état)|moyenne|rafale
+function dessinerPastille(palier, moyenne, rafale) {
+  const inactive = palier === 'ancien' || palier === 'hs';
+  const bordure = inactive ? COULEUR_BALISE_INACTIVE : PALETTE_BALISES[Number(palier)];
+  const mesure = document.createElement('canvas').getContext('2d');
+  const principal = `700 12.5px ${police()}`;
+  const secondaire = `700 10.5px ${police()}`;
+  mesure.font = principal;
+  const largeurMoyenne = mesure.measureText(moyenne).width;
+  mesure.font = secondaire;
+  const largeurRafale = rafale ? mesure.measureText(rafale).width + 4 : 0;
+  const hauteur = 21;
+  const largeur = Math.max(hauteur, Math.ceil(largeurMoyenne + largeurRafale + 11));
+  const marge = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = (largeur + marge * 2) * 2;
+  canvas.height = (hauteur + marge * 2) * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.beginPath();
+  ctx.roundRect(marge, marge, largeur, hauteur, hauteur / 2);
+  ctx.fillStyle = inactive ? FOND_PASTILLE_INACTIVE : FOND_PASTILLE;
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = bordure;
+  ctx.stroke();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const x = marge + (largeur - largeurMoyenne - largeurRafale) / 2;
+  const y = marge + hauteur / 2 + 0.5;
+  ctx.font = principal;
+  ctx.fillStyle = inactive ? '#c6ccd7' : '#ffffff';
+  ctx.fillText(moyenne, x, y);
+  if (rafale) {
+    ctx.font = secondaire;
+    ctx.fillStyle = COULEUR_RAFALE;
+    ctx.fillText(rafale, x + largeurMoyenne + 4, y);
+  }
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
   let stations = [];
   let source = null;
   let visible = false;
-  let popup = null;
-  let controleurHistorique = null;
-  const cacheHistorique = new Map();
+  let zoomCalcule = null;
 
-  function assurerImages() {
-    [...PALETTE_CARTE, COULEUR_ANCIENNE].forEach((couleur, index) => {
-      const id = `balise-fleche-${index}`;
-      if (!map.hasImage(id)) map.addImage(id, dessinerIcone(couleur), { pixelRatio: 2 });
+  const fiche = creerFicheBalise(map, { onFermer: () => marquerSelection(null) });
+
+  function imageManche(station, etat) {
+    if (etat === 'hs') return '';
+    return etat === 'ancien' ? 'balise-manche|ancien' : `balise-manche|${palierBalise(station.moyenne)}`;
+  }
+
+  function imagePastille(station, etat) {
+    if (etat === 'hs') return 'balise-pastille|hs|×|';
+    const palier = etat === 'ancien' ? 'ancien' : palierBalise(station.moyenne);
+    const rafale = etat === 'actif' && rafaleMarquee(station) ? Math.round(station.rafale) : '';
+    return `balise-pastille|${palier}|${Math.round(station.moyenne)}|${rafale}`;
+  }
+
+  // Une balise par case de la grille du monde : déplacer la carte ne change pas celles retenues
+  function stationsRetenues() {
+    const echelle = 512 * 2 ** (Math.round(map.getZoom() * 2) / 2);
+    const cases = new Map();
+    stations.forEach((station) => {
+      const etat = etatStation(station);
+      const sinus = Math.sin((station.lat * Math.PI) / 180);
+      const x = ((station.lon + 180) / 360) * echelle;
+      const y = (0.5 - Math.log((1 + sinus) / (1 - sinus)) / (4 * Math.PI)) * echelle;
+      const cle = `${Math.floor(x / CELLULE_ECART)}/${Math.floor(y / CELLULE_ECART)}`;
+      const rang = station.id === fiche.idOuverte ? -1 : RANG_ETAT[etat];
+      const actuelle = cases.get(cle);
+      if (!actuelle || rang < actuelle.rang || (rang === actuelle.rang && station.date > actuelle.station.date)) {
+        cases.set(cle, { station, etat, rang });
+      }
     });
+    return [...cases.values()];
+  }
+
+  function assurerImage(id) {
+    if (!id || map.hasImage(id)) return;
+    const [genre, valeur, moyenne, rafale] = id.split('|');
+    if (genre === 'balise-manche') {
+      const inactive = valeur === 'ancien';
+      const image = dessinerManche(
+        inactive ? COULEUR_BALISE_INACTIVE : PALETTE_BALISES[Number(valeur)],
+        inactive ? LONGUEURS_MANCHE[1] : LONGUEURS_MANCHE[Number(valeur)]
+      );
+      map.addImage(id, image, { pixelRatio: 2 });
+    } else {
+      map.addImage(id, dessinerPastille(valeur, moyenne, rafale), { pixelRatio: 2 });
+    }
   }
 
   function donnees() {
     return {
       type: 'FeatureCollection',
-      features: stations.map((station) => {
-        const ancienne = estAncienne(station);
+      features: stationsRetenues().map(({ station, etat }) => {
+        const manche = imageManche(station, etat);
+        const pastille = imagePastille(station, etat);
+        assurerImage(manche);
+        assurerImage(pastille);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [station.lon, station.lat] },
           properties: {
             id: station.id,
-            icone: `balise-fleche-${ancienne ? PALETTE_CARTE.length : palierVent(station.moyenne)}`,
-            cap: (station.direction + 180) % 360, // la flèche pointe où va le vent
-            texte: String(Math.round(station.moyenne)),
-            ordre: ancienne ? 1 : 0, // en cas de chevauchement, les relevés récents d'abord
+            manche,
+            pastille,
+            cap: Number.isFinite(station.direction) ? (station.direction + 180) % 360 : 0, // la manche va où va le vent
           },
         };
       }),
     };
   }
 
-  function retirerCouche() {
-    if (map.getLayer(COUCHE)) map.removeLayer(COUCHE);
+  function retirerCouches() {
+    [COUCHE_PASTILLE, COUCHE_MANCHE, COUCHE_SELECTION].forEach((id) => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
     if (map.getSource(SOURCE)) map.removeSource(SOURCE);
   }
 
-  function assurerCouche() {
+  function assurerCouches() {
     if (!source) return;
     if (!map.getSource(SOURCE)) {
-      assurerImages();
       map.addSource(SOURCE, { type: 'geojson', data: donnees(), attribution: source.attribution });
     }
-    if (!map.getLayer(COUCHE)) {
+    if (!map.getLayer(COUCHE_SELECTION)) {
       map.addLayer({
-        id: COUCHE,
+        id: COUCHE_SELECTION,
+        type: 'circle',
+        source: SOURCE,
+        filter: ['==', ['get', 'id'], ''],
+        paint: { 'circle-radius': 22, 'circle-color': '#ffffff', 'circle-opacity': 0.22, 'circle-stroke-color': '#111728', 'circle-stroke-width': 2 },
+      });
+    }
+    if (!map.getLayer(COUCHE_MANCHE)) {
+      map.addLayer({
+        id: COUCHE_MANCHE,
+        type: 'symbol',
+        source: SOURCE,
+        filter: ['!=', ['get', 'manche'], ''],
+        layout: {
+          'icon-image': ['get', 'manche'],
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.72, 10, 1],
+          'icon-rotate': ['get', 'cap'],
+          'icon-rotation-alignment': 'map',
+          'icon-pitch-alignment': 'map',
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      });
+    }
+    if (!map.getLayer(COUCHE_PASTILLE)) {
+      map.addLayer({
+        id: COUCHE_PASTILLE,
         type: 'symbol',
         source: SOURCE,
         layout: {
-          'icon-image': ['get', 'icone'],
-          'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.62, 10, 1],
-          'icon-rotate': ['get', 'cap'],
-          'icon-rotation-alignment': 'map',
-          'icon-padding': 1,
-          'symbol-sort-key': ['get', 'ordre'],
-          'text-field': ['get', 'texte'],
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-size': 12,
-          'text-anchor': 'top',
-          'text-offset': [0, 1.15],
-          'text-optional': true,
+          'icon-image': ['get', 'pastille'],
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.86, 10, 1],
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
-        paint: { 'text-color': '#101626', 'text-halo-color': '#ffffff', 'text-halo-width': 1.8 },
       });
     }
-    map.setLayoutProperty(COUCHE, 'visibility', visible ? 'visible' : 'none');
+    zoomCalcule = Math.round(map.getZoom() * 2);
+    [COUCHE_SELECTION, COUCHE_MANCHE, COUCHE_PASTILLE].forEach((id) => {
+      map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+    });
   }
 
-  // La fiche est haute : on décale la carte pour qu'elle ne passe pas sous les boutons
-  function garderFicheVisible() {
-    const element = popup?.getElement();
-    if (!element) return;
-    const cadre = element.getBoundingClientRect();
-    const zone = map.getContainer().getBoundingClientRect();
-    const depassement = cadre.top - zone.top - MARGE_HAUT_FICHE;
-    if (depassement < 0) map.panBy([0, depassement]);
+  function publier() {
+    zoomCalcule = Math.round(map.getZoom() * 2);
+    map.getSource(SOURCE)?.setData(donnees());
   }
 
-  async function chargerHistorique(station, conteneur) {
-    controleurHistorique?.abort();
-    if (!source?.historique) {
-      conteneur.remove();
-      return;
-    }
-    const memoire = cacheHistorique.get(station.id);
-    let points = memoire && Date.now() - memoire.recu < DUREE_CACHE_HISTORIQUE ? memoire.points : null;
-    if (!points) {
-      const requete = new AbortController();
-      controleurHistorique = requete;
-      conteneur.innerHTML = '<p class="balise-historique-etat">Chargement de l’évolution…</p>';
-      try {
-        points = await source.historique(station.id, requete.signal);
-        cacheHistorique.set(station.id, { points, recu: Date.now() });
-      } catch (erreur) {
-        if (requete.signal.aborted) return;
-        console.warn('Historique de balise :', erreur);
-        conteneur.innerHTML = '<p class="balise-historique-etat">Évolution indisponible pour le moment.</p>';
-        return;
-      }
-      if (requete.signal.aborted) return;
-    }
-    conteneur.innerHTML = points.length >= 2
-      ? `<strong>3 dernières heures</strong>${graphiqueHistorique(points)}`
-      : '<p class="balise-historique-etat">Pas de relevé sur les 3 dernières heures.</p>';
-    garderFicheVisible();
+  function marquerSelection(id) {
+    if (map.getLayer(COUCHE_SELECTION)) map.setFilter(COUCHE_SELECTION, ['==', ['get', 'id'], id ?? '']);
   }
 
   function ouvrir(id) {
     const station = stations.find((candidate) => candidate.id === id);
     if (!station) return;
-    const contenu = document.createElement('div');
-    contenu.className = 'vent-carte-popup balise-popup';
-    contenu.style.setProperty('--vent-couleur', couleurInterface(station.moyenne));
-
-    const titre = document.createElement('strong');
-    titre.textContent = station.nom;
-    const direction = document.createElement('div');
-    direction.className = 'vent-carte-popup-direction';
-    direction.innerHTML = `${cadranVent((station.direction + 180) % 360, 0, 'vent-cadran-moyen')}<div><strong>${Math.round(station.moyenne)} km/h</strong><small>${texteProvenance(station.direction)}</small></div>`;
-    const valeurs = document.createElement('p');
-    const details = [];
-    if (Number.isFinite(station.rafale)) details.push(`Rafales ${Math.round(station.rafale)} km/h`);
-    if (Number.isFinite(station.minimum)) details.push(`min. ${Math.round(station.minimum)} km/h`);
-    valeurs.textContent = details.join(' · ');
-    const releve = document.createElement('p');
-    releve.className = estAncienne(station) ? 'balise-releve balise-releve-ancien' : 'balise-releve';
-    releve.textContent = `Relevé ${texteAge(station.date)}`
-      + (Number.isFinite(station.altitude) ? ` · ${Math.round(station.altitude)} m` : '')
-      + (estAncienne(station) ? ' · ancien' : '');
-    contenu.append(titre, direction, valeurs, releve);
-
-    const historique = document.createElement('div');
-    historique.className = 'balise-historique';
-    contenu.append(historique);
-    if (station.description) {
-      const description = document.createElement('p');
-      description.className = 'balise-description';
-      description.textContent = station.description;
-      contenu.append(description);
-    }
-    const pied = document.createElement('p');
-    pied.className = 'balise-source';
-    const lien = document.createElement('a');
-    lien.href = station.lien || source.lien;
-    lien.target = '_blank';
-    lien.rel = 'noopener noreferrer';
-    lien.textContent = `${source.libelle} ↗`;
-    pied.append('Relevé indicatif · ', lien);
-    contenu.append(pied);
-
-    popup?.remove();
-    popup = new Popup({ offset: 18, maxWidth: '290px' })
-      .setLngLat([station.lon, station.lat])
-      .setDOMContent(contenu)
-      .addTo(map);
-    popup.on('close', () => controleurHistorique?.abort());
-    garderFicheVisible();
-    void chargerHistorique(station, historique);
+    fiche.ouvrir(station, source);
+    publier(); // la balise ouverte reste affichée, même en zone dense
+    marquerSelection(id);
   }
 
-  // Un clic général et une tolérance : au doigt, viser une petite flèche est difficile
+  // Un clic général et une tolérance : au doigt, viser une petite balise est difficile
   map.on('click', (event) => {
-    if (!visible || !map.getLayer(COUCHE) || !peutOuvrir()) return;
+    if (!visible || !map.getLayer(COUCHE_PASTILLE) || !peutOuvrir()) return;
     const { x, y } = event.point;
     const [trouve] = map.queryRenderedFeatures(
       [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]],
-      { layers: [COUCHE] }
+      { layers: COUCHES_CLIC }
     );
     if (trouve) ouvrir(trouve.properties.id);
+    else fiche.fermer();
   });
   map.on('mousemove', (event) => {
-    if (!visible || !map.getLayer(COUCHE)) return;
-    const survol = map.queryRenderedFeatures(event.point, { layers: [COUCHE] }).length > 0;
+    if (!visible || !map.getLayer(COUCHE_PASTILLE)) return;
+    const survol = map.queryRenderedFeatures(event.point, { layers: COUCHES_CLIC }).length > 0;
     if (survol) map.getCanvas().style.cursor = 'pointer';
     else if (map.getCanvas().style.cursor === 'pointer') map.getCanvas().style.cursor = '';
   });
-  map.on('style.load', assurerCouche);
+  map.on('zoom', () => {
+    if (visible && Math.round(map.getZoom() * 2) !== zoomCalcule) publier();
+  });
+  map.on('style.load', assurerCouches);
 
   return {
     // `nouvelleSource` : l'attribution de la carte suit la source affichée
     definir(nouvellesStations, nouvelleSource) {
-      stations = nouvellesStations.filter((station) => Date.now() - station.date <= AGE_MAX);
+      stations = nouvellesStations;
       if (nouvelleSource !== source) {
-        retirerCouche();
+        fiche.fermer();
+        retirerCouches();
         source = nouvelleSource;
-        cacheHistorique.clear();
-        popup?.remove();
       }
-      assurerCouche();
-      map.getSource(SOURCE)?.setData(donnees());
-      return { total: stations.length, anciennes: stations.filter(estAncienne).length };
+      assurerCouches();
+      publier();
+      const ouverte = stations.find(({ id }) => id === fiche.idOuverte);
+      if (ouverte) fiche.actualiser(ouverte);
+      const etats = stations.map(etatStation);
+      return {
+        recentes: etats.filter((etat) => etat === 'actif').length,
+        anciennes: etats.filter((etat) => etat === 'ancien').length,
+        horsService: etats.filter((etat) => etat === 'hs').length,
+      };
     },
     definirVisible(valeur) {
       visible = valeur;
-      if (map.getLayer(COUCHE)) map.setLayoutProperty(COUCHE, 'visibility', valeur ? 'visible' : 'none');
-      if (!valeur) popup?.remove();
+      [COUCHE_SELECTION, COUCHE_MANCHE, COUCHE_PASTILLE].forEach((id) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', valeur ? 'visible' : 'none');
+      });
+      if (!valeur) fiche.fermer();
+      else if (map.getSource(SOURCE) && Math.round(map.getZoom() * 2) !== zoomCalcule) publier();
     },
     // Les relevés récents de la zone visible, du centre vers les bords
     proches(limite) {
@@ -275,7 +308,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
       const { lng, lat } = map.getCenter();
       const kLng = Math.cos((lat * Math.PI) / 180);
       return stations
-        .filter((station) => !estAncienne(station) && limites.contains([station.lon, station.lat]))
+        .filter((station) => etatStation(station) === 'actif' && limites.contains([station.lon, station.lat]))
         .map((station) => ({ station, ecart: Math.hypot((station.lon - lng) * kLng, station.lat - lat) }))
         .sort((a, b) => a.ecart - b.ecart)
         .slice(0, limite)
