@@ -268,3 +268,123 @@ export function creerReperesZone(map, { dessin, titreGroupe, libelleGroupe, resu
     },
   };
 }
+
+// Un champ et sa liste de résultats. Le fichier local répond tout de suite ; `completer`, s'il
+// existe, ajoute ensuite des résultats d'ailleurs et `fusionner` les mêle aux locaux.
+export function creerRechercheLieux({ champ, liste, prefixe, surEchap, charger, chercherLocal, completer, fusionner, creerItem, textes, peutVisiter, visiter, localiser }) {
+  let recherche = '';
+  let etatRech = 'vide'; // vide | attente | ok | erreur
+  let resultats = [];
+  let suggestionActive = -1;
+  let minuteurRech = null;
+  let ctrlRech = null;
+
+  function rendre() {
+    const enRecherche = recherche.length >= 2;
+    liste.replaceChildren();
+    liste.hidden = !enRecherche;
+    champ.setAttribute('aria-expanded', String(enRecherche));
+    champ.removeAttribute('aria-activedescendant');
+    suggestionActive = -1;
+    if (!enRecherche) return;
+
+    if (resultats.length) {
+      resultats.forEach((feature, position) =>
+        liste.append(creerItem(feature, `${prefixe}-${position}`)));
+    } else if (etatRech === 'attente') {
+      const attente = el('div', 'rando-attente');
+      attente.append(el('span', 'rech-attente'), textes.attente);
+      liste.append(attente);
+    } else if (etatRech === 'erreur') {
+      liste.append(el('div', 'rando-attente', 'Recherche indisponible. Vérifiez votre connexion et réessayez.'));
+    } else {
+      liste.append(el('div', 'rando-attente', textes.vide(recherche)));
+    }
+  }
+
+  function activerSuggestion(position) {
+    const options = liste.querySelectorAll('[role="option"]');
+    if (!options.length) return;
+    suggestionActive = (position + options.length) % options.length;
+    options.forEach((option, i) => option.setAttribute('aria-selected', String(i === suggestionActive)));
+    options[suggestionActive].scrollIntoView({ block: 'nearest' });
+    champ.setAttribute('aria-activedescendant', options[suggestionActive].id);
+  }
+
+  async function lancer(texte) {
+    if (ctrlRech) ctrlRech.abort();
+    const controleur = new AbortController();
+    ctrlRech = controleur;
+    const [fichier, complement] = await Promise.allSettled([
+      charger(),
+      completer ? completer(texte, controleur.signal) : Promise.reject(new Error('sans complément')),
+    ]);
+    if (controleur.signal.aborted || ctrlRech !== controleur || texte !== recherche) return;
+
+    const locaux = chercherLocal(texte);
+    if (complement.status === 'fulfilled') {
+      resultats = fusionner(locaux, complement.value, texte);
+    } else {
+      if (completer) console.warn('Recherche :', complement.reason);
+      resultats = locaux;
+    }
+    etatRech = fichier.status === 'rejected' && complement.status === 'rejected' ? 'erreur' : 'ok';
+    rendre();
+  }
+
+  function effacer() {
+    clearTimeout(minuteurRech);
+    if (ctrlRech) ctrlRech.abort();
+    champ.value = '';
+    recherche = '';
+    etatRech = 'vide';
+    resultats = [];
+    rendre();
+  }
+
+  champ.addEventListener('input', () => {
+    recherche = champ.value.trim();
+    clearTimeout(minuteurRech);
+    if (ctrlRech) ctrlRech.abort();
+    if (recherche.length < 2) {
+      etatRech = 'vide';
+      resultats = [];
+      rendre();
+      return;
+    }
+    etatRech = 'attente';
+    resultats = chercherLocal(recherche);
+    rendre();
+    const texte = recherche;
+    minuteurRech = setTimeout(() => lancer(texte), 350);
+  });
+
+  champ.addEventListener('focus', () => {
+    if (recherche.length >= 2) rendre();
+  });
+
+  champ.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' && !liste.hidden) {
+      event.preventDefault();
+      activerSuggestion(suggestionActive + 1);
+    } else if (event.key === 'ArrowUp' && !liste.hidden) {
+      event.preventDefault();
+      activerSuggestion(suggestionActive < 0 ? -1 : suggestionActive - 1);
+    } else if (event.key === 'Enter' && !liste.hidden) {
+      // Entrée lance la visite ; sans pistes disponibles, elle localise le lieu
+      const feature = resultats[Math.max(suggestionActive, 0)];
+      if (feature && peutVisiter(feature)) visiter(feature);
+      else if (feature) localiser(feature);
+    } else if (event.key === 'Escape') {
+      if (surEchap) {
+        surEchap();
+      } else if (!liste.hidden) {
+        liste.hidden = true;
+        champ.setAttribute('aria-expanded', 'false');
+        champ.removeAttribute('aria-activedescendant');
+      }
+    }
+  });
+
+  return { effacer };
+}

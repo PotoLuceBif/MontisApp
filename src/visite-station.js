@@ -844,13 +844,13 @@ export function creerVisiteStation(map, {
 
     const recentrage = document.createElement('button');
     recentrage.type = 'button';
-    recentrage.className = 'ski-visite-calque';
+    recentrage.className = 'ski-visite-calque visite-recentrer';
     recentrage.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>';
-    recentrage.append('Recentrer');
-    recentrage.title = ete ? 'Revenir sur le bike park' : 'Revenir sur la station';
+    recentrage.title = 'Recentrer';
+    recentrage.setAttribute('aria-label', 'Recentrer');
     recentrage.addEventListener('click', () => recentrer());
 
-    bloc.append(choix, courbes, pentes, recentrage, legende);
+    bloc.append(courbes, pentes, recentrage, legende, choix);
     choixFond.add(bloc);
     return bloc;
   }

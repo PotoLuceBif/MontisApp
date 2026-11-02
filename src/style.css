@@ -737,14 +737,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .rando-groupe-choix:hover { background: var(--survol); border-color: #4debd4; }
 
 /* ===== Randonnée : fiche en bas de la carte ===== */
-#rando-fiche, #ski-fiche {
+#rando-fiche, :is(#ski-fiche, #bikepark-fiche) {
   position: absolute; left: 12px; right: 12px; bottom: 36px; max-width: 760px; margin: 0 auto; z-index: 2;
   padding-bottom: 10px; background: var(--surface); color: var(--texte);
   border: 1px solid var(--bord); border-radius: 12px; box-shadow: var(--ombre-forte);
   font: 13px var(--police); transition: left 0.25s ease;
 }
 body:has(#menu-tiroir.ouvert) #rando-fiche,
-body:has(#menu-tiroir.ouvert) #ski-fiche { left: calc(min(320px, 88vw) + 12px); }
+body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche) { left: calc(min(320px, 88vw) + 12px); }
 .rando-entete { display: flex; align-items: flex-start; gap: 12px; padding: 12px 10px 8px 14px; }
 .rando-entete .rando-badge { margin-top: 3px; }
 .rando-titres { flex: 1; min-width: 0; }
@@ -825,7 +825,7 @@ body:has(#menu-tiroir.ouvert) #ski-fiche { left: calc(min(320px, 88vw) + 12px); 
 }
 
 @media (max-width: 640px) {
-  #rando-fiche, #ski-fiche, body:has(#menu-tiroir.ouvert) #rando-fiche, body:has(#menu-tiroir.ouvert) #ski-fiche {
+  #rando-fiche, :is(#ski-fiche, #bikepark-fiche), body:has(#menu-tiroir.ouvert) #rando-fiche, body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche) {
     left: 0; right: 0; bottom: 0; max-width: none; max-height: 60vh; overflow-y: auto;
     border-radius: 16px 16px 0 0;
   }
@@ -1080,14 +1080,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   cursor: pointer;
 }
 
-#fiche, #rando-fiche, #ski-fiche {
+#fiche, #rando-fiche, :is(#ski-fiche, #bikepark-fiche) {
   border-color: color-mix(in srgb, var(--bord) 86%, transparent);
   border-radius: 16px;
   box-shadow: var(--ombre-forte);
   backdrop-filter: blur(16px);
 }
 #fiche { top: 88px; right: 16px; }
-#rando-fiche, #ski-fiche { bottom: 22px; }
+#rando-fiche, :is(#ski-fiche, #bikepark-fiche) { bottom: 22px; }
 .rando-fiche-profil { padding-bottom: 4px; }
 .rando-fiche-profil .rando-stats { padding: 8px 14px 10px; }
 .rando-fiche-profil .rando-profil { padding-right: 0; padding-left: 0; }
@@ -1230,7 +1230,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
     max-height: min(48vh, 420px);
     border-radius: 16px;
   }
-  #rando-fiche, #ski-fiche, body:has(#menu-tiroir.ouvert) #rando-fiche, body:has(#menu-tiroir.ouvert) #ski-fiche {
+  #rando-fiche, :is(#ski-fiche, #bikepark-fiche), body:has(#menu-tiroir.ouvert) #rando-fiche, body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche) {
     right: 0;
     bottom: 0;
     left: 0;
@@ -1257,7 +1257,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flottante {
     bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
   }
-  #rando-fiche::before, #ski-fiche::before {
+  #rando-fiche::before, :is(#ski-fiche, #bikepark-fiche)::before {
     display: block;
     width: 34px;
     height: 4px;
@@ -2243,9 +2243,9 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .ski-visite-calques .visite-fonds { display: grid; flex-basis: 100%; grid-template-columns: none; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
 .ski-visite-calque[hidden] { display: none; }
-.bf-bikepark .ski-visite-calques { padding: 0; }
-.bf-bikepark .bf-corps [hidden] { display: none; }
-.parcours-park-visiter { min-height: 44px; }
+.ski-fiche-contenu > .ski-conditions-note { padding: 0 14px; }
+.visite-recentrer { margin-left: auto; width: 36px; padding: 0; justify-content: center; }
+.ski-niveau-inconnu { background: #6f7884; }
 .pc-ligne-sous { grid-column: 1 / -1; color: var(--texte-2); font-size: 11px; line-height: 1.3; }
 .pc-section .rando-actions-principales { margin: 0; grid-template-columns: minmax(0, 1fr); }
 .pc-section .rando-action-principale { flex-direction: row; justify-content: center; min-height: 44px; gap: 8px; }
@@ -2708,16 +2708,16 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .ski-niveau-bleue { background: #2f6fc4; }
 .ski-niveau-rouge { background: #d0393b; }
 .ski-niveau-noire { background: #20242b; box-shadow: inset 0 0 0 1px var(--texte-2); }
-#ski-fiche.fiche-reduite {
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite {
   box-sizing: border-box;
   max-width: min(460px, calc(100vw - 24px));
   padding-bottom: 0;
   overflow: hidden;
 }
-#ski-fiche.fiche-reduite .rando-entete { align-items: center; padding-top: 8px; padding-bottom: 8px; }
-#ski-fiche.fiche-reduite > :not(.rando-entete, .ski-visite-calques) { display: none; }
-#ski-fiche.fiche-reduite .rando-sous { display: none; }
-#ski-fiche.fiche-reduite .rando-nom { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .rando-entete { align-items: center; padding-top: 8px; padding-bottom: 8px; }
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite > :not(.rando-entete, .ski-visite-calques) { display: none; }
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .rando-sous { display: none; }
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .rando-nom { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .ski-visiter {
   display: inline-flex;
   align-items: center;
@@ -2741,7 +2741,7 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   text-transform: uppercase;
 }
 .ski .ski-favoris-liste { margin-top: 0; }
-#ski-fiche.fiche-reduite .ski-fiche-favori { display: none; }
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .ski-fiche-favori { display: none; }
 .ski-fiche-favori.actif { color: var(--accent); }
 .ski-fiche-favori.actif svg { fill: currentColor; }
 .ski-onglets { margin: 0 14px 8px; }
@@ -2847,9 +2847,9 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .ski-fiche-recherche input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ski-fiche-recherche .rando-liste { max-height: min(280px, 40vh); margin-top: 8px; }
 @media (max-width: 700px) {
-  body:has(#ski-fiche:not([hidden])) .maplibregl-ctrl-bottom-left { display: none; }
-  #ski-fiche.fiche-reduite,
-  body:has(#menu-tiroir.ouvert) #ski-fiche.fiche-reduite {
+  body:has(:is(#ski-fiche, #bikepark-fiche):not([hidden])) .maplibregl-ctrl-bottom-left { display: none; }
+  :is(#ski-fiche, #bikepark-fiche).fiche-reduite,
+  body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche).fiche-reduite {
     right: 12px;
     bottom: max(12px, env(safe-area-inset-bottom));
     left: 12px;
@@ -2864,8 +2864,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     left: 10px;
     max-width: none;
   }
-  #ski-fiche.fiche-reduite::before { display: none; }
-  #ski-fiche.fiche-reduite .rando-badge { display: none; }
+  :is(#ski-fiche, #bikepark-fiche).fiche-reduite::before { display: none; }
+  :is(#ski-fiche, #bikepark-fiche).fiche-reduite .rando-badge { display: none; }
 }
 .ski :is(button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

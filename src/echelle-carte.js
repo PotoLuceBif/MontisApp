@@ -3,6 +3,7 @@ const SELECTEURS_OBSTACLES = [
   '.outil-rapide-panneau',
   '#fiche',
   '#ski-fiche',
+  '#bikepark-fiche',
   '.ski-fiche-recherche',
   '.bf',
   '#barre-haut',
@@ -19,6 +20,7 @@ const SELECTEURS_PANNEAUX = [
   '.outil-rapide-panneau',
   '#fiche',
   '#ski-fiche',
+  '#bikepark-fiche',
   '.bf',
 ];
 
