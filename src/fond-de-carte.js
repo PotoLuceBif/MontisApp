@@ -6,6 +6,10 @@ const wmts = (couche, format) =>
   `&LAYER=${couche}&STYLE=normal&FORMAT=${format}&TILEMATRIXSET=PM` +
   '&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}';
 
+// Sources déjà sur la carte, que la visite réutilise sans toucher au fond choisi
+export const SOURCE_TOPO = 'topo';
+export const SOURCE_SATELLITE = 'esri-sat';
+
 // Pour ajouter un fond : une entrée de plus dans cette liste (zone : 'France' ou 'Monde')
 const FONDS = [
   { id: 'montis', label: 'Montis · relief', zone: 'Monde', photo: false, integre: true },

@@ -506,7 +506,8 @@ export function creerActiviteSki(map) {
         legende.hidden = !coche;
         placerRechercheFiche();
       }),
-      legende
+      legende,
+      visite.creerChoixFond()
     );
     return bloc;
   }

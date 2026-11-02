@@ -1,25 +1,53 @@
 import * as maplibregl from 'maplibre-gl';
 import { etat, majCourbes } from './options-carte.js';
 import { bloquerFiches } from './fiche.js';
-import { retablirFond } from './fond-de-carte.js';
+import { SOURCE_SATELLITE, SOURCE_TOPO, retablirFond } from './fond-de-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
 
 const SOURCE_PISTES = 'visite-pistes';
-const SOURCE_MASQUE = 'visite-masque';
 // Le décor autour des pistes : la neige des stations, ou l'été des bike parks
 const DECORS = {
   hiver: {
-    sol: '#f5f8fb', forets: '#8fa39a', eau: '#d3e3ee', ombre: '#a9bbd0', accent: '#c6d3e1', courbes: '#56708f', routes: '#aab3bd',
+    brume: '#eef3f7', sol: '#f5f8fb', forets: '#8fa39a', eau: '#d3e3ee', ombre: '#a9bbd0', accent: '#c6d3e1', courbes: '#56708f', routes: '#aab3bd',
   },
   ete: {
-    sol: '#eef0e2', forets: '#9dbb8a', eau: '#b4d6e8', ombre: '#8f9a84', accent: '#b4bca6', courbes: '#8a7a5c', routes: '#b5ae9e',
+    brume: '#e4ebe6', sol: '#eef0e2', forets: '#9dbb8a', eau: '#b4d6e8', ombre: '#8f9a84', accent: '#b4bca6', courbes: '#8a7a5c', routes: '#b5ae9e',
   },
 };
-const MARGE_ZONE_M = 3000; // autour des pistes, ce qu'on affiche et télécharge pendant la visite
+const MARGE_ZONE_M = 3000; // autour des pistes, la zone de la station
+// Depuis cette zone : tout reste lisible jusqu'à NET, puis s'estompe et disparaît à LOIN
+const DISTANCE_NETTE_M = 7000;
+const DISTANCE_LOIN_M = 18000;
+// Ce qui ne sert qu'à se repérer de près. Le sol (forêts, eau, relief) reste jusqu'à l'horizon
+const COUCHES_PROCHES = new Set([
+  'visite-courbes', 'visite-courbes-altitude', 'visite-batiments', 'visite-routes',
+  'visite-hameaux', 'visite-sommets', 'visite-lieux', 'visite-communes',
+]);
+const OPACITES = { line: 'line-opacity', fill: 'fill-opacity' };
+// Le brouillard ne commence que loin vers l'horizon et se fond dans le ciel
+const brouillard = (couleur) => ({
+  'sky-color': '#b9d0e4',
+  'horizon-color': couleur,
+  'fog-color': couleur,
+  'sky-horizon-blend': 0.7,
+  'horizon-fog-blend': 0.6,
+  'fog-ground-blend': 0.55,
+  'atmosphere-blend': 0,
+});
+const FONDS_VISITE = [
+  { id: 'defaut', libelle: 'Clair' },
+  { id: 'relief', libelle: 'Relief', source: SOURCE_TOPO },
+  { id: 'satellite', libelle: 'Satellite', source: SOURCE_SATELLITE },
+];
+// Sous un fond en image, le décor dessiné ferait double emploi
+const COUCHES_DECOR = {
+  relief: ['visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes'],
+  satellite: ['visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes'],
+};
 const METRES_PAR_DEGRE = 111_320;
 const POINTS_PAR_ARRONDI = 8;
-// Chaque source globale a sa copie limitée à la zone de la station
+// Chaque source globale a sa copie, retirée avec les calques de la visite
 const SOURCES_LIMITEES = {
   [SOURCE_VECTEUR]: 'visite-osm',
   ombrage: 'visite-ombrage',
@@ -32,7 +60,6 @@ const ZOOM_MAX = 14.5;
 const ZOOM_RAPPROCHE = 0.8; // l'inclinaison écrase le domaine : on peut cadrer plus près que le calcul
 const ZOOM_RAPPROCHE_ETROIT = 0.1; // sur un écran étroit, ce serait couper le domaine sur les côtés
 const ICONE_SOMMET = 'visite-sommet-icone';
-const COUCHES_COURBES = ['visite-courbes', 'visite-courbes-altitude'];
 const SOURCE_PENTES = 'visite-pentes';
 const OPACITE_PENTES = 0.62;
 const URL_PENTES =
@@ -387,47 +414,35 @@ function zoneDe(limites) {
       return [lng + Math.cos(angle) * margeLng, lat + Math.sin(angle) * margeLat];
     }));
   contour.push(contour[0]);
-  return {
-    contour,
-    cadre: [ouest - margeLng, sud - margeLat, est + margeLng, nord + margeLat],
-  };
+  // Le cadre où l'on s'arrête de télécharger ce qui s'estompe de toute façon
+  const loinLat = (DISTANCE_LOIN_M + MARGE_ZONE_M) / METRES_PAR_DEGRE;
+  const loinLng = loinLat / Math.cos((limites.getCenter().lat * Math.PI) / 180);
+  return { contour, cadre: [ouest - loinLng, sud - loinLat, est + loinLng, nord + loinLat] };
 }
 
-// Le blanc recouvre le monde sauf la zone ; le trait flouté adoucit la frontière
-function donneesMasque(contour) {
-  const monde = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
-  return {
-    type: 'FeatureCollection',
-    features: [
-      { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [monde, contour] } },
-      { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: contour } },
-    ],
-  };
-}
-
-function calquesMasque(decor) {
-  return [
-    {
-      id: 'visite-masque',
-      type: 'fill',
-      source: SOURCE_MASQUE,
-      filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'fill-color': decor.sol },
-    },
-    {
-      id: 'visite-masque-bord',
-      type: 'line',
-      source: SOURCE_MASQUE,
-      filter: ['==', ['geometry-type'], 'LineString'],
-      paint: { 'line-color': decor.sol, 'line-width': 46, 'line-blur': 34 },
-    },
-  ];
+// Estompe selon la distance à la zone : évaluée une fois par tuile, sans coût à chaque image
+function attenuer(calque, contour) {
+  const zone = { type: 'Polygon', coordinates: [contour] };
+  const ecart = ['distance', zone];
+  const fondu = ['interpolate', ['linear'], ecart, DISTANCE_NETTE_M, 1, DISTANCE_LOIN_M, 0];
+  const proche = ['<', ecart, DISTANCE_LOIN_M];
+  const paint = { ...calque.paint };
+  if (calque.type === 'symbol') {
+    paint['text-opacity'] = fondu;
+    if (calque.layout?.['icon-image']) paint['icon-opacity'] = fondu;
+  } else {
+    const propriete = OPACITES[calque.type];
+    const avant = paint[propriete];
+    paint[propriete] = avant === undefined ? fondu : ['*', avant, fondu];
+  }
+  return { ...calque, paint, filter: calque.filter ? ['all', calque.filter, proche] : proche };
 }
 
 // `ete` : décor d'été et pas de carte des pentes d'avalanche, sans objet hors neige
 export function creerVisiteStation(map, {
   ete = false,
   dossier = '/data/pistes',
+  cleFond = ete ? 'visite-fond-bikepark' : 'visite-fond-ski',
   attribution = 'Pistes : <a href="https://openskidata.org" target="_blank">OpenSkiData</a> (ODbL), © contributeurs OpenStreetMap',
 } = {}) {
   const decor = ete ? DECORS.ete : DECORS.hiver;
@@ -436,6 +451,8 @@ export function creerVisiteStation(map, {
   let popup = null;
   let courbesVisibles = lire('visite-courbes', true);
   let pentesVisibles = lire('visite-pentes', false);
+  let idFond = FONDS_VISITE.some(({ id }) => id === lire(cleFond, '')) ? lire(cleFond, '') : 'defaut';
+  const choixFond = new Set();
 
   function fermerPopup() {
     if (popup) popup.remove();
@@ -467,27 +484,26 @@ export function creerVisiteStation(map, {
     map.getCanvas().style.cursor = surObjet ? 'pointer' : '';
   }
 
-  function copierSourceLimitee(idSource, cadre) {
+  function copierSource(idSource, cadre) {
     const source = map.getSource(idSource);
     const options = {
       type: source.type,
       tiles: source.tiles,
       minzoom: source.minzoom,
       maxzoom: source.maxzoom,
-      bounds: cadre,
     };
+    if (idSource === 'courbes') options.bounds = cadre; // au-delà, elles sont déjà effacées
     if (source.attribution) options.attribution = source.attribution;
     if (source.type === 'raster-dem') Object.assign(options, { tileSize: source.tileSize, encoding: source.encoding });
     map.addSource(SOURCES_LIMITEES[idSource], options);
   }
 
-  // Toutes les sources de la visite s'arrêtent au cadre de la station : hors de la zone,
-  // aucune tuile n'est demandée. Elles sont retirées avec leurs calques, ce qui évite aussi
-  // de réutiliser d'anciennes tuiles (cause d'un plantage du placement des textes).
+  // Les sources sont retirées avec leurs calques, ce qui évite de réutiliser d'anciennes
+  // tuiles (cause d'un plantage du placement des textes).
   function creerCalques(donnees, communes) {
     if (!map.hasImage(ICONE_SOMMET)) map.addImage(ICONE_SOMMET, creerIconeSommet(), { pixelRatio: 2 });
     const { contour, cadre } = zoneDe(limitesDe(donnees.features));
-    Object.keys(SOURCES_LIMITEES).forEach((id) => copierSourceLimitee(id, cadre));
+    Object.keys(SOURCES_LIMITEES).forEach((id) => copierSource(id, cadre));
     map.addSource(SOURCE_PENTES, {
       type: 'raster',
       tiles: [URL_PENTES],
@@ -496,40 +512,82 @@ export function creerVisiteStation(map, {
       bounds: cadre,
       attribution: 'Pentes : © IGN',
     });
-    map.addSource(SOURCE_MASQUE, { type: 'geojson', data: donneesMasque(contour) });
     map.addSource(SOURCE_PISTES, {
       type: 'geojson',
       data: donnees,
       attribution,
     });
 
-    const dansZone = ['within', { type: 'Polygon', coordinates: [contour] }];
     const calques = [
       ...calquesDecor(decor, courbesVisibles, !ete && pentesVisibles),
-      ...calquesMasque(decor),
       ...calquesPistes(communes, courbesVisibles),
     ].map((calque) => {
       const source = SOURCES_LIMITEES[calque.source];
-      if (!source) return calque;
-      const limite = { ...calque, source };
-      // Les noms de lieux et de sommets passent au-dessus du masque : on les filtre aussi
-      if (calque.type === 'symbol') limite.filter = calque.filter ? ['all', calque.filter, dansZone] : dansZone;
-      return limite;
+      const copie = source ? { ...calque, source } : calque;
+      return COUCHES_PROCHES.has(calque.id) ? attenuer(copie, contour) : copie;
     });
     calques.forEach((calque) => map.addLayer(calque));
-    idsCalques = calques.map(({ id }) => id);
-    enCours.cadre = cadre;
+    // Les fonds en image, juste au-dessus de la couleur du sol
+    FONDS_VISITE.filter(({ source }) => source && map.getSource(source)).forEach(({ id, source }) => {
+      map.addLayer({ id: `visite-image-${id}`, type: 'raster', source, layout: { visibility: 'none' } }, 'visite-forets');
+    });
+    idsCalques = map.getStyle().layers.map(({ id }) => id).filter((id) => id.startsWith('visite-'));
+    appliquerFondVisite();
+  }
+
+  function appliquerFondVisite() {
+    if (!enCours) return;
+    FONDS_VISITE.forEach(({ id }) => {
+      const couche = `visite-image-${id}`;
+      if (map.getLayer(couche)) map.setLayoutProperty(couche, 'visibility', id === idFond ? 'visible' : 'none');
+    });
+    const caches = COUCHES_DECOR[idFond] ?? [];
+    Object.values(COUCHES_DECOR).flat().forEach((id) => {
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', caches.includes(id) ? 'none' : 'visible');
+    });
+    // OpenTopoMap a déjà ses courbes ; sur une photo, seul le blanc reste lisible
+    const photo = idFond === 'satellite';
+    if (map.getLayer('visite-courbes')) {
+      map.setLayoutProperty('visite-courbes', 'visibility', courbesVisibles && idFond !== 'relief' ? 'visible' : 'none');
+      map.setPaintProperty('visite-courbes', 'line-color', photo ? '#ffffff' : decor.courbes);
+    }
+    if (map.getLayer('visite-courbes-altitude')) {
+      map.setLayoutProperty('visite-courbes-altitude', 'visibility', courbesVisibles && idFond !== 'relief' ? 'visible' : 'none');
+    }
+  }
+
+  function majChoixFond() {
+    choixFond.forEach((bloc) => {
+      if (!bloc.isConnected) {
+        choixFond.delete(bloc);
+        return;
+      }
+      bloc.querySelectorAll('button').forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.fond === idFond)));
+    });
+  }
+
+  function definirFond(id) {
+    idFond = id;
+    ecrire(cleFond, id); // à part pour le ski et les bike parks : le fond général de l'app ne bouge pas
+    appliquerFondVisite();
+    majChoixFond();
+  }
+
+  // Le ciel d'avant revient à la sortie : main.js le reprend sur son propre réglage
+  function imposerCiel(ciel) {
+    etat.cielImpose = ciel;
+    etat.majCiel?.(true);
   }
 
   function retirerCalques() {
     idsCalques.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
     idsCalques = [];
-    [...Object.values(SOURCES_LIMITEES), SOURCE_PENTES, SOURCE_MASQUE, SOURCE_PISTES].forEach((id) => {
+    [...Object.values(SOURCES_LIMITEES), SOURCE_PENTES, SOURCE_PISTES].forEach((id) => {
       if (map.getSource(id)) map.removeSource(id);
     });
   }
 
-  // Sous le blanc, la carte normale continuerait à télécharger ses tuiles : on la coupe
+  // Sous le décor, la carte normale continuerait à télécharger ses tuiles : on la coupe
   function masquerCarte() {
     enCours.calquesMasques = map.getStyle().layers
       .filter(({ id, layout }) => !id.startsWith('visite-') && layout?.visibility !== 'none')
@@ -541,21 +599,6 @@ export function creerVisiteStation(map, {
     calquesMasques.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible'); });
     retablirFond(map); // le fond a pu changer pendant la visite : seul le choix actuel doit rester visible
     majCourbes(map);
-  }
-
-  // Le relief 3D ne sert à rien hors de la zone, tout y est blanc : on arrête ses téléchargements
-  function ajusterRelief() {
-    if (!enCours?.cadre) return;
-    const [ouest, sud, est, nord] = enCours.cadre;
-    const vue = map.getBounds();
-    const zoneVisible = vue.getWest() < est && vue.getEast() > ouest && vue.getSouth() < nord && vue.getNorth() > sud;
-    if (!zoneVisible && !enCours.reliefCoupe) {
-      enCours.reliefCoupe = true;
-      map.setTerrain(null);
-    } else if (zoneVisible && enCours.reliefCoupe) {
-      enCours.reliefCoupe = false;
-      etat.majTerrain();
-    }
   }
 
   // Charge les pistes avant de toucher à la carte : en cas d'échec, rien n'a changé
@@ -585,10 +628,11 @@ export function creerVisiteStation(map, {
       if (!etat.mode3D) etat.basculerMode();
 
       masquerCarte();
+      etat.enVisite = true;
       creerCalques(donnees, communes);
+      imposerCiel(brouillard(decor.brume));
       map.on('click', surClic);
       map.on('mousemove', surSurvol);
-      map.on('moveend', ajusterRelief);
     }
 
     const etroit = map.getContainer().clientWidth <= 640;
@@ -616,18 +660,18 @@ export function creerVisiteStation(map, {
 
   function quitter({ restaurer = true } = {}) {
     if (!enCours) return;
-    const { vue, etaitEn3D, calquesMasques, reliefCoupe } = enCours;
+    const { vue, etaitEn3D, calquesMasques } = enCours;
     enCours = null;
     fermerPopup();
     map.off('click', surClic);
     map.off('mousemove', surSurvol);
-    map.off('moveend', ajusterRelief);
     map.getCanvas().style.cursor = '';
     retirerCalques();
+    etat.enVisite = false;
     reafficherCarte(calquesMasques);
+    imposerCiel(null);
     bloquerFiches(false);
-    if (reliefCoupe) etat.majTerrain();
-    if (!etaitEn3D && etat.mode3D) etat.basculerMode();
+    if (etaitEn3D !== !!etat.mode3D) etat.basculerMode();
     if (restaurer) map.flyTo({ ...vue, pitch: etaitEn3D ? vue.pitch : 0, duration: 1200, essential: true });
   }
 
@@ -635,9 +679,7 @@ export function creerVisiteStation(map, {
     courbesVisibles = visibles;
     ecrire('visite-courbes', visibles);
     if (!enCours) return;
-    for (const id of COUCHES_COURBES) {
-      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibles ? 'visible' : 'none');
-    }
+    appliquerFondVisite();
   }
 
   function afficherPentes(visibles) {
@@ -648,9 +690,28 @@ export function creerVisiteStation(map, {
     }
   }
 
+  function creerChoixFond() {
+    const bloc = document.createElement('div');
+    bloc.className = 'parcours-pratiques visite-fonds';
+    bloc.setAttribute('role', 'group');
+    bloc.setAttribute('aria-label', 'Fond de carte de la visite');
+    FONDS_VISITE.forEach(({ id, libelle }) => {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.dataset.fond = id;
+      bouton.textContent = libelle;
+      bouton.setAttribute('aria-pressed', String(id === idFond));
+      bouton.addEventListener('click', () => definirFond(id));
+      bloc.append(bouton);
+    });
+    choixFond.add(bloc);
+    return bloc;
+  }
+
   return {
     charger,
     demarrer,
+    creerChoixFond,
     quitter,
     afficherCourbes,
     afficherPentes,

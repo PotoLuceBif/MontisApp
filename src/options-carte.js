@@ -9,6 +9,7 @@ export const etat = {
 };
 
 export function majCourbes(map) {
+  if (etat.enVisite) return; // la visite a ses propres courbes, la carte normale reste coupée
   const visible = etat.courbes && !etat.mode3D;
   const visibleAlt = visible && etat.altitudes;
   if (map.getLayer('courbes')) {

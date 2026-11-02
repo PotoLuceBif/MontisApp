@@ -160,12 +160,12 @@ function appliquerMode(mode3D) {
     // 3D : relief + ombrage, inclinaison autorisée
     map.setMaxPitch(85);
     majTerrain();
-    map.setLayoutProperty('ombrage', 'visibility', 'visible');
+    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'visible');
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison
     majTerrain();
-    map.setLayoutProperty('ombrage', 'visibility', 'none');
+    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'none');
     map.easeTo({ pitch: 0, duration: 400 });
     map.once('moveend', () => map.setMaxPitch(0));
     map.setMaxPitch(0);
@@ -274,14 +274,15 @@ map.on('load', () => {
     'atmosphere-blend': 0,
   };
   let cielActif = false;
-  function majCiel() {
+  function majCiel(force = false) {
     const veut = map.getZoom() >= ZOOM_RELIEF_MIN; // au-dessus : projection plate
-    if (veut === cielActif) return;
-    map.setSky(veut ? CIEL : undefined);
+    if (veut === cielActif && force !== true) return;
+    map.setSky(veut ? (etat.cielImpose ?? CIEL) : undefined);
     cielActif = veut;
   }
-  map.on('zoom', majCiel);
+  map.on('zoom', () => majCiel());
   majCiel();
+  etat.majCiel = majCiel;
 
   // ---------- Démarrage dans le dernier mode utilisé (2D par défaut) ----------
   appliquerMode(lire('mode3D', false));
