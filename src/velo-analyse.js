@@ -2,8 +2,8 @@
 import { echantillonner } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
 
-export const PALIERS_PENTE = [3, 6, 10, 15]; // % ; la pente se lit sur 100 m, pas d'un point à l'autre
-const FENETRE_PENTE = 50; // m de part et d'autre du point
+export const PALIERS_PENTE = [3, 6, 10, 15]; // %
+const FENETRE_PENTE = 75; // m de part et d'autre du point : en dessous, c'est le bruit du relief qu'on mesure
 
 export const VOIES = {
   asphalte: { libelle: 'Asphalte', couleur: '#8fa3b8' },

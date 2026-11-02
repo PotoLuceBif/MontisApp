@@ -5,6 +5,7 @@ import { bloquerFiches } from './fiche.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { distance } from './rando-api.js';
+import { telechargerGpx } from './rando-profil.js';
 import { formaterDuree } from './rando-profil.js';
 import { paletteInterface } from './vent-cadran.js';
 import { PRATIQUES, calculerTroncon, tronconLibre } from './velo-routage.js';
@@ -18,6 +19,7 @@ const COUCHE_LIBRE = 'velo-trace-libre';
 const SOURCE_CURSEUR = 'velo-curseur';
 const COUCHE_CURSEUR = 'velo-curseur-point';
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
+const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
 const ATTENTE_ANALYSE = 250; // ms : on ne relit pas le relief à chaque modification rapprochée
 const MODES_COULEUR = [['pratique', 'Pratique'], ['pente', 'Pente'], ['surface', 'Surface'], ['difficulte', 'Difficulté']];
 const COULEUR_CERNE = '#0b111b';
@@ -105,7 +107,9 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     </div>
     <div class="velo-pied">
       <button type="button" class="para-bouton velo-terminer">Terminer</button>
+      <button type="button" class="para-bouton velo-gpx" disabled>GPX</button>
     </div>
+    <p class="velo-source" hidden></p>
   `;
   panneau.titre.textContent = nom;
   panneau.definirResume({
@@ -123,6 +127,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   const lecture = $('.velo-lecture');
   const selecteurCouleur = $('.velo-couleur select');
   const boutonTerminer = $('.velo-terminer');
+  const boutonGpx = $('.velo-gpx');
+  const source = $('.velo-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
 
@@ -444,6 +450,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     jetonAnalyse += 1;
     const jeton = jetonAnalyse;
     const chaine = etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []);
+    boutonGpx.disabled = true;
     if (chaine.length < 2) {
       analyse = null;
       profil.definir(null);
@@ -462,6 +469,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         afficherCurseur(null);
         rendreStats();
         dessinerTrace();
+        boutonGpx.disabled = false;
       } catch (erreur) {
         if (jeton !== jetonAnalyse) return;
         console.warn('Profil vélo :', erreur);
@@ -473,6 +481,58 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         dessinerTrace();
       }
     }, ATTENTE_ANALYSE);
+  }
+
+  function definirNom(nouveau) {
+    nom = nouveau;
+    panneau.titre.textContent = nom;
+    panneau.definirResume({ nom });
+  }
+
+  // Tout le détail du tracé, avec l'altitude du profil au même endroit
+  function exporterGpx() {
+    if (!analyse) return;
+    const chaine = etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []);
+    let parcouru = 0;
+    const points = chaine.map(([lng, lat], index) => {
+      if (index) parcouru += distance(chaine[index - 1], chaine[index]);
+      return { lng, lat, d: parcouru };
+    });
+    const dernier = analyse.alts.length - 1;
+    const alts = points.map(({ d }) => analyse.alts[Math.min(dernier, Math.round((d / (parcouru || 1)) * dernier))]);
+    telechargerGpx(nom, points, alts);
+  }
+
+  // Le panneau couvre une partie de la carte : le tracé doit tenir dans le reste
+  function cadrer(chaine) {
+    const lngs = chaine.map(([lng]) => lng);
+    const lats = chaine.map(([, lat]) => lat);
+    const cadre = panneau.element.getBoundingClientRect();
+    const toutLaLargeur = cadre.width >= window.innerWidth - 4;
+    map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
+      padding: {
+        top: 90,
+        right: toutLaLargeur ? 30 : 80,
+        bottom: toutLaLargeur ? cadre.height + 20 : 30,
+        left: toutLaLargeur ? 30 : cadre.right + 30,
+      },
+      duration: estHorsLigne() ? 0 : 700,
+      maxZoom: 15,
+    });
+  }
+
+  // Une trace existante : ses détails sont gardés, répartis entre quelques points déplaçables
+  function etapesDepuisChaine(chaine) {
+    const nombre = Math.min(POINTS_TRACE_REPRISE, chaine.length);
+    const indices = Array.from({ length: nombre }, (_, i) => Math.round((i * (chaine.length - 1)) / (nombre - 1)));
+    return indices.map((indice, rang) => {
+      const [lng, lat] = chaine[indice];
+      if (!rang) return { lng, lat, mode: 'fixe', troncon: null };
+      const geom = chaine.slice(indices[rang - 1], indice + 1);
+      let longueur = 0;
+      for (let i = 1; i < geom.length; i += 1) longueur += distance(geom[i - 1], geom[i]);
+      return { lng, lat, mode: 'fixe', troncon: { geom, troncons: [{ longueur, voie: 'inconnu', difficulte: null, marches: false }], source: 'trace' } };
+    });
   }
 
   function rendreStats() {
@@ -565,6 +625,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     dessinerTrace();
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
+  boutonGpx.addEventListener('click', exporterGpx);
   commande('annuler').addEventListener('click', () => restaurer(passe, futur));
   commande('retablir').addEventListener('click', () => restaurer(futur, passe));
   commande('libre').addEventListener('click', () => {
@@ -594,7 +655,29 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       pratique = PRATIQUES[id];
       if (panneau.ouvert) recalculer();
     },
+    // Itinéraire balisé ou trace importée : consultation d'abord, modification ensuite si besoin
+    ouvrirTrace({ nom: nomTrace, chaine, lien }) {
+      controleur?.abort();
+      etapes = etapesDepuisChaine(chaine);
+      passe = [];
+      futur = [];
+      definirNom(nomTrace);
+      source.hidden = !lien;
+      if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
+      bloquerFiches(true);
+      panneau.afficher();
+      definirEdition(false);
+      recalculer();
+      cadrer(chaine);
+    },
     ouvrirCreation() {
+      if (etapes.length && !edition) {
+        etapes = [];
+        passe = [];
+        futur = [];
+      }
+      definirNom('Nouveau parcours');
+      source.hidden = true;
       bloquerFiches(true);
       panneau.afficher();
       definirEdition(true);

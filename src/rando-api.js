@@ -1,5 +1,4 @@
-// Accès à l'API de Waymarked Trails (itinéraires de randonnée d'OpenStreetMap)
-const BASE = 'https://hiking.waymarkedtrails.org/api/v1';
+// Accès à l'API de Waymarked Trails (itinéraires balisés d'OpenStreetMap)
 const RAYON = 6378137; // rayon de la projection Web Mercator utilisée par l'API
 
 // Niveaux d'itinéraires (champ « group » de l'API)
@@ -64,46 +63,54 @@ function memoire(max) {
     },
   };
 }
-const cacheListes = memoire(40);
-const cacheDetails = memoire(4);
-
-async function appeler(chemin, signal, cache) {
-  if (cache.has(chemin)) return cache.get(chemin);
-  const rep = await fetch(BASE + chemin, { signal });
-  if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
-  const json = await rep.json();
-  cache.set(chemin, json);
-  return json;
-}
-
 function dedoublonner(liste) {
   const vus = new Set();
   return liste.filter((r) => r && r.id != null && !vus.has(r.id) && vus.add(r.id));
 }
 
-export async function chercher(texte, signal) {
-  const json = await appeler(`/list/search?query=${encodeURIComponent(texte)}&limit=25`, signal, cacheListes);
-  return dedoublonner(json.results || []);
-}
+// Une carte d'itinéraires par pratique : hiking, mtb, cycling
+export function clientItineraires(carte) {
+  const base = `https://${carte}.waymarkedtrails.org/api/v1`;
+  const cacheListes = memoire(40);
+  const cacheDetails = memoire(4);
 
-export async function dansLaZone(limites, signal) {
-  const [x0, y0] = lngLatVersMercator(limites.getWest(), limites.getSouth());
-  const [x1, y1] = lngLatVersMercator(limites.getEast(), limites.getNorth());
-  const bbox = [x0, y0, x1, y1].map(Math.round).join(',');
-  let derniere = null;
-  for (const limite of [40, 20]) {
-    try {
-      const json = await appeler(`/list/by_area?bbox=${bbox}&limit=${limite}`, signal, cacheListes);
-      return dedoublonner(json.results || []);
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      derniere = e;
-    }
+  async function appeler(chemin, signal, cache) {
+    if (cache.has(chemin)) return cache.get(chemin);
+    const rep = await fetch(base + chemin, { signal });
+    if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
+    const json = await rep.json();
+    cache.set(chemin, json);
+    return json;
   }
-  throw derniere;
+
+  return {
+    async chercher(texte, signal) {
+      const json = await appeler(`/list/search?query=${encodeURIComponent(texte)}&limit=25`, signal, cacheListes);
+      return dedoublonner(json.results || []);
+    },
+    async dansLaZone(limites, signal) {
+      const [x0, y0] = lngLatVersMercator(limites.getWest(), limites.getSouth());
+      const [x1, y1] = lngLatVersMercator(limites.getEast(), limites.getNorth());
+      const bbox = [x0, y0, x1, y1].map(Math.round).join(',');
+      let derniere = null;
+      for (const limite of [40, 20]) {
+        try {
+          const json = await appeler(`/list/by_area?bbox=${bbox}&limit=${limite}`, signal, cacheListes);
+          return dedoublonner(json.results || []);
+        } catch (e) {
+          if (e.name === 'AbortError') throw e;
+          derniere = e;
+        }
+      }
+      throw derniere;
+    },
+    details: (id, signal) => appeler(`/details/relation/${id}`, signal, cacheDetails),
+  };
 }
 
-export const detailsItineraire = (id, signal) => appeler(`/details/relation/${id}`, signal, cacheDetails);
+const randonnee = clientItineraires('hiking');
+export const { chercher, dansLaZone } = randonnee;
+export const detailsItineraire = randonnee.details;
 
 // ---------- Extraction du tracé ----------
 // Parcourt la structure de l'itinéraire et récolte tous les tronçons (objets ayant une géométrie)
