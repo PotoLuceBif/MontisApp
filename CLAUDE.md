@@ -25,6 +25,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 **Comportement**
 - Activités exclusives : jamais deux activités actives en même temps (`exclusif: true` dans `menu.js`). Ouvrir Météo ou Carte arrête aussi l'activité en cours.
+  Décidé pour le lot 0.5 de la feuille de route : Météo et Carte ne l'arrêteront plus, et chaque activité aura ses pratiques (Randonnée, Vélo, Ski, Vol libre).
 - Tous les réglages sont sauvegardés dans le localStorage et conservés après rafraîchissement. Passer par `lire` et `ecrire` de `reglages.js`.
 - 2D : inclinaison bloquée, rotation et déplacement autorisés. 3D : inclinaison autorisée, sans angle imposé au passage en 3D (`appliquerMode` dans `main.js`).
 - Les panneaux n'affichent que les options utiles au mode actuel : pas d'options grisées, on les masque (`data-seulement="2d"` ou `"3d"`, voir `relief.js`). Seule exception, déjà en place : hors ligne, les fonctions qui exigent Internet sont grisées.

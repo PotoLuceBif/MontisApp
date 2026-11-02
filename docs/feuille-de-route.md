@@ -48,7 +48,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 | Notifications hors de l'appli | Exigent un serveur d'envoi | Alertes seulement appli ouverte, au début |
 | Boussole (panorama) | Permission demandée sur iPhone, précision variable selon le téléphone | Recalage manuel prévu (faire glisser l'horizon) |
 | Clés d'API (OpenAIP, Windy) | Une clé `VITE_` est lisible par tous | Relais serveur en Vercel Functions (`api/`), lot 0.6 |
-| Voies d'alpinisme et d'escalade | Pas d'annuaire ouvert parfait ; camptocamp.org (CC BY-SA) et OSM sont les meilleures sources | Vérifier les conditions d'usage de l'API camptocamp avant le lot 3.2 |
+| Voies d'alpinisme et d'escalade | Pas d'annuaire ouvert parfait ; camptocamp.org (CC BY-SA) et OSM sont les meilleures sources | Vérifier les conditions d'usage de l'API camptocamp avant la cinquième activité |
 | Ombres portées réelles | Calcul plus lourd que l'ombrage classique | Ombrage simple d'abord, ombre portée ensuite (lot 1.4) |
 
 ## Phase 0 : fondations
@@ -59,7 +59,7 @@ Prérequis à tout le reste : sans eux, chaque ajout alourdit et fragilise l'app
 - [ ] **0.2 Découpage du bundle.** Charger chaque activité et chaque outil à la demande (`import()` dans `menu.js`). Mesurer le JavaScript initial avant et après. *Fini quand* l'alerte des 500 Ko disparaît et que chaque menu s'ouvre toujours, en ligne comme hors ligne (le service worker doit précharger les morceaux).
 - [ ] **0.3 Tests automatiques.** Vitest, `npm test`, premiers tests sur `unites.js`, `vent-calcul.js`, `portee.js`, `parcours-analyse.js`. *Fini quand* `npm test` passe et que la commande figure dans CLAUDE.md.
 - [ ] **0.4 Captures automatiques.** Script Playwright qui ouvre l'appli au format téléphone (et ordinateur), parcourt les écrans clés et enregistre des captures, pour que Claude vérifie chaque lot visuellement avant de pousser. *Fini quand* une commande produit les captures d'un parcours type.
-- [ ] **0.5 Menu à dix activités.** **À décider** par le propriétaire : regroupement (Air, Neige, Sentier, Roche…), activité favorite mise en avant, ou autre. Maquette en captures, puis réalisation. *Fini quand* le menu accueille au moins dix activités sans scroll pénible sur téléphone.
+- [ ] **0.5 Activités et pratiques.** Mettre en place la structure décidée (voir « Structure de l'appli ») : Météo et Carte s'ouvrent par-dessus l'activité sans l'arrêter ; le choix de pratique, déjà présent dans Vélo (`pratiques` dans `activite-parcours.js`), devient commun à toutes les activités ; Parapente devient Vol libre. Les nouvelles pratiques elles-mêmes viennent en phase 3. *Fini quand* une sortie en cours survit à l'ouverture de Météo et Carte, et que chaque activité affiche son choix de pratique de la même façon.
 - [ ] **0.6 Relais serveur.** Dossier `api/` en Vercel Functions, avec cache et limites. Premier usage : celui du premier lot qui demande une clé. À faire au moment où il devient nécessaire.
 
 ## Phase 1 : le point et le terrain
@@ -82,17 +82,27 @@ Faire de Montis un outil de terrain, pas seulement de préparation.
 - [ ] **2.4 Pack sortie hors ligne.** D'un geste depuis un parcours : carte et relief de la zone, frise météo du jour, bulletin d'avalanche, trace.
 - [ ] **2.5 Sécurité.** Mode urgence (coordonnées en grand, altitude, 112 et secours en montagne par pays, sans réseau), heure de retour prévue, envoi de sa position par SMS ou partage du téléphone, sans serveur.
 
-## Phase 3 : nouveaux profils
+## Phase 3 : nouvelles pratiques
 
-Chacun réutilise les briques des phases 1 et 2. L'ordre reste à confirmer selon les priorités du propriétaire.
+Chaque lot ajoute des pratiques à une activité existante (voir « Structure de l'appli ») et réutilise les briques des phases 1 et 2. Une pratique par version mineure (1.1, 1.2…), dans l'ordre que choisit le propriétaire.
 
-- [ ] **3.1 Ski de rando et raquettes.** Pentes, orientation, bulletin d'avalanche et trace réunis ; itinéraires de ski de rando d'OSM (`piste:type=skitour`).
-- [ ] **3.2 Alpinisme.** Voies et refuges (camptocamp.org, OSM), isotherme 0 °C, fenêtre météo, glaciers et crevasses déjà affichés.
-- [ ] **3.3 Escalade.** Sites et secteurs (OSM `sport=climbing`, camptocamp), orientation de la falaise, heures d'ombre et de soleil, roche probablement sèche après la pluie.
-- [ ] **3.4 Trail.** Trace avec temps de passage cibles, ravitaillements et points d'eau, allure selon la pente.
-- [ ] **3.5 Parapente avancé.** Plafond et thermiques (base des nuages, gradient, CAPE), fiche de décollage avec feu vert, orange ou rouge, espaces aériens (OpenAIP, clé via le relais 0.6), affichés aussi sur la portée de vol.
-- [ ] **3.6 Via ferrata et canyon.** Accès, cotations d'OSM, alerte orage et crue.
-- [ ] **3.7 Nature et règles.** Réserves et parcs avec leurs règles (bivouac, chiens, drones), observations de faune et de flore ouvertes (GBIF).
+**Randonnée**
+- [ ] **3.1 Trail.** Temps de passage cibles, ravitaillements et points d'eau, allure selon la pente.
+- [ ] **3.2 Raquettes.** Pentes, bulletin d'avalanche et enneigement allumés par défaut, vitesse adaptée.
+
+**Ski**
+- [ ] **3.3 Ski de rando.** Pentes, orientation, bulletin d'avalanche et trace réunis ; itinéraires d'OSM (`piste:type=skitour`) ; routage de montée.
+- [ ] **3.4 Hors-piste.** Pentes au-dessus et autour des domaines, orientation, avalanches ; mention de prudence renforcée.
+
+**Vol libre** (l'actuel Parapente)
+- [ ] **3.5 Thermiques et plafond.** Base des nuages, gradient, CAPE ; fiche de décollage avec feu vert, orange ou rouge.
+- [ ] **3.6 Espaces aériens.** OpenAIP (clé via le relais 0.6), affichés aussi sur la portée de vol. Indispensable avant le paramoteur.
+- [ ] **3.7 Deltaplane, paramoteur, speed riding.** Mêmes données que le parapente, réglages propres : finesse et vitesse pour le delta, espaces aériens et terrains plats pour le paramoteur, pentes et neige pour le speed riding.
+
+**Transverse**
+- [ ] **3.8 Nature et règles.** Un élément du menu Carte, pas une activité : réserves et parcs avec leurs règles (bivouac, chiens, drones), observations de faune et de flore ouvertes (GBIF).
+
+**Plus tard : la cinquième activité**, pour l'escalade, la via ferrata, l'alpinisme et le canyon. Reportée après la 1.0, le temps de mûrir son périmètre (voir « Structure de l'appli »). Sources pressenties : camptocamp.org (CC BY-SA, conditions de l'API à vérifier) et OSM `sport=climbing`, `highway=via_ferrata`.
 
 ## Phase 4 : les effets « waouh »
 
@@ -102,11 +112,55 @@ Chacun réutilise les briques des phases 1 et 2. L'ordre reste à confirmer selo
 - [ ] **4.4 Webcams.** Webcams proches d'un point (source à choisir ; clé via le relais si nécessaire).
 - [ ] **4.5 Partage par lien.** Un lien ouvre la vue, un parcours ou un point, sans compte (tout dans l'URL).
 
+## Structure de l'appli
+
+Décidée le 2 novembre 2026. Elle évite que les nouvelles pratiques se chevauchent.
+
+**Étage 1 : peu d'activités, des pratiques à l'intérieur.** Une seule activité active à la fois ; la pratique règle le routage, les vitesses, les couches allumées par défaut et les repères.
+
+| Activité | Pratiques | État |
+|---|---|---|
+| Randonnée | Randonnée, Trail, Raquettes | Randonnée en place |
+| Vélo | VTT, Gravel, Route | En place |
+| Ski | Piste, Ski de rando, Hors-piste | Piste en place |
+| Vol libre | Parapente, Deltaplane, Paramoteur, Speed riding | Parapente en place |
+| *Cinquième activité* | *Escalade, via ferrata, alpinisme, canyon* | *Reportée après la 1.0* |
+
+**Étage 2 : les briques communes, hors des activités.** Pentes, orientation et ombres dans Carte ; frise météo, isotherme et avalanches dans Météo. Une activité ou une pratique les **allume par défaut**, l'utilisateur peut toujours les allumer lui-même. Règle : chaque donnée a un seul module propriétaire, plusieurs activités l'affichent.
+
+**Étage 3 : toujours disponible, quelle que soit l'activité.** Le point (appui long), la sortie GPS (bouton sur la carte, jamais coupée par un changement de panneau), le carnet, l'urgence.
+
+**Changement de règle, effectif au lot 0.5 :** Météo et Carte s'ouvrent par-dessus l'activité **sans l'arrêter**. Seul le passage à une autre activité arrête la précédente.
+
+### Pistes pour la cinquième activité
+
+À trancher plus tard. Ce qui réunit ces pratiques, c'est le baudrier et la corde, et un terrain où la carte seule ne suffit pas.
+
+| Proposition | Contenu | Pour | Contre |
+|---|---|---|---|
+| 🧗 **Vertical**, une seule activité | Escalade, via ferrata, alpinisme, canyon | Simple, cohérent avec « baudrier » | Large ; le canyon a des besoins très différents (eau, crues) |
+| 🧗 **Rocher** et 🏔️ **Haute montagne** | Escalade et via ferrata ; alpinisme et cascade de glace | Chaque activité reste précise | Six activités ; frontière floue sur les courses mixtes |
+| 🏔️ **Alpinisme** seul d'abord | Alpinisme, puis escalade et via ferrata comme pratiques | Démarre petit, le plus « montagnard » | Le grimpeur de falaise ne s'y reconnaît pas forcément |
+
+Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (canyon, kayak, rafting) : à voir selon la demande.
+
+## Versions
+
+| Version | Contenu |
+|---|---|
+| 1.0.0-alpha.1 | L'état de `main` au 2 novembre 2026, après la PR #1 |
+| 1.0 alpha suivantes | Phase 0 |
+| 1.0 beta | Phases 1 et 2 |
+| 1.0 | Stable, testée sur le terrain |
+| 1.1, 1.2… | Une nouvelle pratique ou un effet « waouh » par version |
+
 ## Décisions à prendre
 
 | Décision | Quand | Proposition |
 |---|---|---|
-| Organisation du menu à dix activités | Avant le lot 0.5 | Regroupement par milieu, avec activité favorite en tête |
 | Compte utilisateur ou appli 100 % locale | Avant la phase 2 | Rester local ; sauvegarde `.json` et partage par lien suffisent |
-| Ordre des nouveaux profils | Avant la phase 3 | Ski de rando, alpinisme, escalade d'abord : ils réutilisent le plus |
+| Ordre des nouvelles pratiques | Avant la phase 3 | Ski de rando et thermiques d'abord : ils réutilisent le plus |
+| Périmètre et nom de la cinquième activité | Après la 1.0 | Voir « Pistes pour la cinquième activité » |
 | Texte de la mention de prudence | Lot 1.2 | Court, visible une fois, rappelé sur les couches de sécurité |
+
+**Décidé :** structure en activités et pratiques (2 novembre 2026), Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026).
