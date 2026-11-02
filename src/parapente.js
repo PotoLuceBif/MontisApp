@@ -1,51 +1,20 @@
 import * as maplibregl from 'maplibre-gl';
+import { lire, ecrire } from './reglages.js';
+import { FFVL_ACTIVE, SOURCES_BALISES, chargerFFVL } from './balises-sources.js';
+import { creerCoucheBalises } from './balises-couche.js';
 
-const URL_BALISES = '/ffvl/json/balises.json';
-const URL_RELEVES = '/ffvl/json/relevesmeteo.json';
 const URL_SITES = '/ffvl/json/sites.json';
 const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
-
-const couleurVent = (v) =>
-  !Number.isFinite(v) ? '#66717a' : v < 10 ? '#2e9e4f' : v < 20 ? '#e6a800' : v < 30 ? '#f07a00' : '#d62828';
+const DELAI_RELECTURE = 60 * 1000;
 
 const nombre = (valeur) =>
   valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);
 
 const sansAccent = (s) =>
-  String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-function erreurFFVL(message, code) {
-  const erreur = new Error(message);
-  erreur.code = code;
-  return erreur;
-}
-
-async function charger(url, signal) {
-  const rep = await fetch(url, { signal, cache: 'no-store' });
-  const texte = await rep.text();
-  if (
-    rep.status === 401 ||
-    rep.status === 403 ||
-    /available using an ffvl api key|clé api|api key/i.test(texte)
-  ) {
-    throw erreurFFVL('L’accès aux données nécessite une clé API FFVL.', 'acces');
-  }
-  if (!rep.ok) throw new Error(`${url} : erreur HTTP ${rep.status} – ${texte.slice(0, 200)}`);
-
-  let donnees;
-  try {
-    donnees = JSON.parse(texte);
-  } catch {
-    throw new Error(`${url} : réponse non JSON : ${texte.slice(0, 200)}`);
-  }
-
-  if (Array.isArray(donnees)) return donnees;
-  if (donnees && typeof donnees === 'object') return Object.values(donnees);
-  throw new Error(`${url} : format de données FFVL inattendu.`);
-}
 
 function sitesEnGeoJSON(sites) {
   const features = [];
@@ -79,23 +48,20 @@ function sitesEnGeoJSON(sites) {
   return { type: 'FeatureCollection', features };
 }
 
-export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {} } = {}) {
-  let marqueurs = [];
+export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise } = {}) {
   let balisesVisibles = false;
   let sitesVisibles = false;
   let actif = false;
   let minuteur = null;
   let controleur = null;
   let actualisation = null;
+  let derniereActualisation = 0;
   let nombreSites = 0;
-  let nombreBalises = 0;
-  let nombrePerimees = 0;
+  let statistiques = { recentes: 0, anciennes: 0, horsService: 0 };
   let donneesDejaChargees = false;
+  let source = SOURCES_BALISES.find(({ id }) => id === lire('balises-source', '')) ?? SOURCES_BALISES[0];
   const couchesSites = ['decollages', 'atterrissages', 'sites-noms'];
-
-  function publierStatistiques() {
-    onStatistiques({ sites: nombreSites, balises: nombreBalises, perimees: nombrePerimees });
-  }
+  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise });
 
   function majVisibilite() {
     couchesSites.forEach((id) => {
@@ -103,9 +69,7 @@ export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {
         map.setLayoutProperty(id, 'visibility', sitesVisibles ? 'visible' : 'none');
       }
     });
-    marqueurs.forEach((marqueur) => {
-      marqueur.getElement().style.display = balisesVisibles ? '' : 'none';
-    });
+    couche.definirVisible(balisesVisibles);
   }
 
   function assurerCouchesSites(geojson) {
@@ -177,148 +141,122 @@ export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {
     nombreSites = geojson.features.length;
     donneesDejaChargees = true;
     majVisibilite();
-    publierStatistiques();
+    onDonnees();
   }
 
   async function chargerSites(signal) {
-    const sites = await charger(URL_SITES, signal);
+    const sites = await chargerFFVL(URL_SITES, signal);
+    if (signal.aborted) return;
     assurerCouchesSites(sitesEnGeoJSON(sites));
   }
 
   async function chargerBalises(signal) {
-    const [balises, releves] = await Promise.all([
-      charger(URL_BALISES, signal),
-      charger(URL_RELEVES, signal),
-    ]);
-    const parId = new Map(
-      releves
-        .filter((releve) => releve && typeof releve === 'object' && releve.idbalise != null)
-        .map((releve) => [String(releve.idbalise), releve])
-    );
-    const nouveauxMarqueurs = [];
-    let perimees = 0;
-
-    for (const balise of balises) {
-      if (!balise || typeof balise !== 'object') continue;
-      const releve = parId.get(String(balise.idBalise));
-      const lat = nombre(balise.latitude);
-      const lon = nombre(balise.longitude);
-      if (!releve || !Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
-        continue;
-      }
-
-      const moyenne = nombre(releve.vitesseVentMoy);
-      const maximum = nombre(releve.vitesseVentMax);
-      const direction = nombre(releve.directVentMoy);
-      const date = String(releve.date ?? '');
-      const ageHeures = (Date.now() - new Date(date.replace(' ', 'T')).getTime()) / 3600000;
-      const perime = !Number.isFinite(ageHeures) || ageHeures > 2 || ageHeures < -1;
-      if (perime) perimees++;
-      const couleur = perime ? '#999' : couleurVent(moyenne);
-      const directionValide = Number.isFinite(direction) ? direction : 0;
-
-      const element = document.createElement('div');
-      element.className = `balise${perime ? ' balise-perimee' : ''}`;
-      element.setAttribute('aria-label', `${balise.nom || 'Balise FFVL'} : ${Number.isFinite(moyenne) ? `${Math.round(moyenne)} km/h` : 'vent indisponible'}`);
-      element.innerHTML =
-        `<svg viewBox="0 0 24 24" style="transform:rotate(${(directionValide + 180) % 360}deg)">` +
-        `<path d="M12 2 L19 21 L12 17 L5 21 Z" fill="${couleur}" stroke="#fff" stroke-width="1.5"/></svg>` +
-        `<span>${Number.isFinite(moyenne) ? Math.round(moyenne) : '?'}</span>`;
-
-      const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
-        `<strong>${esc(balise.nom)}</strong><br>Altitude : ${esc(balise.altitude)} m` +
-          `<br>Vent moyen : ${esc(Number.isFinite(moyenne) ? `${Math.round(moyenne)} km/h` : 'indisponible')}` +
-          `<br>Rafales : ${esc(Number.isFinite(maximum) ? `${Math.round(maximum)} km/h` : 'indisponibles')}` +
-          `<br>Direction : ${esc(Number.isFinite(direction) ? `${Math.round(direction)}° (vent venant de cette direction)` : 'indisponible')}` +
-          (releve.temperature != null ? `<br>Température : ${esc(releve.temperature)} °C` : '') +
-          `<br><small>Relevé : ${esc(date || 'date inconnue')}${perime ? ' – ancien' : ''}</small>`
-      );
-
-      nouveauxMarqueurs.push(
-        new maplibregl.Marker({ element })
-          .setLngLat([lon, lat])
-          .setPopup(popup)
-      );
-    }
-
-    marqueurs.forEach((marqueur) => marqueur.remove());
-    marqueurs = nouveauxMarqueurs;
-    marqueurs.forEach((marqueur) => marqueur.addTo(map));
-    nombreBalises = marqueurs.length;
-    nombrePerimees = perimees;
+    const sourceDemandee = source;
+    const stations = await sourceDemandee.charger(signal);
+    if (signal.aborted || sourceDemandee !== source) return;
+    statistiques = couche.definir(stations, sourceDemandee);
     donneesDejaChargees = true;
     majVisibilite();
-    publierStatistiques();
+    onDonnees();
+  }
+
+  function messageReussite(heure) {
+    if (!balisesVisibles) return `Mis à jour à ${heure} · ${nombreSites} sites.`;
+    const { recentes, anciennes, horsService } = statistiques;
+    return `Mis à jour à ${heure} · ${recentes} ${recentes > 1 ? 'balises récentes' : 'balise récente'}`
+      + (anciennes ? `, ${anciennes} ${anciennes > 1 ? 'anciennes' : 'ancienne'}` : '')
+      + (horsService ? `, ${horsService} hors service.` : '.')
+      + (FFVL_ACTIVE ? ` Sites : ${nombreSites}.` : '');
   }
 
   async function actualiser() {
     if (!actif || actualisation) return actualisation;
+    const taches = [];
+    const requete = new AbortController();
+    if (balisesVisibles) taches.push(chargerBalises);
+    if (FFVL_ACTIVE && sitesVisibles) taches.push(chargerSites);
+    if (!taches.length) {
+      onEtat({ type: 'ok', message: 'Les balises sont masquées : aucune donnée à charger.' });
+      return undefined;
+    }
 
-    controleur = new AbortController();
-    const { signal } = controleur;
-    onEtat({ type: 'chargement', message: 'Actualisation des sites et des relevés météo…' });
+    controleur = requete;
+    const { signal } = requete;
+    onEtat({ type: 'chargement', message: `Lecture des relevés ${source.libelle}…` });
 
-    actualisation = (async () => {
-      const resultats = await Promise.allSettled([chargerSites(signal), chargerBalises(signal)]);
+    const encours = (async () => {
+      const resultats = await Promise.allSettled(taches.map((tache) => tache(signal)));
       if (!actif || signal.aborted) return;
 
       const erreurs = resultats
         .filter((resultat) => resultat.status === 'rejected')
         .map((resultat) => resultat.reason);
       const reussites = resultats.length - erreurs.length;
+      erreurs.forEach((erreur) => console.warn('Données parapente :', erreur));
       const heure = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+      if (reussites > 0) derniereActualisation = Date.now();
 
       if (erreurs.length === 0) {
-        onEtat({
-          type: 'ok',
-          message: `Mis à jour à ${heure} · ${nombreSites} sites, ${nombreBalises} balises.`,
-        });
-        return;
-      }
-
-      if (reussites > 0) {
-        onEtat({
-          type: 'partiel',
-          message: `Mise à jour partielle à ${heure}. ${erreurs[0].message}`,
-        });
+        onEtat({ type: 'ok', message: messageReussite(heure) });
+      } else if (reussites > 0) {
+        onEtat({ type: 'partiel', message: `Mise à jour partielle à ${heure} : certaines données manquent.` });
       } else if (erreurs.some((erreur) => erreur.code === 'acces')) {
         onEtat({
           type: 'acces',
           message: donneesDejaChargees
-            ? 'La FFVL exige une clé API et les demandes d’accès OpenData sont temporairement suspendues. Les dernières données reçues restent visibles et peuvent être périmées.'
-            : 'La FFVL exige une clé API. La Fédération indique que les demandes d’accès OpenData sont temporairement suspendues.',
+            ? 'Accès FFVL refusé : les dernières données reçues restent affichées et peuvent être périmées.'
+            : 'Données FFVL indisponibles : la fédération exige une clé d’accès.',
         });
       } else {
         onEtat({
           type: 'erreur',
           message: donneesDejaChargees
-            ? `Impossible d’actualiser les données FFVL. Les dernières données reçues restent visibles et peuvent être périmées. ${erreurs[0].message}`
-            : `Impossible de charger les données FFVL. ${erreurs[0].message}`,
+            ? `Actualisation ${source.libelle} impossible : les derniers relevés restent affichés et peuvent être périmés.`
+            : `Relevés ${source.libelle} indisponibles pour le moment. Réessayez plus tard.`,
         });
       }
     })();
+    actualisation = encours;
 
     try {
-      await actualisation;
+      await encours;
     } finally {
-      actualisation = null;
-      controleur = null;
+      if (actualisation === encours) actualisation = null;
+      if (controleur === requete) controleur = null;
     }
+    return undefined;
+  }
+
+  function relancer() {
+    controleur?.abort();
+    controleur = null;
+    actualisation = null;
+    return actualiser();
+  }
+
+  // Inutile de relire le réseau pour un onglet que personne ne regarde
+  function surVisibilite() {
+    if (actif && !document.hidden && Date.now() - derniereActualisation > INTERVALLE_ACTUALISATION) actualiser();
   }
 
   function demarrer() {
     if (actif) return;
     actif = true;
     actualiser();
-    minuteur = setInterval(actualiser, INTERVALLE_ACTUALISATION);
+    minuteur = setInterval(() => {
+      if (!document.hidden) actualiser();
+    }, INTERVALLE_ACTUALISATION);
+    document.addEventListener('visibilitychange', surVisibilite);
   }
 
   function arreter() {
     actif = false;
     if (minuteur !== null) clearInterval(minuteur);
     minuteur = null;
+    document.removeEventListener('visibilitychange', surVisibilite);
     controleur?.abort();
     controleur = null;
+    actualisation = null;
     majVisibilite();
   }
 
@@ -326,9 +264,25 @@ export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {
     actualiser,
     demarrer,
     arreter,
+    get sourceActive() {
+      return source;
+    },
+    choisirSource(id) {
+      const choix = SOURCES_BALISES.find((candidate) => candidate.id === id);
+      if (!choix || choix === source) return;
+      source = choix;
+      ecrire('balises-source', id);
+      donneesDejaChargees = false;
+      relancer();
+    },
+    balisesProches: (limite) => couche.proches(limite),
+    centrerSurBalise: (id) => couche.centrerSur(id),
     setBalises(visible) {
+      const devientVisible = visible && !balisesVisibles;
       balisesVisibles = visible;
       majVisibilite();
+      // Revenir sur l'onglet ne relit pas le réseau si les relevés viennent d'arriver
+      if (devientVisible && actif && Date.now() - derniereActualisation > DELAI_RELECTURE) relancer();
     },
     setSites(visible) {
       sitesVisibles = visible;

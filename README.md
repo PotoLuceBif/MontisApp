@@ -22,9 +22,13 @@ Dans **Activités > Ski**, lancez **Rechercher dans cette zone** après avoir ca
 
 ## Activité parapente
 
-Le panneau parapente affiche les sites de vol et les relevés des balises FFVL lorsqu’ils sont accessibles. Les données sont chargées à l’ouverture de l’activité, puis actualisées toutes les cinq minutes ; un bouton permet aussi de les recharger manuellement.
+Le panneau parapente affiche les relevés des balises de vent du réseau ouvert [OpenWindMap](https://www.openwindmap.org). Les relevés sont chargés à l’ouverture de l’activité, puis actualisés toutes les cinq minutes ; un bouton permet aussi de les recharger. Toucher une balise ouvre sa fiche : vent actuel, rose des vents et évolution sur 3 à 24 heures, avec un curseur pour lire une heure précise. La manche à air pointe où va le vent et sa couleur suit sa force. Un relevé de plus de deux heures est grisé ; une balise éteinte, sans mesure ou muette depuis plus de vingt-quatre heures est marquée hors service.
+
+La licence d’OpenWindMap est gratuite, usage commercial compris, à condition de créditer le réseau et de garder un lien visible. Elle interdit de mêler ses mesures à celles de capteurs dont les données ne sont pas ouvertes, sans licence étendue.
 
 ### Accès aux données FFVL
+
+Les balises et les sites FFVL restent prêts dans le code, mais désactivés. Pour les activer : obtenir une clé, faire pointer `/ffvl` vers un relais serveur qui l’ajoute, et construire l’application avec `VITE_FFVL=1`. Un choix de source apparaît alors dans le panneau, une seule source à la fois, ainsi que les décollages et atterrissages. Vérifier auprès d’OpenWindMap que cet usage est compatible avec sa licence avant de publier.
 
 Les endpoints FFVL utilisés par l’application répondent actuellement qu’une clé API est requise. La [page OpenData de la FFVL](https://federation.ffvl.fr/pages/opendata), mise à jour le 30 juillet 2026, indique que les demandes d’accès sont temporairement suspendues. L’application signale cette indisponibilité plutôt que d’afficher des données vides comme si le chargement avait réussi.
 

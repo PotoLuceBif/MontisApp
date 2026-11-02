@@ -64,7 +64,7 @@ function chargerTuile(z, x, y) {
           pret.set(cle, ctx.getImageData(0, 0, 256, 256).data);
         } catch (err) {
           console.warn('Relief indisponible pour la tuile', cle, err);
-          pret.set(cle, null);
+          cache.delete(cle); // un prochain calcul pourra réessayer
         }
       })()
     );
@@ -72,22 +72,30 @@ function chargerTuile(z, x, y) {
   return cache.get(cle);
 }
 
-async function preparerTuiles(lon, lat, rayonM, z) {
+export async function preparerTuiles(lon, lat, rayonM, z) {
   const dLat = rayonM / 111320;
   const dLon = rayonM / (111320 * Math.cos((lat * Math.PI) / 180));
   const a = tuileXY(lon - dLon, lat + dLat, z);
   const b = tuileXY(lon + dLon, lat - dLat, z);
   const promesses = [];
+  const cles = [];
   for (let x = Math.floor(a.x); x <= Math.floor(b.x); x++) {
     for (let y = Math.floor(a.y); y <= Math.floor(b.y); y++) {
       promesses.push(chargerTuile(z, x, y));
+      cles.push(`${z}/${x}/${y}`);
     }
   }
   await Promise.all(promesses);
   derTx = -1; // on repart d'un cache de lecture propre
+  if (cles.some((cle) => !pret.has(cle))) {
+    // Une tuile manquante fausserait le calcul : mieux vaut ne rien afficher
+    const erreur = new Error('Relief indisponible pour cette zone. Vérifiez votre connexion, puis réessayez.');
+    erreur.code = 'relief';
+    throw erreur;
+  }
 }
 
-function altitude(lon, lat, z) {
+export function altitude(lon, lat, z) {
   const { x, y } = tuileXY(lon, lat, z);
   const tx = Math.floor(x);
   const ty = Math.floor(y);
@@ -97,7 +105,7 @@ function altitude(lon, lat, z) {
     derZ = z;
     derData = pret.get(`${z}/${tx}/${ty}`) || null;
   }
-  if (!derData) return 0;
+  if (!derData) return NaN;
   const px = Math.min(255, Math.floor((x - tx) * 256));
   const py = Math.min(255, Math.floor((y - ty) * 256));
   const i = (py * 256 + px) * 4;
@@ -128,7 +136,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
       const d = k * PAS_M;
       const sol = altitude(lon + (d * sx) / kLon, lat + (d * cy) / kLat, z);
       const dh = h0 - sol;
-      if (dh <= 0) break; // le relief est plus haut que le départ
+      if (!(dh > 0)) break; // le relief est plus haut que le départ
       const freq = d / dh;
       if (freq > fmax) fmax = freq;
       if (fmax > finesse) break; // hors de portée avec cette finesse
@@ -179,7 +187,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
 
       const sol = altitude(lo, la, z);
       const hauteur = h0 - d / finesse - sol; // hauteur de la voile au-dessus du sol
-      if (hauteur < 0) continue;
+      if (!(hauteur >= 0)) continue;
 
       const idx = j * N + i;
       agl[idx] = hauteur;
@@ -224,22 +232,23 @@ async function calculerPortee(lon, lat, finesse, h0) {
 // ---------- Interface ----------
 export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   conteneur.innerHTML = `
-    <div class="outil">
-      <h4>📏 Hike & Fly : portée en vol plané</h4>
-      <label>Finesse <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8"></label>
-      <label>Altitude du sol (m) <input id="pt-sol" type="number" step="10"></label>
-      <label>Hauteur au-dessus du sol (m) <input id="pt-haut" type="number" min="0" step="50" value="0"></label>
-      <button id="pt-choisir">📍 Choisir le point de départ</button>
-      <button id="pt-effacer">Effacer</button>
-      <p id="pt-resultat">Choisis un point de départ.</p>
-      <div class="pt-legende">
-        <div class="pt-degrade"></div>
-        <div class="pt-echelle"><span>0 m</span><span>600 m +</span></div>
-        <small>Hauteur au-dessus du sol (survole la zone pour le détail)</small>
+    <div class="pt">
+      <div class="pt-boutons">
+        <button type="button" id="pt-choisir" class="para-bouton para-bouton-principal">Choisir le départ</button>
+        <button type="button" id="pt-effacer" class="para-bouton">Effacer</button>
       </div>
-      <p class="note">Calcul théorique, en air calme, en ligne droite, sans thermique ni vent.
-      Utilise une finesse réaliste (finesse sol), pas celle du constructeur. Ce n'est pas un outil de décision de vol.
-      Pour une transition en vol, ajoute la hauteur de départ au-dessus du sol.</p>
+      <p id="pt-resultat" role="status" aria-live="polite">Choisissez un point de départ sur la carte.</p>
+      <div class="pt-champs">
+        <label>Finesse <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8"></label>
+        <label>Altitude (m) <input id="pt-sol" type="number" step="10"></label>
+        <label>Hauteur (m) <input id="pt-haut" type="number" min="0" step="50" value="0"></label>
+      </div>
+      <div class="pt-legende" hidden>
+        <div class="pt-degrade"></div>
+        <div class="pt-echelle"><span>0 m</span><span>Hauteur au-dessus du sol</span><span>600 m +</span></div>
+      </div>
+      <p class="note">Calcul théorique en air calme, en ligne droite, sans thermique ni vent. Ce n’est pas un outil de décision de vol.
+      Utilisez une finesse réaliste (finesse sol), pas celle du constructeur. Pour une transition en vol, indiquez la hauteur de départ au-dessus du sol.</p>
     </div>
   `;
 
@@ -247,6 +256,7 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   const inSol = conteneur.querySelector('#pt-sol');
   const inHaut = conteneur.querySelector('#pt-haut');
   const resultat = conteneur.querySelector('#pt-resultat');
+  const legende = conteneur.querySelector('.pt-legende');
 
   try {
     const memo = localStorage.getItem(CLE_FINESSE);
@@ -264,10 +274,9 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   let attente = false;
   let compteur = 0;
   let grille = null;
-  let h0 = 0;
-  let finesseCalc = 8;
 
   function afficherImage(url, coordinates) {
+    legende.hidden = false;
     const src = map.getSource('portee');
     if (src) {
       src.updateImage({ url, coordinates });
@@ -285,6 +294,12 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
   function effacerImage() {
     if (map.getLayer('portee-image')) map.removeLayer('portee-image');
     if (map.getSource('portee')) map.removeSource('portee');
+  }
+
+  function retirerZone() {
+    grille = null;
+    legende.hidden = true;
+    effacerImage();
   }
 
   function masquerInfo() {
@@ -314,18 +329,17 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     point = null;
     attente = false;
     compteur++;
-    grille = null;
     masquerInfo();
     map.getCanvas().style.cursor = '';
     if (marqueur) marqueur.remove();
-    effacerImage();
-    resultat.textContent = 'Choisis un point de départ.';
+    retirerZone();
+    resultat.textContent = 'Choisissez un point de départ sur la carte.';
   }
 
   conteneur.querySelector('#pt-choisir').addEventListener('click', () => {
     attente = true;
     map.getCanvas().style.cursor = 'crosshair';
-    resultat.textContent = 'Clique sur la carte pour placer le point de départ.';
+    resultat.textContent = 'Cliquez sur la carte pour placer le point de départ.';
     onChoisirPoint?.();
   });
   conteneur.querySelector('#pt-effacer').addEventListener('click', reinitialiser);
@@ -337,12 +351,22 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     }
     attente = false;
     map.getCanvas().style.cursor = '';
-    point = [e.lngLat.lng, e.lngLat.lat];
+    const depart = [e.lngLat.lng, e.lngLat.lat];
+    point = depart;
     if (!marqueur) marqueur = new maplibregl.Marker({ color: '#5a1fc0' });
     marqueur.setLngLat(point).addTo(map);
     resultat.textContent = 'Lecture du relief…';
-    await preparerTuiles(point[0], point[1], 200, 12);
-    inSol.value = Math.round(altitude(point[0], point[1], 12));
+    try {
+      await preparerTuiles(depart[0], depart[1], 200, 12);
+    } catch (err) {
+      if (point !== depart) return;
+      inSol.value = '';
+      retirerZone();
+      resultat.textContent = err.message;
+      return;
+    }
+    if (point !== depart) return; // effacé ou remplacé pendant la lecture
+    inSol.value = Math.round(altitude(depart[0], depart[1], 12));
     recalculer();
   });
   map.on('mousemove', afficherInfo);
@@ -365,7 +389,7 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
     const sol = parseFloat(inSol.value);
     const haut = parseFloat(inHaut.value) || 0;
     if (!(finesse > 1) || isNaN(sol)) {
-      resultat.textContent = 'Renseigne une finesse et une altitude valides.';
+      resultat.textContent = 'Renseignez une finesse et une altitude valides.';
       return;
     }
     const mon = ++compteur;
@@ -374,23 +398,27 @@ export function initPortee(map, conteneur, { onChoisirPoint } = {}) {
       const res = await calculerPortee(point[0], point[1], finesse, sol + haut);
       if (mon !== compteur) return;
       if (res.vide) {
-        grille = null;
-        effacerImage();
+        retirerZone();
         resultat.textContent = 'Aucune zone atteignable depuis ce point avec cette finesse.';
         return;
       }
       grille = res.grille;
-      h0 = sol + haut;
-      finesseCalc = finesse;
       afficherImage(res.url, res.coordinates);
       resultat.textContent =
         `Portée max : ${(res.dMax / 1000).toFixed(1)} km (cap ${Math.round(res.capMax)}°) · ` +
         `surface : ${res.aireKm2.toFixed(0)} km²`;
     } catch (err) {
+      if (mon !== compteur) return;
       console.warn('Portée :', err);
-      resultat.textContent = 'Erreur de calcul (voir la console).';
+      retirerZone();
+      resultat.textContent = err.code === 'relief' ? err.message : 'Erreur de calcul (voir la console).';
     }
   }
 
-  return { reinitialiser };
+  return {
+    reinitialiser,
+    get enAttente() {
+      return attente;
+    },
+  };
 }

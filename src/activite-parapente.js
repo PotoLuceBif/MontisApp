@@ -1,166 +1,201 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
+import { lire, ecrire } from './reglages.js';
+import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from './balises-sources.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, texteProvenance } from './vent-cadran.js';
+
+const BALISES_LISTEES = 6;
+const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
+
+const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
 export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}) {
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
-    <section class="para-intro">
-      <div class="para-intro-meta">
-        <span>ACTIVITÉ MONTAGNE</span>
-        <span class="para-badge">FFVL</span>
-      </div>
-      <h2>Parapente</h2>
-      <p>Sites de vol, balises météo et outils pour préparer votre sortie.</p>
-    </section>
-
-    <section class="para-statut" data-etat="attente" aria-label="État des données FFVL">
-      <div class="para-statut-entete">
-        <div class="para-statut-titre">
-          <span class="para-indicateur" aria-hidden="true"></span>
-          <strong>Données FFVL · sites et balises</strong>
-        </div>
-        <button class="para-actualiser" type="button" aria-label="Actualiser les données FFVL">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
-          Actualiser
-        </button>
-      </div>
-      <p class="para-statut-message" role="status" aria-live="polite">
-        Les données seront vérifiées à l’ouverture de l’activité.
-      </p>
-      <a class="para-lien-ffvl" href="https://federation.ffvl.fr/pages/opendata" target="_blank" rel="noopener noreferrer">
-        Comprendre l’accès aux données <span aria-hidden="true">↗</span>
-      </a>
-    </section>
-
-    <div class="para-onglets" role="tablist" aria-label="Rubriques parapente">
-      <button id="para-onglet-outils" class="para-onglet actif" type="button" role="tab" aria-selected="true" aria-controls="para-contenu-outils">Outils</button>
-      <button id="para-onglet-analyse" class="para-onglet" type="button" role="tab" aria-selected="false" aria-controls="para-contenu-analyse" tabindex="-1">Analyse vent</button>
+    <div class="rando-actions-principales" role="group" aria-label="Outils parapente">
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="portee" aria-pressed="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>
+        <span>Portée de vol</span>
+      </button>
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="vent" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/></svg>
+        <span>Analyse du vent</span>
+      </button>
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="sites" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span>Sites et balises</span>
+      </button>
     </div>
 
-    <section id="para-contenu-outils" class="para-contenu-onglet" role="tabpanel" aria-labelledby="para-onglet-outils">
-      <div class="para-indicateurs" aria-label="Données disponibles">
-        <div><strong data-para-compteur-sites>—</strong><span>sites de vol</span></div>
-        <div><strong data-para-compteur-balises>—</strong><span>balises météo</span></div>
-        <div><strong data-para-compteur-perimees>—</strong><span>relevés anciens</span></div>
-      </div>
-
-      <section class="para-section" aria-labelledby="para-carte-titre">
-        <div class="para-section-entete">
-          <span>01</span>
-          <h3 id="para-carte-titre">Sites sur la carte</h3>
-        </div>
-        <label class="para-option">
-          <span class="para-option-icone para-option-icone-site" aria-hidden="true">⌖</span>
-          <span><strong>Décollages et atterrissages</strong><small>Sites FFVL et noms sur la carte</small></span>
-          <input type="checkbox" data-para-layer-sites checked>
-        </label>
-        <div class="para-legende">
-          <span><i class="para-point para-point-vert"></i> Décollage</span>
-          <span><i class="para-point para-point-bleu"></i> Atterrissage</span>
-        </div>
-      </section>
-
-      <section class="para-section para-portee" aria-labelledby="para-portee-titre">
-        <div class="para-section-entete">
-          <span>02</span>
-          <h3 id="para-portee-titre">Outil de portée</h3>
-        </div>
-        <p class="para-section-aide">Explorez une portée théorique à partir d’un point de départ.</p>
-        <div data-para-portee></div>
-      </section>
-
-      <p class="para-securite">
-        Les relevés et estimations sont indicatifs. Vérifiez les conditions auprès des sources officielles et
-        des acteurs locaux ; cette carte ne remplace ni votre jugement ni les consignes de sécurité.
-      </p>
+    <section class="para-vue" data-para-contenu="portee" aria-label="Portée de vol">
+      <div data-para-portee></div>
     </section>
 
-    <section id="para-contenu-analyse" class="para-contenu-onglet" role="tabpanel" aria-labelledby="para-onglet-analyse" hidden>
-      <div class="para-analyse-entete">
-        <h3>Conditions en altitude</h3>
-        <p>Explorez le vent prévu, sa structure verticale et un potentiel thermique estimé.</p>
-      </div>
-      <label class="para-option para-option-balises">
-        <span class="para-option-icone" aria-hidden="true">↗</span>
-        <span><strong>Balises FFVL</strong><small>Observations en temps réel ; les relevés anciens sont signalés</small></span>
-        <input type="checkbox" data-para-layer-balises checked>
-      </label>
+    <section class="para-vue" data-para-contenu="vent" aria-label="Analyse du vent" hidden>
       <div class="para-analyse-vent"></div>
     </section>
+
+    <section class="para-vue" data-para-contenu="sites" aria-label="Sites et balises" hidden>
+      <div class="para-source">
+        <span>Source des balises</span>
+        ${SOURCES_BALISES.length > 1
+    ? `<select class="para-source-choix" aria-label="Source des balises">${SOURCES_BALISES.map(({ id, libelle }) => `<option value="${id}">${libelle}</option>`).join('')}</select>`
+    : `<a class="para-lien" href="${SOURCES_BALISES[0].lien}" target="_blank" rel="noopener noreferrer">${SOURCES_BALISES[0].libelle} ↗</a>`}
+      </div>
+      <p class="note para-etat" role="status" aria-live="polite"></p>
+      <label class="option-case"><input type="checkbox" data-para-layer-balises> Balises de vent
+        <small>Relevés en temps réel, touchez une balise pour ouvrir sa fiche</small></label>
+      <div class="para-legende" aria-label="Vent moyen en kilomètres par heure">
+        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} ${palier}</span>`).join('')}
+        <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
+        <span><i class="para-hs">×</i> Hors service</span>
+      </div>
+      <p class="note para-legende-note">La manche pointe où va le vent, le chiffre donne le vent moyen en km/h.</p>
+      <div class="para-balises" hidden>
+        <h3>Balises de la zone</h3>
+        <div class="para-balises-liste"></div>
+      </div>
+      ${FFVL_ACTIVE
+    ? `<label class="option-case"><input type="checkbox" data-para-layer-sites> Décollages et atterrissages
+        <small>Sites FFVL et noms sur la carte</small></label>
+      <div class="para-legende">
+        <span><i class="para-point para-point-vert"></i> Décollage</span>
+        <span><i class="para-point para-point-bleu"></i> Atterrissage</span>
+      </div>`
+    : '<p class="note">Décollages et atterrissages : aucune source ouverte n’est disponible pour le moment.</p>'}
+      <button type="button" class="para-bouton para-actualiser">Actualiser les relevés</button>
+    </section>
+
+    <details class="rando-outils">
+      <summary>À propos</summary>
+      <div class="rando-outils-contenu">
+        <p class="note">Les relevés et estimations sont indicatifs. Vérifiez les conditions auprès des sources officielles et des acteurs locaux : cette carte ne remplace ni votre jugement ni les consignes de sécurité.</p>
+        <p class="note">Vent © contributeurs du réseau <a class="para-lien" href="https://www.openwindmap.org" target="_blank" rel="noopener noreferrer">OpenWindMap ↗</a></p>
+      </div>
+    </details>
   `;
 
-  const etat = panneau.querySelector('.para-statut');
-  const messageEtat = panneau.querySelector('.para-statut-message');
+  const boutonsVue = [...panneau.querySelectorAll('[data-para-vue]')];
+  const contenusVue = [...panneau.querySelectorAll('[data-para-contenu]')];
+  const messageEtat = panneau.querySelector('.para-etat');
+  const blocBalises = panneau.querySelector('.para-balises');
+  const listeBalises = panneau.querySelector('.para-balises-liste');
+  const choixSource = panneau.querySelector('.para-source-choix');
   const boutonActualiser = panneau.querySelector('.para-actualiser');
   const caseBalises = panneau.querySelector('[data-para-layer-balises]');
   const caseSites = panneau.querySelector('[data-para-layer-sites]');
-  const compteurSites = panneau.querySelector('[data-para-compteur-sites]');
-  const compteurBalises = panneau.querySelector('[data-para-compteur-balises]');
-  const compteurPerimees = panneau.querySelector('[data-para-compteur-perimees]');
-  const controles = panneau.querySelector('.para-indicateurs');
-  const ongletOutils = panneau.querySelector('#para-onglet-outils');
-  const ongletAnalyse = panneau.querySelector('#para-onglet-analyse');
-  const contenuOutils = panneau.querySelector('#para-contenu-outils');
-  const contenuAnalyse = panneau.querySelector('#para-contenu-analyse');
   const hoteVent = panneau.querySelector('.para-analyse-vent');
   let actif = false;
-  let ongletActif = 'outils';
+  let vueActive = 'portee';
+
+  const coche = (nom, defaut) => lire(nom, defaut) !== false;
+  caseBalises.checked = coche('balises-visibles', true);
+  if (caseSites) caseSites.checked = coche('sites-visibles', true);
+
+  function rendreBalises() {
+    if (!actif || vueActive !== 'sites') return;
+    const stations = caseBalises.checked ? donnees.balisesProches(BALISES_LISTEES) : [];
+    blocBalises.hidden = !caseBalises.checked;
+    if (!stations.length) {
+      const vide = document.createElement('p');
+      vide.className = 'note';
+      vide.textContent = 'Aucun relevé récent dans cette zone. Déplacez ou dézoomez la carte.';
+      listeBalises.replaceChildren(vide);
+      return;
+    }
+    listeBalises.replaceChildren(...stations.map((station) => {
+      const ligne = document.createElement('button');
+      ligne.type = 'button';
+      ligne.className = 'para-balise';
+      ligne.style.setProperty('--vent-couleur', couleurInterface(station.moyenne));
+      ligne.insertAdjacentHTML('beforeend', cadranVent((station.direction + 180) % 360, 0, 'vent-cadran-petit'));
+      const texte = document.createElement('span');
+      texte.className = 'para-balise-texte';
+      const nom = document.createElement('strong');
+      nom.textContent = station.nom;
+      const detail = document.createElement('small');
+      detail.textContent = `${texteProvenance(station.direction)} · ${texteAge(station.date)}`;
+      texte.append(nom, detail);
+      const vitesse = document.createElement('span');
+      vitesse.className = 'para-balise-vitesse';
+      const moyenne = document.createElement('strong');
+      moyenne.textContent = `${Math.round(station.moyenne)} km/h`;
+      vitesse.append(moyenne);
+      if (Number.isFinite(station.rafale)) {
+        const rafale = document.createElement('small');
+        rafale.className = 'para-balise-rafale';
+        rafale.textContent = `raf. ${Math.round(station.rafale)}`;
+        vitesse.append(rafale);
+      }
+      ligne.append(texte, vitesse);
+      ligne.addEventListener('click', () => {
+        onChoisirPoint?.(); // sur téléphone, le panneau cacherait la carte
+        donnees.centrerSurBalise(station.id);
+      });
+      return ligne;
+    }));
+  }
 
   const donnees = initParapente(map, {
     onEtat({ type, message }) {
-      etat.dataset.etat = type;
-      etat.setAttribute('aria-busy', String(type === 'chargement'));
       messageEtat.textContent = message;
+      messageEtat.classList.toggle('para-etat-erreur', type === 'erreur' || type === 'acces');
       boutonActualiser.disabled = type === 'chargement';
-      boutonActualiser.classList.toggle('en-chargement', type === 'chargement');
     },
-    onStatistiques({ sites, balises, perimees }) {
-      compteurSites.textContent = String(sites);
-      compteurBalises.textContent = String(balises);
-      compteurPerimees.textContent = String(perimees);
-      controles.classList.add('para-indicateurs-actifs');
-    },
+    onDonnees: rendreBalises,
+    // Pendant le choix du point de départ de la portée, un clic ne doit rien ouvrir d'autre
+    peutOuvrirBalise: () => !portee.enAttente,
   });
   const portee = initPortee(map, panneau.querySelector('[data-para-portee]'), { onChoisirPoint });
 
-  caseBalises.addEventListener('change', () => donnees.setBalises(caseBalises.checked));
-  caseSites.addEventListener('change', () => donnees.setSites(caseSites.checked));
+  if (choixSource) {
+    choixSource.value = donnees.sourceActive.id;
+    choixSource.addEventListener('change', () => donnees.choisirSource(choixSource.value));
+  }
+  // Chaque onglet montre sa propre couche : balises et flèches de vent se gêneraient,
+  // et un clic ouvrirait deux détails à la fois
+  function synchroniserCarte() {
+    const surOnglet = actif && vueActive === 'sites';
+    donnees.setBalises(surOnglet && caseBalises.checked);
+    donnees.setSites(surOnglet && Boolean(caseSites?.checked));
+  }
+
+  caseBalises.addEventListener('change', () => {
+    ecrire('balises-visibles', caseBalises.checked);
+    synchroniserCarte();
+    rendreBalises();
+  });
+  caseSites?.addEventListener('change', () => {
+    ecrire('sites-visibles', caseSites.checked);
+    synchroniserCarte();
+  });
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
+  map.on('moveend', rendreBalises);
 
-  function selectionnerOnglet(nom, focus = false) {
-    ongletActif = nom;
-    const analyse = nom === 'analyse';
-    ongletOutils.classList.toggle('actif', !analyse);
-    ongletAnalyse.classList.toggle('actif', analyse);
-    ongletOutils.setAttribute('aria-selected', String(!analyse));
-    ongletAnalyse.setAttribute('aria-selected', String(analyse));
-    ongletOutils.tabIndex = analyse ? -1 : 0;
-    ongletAnalyse.tabIndex = analyse ? 0 : -1;
-    contenuOutils.hidden = analyse;
-    contenuAnalyse.hidden = !analyse;
-    if (focus) (analyse ? ongletAnalyse : ongletOutils).focus();
+  function choisirVue(nom) {
+    if (nom === vueActive) return;
+    vueActive = nom;
+    boutonsVue.forEach((bouton) => {
+      bouton.setAttribute('aria-pressed', String(bouton.dataset.paraVue === nom));
+    });
+    contenusVue.forEach((contenu) => {
+      contenu.hidden = contenu.dataset.paraContenu !== nom;
+    });
+    synchroniserCarte();
+    rendreBalises();
 
-    if (analyse) {
+    if (nom === 'vent') {
       analyseVent.monterDans(hoteVent);
-      if (actif) {
-        donnees.setBalises(caseBalises.checked);
-        analyseVent.activer();
-      }
+      if (actif) analyseVent.activer();
     } else {
-      donnees.setBalises(false);
       analyseVent.desactiver();
       analyseVent.retournerAuMenu();
     }
   }
 
-  ongletOutils.addEventListener('click', () => selectionnerOnglet('outils'));
-  ongletAnalyse.addEventListener('click', () => selectionnerOnglet('analyse'));
-  panneau.querySelector('.para-onglets').addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    const nouvelOnglet = event.key === 'Home' || event.key === 'ArrowLeft' ? 'outils' : 'analyse';
-    selectionnerOnglet(nouvelOnglet, true);
+  boutonsVue.forEach((bouton) => {
+    bouton.addEventListener('click', () => choisirVue(bouton.dataset.paraVue));
   });
 
   return {
@@ -170,10 +205,10 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     panneau,
     activer() {
       actif = true;
-      donnees.setBalises(caseBalises.checked);
-      donnees.setSites(caseSites.checked);
+      synchroniserCarte();
       donnees.demarrer();
-      if (ongletActif === 'analyse') {
+      rendreBalises();
+      if (vueActive === 'vent') {
         analyseVent.monterDans(hoteVent);
         analyseVent.activer();
       }
@@ -181,8 +216,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     desactiver() {
       actif = false;
       donnees.arreter();
-      donnees.setBalises(false);
-      donnees.setSites(false);
+      synchroniserCarte();
       analyseVent.desactiver();
       analyseVent.retournerAuMenu();
       portee.reinitialiser();

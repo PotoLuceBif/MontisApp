@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","cap":153,"communes":["Les Molunes"],"features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[5.95346,46.3636],[5.95343,46.36363],[5.95341,46.36368]]},"properties":{"genre":"piste","usage":"alpin","longueur":10,"denivele":1}}]}

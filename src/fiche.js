@@ -66,7 +66,8 @@ function decrire(f, genre) {
     case 'refuge':
       return {
         icone: '🛖',
-        type: p.genre === 'libre' ? 'Cabane ou abri non gardé' : 'Refuge gardé',
+        // OpenStreetMap ne dit ni si le refuge est gardé, ni à quelle saison
+        type: p.genre === 'libre' ? 'Cabane ou abri' : 'Refuge',
         nom,
         ele: p.ele || undefined,
       };
@@ -302,6 +303,12 @@ export function initFiches(map) {
       if (t.opening_hours) corps.appendChild(ligne('Ouverture', t.opening_hours));
       const resa = { required: 'Obligatoire', recommended: 'Recommandée', yes: 'Possible', no: 'Non', members_only: 'Réservée aux membres' };
       if (t.reservation) corps.appendChild(ligne('Réservation', resa[t.reservation] || t.reservation));
+    }
+    if (f.genre === 'refuge') {
+      const avis = document.createElement('div');
+      avis.className = 'fiche-attente-ligne';
+      avis.textContent = 'Vérifiez l’ouverture et le gardiennage avant de partir.';
+      corps.appendChild(avis);
     }
     if (f.details === 'chargement') {
       const att = document.createElement('div');

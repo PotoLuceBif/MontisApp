@@ -12,7 +12,7 @@ const GROUPES = [
     calques: [
       { cle: 'sommets', label: 'Sommets', aide: 'Noms et altitudes, dès le zoom 9', defaut: false, appliquer: afficherSommets },
       { cle: 'villes', label: 'Villes et villages', aide: 'Noms des communes et des hameaux', defaut: false, appliquer: afficherVilles },
-      { cle: 'refuges', label: 'Refuges et cabanes', aide: 'Refuges gardés et abris, dès le zoom 7', defaut: false, appliquer: afficherRefuges },
+      { cle: 'refuges', label: 'Refuges et cabanes', aide: 'Refuges, cabanes et abris, dès le zoom 7', defaut: false, appliquer: afficherRefuges },
     ],
   },
    {

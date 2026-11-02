@@ -15,6 +15,7 @@ const API_RECHERCHE_GEOCODAGE = 'https://photon.komoot.io/api/';
 const METEO_LOCATION = 'meteo-position';
 const DELAI_PREVISIONS = 15000;
 const TYPES_LIEU = ['city', 'town', 'village', 'hamlet', 'locality', 'municipality'];
+const ECART_CENTRE_KM = 0.5; // au-delà, les prévisions ne correspondent plus au centre de la carte
 
 function formaterHeure(timestamp) {
   return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -454,6 +455,7 @@ export function creerConditionsLocales(map) {
         <span class="meteo-code-postal" hidden></span>
       </p>
       <p class="meteo-emplacement-aide">Par défaut, les prévisions concernent le centre de la carte. Pour les déplacer, clique sur le bouton puis à l’endroit voulu sur la carte. Le repère indique le point utilisé.</p>
+      <button type="button" class="meteo-reessayer meteo-recentrer" hidden>Utiliser le centre de la carte</button>
     </section>
     <p class="meteo-locale-statut" role="status" aria-live="polite">Prévisions calculées au centre de la carte.</p>
     <button type="button" class="meteo-reessayer" hidden>Réessayer le chargement</button>
@@ -466,7 +468,8 @@ export function creerConditionsLocales(map) {
   const lieuProche = panneau.querySelector('.meteo-lieu-proche');
   const codePostal = panneau.querySelector('.meteo-code-postal');
   const statut = panneau.querySelector('.meteo-locale-statut');
-  const boutonReessayer = panneau.querySelector('.meteo-reessayer');
+  const boutonReessayer = panneau.querySelector('.meteo-reessayer:not(.meteo-recentrer)');
+  const boutonCentre = panneau.querySelector('.meteo-recentrer');
   const actuelle = panneau.querySelector('.meteo-actuelle');
   const sectionJours = panneau.querySelector('.meteo-jours');
   const jours = panneau.querySelector('.meteo-jours-liste');
@@ -487,6 +490,21 @@ export function creerConditionsLocales(map) {
   let dateSelectionnee = null;
   let heureActuelle = null;
   let nomVilleProche = '';
+
+  function centreCarte() {
+    const centre = map.getCenter();
+    return { longitude: centre.lng, latitude: centre.lat };
+  }
+
+  // Le libellé et le bouton disent si les prévisions correspondent encore au centre de la carte
+  function majLieu() {
+    if (!actif || !position) return;
+    const eloigne = distanceEntrePositions(position, centreCarte()) > ECART_CENTRE_KM;
+    boutonCentre.hidden = !eloigne;
+    lieu.textContent = positionChoisie
+      ? 'Point choisi sur la carte'
+      : eloigne ? 'Ancien centre de la carte' : 'Centre de la carte';
+  }
 
   function afficherCoordonnees(position) {
     valeursCoordonnees.textContent =
@@ -823,7 +841,7 @@ export function creerConditionsLocales(map) {
     const actuel = donnees.current;
     heureActuelle = actuel.time;
     previsionsHoraires = hourly;
-    lieu.textContent = positionChoisie ? 'Point choisi sur la carte' : 'Centre de la carte';
+    majLieu();
 
     actuelle.replaceChildren();
     const condition = document.createElement('p');
@@ -884,7 +902,7 @@ export function creerConditionsLocales(map) {
     previsionsHoraires = null;
     previsionsJournalieres = null;
     dateSelectionnee = null;
-    lieu.textContent = positionChoisie ? 'Point choisi sur la carte' : 'Centre de la carte';
+    majLieu();
     afficherCoordonnees(position);
     void chargerCodePostal(position, requete);
     const marqueurPosition = [position.longitude, position.latitude];
@@ -906,6 +924,9 @@ export function creerConditionsLocales(map) {
     try {
       const reponse = await fetch(`${API_PREVISIONS}?${params}`, { signal: requete.signal });
       if (requete.signal.aborted || controleur !== requete || !actif) return;
+      if (reponse.status === 429) {
+        throw new Error('limite de requêtes Open-Meteo atteinte. Réessayez plus tard.');
+      }
       if (!reponse.ok) {
         throw new Error(`Le service météo répond avec le statut ${reponse.status}.`);
       }
@@ -931,6 +952,14 @@ export function creerConditionsLocales(map) {
 
   boutonChoisir.addEventListener('click', choisirSurCarte);
   boutonReessayer.addEventListener('click', () => void chargerPrevisions());
+  boutonCentre.addEventListener('click', () => {
+    annulerSelection();
+    positionChoisie = false;
+    position = centreCarte();
+    ecrire(METEO_LOCATION, null);
+    chargerPrevisions();
+  });
+  map.on('moveend', majLieu);
   jours.addEventListener('click', (event) => {
     const bouton = event.target.closest('.meteo-jour');
     if (bouton) selectionnerJour(bouton.dataset.date);
@@ -943,10 +972,7 @@ export function creerConditionsLocales(map) {
     panneau,
     activer() {
       actif = true;
-      if (!position) {
-        const centre = map.getCenter();
-        position = { longitude: centre.lng, latitude: centre.lat };
-      }
+      if (!positionChoisie) position = centreCarte();
       chargerPrevisions();
     },
     desactiver() {

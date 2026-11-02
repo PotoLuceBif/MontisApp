@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","cap":25,"communes":["Chateauneuf-D'Oze","Manteyer"],"features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[5.96105,44.50886],[5.96101,44.50878],[5.96094,44.50871],[5.96079,44.50847],[5.9607,44.50835],[5.96059,44.50815]]},"properties":{"genre":"piste","usage":"alpin","niveau":"bleue","longueur":87,"denivele":9}}]}

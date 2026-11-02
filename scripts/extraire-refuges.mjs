@@ -1,9 +1,13 @@
-// Usage : node scripts/extraire-refuges.mjs
+// Usage (PowerShell) : $env:MONTIS_CONTACT_EMAIL = "ton@adresse"; node scripts/extraire-refuges.mjs
 // Interroge Overpass case par case (avec reprise) et range les refuges et cabanes
 // dans public/data/refuges.json
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
-const EMAIL = 'lucebif@gmail.com'; // ← METS TON ADRESSE E-MAIL ICI
+const EMAIL = process.env.MONTIS_CONTACT_EMAIL;
+if (!EMAIL) {
+  console.error('Indique une adresse de contact pour Overpass dans la variable MONTIS_CONTACT_EMAIL.');
+  process.exit(1);
+}
 
 const EN_TETES = {
   'User-Agent': `Montis/0.1 (projet personnel de carte de montagne; ${EMAIL})`,
@@ -114,9 +118,6 @@ async function lireCache() {
 }
 
 console.log('Extraction des refuges et cabanes (reprise automatique si tu relances)…');
-if (EMAIL.includes('exemple.fr')) {
-  console.log('⚠  Pense à remplacer l’adresse e-mail en haut du script (constante EMAIL).');
-}
 
 const cache = await lireCache();
 const cases = ZONES.flatMap((z) => decouper(z.bbox).map((c) => ({ zone: z.nom, bbox: c })));

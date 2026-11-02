@@ -826,7 +826,7 @@ export function creerActiviteRandonnee(map) {
     const dureeAllure = el('strong', 'rando-allure-duree', '—');
     const libelleAllure = el('span', 'rando-allure-libelle', 'Allure (min/km)');
     champAllure.type = 'text';
-    champAllure.inputMode = 'numeric';
+    champAllure.inputMode = 'decimal'; // le clavier numérique n'a pas de deux-points : « 10,30 » est aussi accepté
     champAllure.autocomplete = 'off';
     champAllure.placeholder = '10:00';
     champAllure.value = allureParKm;
@@ -838,7 +838,7 @@ export function creerActiviteRandonnee(map) {
 
     const actualiserDureeAllure = () => {
       allureParKm = champAllure.value;
-      const resultat = /^(\d{1,3})(?::([0-5]\d))?$/.exec(allureParKm.trim());
+      const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(allureParKm.trim());
       const minutes = resultat ? Number(resultat[1]) : 0;
       const secondes = resultat ? Number(resultat[2] || 0) : 0;
       const allureHeures = (minutes + secondes / 60) / 60;

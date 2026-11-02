@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","cap":-61,"communes":["Le Gua"],"features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[5.59434,44.99123],[5.59437,44.99111],[5.59453,44.99102],[5.59475,44.99096],[5.59485,44.99096],[5.59498,44.99098]]},"properties":{"genre":"piste","usage":"alpin","niveau":"verte","longueur":66,"denivele":7}}]}

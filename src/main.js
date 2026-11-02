@@ -77,7 +77,7 @@ map.once('load', () => {
   if (attribution instanceof HTMLDetailsElement) attribution.open = false;
 });
 
-window.map = map;
+if (import.meta.env.DEV) window.map = map;
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 initBasculeMode();
@@ -133,7 +133,6 @@ map.on('moveend', () => {
 });
 
 // ===== Bouton 2D / 3D =====
-const boutonToggle3d = document.getElementById('toggle3d');
 const ZOOM_RELIEF_MIN = 9; // en dessous, projection globe : on coupe le relief 3D
 let terrainActif = false;
 
@@ -162,7 +161,6 @@ function appliquerMode(mode3D) {
     majTerrain();
     map.setLayoutProperty('ombrage', 'visibility', 'visible');
     map.touchPitch.enable();
-    boutonToggle3d.textContent = '2D';
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison
     majTerrain();
@@ -171,7 +169,6 @@ function appliquerMode(mode3D) {
     map.once('moveend', () => map.setMaxPitch(0));
     map.setMaxPitch(0);
     map.touchPitch.disable();
-    boutonToggle3d.textContent = '3D';
   }
 
   ecrire('mode3D', mode3D);
@@ -181,10 +178,6 @@ function appliquerMode(mode3D) {
 }
 
 etat.basculerMode = () => appliquerMode(!etat.mode3D);
-
-boutonToggle3d.addEventListener('click', () => {
-  appliquerMode(!etat.mode3D);
-});
 
 // ===== Tout ce qui s'ajoute une fois la carte chargée =====
 map.on('load', () => {

@@ -8,15 +8,12 @@ import { creerActiviteRandonnee } from './activite-randonnee.js';
 import { creerActiviteSki } from './activite-ski.js';
 import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
 import { creerCarteVent } from './carte-vent.js';
+import { BANDEAU_MENU } from './bandeau-menu.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
   meteo: '<path d="M7 18h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 9.5 4.2 4.2 0 0 0 7 18Z"/><path d="m9 21-1 2m6-2-1 2m6-2-1 2"/>',
   carte: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/>',
-  parapente: '<use href="/icons.svg#activity-parapente"/>',
-  rando: '<use href="/icons.svg#activity-randonnee"/>',
-  velo: '<use href="/icons.svg#activity-velo"/>',
-  ski: '<use href="/icons.svg#activity-ski"/>',
   radar: '<path d="M12 12 20 5"/><path d="M5.6 18.4a9 9 0 1 1 12.8 0"/><path d="M8.4 15.6a5 5 0 1 1 7.2 0"/><circle cx="12" cy="12" r="1"/>',
   vent: '<path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/>',
   fond: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/>',
@@ -28,7 +25,18 @@ const ICONES_MENU = {
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
+// Icônes en couleur des activités (public/icons/activites)
+const ICONES_ACTIVITES = {
+  parapente: 'parapente',
+  rando: 'randonnee',
+  velo: 'velo',
+  ski: 'ski',
+};
+
 function creerIconeMenu(nom) {
+  if (ICONES_ACTIVITES[nom]) {
+    return `<img class="icone-activite" src="/icons/activites/${ICONES_ACTIVITES[nom]}.svg" alt="" width="40" height="40" />`;
+  }
   const dessin = ICONES_MENU[nom] || ICONES_MENU.generic;
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${dessin}</svg>`;
 }
@@ -91,7 +99,7 @@ export function initMenu(map) {
   bouton.setAttribute('aria-controls', 'menu-tiroir');
   bouton.setAttribute('aria-expanded', 'false');
   bouton.innerHTML = `
-    <img src="/favicon.svg" alt="" width="30" height="30" />
+    <img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />
   `;
   bouton.setAttribute('aria-label', 'Ouvrir les activités');
   bouton.title = 'Activités';
@@ -109,10 +117,10 @@ export function initMenu(map) {
   tiroir.setAttribute('aria-label', 'Menu principal');
   tiroir.innerHTML = `
     <div class="menu-entete">
+      ${BANDEAU_MENU}
       <div class="menu-marque">
         <span class="menu-logotype">
-          <img src="/favicon.svg" alt="" width="34" height="34" />
-          <strong>Montis</strong>
+          <img src="/logos/montis-lockup-for-dark.svg" alt="Montis" width="124" height="42" />
         </span>
         <span class="menu-sous-titre">ACTIVITÉS MONTAGNE</span>
       </div>
@@ -323,7 +331,7 @@ export function initMenu(map) {
       const ligne = document.createElement('button');
       ligne.type = 'button';
       ligne.className = 'menu-ligne';
-      if (['parapente', 'rando', 'velo', 'ski'].includes(module.icone)) {
+      if (ICONES_ACTIVITES[module.icone]) {
         ligne.classList.add('menu-ligne-activite');
       }
       ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span>${module.label}</span>`;
