@@ -18,6 +18,7 @@ const ICONES = {
   zone: '<circle cx="10.800" cy="10.800" r="6.300"/><path d="m16 16 4.500 4.500"/>',
   importer: '<path d="M12 15V3m0 0L7.500 7.500M12 3l4.500 4.500"/><path d="M5 13v6h14v-6"/>',
   chevron: '<path d="m9 6 6 6-6 6"/>',
+  entonnoir: '<path d="M4 5h16l-6.200 7.500V19l-3.600-2v-4.500L4 5Z"/>',
 };
 // « GR5 » et « GR 5 » ne donnent pas les mêmes résultats : l'API ne connaît que l'écriture exacte
 function ecritures(texte) {
@@ -38,10 +39,15 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
         <input type="file" class="rando-fichier parcours-fichier" accept=".gpx,application/gpx+xml,application/xml,text/xml">
       </label>
     </div>
-    <input type="text" class="rando-champ parcours-recherche" placeholder="${activite.placeholder}" autocomplete="off" spellcheck="false" inputmode="search" aria-label="${activite.placeholder}">
-    ${activite.filtres.length > 1 ? `<div class="pc-puces" role="group" aria-label="Filtrer les itinéraires">
-      ${activite.filtres.map(({ id, libelle }) => `<button type="button" data-filtre="${id}" aria-pressed="false">${libelle}</button>`).join('')}
-    </div>` : ''}
+    <div class="pc-recherche">
+      <input type="text" class="rando-champ parcours-recherche" placeholder="${activite.placeholder}" autocomplete="off" spellcheck="false" inputmode="search" aria-label="${activite.placeholder}">
+      ${activite.filtres.length > 1 ? `
+        <button type="button" class="pc-filtre-actif" hidden><span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <button type="button" class="pc-entonnoir" title="Filtres" aria-label="Filtres" aria-haspopup="menu" aria-expanded="false">${icone(ICONES.entonnoir)}</button>
+        <div class="pc-filtres" role="menu" aria-label="Filtrer les itinéraires" hidden>
+          ${activite.filtres.map(({ id, libelle }) => `<button type="button" role="menuitemradio" data-filtre="${id}" aria-checked="false">${libelle}</button>`).join('')}
+        </div>` : ''}
+    </div>
     <p class="note parcours-message" role="status" aria-live="polite" hidden></p>
     <div class="rando-liste parcours-liste" hidden></div>
     <div class="pc-entrees"></div>
@@ -63,6 +69,9 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   const listeMes = $('.parcours-mes-liste');
   const champFichier = $('.parcours-fichier');
   const boutonsFiltre = [...panneau.querySelectorAll('[data-filtre]')];
+  const entonnoir = $('.pc-entonnoir');
+  const menuFiltres = $('.pc-filtres');
+  const filtreActif = $('.pc-filtre-actif');
   const cartes = [...new Set(activite.filtres.flatMap((filtre) => filtre.cartes))];
   const clients = Object.fromEntries(cartes.map((carte) => [carte, clientItineraires(carte)]));
   const stockage = creerStockageParcours(activite.id);
@@ -257,7 +266,14 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   }
 
   function rendreFiltres() {
-    boutonsFiltre.forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.filtre === filtre.id)));
+    boutonsFiltre.forEach((bouton) => bouton.setAttribute('aria-checked', String(bouton.dataset.filtre === filtre.id)));
+    if (!entonnoir) return;
+    const filtrant = filtre.id !== activite.filtres[0].id;
+    entonnoir.classList.toggle('actif', filtrant);
+    entonnoir.setAttribute('aria-label', filtrant ? `Filtres : ${filtre.libelle}` : 'Filtres');
+    filtreActif.hidden = !filtrant;
+    filtreActif.setAttribute('aria-label', `Retirer le filtre ${filtre.libelle}`);
+    filtreActif.querySelector('span').textContent = filtre.libelle;
   }
 
   function choisirFiltre(id) {
@@ -362,7 +378,25 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   }
 
   // ---------- Événements ----------
-  boutonsFiltre.forEach((bouton) => bouton.addEventListener('click', () => choisirFiltre(bouton.dataset.filtre)));
+  function ouvrirMenuFiltres(ouvert) {
+    if (!menuFiltres) return;
+    menuFiltres.hidden = !ouvert;
+    entonnoir.setAttribute('aria-expanded', String(ouvert));
+  }
+  boutonsFiltre.forEach((bouton) => bouton.addEventListener('click', () => {
+    choisirFiltre(bouton.dataset.filtre);
+    ouvrirMenuFiltres(false);
+  }));
+  entonnoir?.addEventListener('click', () => ouvrirMenuFiltres(menuFiltres.hidden));
+  filtreActif?.addEventListener('click', () => choisirFiltre(activite.filtres[0].id));
+  if (menuFiltres) {
+    document.addEventListener('pointerdown', (event) => {
+      if (!menuFiltres.hidden && !event.target.closest('.pc-filtres, .pc-entonnoir')) ouvrirMenuFiltres(false);
+    });
+    panneau.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') ouvrirMenuFiltres(false);
+    });
+  }
   $('.parcours-creer').addEventListener('click', () => {
     fermerMenu();
     itineraires.fermer();

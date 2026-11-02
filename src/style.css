@@ -2207,13 +2207,32 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .bf-resume-vent i { color: var(--texte-2); font-size: 11px; font-style: normal; }
 .bf-resume .bf-chevron { color: var(--texte-2); }
 .pt-icone { display: block; width: 32px; height: 32px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.pc-puces { display: flex; flex-wrap: wrap; gap: 5px; }
-.pc-puces button {
-  min-height: 34px; padding: 0 13px; border: 1px solid var(--bord); border-radius: 999px;
-  background: var(--surface); color: var(--texte-2); font: 650 12px var(--police); cursor: pointer;
+.pc-recherche { position: relative; display: flex; align-items: center; min-width: 0; }
+.pc-recherche .rando-champ { flex: 1; min-width: 0; margin: 0; padding-right: 48px; }
+.pc-recherche:has(.pc-filtre-actif:not([hidden])) .rando-champ { padding-right: 124px; }
+.pc-entonnoir {
+  position: absolute; right: 3px; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 0; border-radius: 8px;
+  background: transparent; color: var(--texte-2); cursor: pointer;
 }
-.pc-puces button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
-.pc-puces button:focus-visible, .pc-entree:focus-visible, .pc-ligne:focus-visible, .bf-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pc-entonnoir:hover, .pc-entonnoir[aria-expanded='true'], .pc-entonnoir.actif { color: var(--accent); }
+.pc-entonnoir svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.pc-entonnoir.actif svg { fill: var(--accent-doux); }
+.pc-entonnoir.actif::after { content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.pc-filtre-actif {
+  position: absolute; right: 45px; display: flex; align-items: center; gap: 3px; height: 30px; padding: 0 6px 0 10px; border: 0; border-radius: 999px;
+  background: var(--accent); color: var(--accent-texte); font: 650 11.5px var(--police); cursor: pointer;
+}
+.pc-filtre-actif[hidden] { display: none; }
+.pc-filtre-actif svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.pc-filtres {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 6; display: grid; min-width: 150px; padding: 4px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); box-shadow: 0 8px 24px rgb(0 0 0 / .35);
+}
+.pc-filtres[hidden] { display: none; }
+.pc-filtres button { min-height: 42px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer; }
+.pc-filtres button:hover { background: var(--surface); }
+.pc-filtres button[aria-checked='true'] { background: var(--accent-doux); color: var(--accent); }
+.pc-entonnoir:focus-visible, .pc-filtre-actif:focus-visible, .pc-filtres button:focus-visible, .pc-entree:focus-visible, .pc-ligne:focus-visible, .bf-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pc-entrees { display: grid; gap: 5px; }
 .pc-entrees:empty, .pc-options:empty { display: none; }
 .pc-entree {
