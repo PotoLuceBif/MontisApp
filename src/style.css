@@ -2208,6 +2208,36 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .velo-commandes button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
 .velo-commandes svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .velo-etat { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.velo-analyse { display: grid; min-width: 0; gap: 12px; }
+.velo-analyse[hidden] { display: none; }
+.velo-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 8px; }
+.velo-stat { display: grid; min-width: 0; gap: 1px; }
+.velo-stat span { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
+.velo-stat strong { color: var(--texte); font-size: 13.5px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.velo-stat-principale { grid-column: span 2; }
+.velo-stat-principale:nth-child(2) { grid-column: span 3; }
+.velo-stat-principale strong { color: var(--vent-couleur); font-size: 24px; letter-spacing: -.01em; line-height: 1.1; }
+.velo-profil { display: grid; min-width: 0; gap: 5px; padding-top: 10px; border-top: 1px solid var(--bord); }
+.velo-lecture { display: flex; align-items: center; gap: 4px; min-height: 22px; margin: 0; color: var(--texte-2); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.velo-lecture strong { color: var(--texte); }
+.velo-graphique { display: block; width: 100%; height: 150px; touch-action: pan-y; cursor: crosshair; border-radius: 6px; }
+.velo-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.velo-legende-pente, .velo-legende { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.velo-legende-pente span, .velo-legende span { display: inline-flex; align-items: center; gap: 4px; }
+.velo-legende-pente i, .velo-legende i { width: 9px; height: 9px; flex: none; border-radius: 3px; }
+.velo-repartition { display: grid; gap: 5px; }
+.velo-repartition[hidden] { display: none; }
+.velo-repartition h4 { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.velo-repartition h4 small { color: var(--texte-2); font-size: 11px; font-weight: 500; }
+.velo-barre { display: flex; height: 9px; overflow: hidden; border-radius: 5px; background: var(--surface-2); }
+.velo-barre i { display: block; height: 100%; }
+.velo-couleur { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.velo-couleur select {
+  flex: none; min-width: 110px; min-height: 36px; padding: 5px 7px; border: 1px solid var(--bord); border-radius: 7px;
+  background: var(--surface); color: var(--texte); font: 600 12px var(--police);
+}
+.velo-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.bf-velo-lecture .velo-commandes, .bf-velo-lecture .velo-pratiques-panneau, .bf-velo-lecture .velo-etat { display: none; }
 .velo-etape {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%;
   background: var(--velo-couleur); color: #0b111b; box-shadow: 0 1px 5px rgba(0, 0, 0, .55); font: 800 12px var(--police); cursor: grab; touch-action: none;
