@@ -2,20 +2,24 @@ const SELECTEURS_OBSTACLES = [
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
-  '.rando-creation-flottante',
+  '#ski-fiche',
+  '.ski-fiche-recherche',
+  '.bf',
   '#barre-haut',
   '#bascule-mode',
   '#menu-bouton',
   '#menu-parametres-bouton',
   '.outils-rapides',
   '.maplibregl-ctrl-top-right',
+  '.maplibregl-ctrl-bottom-right',
   '.maplibregl-popup',
 ];
 const SELECTEURS_PANNEAUX = [
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
-  '.rando-creation-flottante',
+  '#ski-fiche',
+  '.bf',
 ];
 
 export function initEchelleCarte(map) {

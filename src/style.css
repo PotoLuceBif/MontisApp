@@ -2233,6 +2233,11 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .pc-filtres button:hover { background: var(--surface); }
 .pc-filtres button[aria-checked='true'] { background: var(--accent-doux); color: var(--accent); }
 .pc-entonnoir:focus-visible, .pc-filtre-actif:focus-visible, .pc-filtres button:focus-visible, .pc-entree:focus-visible, .pc-ligne:focus-visible, .bf-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visite-fonds { margin: 0; }
+.ski-visite-calques .visite-fonds { grid-column: 1 / -1; width: 100%; }
+.pc-ligne-sous { grid-column: 1 / -1; color: var(--texte-2); font-size: 11px; line-height: 1.3; }
+.pc-section .rando-actions-principales { margin: 0; grid-template-columns: minmax(0, 1fr); }
+.pc-section .rando-action-principale { flex-direction: row; justify-content: center; min-height: 44px; gap: 8px; }
 .pc-sections { display: grid; gap: 10px; }
 .pc-sections:empty { display: none; }
 .pc-section { display: grid; min-width: 0; gap: 8px; padding: 12px; border: 1px solid var(--bord); border-radius: 12px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
@@ -2496,7 +2501,6 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   }
   body:has(#menu-tiroir.ouvert) .bf, body:has(.outil-rapide-panneau:not([hidden])) .bf { display: none; }
   :root[data-reseau='hors-ligne'] .bf { top: auto; max-height: 74dvh; }
-  body:has(.bf:not([hidden])) .maplibregl-ctrl-bottom-left { visibility: hidden; } /* placée par echelle-carte.js, elle passerait dessus */
   body:has(.bf-reduite:not([hidden])) .maplibregl-ctrl-bottom-right { bottom: calc(74px + env(safe-area-inset-bottom)); }
   .bf-poignee { display: block; justify-self: center; width: 64px; height: 18px; margin: -10px 0 -8px; padding: 0; border: 0; background: transparent; cursor: pointer; touch-action: none; }
   .bf-poignee::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto; border-radius: 4px; background: var(--bord); }
