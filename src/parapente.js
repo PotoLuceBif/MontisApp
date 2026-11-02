@@ -266,6 +266,7 @@ export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {
         .filter((resultat) => resultat.status === 'rejected')
         .map((resultat) => resultat.reason);
       const reussites = resultats.length - erreurs.length;
+      erreurs.forEach((erreur) => console.warn('Données FFVL :', erreur));
       const heure = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
 
       if (erreurs.length === 0) {
@@ -279,21 +280,21 @@ export function initParapente(map, { onEtat = () => {}, onStatistiques = () => {
       if (reussites > 0) {
         onEtat({
           type: 'partiel',
-          message: `Mise à jour partielle à ${heure}. ${erreurs[0].message}`,
+          message: `Mise à jour partielle à ${heure} : certaines données FFVL manquent.`,
         });
       } else if (erreurs.some((erreur) => erreur.code === 'acces')) {
         onEtat({
           type: 'acces',
           message: donneesDejaChargees
-            ? 'La FFVL exige une clé API et les demandes d’accès OpenData sont temporairement suspendues. Les dernières données reçues restent visibles et peuvent être périmées.'
-            : 'La FFVL exige une clé API. La Fédération indique que les demandes d’accès OpenData sont temporairement suspendues.',
+            ? 'Accès FFVL refusé : les dernières données reçues restent affichées et peuvent être périmées.'
+            : 'Données FFVL indisponibles : la fédération exige une clé d’accès et a suspendu les demandes.',
         });
       } else {
         onEtat({
           type: 'erreur',
           message: donneesDejaChargees
-            ? `Impossible d’actualiser les données FFVL. Les dernières données reçues restent visibles et peuvent être périmées. ${erreurs[0].message}`
-            : `Impossible de charger les données FFVL. ${erreurs[0].message}`,
+            ? 'Actualisation FFVL impossible : les dernières données reçues restent affichées et peuvent être périmées.'
+            : 'Données FFVL indisponibles pour le moment. Réessayez plus tard.',
         });
       }
     })();

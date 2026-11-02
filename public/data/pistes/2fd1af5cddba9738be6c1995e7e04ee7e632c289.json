@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","cap":85,"communes":["Seythenex"],"features":[{"type":"Feature","geometry":{"type":"LineString","coordinates":[[6.27902,45.71372],[6.27901,45.71366],[6.27804,45.71356],[6.27741,45.71349],[6.27692,45.7135],[6.27693,45.71359]]},"properties":{"genre":"piste","usage":"alpin","nom":"Le Flocon","niveau":"verte","longueur":180,"denivele":21}}]}

@@ -118,7 +118,7 @@ export function afficherRefuges(map, visible) {
         'text-offset': [0, 0.9],
         'text-max-width': 8,
         'text-optional': true,
-        // Les refuges gardés passent en premier
+        // Les refuges passent avant les cabanes et les abris
         'symbol-sort-key': ['match', ['get', 'genre'], 'garde', 0, 1],
       },
       paint: {

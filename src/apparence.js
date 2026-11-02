@@ -9,6 +9,7 @@ export const THEMES = [
 
 // Les couleurs réelles sont définies dans style.css ; ici, seulement de quoi dessiner les pastilles
 export const ACCENTS = [
+  { id: 'aurore', nom: 'Aurore', clair: '#4b4fc7', sombre: '#a0a6ff' },
   { id: 'sapin', nom: 'Vert sapin', clair: '#2f6b57', sombre: '#5fb59a' },
   { id: 'ocre', nom: 'Ocre', clair: '#b65f26', sombre: '#f0ad64' },
   { id: 'acier', nom: 'Bleu acier', clair: '#3a5f86', sombre: '#7fabd9' },
@@ -24,7 +25,7 @@ export const themeChoisi = () => {
 };
 
 export const accentChoisi = () => {
-  const accentParDefaut = themeChoisi() === 'cyberpunk' ? 'sapin' : 'ocre';
+  const accentParDefaut = themeChoisi() === 'cyberpunk' ? 'sapin' : 'aurore';
   const a = lire('accent', accentParDefaut);
   return ACCENTS.some((x) => x.id === a) ? a : accentParDefaut;
 };

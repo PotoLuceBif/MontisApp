@@ -5,121 +5,71 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
-    <section class="para-intro">
-      <div class="para-intro-meta">
-        <span>ACTIVITÉ MONTAGNE</span>
-        <span class="para-badge">FFVL</span>
-      </div>
-      <h2>Parapente</h2>
-      <p>Sites de vol, balises météo et outils pour préparer votre sortie.</p>
-    </section>
-
-    <section class="para-statut" data-etat="attente" aria-label="État des données FFVL">
-      <div class="para-statut-entete">
-        <div class="para-statut-titre">
-          <span class="para-indicateur" aria-hidden="true"></span>
-          <strong>Données FFVL · sites et balises</strong>
-        </div>
-        <button class="para-actualiser" type="button" aria-label="Actualiser les données FFVL">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
-          Actualiser
-        </button>
-      </div>
-      <p class="para-statut-message" role="status" aria-live="polite">
-        Les données seront vérifiées à l’ouverture de l’activité.
-      </p>
-      <a class="para-lien-ffvl" href="https://federation.ffvl.fr/pages/opendata" target="_blank" rel="noopener noreferrer">
-        Comprendre l’accès aux données <span aria-hidden="true">↗</span>
-      </a>
-    </section>
-
-    <div class="para-onglets" role="tablist" aria-label="Rubriques parapente">
-      <button id="para-onglet-outils" class="para-onglet actif" type="button" role="tab" aria-selected="true" aria-controls="para-contenu-outils">Outils</button>
-      <button id="para-onglet-analyse" class="para-onglet" type="button" role="tab" aria-selected="false" aria-controls="para-contenu-analyse" tabindex="-1">Analyse vent</button>
+    <div class="rando-actions-principales" role="group" aria-label="Outils parapente">
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="portee" aria-pressed="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>
+        <span>Portée de vol</span>
+      </button>
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="vent" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/></svg>
+        <span>Analyse du vent</span>
+      </button>
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="sites" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <span>Sites et balises</span>
+      </button>
     </div>
 
-    <section id="para-contenu-outils" class="para-contenu-onglet" role="tabpanel" aria-labelledby="para-onglet-outils">
-      <div class="para-indicateurs" aria-label="Données disponibles">
-        <div><strong data-para-compteur-sites>—</strong><span>sites de vol</span></div>
-        <div><strong data-para-compteur-balises>—</strong><span>balises météo</span></div>
-        <div><strong data-para-compteur-perimees>—</strong><span>relevés anciens</span></div>
-      </div>
+    <section class="para-vue" data-para-contenu="portee" aria-label="Portée de vol">
+      <div data-para-portee></div>
+    </section>
 
-      <section class="para-section" aria-labelledby="para-carte-titre">
-        <div class="para-section-entete">
-          <span>01</span>
-          <h3 id="para-carte-titre">Sites sur la carte</h3>
-        </div>
-        <label class="para-option">
-          <span class="para-option-icone para-option-icone-site" aria-hidden="true">⌖</span>
-          <span><strong>Décollages et atterrissages</strong><small>Sites FFVL et noms sur la carte</small></span>
-          <input type="checkbox" data-para-layer-sites checked>
-        </label>
+    <section class="para-vue" data-para-contenu="vent" aria-label="Analyse du vent" hidden>
+      <div class="para-analyse-vent"></div>
+    </section>
+
+    <section class="para-vue" data-para-contenu="sites" aria-label="Sites et balises FFVL" hidden>
+      <p class="note para-etat" role="status" aria-live="polite">Vérification des données FFVL…</p>
+      <div class="para-donnees" hidden>
+        <label class="option-case"><input type="checkbox" data-para-layer-sites checked> Décollages et atterrissages
+          <small>Sites FFVL et noms sur la carte</small></label>
+        <label class="option-case"><input type="checkbox" data-para-layer-balises checked> Balises météo
+          <small>Observations en temps réel ; les relevés anciens sont signalés</small></label>
         <div class="para-legende">
           <span><i class="para-point para-point-vert"></i> Décollage</span>
           <span><i class="para-point para-point-bleu"></i> Atterrissage</span>
         </div>
-      </section>
-
-      <section class="para-section para-portee" aria-labelledby="para-portee-titre">
-        <div class="para-section-entete">
-          <span>02</span>
-          <h3 id="para-portee-titre">Outil de portée</h3>
-        </div>
-        <p class="para-section-aide">Explorez une portée théorique à partir d’un point de départ.</p>
-        <div data-para-portee></div>
-      </section>
-
-      <p class="para-securite">
-        Les relevés et estimations sont indicatifs. Vérifiez les conditions auprès des sources officielles et
-        des acteurs locaux ; cette carte ne remplace ni votre jugement ni les consignes de sécurité.
-      </p>
-    </section>
-
-    <section id="para-contenu-analyse" class="para-contenu-onglet" role="tabpanel" aria-labelledby="para-onglet-analyse" hidden>
-      <div class="para-analyse-entete">
-        <h3>Conditions en altitude</h3>
-        <p>Explorez le vent prévu, sa structure verticale et un potentiel thermique estimé.</p>
       </div>
-      <label class="para-option para-option-balises">
-        <span class="para-option-icone" aria-hidden="true">↗</span>
-        <span><strong>Balises FFVL</strong><small>Observations en temps réel ; les relevés anciens sont signalés</small></span>
-        <input type="checkbox" data-para-layer-balises checked>
-      </label>
-      <div class="para-analyse-vent"></div>
+      <button type="button" class="para-bouton para-actualiser">Actualiser les données</button>
     </section>
+
+    <details class="rando-outils">
+      <summary>À propos</summary>
+      <div class="rando-outils-contenu">
+        <p class="note">Les relevés et estimations sont indicatifs. Vérifiez les conditions auprès des sources officielles et des acteurs locaux : cette carte ne remplace ni votre jugement ni les consignes de sécurité.</p>
+        <p class="note">Sites et balises : FFVL. <a class="para-lien" href="https://federation.ffvl.fr/pages/opendata" target="_blank" rel="noopener noreferrer">Accès aux données ↗</a></p>
+      </div>
+    </details>
   `;
 
-  const etat = panneau.querySelector('.para-statut');
-  const messageEtat = panneau.querySelector('.para-statut-message');
+  const boutonsVue = [...panneau.querySelectorAll('[data-para-vue]')];
+  const contenusVue = [...panneau.querySelectorAll('[data-para-contenu]')];
+  const messageEtat = panneau.querySelector('.para-etat');
+  const blocDonnees = panneau.querySelector('.para-donnees');
   const boutonActualiser = panneau.querySelector('.para-actualiser');
   const caseBalises = panneau.querySelector('[data-para-layer-balises]');
   const caseSites = panneau.querySelector('[data-para-layer-sites]');
-  const compteurSites = panneau.querySelector('[data-para-compteur-sites]');
-  const compteurBalises = panneau.querySelector('[data-para-compteur-balises]');
-  const compteurPerimees = panneau.querySelector('[data-para-compteur-perimees]');
-  const controles = panneau.querySelector('.para-indicateurs');
-  const ongletOutils = panneau.querySelector('#para-onglet-outils');
-  const ongletAnalyse = panneau.querySelector('#para-onglet-analyse');
-  const contenuOutils = panneau.querySelector('#para-contenu-outils');
-  const contenuAnalyse = panneau.querySelector('#para-contenu-analyse');
   const hoteVent = panneau.querySelector('.para-analyse-vent');
   let actif = false;
-  let ongletActif = 'outils';
+  let vueActive = 'portee';
 
   const donnees = initParapente(map, {
     onEtat({ type, message }) {
-      etat.dataset.etat = type;
-      etat.setAttribute('aria-busy', String(type === 'chargement'));
       messageEtat.textContent = message;
       boutonActualiser.disabled = type === 'chargement';
-      boutonActualiser.classList.toggle('en-chargement', type === 'chargement');
     },
-    onStatistiques({ sites, balises, perimees }) {
-      compteurSites.textContent = String(sites);
-      compteurBalises.textContent = String(balises);
-      compteurPerimees.textContent = String(perimees);
-      controles.classList.add('para-indicateurs-actifs');
+    onStatistiques() {
+      blocDonnees.hidden = false; // les options n'ont de sens qu'une fois des données reçues
     },
   });
   const portee = initPortee(map, panneau.querySelector('[data-para-portee]'), { onChoisirPoint });
@@ -128,39 +78,27 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
   caseSites.addEventListener('change', () => donnees.setSites(caseSites.checked));
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
 
-  function selectionnerOnglet(nom, focus = false) {
-    ongletActif = nom;
-    const analyse = nom === 'analyse';
-    ongletOutils.classList.toggle('actif', !analyse);
-    ongletAnalyse.classList.toggle('actif', analyse);
-    ongletOutils.setAttribute('aria-selected', String(!analyse));
-    ongletAnalyse.setAttribute('aria-selected', String(analyse));
-    ongletOutils.tabIndex = analyse ? -1 : 0;
-    ongletAnalyse.tabIndex = analyse ? 0 : -1;
-    contenuOutils.hidden = analyse;
-    contenuAnalyse.hidden = !analyse;
-    if (focus) (analyse ? ongletAnalyse : ongletOutils).focus();
+  function choisirVue(nom) {
+    if (nom === vueActive) return;
+    vueActive = nom;
+    boutonsVue.forEach((bouton) => {
+      bouton.setAttribute('aria-pressed', String(bouton.dataset.paraVue === nom));
+    });
+    contenusVue.forEach((contenu) => {
+      contenu.hidden = contenu.dataset.paraContenu !== nom;
+    });
 
-    if (analyse) {
+    if (nom === 'vent') {
       analyseVent.monterDans(hoteVent);
-      if (actif) {
-        donnees.setBalises(caseBalises.checked);
-        analyseVent.activer();
-      }
+      if (actif) analyseVent.activer();
     } else {
-      donnees.setBalises(false);
       analyseVent.desactiver();
       analyseVent.retournerAuMenu();
     }
   }
 
-  ongletOutils.addEventListener('click', () => selectionnerOnglet('outils'));
-  ongletAnalyse.addEventListener('click', () => selectionnerOnglet('analyse'));
-  panneau.querySelector('.para-onglets').addEventListener('keydown', (event) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    const nouvelOnglet = event.key === 'Home' || event.key === 'ArrowLeft' ? 'outils' : 'analyse';
-    selectionnerOnglet(nouvelOnglet, true);
+  boutonsVue.forEach((bouton) => {
+    bouton.addEventListener('click', () => choisirVue(bouton.dataset.paraVue));
   });
 
   return {
@@ -173,7 +111,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       donnees.setBalises(caseBalises.checked);
       donnees.setSites(caseSites.checked);
       donnees.demarrer();
-      if (ongletActif === 'analyse') {
+      if (vueActive === 'vent') {
         analyseVent.monterDans(hoteVent);
         analyseVent.activer();
       }
