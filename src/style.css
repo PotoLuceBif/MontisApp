@@ -2235,6 +2235,7 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
     padding: 14px 16px max(14px, env(safe-area-inset-bottom)); border-width: 1px 0 0; border-radius: 16px 16px 0 0;
   }
   body:has(#menu-tiroir.ouvert) .bf { display: none; }
+  body:has(.bf:not([hidden])) .maplibregl-ctrl-bottom-left { visibility: hidden; }
   .bf-rose-dessin { width: 92px; height: 92px; }
   .bf-valeur-principale strong { font-size: 30px; }
   .bf-graphique { height: 176px; }
