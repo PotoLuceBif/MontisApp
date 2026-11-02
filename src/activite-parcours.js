@@ -51,6 +51,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     <p class="note parcours-message" role="status" aria-live="polite" hidden></p>
     <div class="rando-liste parcours-liste" hidden></div>
     <div class="pc-entrees"></div>
+    <div class="pc-sections"></div>
     <section class="parcours-mes" hidden>
       <h3>Mes parcours</h3>
       <div class="parcours-mes-liste"></div>
@@ -422,6 +423,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ligne.addEventListener('click', ouvrir);
     $('.pc-entrees').append(ligne);
   });
+  (activite.sections?.(map, outils) ?? []).forEach((section) => $('.pc-sections').append(section));
   const options = activite.options?.(map, outils);
   if (options) $('.pc-options').append(options);
   const crochets = activite.crochets?.(map, outils) ?? {};

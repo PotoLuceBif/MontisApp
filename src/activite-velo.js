@@ -93,9 +93,9 @@ export function creerActiviteVelo(map, outils) {
     typeDe: ({ carte, name, ref }) => (GRAVEL.test(`${name} ${ref}`) ? 'Gravel' : carte === 'mtb' ? 'VTT' : 'Vélo'),
     aPropos: '<p class="note">Tracés calculés par BRouter ou Valhalla, à partir des chemins OpenStreetMap. Un tracé calculé n’est pas une garantie de praticabilité : vérifiez le terrain et les accès avant de partir.</p>',
     entrees: (_, { itineraires, clients }) => [
-      { libelle: 'Bike parks', sous: 'Visite des pistes de descente en 3D', ouvrir: () => void bikeParks.ouvrirListe() },
-      { libelle: 'EuroVelo', sous: 'Les 17 grands itinéraires européens', ouvrir: () => itineraires.ouvrirCatalogue(catalogueEuroVelo(map, clients.cycling)) },
+      { libelle: 'EuroVélo', sous: 'Les 17 grands itinéraires européens', ouvrir: () => itineraires.ouvrirCatalogue(catalogueEuroVelo(map, clients.cycling)) },
     ],
+    sections: () => [bikeParks.section],
     options(_, { appliquerCalque }) {
       const option = document.createElement('label');
       option.className = 'option-case';

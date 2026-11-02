@@ -166,8 +166,14 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
 
   recherche.addEventListener('input', rendre);
 
+  const section = document.createElement('section');
+  section.className = 'pc-section';
+  section.setAttribute('aria-label', 'Bike parks');
+  section.innerHTML = '<h3>Bike parks</h3><button type="button" class="para-bouton">Voir les bike parks</button>';
+  section.querySelector('button').addEventListener('click', () => void ouvrirListe());
+
   return {
-    ouvrirListe,
+    section,
     quitter() {
       quitter();
       panneauListe.masquer();
