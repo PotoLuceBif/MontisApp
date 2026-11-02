@@ -1,6 +1,7 @@
 // Trouver des lieux (stations, bike parks) : par nom ou dans la zone visible, en repères groupés
 // sur la carte. Un lieu est un Feature GeoJSON ponctuel dont les propriétés portent `nom`.
 import * as maplibregl from 'maplibre-gl';
+import { DECALAGE_PIN, imagePin } from './pins.js';
 
 const DISTANCE_GROUPE_PX = 56;
 const ZOOM_LISTE_GROUPE = 13;
@@ -90,9 +91,9 @@ function grouper(entrees) {
   return groupes;
 }
 
-// `dessin` : l'intérieur du repère. `resume` donne les lignes [libellé, valeur] du survol.
+// `pin` : le nom du pin. `resume` donne les lignes [libellé, valeur] du survol.
 // `surChoix(feature, deplacer)` : `deplacer` vaut vrai quand le lieu n'est pas déjà sous le doigt.
-export function creerReperesZone(map, { dessin, titreGroupe, libelleGroupe, resume, surChoix }) {
+export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume, surChoix }) {
   let marqueurs = [];
   let popupGroupe = null;
   let minuteurFermetureGroupe = null;
@@ -147,8 +148,7 @@ export function creerReperesZone(map, { dessin, titreGroupe, libelleGroupe, resu
     element.type = 'button';
     element.classList.toggle('selectionne', feature === choisi);
     element.setAttribute('aria-label', `Ouvrir la fiche de ${nom}`);
-    element.innerHTML = dessin;
-    element.append(el('span', 'rando-repere-nom', nom));
+    element.append(imagePin(pin, feature === choisi), el('span', 'rando-repere-nom', nom));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherResume(feature);
     });
@@ -164,7 +164,7 @@ export function creerReperesZone(map, { dessin, titreGroupe, libelleGroupe, resu
       fermerResume();
       surChoix(feature, false);
     });
-    return new maplibregl.Marker({ element, anchor: 'bottom' })
+    return new maplibregl.Marker({ element, anchor: 'bottom', offset: DECALAGE_PIN })
       .setLngLat(feature.geometry.coordinates)
       .addTo(map);
   }

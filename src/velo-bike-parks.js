@@ -10,8 +10,6 @@ const RESULTATS_MAX = 12;
 const ICONE_RECHERCHE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>';
 const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.600"/></svg>';
 const LIBELLE_ZONE = 'Bike parks dans la zone visible';
-// Le repère actuel des itinéraires, en attendant des repères par activité
-const DESSIN_REPERE = '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="rando-repere-trace" d="m15 31 5-11 5 11 5-11 4 9"/></svg>';
 
 const pistesDe = (nombre) => `${nombre} piste${nombre > 1 ? 's' : ''}`;
 const surTelephone = () => window.matchMedia('(max-width: 640px)').matches;
@@ -151,7 +149,7 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   });
 
   const reperes = creerReperesZone(map, {
-    dessin: DESSIN_REPERE,
+    pin: 'bikepark',
     titreGroupe: (nombre) => `${nombre} bike parks à proximité`,
     libelleGroupe: (nombre) => `${nombre} bike parks regroupés.`,
     resume: ({ properties: park }) => [['Pistes', String(park.pistes)], ['Longueur', km(park.km)], ['Remontées', String(park.remontees)]],
@@ -213,12 +211,13 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
 
   function surDeplacement() {
     if (!actif) return;
+    if (zoneCherchee && dansZone.length) {
+      // Zoomer dans la zone déjà cherchée ne rend pas les résultats caducs
+      const limites = map.getBounds();
+      zonePerimee = !(limitesZone.contains(limites.getNorthEast()) && limitesZone.contains(limites.getSouthWest()));
+      rendreZone();
+    }
     actualiserReperes();
-    if (!zoneCherchee || !dansZone.length) return;
-    // Zoomer dans la zone déjà cherchée ne rend pas les résultats caducs
-    const limites = map.getBounds();
-    zonePerimee = !(limitesZone.contains(limites.getNorthEast()) && limitesZone.contains(limites.getSouthWest()));
-    rendreZone();
   }
 
   const recherchePanneau = recherche({ champ, liste: section.querySelector('#bikepark-resultats'), prefixe: 'bikepark-suggestion' });

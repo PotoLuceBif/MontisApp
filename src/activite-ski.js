@@ -111,7 +111,7 @@ export function creerActiviteSki(map) {
   const favoris = creerFavoris('ski-favoris');
   const visite = creerVisiteStation(map);
   const reperes = creerReperesZone(map, {
-    dessin: '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="ski-repere-flocon" d="M24 14v20m-8.66-15 17.32 10m0-10-17.32 10m8.66-15-2.5 2.5M24 14l2.5 2.5M24 34l-2.5-2.5m2.5 2.5 2.5-2.5m-11.16-13 3.4.9m-3.4-.9.9 3.4m15.42 6.2-3.4-.9m3.4.9-.9-3.4m.9-6.2-3.4.9m3.4-.9-.9 3.4m-15.42 6.2 3.4-.9m-3.4.9.9-3.4"/></svg>',
+    pin: 'station',
     titreGroupe: (nombre) => `${nombre} stations à proximité`,
     libelleGroupe: (nombre) => `${nombre} stations regroupées.`,
     resume({ properties: station }) {
@@ -437,12 +437,13 @@ export function creerActiviteSki(map) {
 
   function signalerDeplacement() {
     if (!actif) return;
+    if (etatZone === 'ok' && limitesZone) {
+      // Zoomer dans la zone déjà cherchée ne rend pas les résultats caducs
+      const limites = map.getBounds();
+      zonePerimee = !(limitesZone.contains(limites.getNorthEast()) && limitesZone.contains(limites.getSouthWest()));
+      rendreZone();
+    }
     actualiserMarqueurs();
-    if (etatZone !== 'ok' || !limitesZone) return;
-    // Zoomer dans la zone déjà cherchée ne rend pas les résultats caducs
-    const limites = map.getBounds();
-    zonePerimee = !(limitesZone.contains(limites.getNorthEast()) && limitesZone.contains(limites.getSouthWest()));
-    rendreZone();
   }
 
   // ---------- Recherche par nom ----------

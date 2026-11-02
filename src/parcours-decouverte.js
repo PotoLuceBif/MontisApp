@@ -3,6 +3,7 @@
 import * as maplibregl from 'maplibre-gl';
 import { distance, echantillonner, extraireTrace, titreDe } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
+import { DECALAGE_PIN, imagePin } from './pins.js';
 
 const PARALLELISME_REPERES = 2;
 const DISTANCE_GRAPPE_PX = 56;
@@ -205,9 +206,7 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
     element.type = 'button';
     element.setAttribute('aria-label', `Afficher le résumé de ${titreDe(route)}; sélectionner pour ouvrir le parcours`);
     element.title = 'Survoler ou maintenir appuyé pour afficher le résumé';
-    element.innerHTML =
-      '<svg viewBox="0 0 48 56" aria-hidden="true"><path class="rando-repere-halo" d="M24 3 43 14v20L24 53 5 34V14z"/><path class="rando-repere-forme" d="M24 5 41 15v18L24 50 7 33V15z"/><path class="rando-repere-trace" d="m15 31 5-11 5 11 5-11 4 9"/></svg>';
-    element.appendChild(el('span', 'rando-repere-nom', titreDe(route)));
+    element.append(imagePin(route.carte === 'hiking' ? 'rando' : 'route'), el('span', 'rando-repere-nom', titreDe(route)));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherResume(entree);
     });
@@ -251,7 +250,7 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
       }
       ouvrir(route);
     });
-    return new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat(coordonnees).addTo(map);
+    return new maplibregl.Marker({ element, anchor: 'bottom', offset: DECALAGE_PIN }).setLngLat(coordonnees).addTo(map);
   }
 
   function afficherGrappe(routes, coordonnees) {

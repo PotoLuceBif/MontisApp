@@ -663,19 +663,20 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   height: 48px;
   overflow: visible;
 }
-.rando-repere svg {
+/* Sans ça, chaque marqueur se pose sous le précédent : `position: relative` écrase celle de MapLibre */
+.maplibregl-marker.rando-repere, .maplibregl-marker.rando-groupe { position: absolute; }
+.repere-pin {
   display: block;
-  width: 27px;
-  height: 32px;
-  overflow: visible;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.72)) drop-shadow(0 0 4px rgba(77, 235, 212, 0.4));
-  transition: transform 0.16s ease, filter 0.16s ease;
+  width: 48px;
+  height: 48px;
+  transform-origin: 50% 91%; /* la pointe reste sur la coordonnée */
+  transition: transform 0.16s ease;
+  -webkit-user-drag: none;
 }
-.rando-repere:hover svg { transform: translateY(-1px) scale(1.08); }
-.rando-repere-halo { fill: rgba(255, 89, 214, 0.14); stroke: rgba(255, 89, 214, 0.82); stroke-width: 2.5; }
-.rando-repere-forme { fill: #0b111b; stroke: #4debd4; stroke-width: 1.5; }
-.rando-repere-trace { fill: none; stroke: #ff59d6; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rando-repere:hover .repere-pin { transform: scale(1.08); }
 .rando-repere-nom {
+  position: absolute;
+  top: 46px;
   display: block;
   max-width: 132px;
   padding: 2px 6px;
@@ -2686,15 +2687,7 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .ski-item .ski-item-action:disabled { color: var(--texte-2); opacity: 0.35; cursor: not-allowed; }
 .ski-item button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .menu-contenu .ski-credits { margin-top: 10px; font-size: 11px; line-height: 1.5; }
-.ski-repere-flocon {
-  fill: none;
-  stroke: #ff59d6;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .ski-repere.selectionne { z-index: 1; }
-.ski-repere.selectionne svg { transform: scale(1.3); transform-origin: bottom; }
 .ski-repere.selectionne .rando-repere-nom { border-color: #ff59d6; }
 .ski-groupe-liste { min-width: 210px; }
 .ski-groupe-choix { width: 100%; }
