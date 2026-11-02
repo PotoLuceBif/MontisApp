@@ -1,8 +1,8 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 import { lire, ecrire } from './reglages.js';
-import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, PALETTE_BALISES, SOURCES_BALISES, couleurBalise, texteAge } from './balises-sources.js';
-import { cadranVent, texteProvenance } from './vent-cadran.js';
+import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from './balises-sources.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, texteProvenance } from './vent-cadran.js';
 
 const BALISES_LISTEES = 6;
 const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
@@ -47,7 +47,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       <label class="option-case"><input type="checkbox" data-para-layer-balises> Balises de vent
         <small>Relevés en temps réel, touchez une balise pour ouvrir sa fiche</small></label>
       <div class="para-legende" aria-label="Vent moyen en kilomètres par heure">
-        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_BALISES[index])} ${palier}</span>`).join('')}
+        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} ${palier}</span>`).join('')}
         <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
         <span><i class="para-hs">×</i> Hors service</span>
       </div>
@@ -108,7 +108,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       const ligne = document.createElement('button');
       ligne.type = 'button';
       ligne.className = 'para-balise';
-      ligne.style.setProperty('--vent-couleur', couleurBalise(station.moyenne));
+      ligne.style.setProperty('--vent-couleur', couleurInterface(station.moyenne));
       ligne.insertAdjacentHTML('beforeend', cadranVent((station.direction + 180) % 360, 0, 'vent-cadran-petit'));
       const texte = document.createElement('span');
       texte.className = 'para-balise-texte';
@@ -124,6 +124,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
       vitesse.append(moyenne);
       if (Number.isFinite(station.rafale)) {
         const rafale = document.createElement('small');
+        rafale.className = 'para-balise-rafale';
         rafale.textContent = `raf. ${Math.round(station.rafale)}`;
         vitesse.append(rafale);
       }
@@ -152,14 +153,22 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     choixSource.value = donnees.sourceActive.id;
     choixSource.addEventListener('change', () => donnees.choisirSource(choixSource.value));
   }
+  // Chaque onglet montre sa propre couche : balises et flèches de vent se gêneraient,
+  // et un clic ouvrirait deux détails à la fois
+  function synchroniserCarte() {
+    const surOnglet = actif && vueActive === 'sites';
+    donnees.setBalises(surOnglet && caseBalises.checked);
+    donnees.setSites(surOnglet && Boolean(caseSites?.checked));
+  }
+
   caseBalises.addEventListener('change', () => {
     ecrire('balises-visibles', caseBalises.checked);
-    donnees.setBalises(caseBalises.checked);
+    synchroniserCarte();
     rendreBalises();
   });
   caseSites?.addEventListener('change', () => {
     ecrire('sites-visibles', caseSites.checked);
-    donnees.setSites(caseSites.checked);
+    synchroniserCarte();
   });
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
   map.on('moveend', rendreBalises);
@@ -173,6 +182,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     contenusVue.forEach((contenu) => {
       contenu.hidden = contenu.dataset.paraContenu !== nom;
     });
+    synchroniserCarte();
     rendreBalises();
 
     if (nom === 'vent') {
@@ -195,8 +205,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     panneau,
     activer() {
       actif = true;
-      donnees.setBalises(caseBalises.checked);
-      donnees.setSites(Boolean(caseSites?.checked));
+      synchroniserCarte();
       donnees.demarrer();
       rendreBalises();
       if (vueActive === 'vent') {
@@ -207,8 +216,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
     desactiver() {
       actif = false;
       donnees.arreter();
-      donnees.setBalises(false);
-      donnees.setSites(false);
+      synchroniserCarte();
       analyseVent.desactiver();
       analyseVent.retournerAuMenu();
       portee.reinitialiser();

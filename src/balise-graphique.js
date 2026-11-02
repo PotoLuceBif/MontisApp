@@ -1,5 +1,5 @@
 // Graphique de l'évolution d'une balise : vent moyen, rafales, minimum et cap sous l'axe du temps.
-import { PALIERS_BALISE, heureCourte, paletteBalise, palierBalise } from './balises-sources.js';
+import { PALIERS_VENT, paletteInterface, palierVent } from './vent-cadran.js';
 import { pointCardinal } from './vent-calcul.js';
 
 const MARGE_GAUCHE = 30;
@@ -56,14 +56,14 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
 
   function degrade(yDe, maximum, couleurs) {
     const gradient = ctx.createLinearGradient(0, yDe(0), 0, yDe(maximum));
-    PALIERS_BALISE.forEach((limite, index) => {
-      const bas = index ? PALIERS_BALISE[index - 1] : 0;
+    PALIERS_VENT.forEach((limite, index) => {
+      const bas = index ? PALIERS_VENT[index - 1] : 0;
       if (bas >= maximum) return;
       gradient.addColorStop(bas / maximum, couleurs[index]);
       gradient.addColorStop(Math.min(1, limite / maximum), couleurs[index]);
     });
-    if (PALIERS_BALISE.at(-1) < maximum) {
-      gradient.addColorStop(PALIERS_BALISE.at(-1) / maximum, couleurs.at(-1));
+    if (PALIERS_VENT.at(-1) < maximum) {
+      gradient.addColorStop(PALIERS_VENT.at(-1) / maximum, couleurs.at(-1));
       gradient.addColorStop(1, couleurs.at(-1));
     }
     return gradient;
@@ -90,7 +90,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     const couleurRafale = style.getPropertyValue('--vent-rafale').trim();
     const couleurMinimum = style.getPropertyValue('--vent-min').trim();
     const police = style.fontFamily;
-    const couleurs = paletteBalise();
+    const couleurs = paletteInterface();
     const maximum = plafond();
     const bas = basTrace();
     const yDe = (valeur) => bas - (valeur / maximum) * (bas - MARGE_HAUT);
@@ -203,7 +203,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
       ctx.save();
       ctx.translate(xDe(a + duree / 2), yFleche);
       ctx.rotate((((cap + 180) % 360) * Math.PI) / 180); // la flèche pointe où va le vent
-      ctx.fillStyle = couleurs[palierBalise(moyenne)];
+      ctx.fillStyle = couleurs[palierVent(moyenne)];
       ctx.beginPath();
       ctx.moveTo(0, -8);
       ctx.lineTo(5.5, 4);
@@ -234,7 +234,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
         if (!Number.isFinite(valeur)) return;
         ctx.beginPath();
         ctx.arc(x, yDe(valeur), index === 2 ? 5 : 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = [couleurRafale, couleurMinimum, couleurs[palierBalise(valeur)]][index];
+        ctx.fillStyle = [couleurRafale, couleurMinimum, couleurs[palierVent(valeur)]][index];
         ctx.strokeStyle = surface;
         ctx.lineWidth = 2;
         ctx.fill();

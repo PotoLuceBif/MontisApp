@@ -1534,11 +1534,11 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-volume { display: grid; gap: 10px; }
 .vent-vues {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px;
-  padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
+  padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2);
 }
 .vent-vues [role='tab'] {
-  min-width: 0; min-height: 34px; padding: 5px 3px; border: 0; border-radius: 7px;
-  background: transparent; color: var(--texte-2); font: 650 11px var(--police); cursor: pointer;
+  min-width: 0; min-height: 36px; padding: 5px 3px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--texte-2); font: 650 12px var(--police); cursor: pointer;
 }
 .vent-vues [role='tab'][aria-selected='true'],
 .vent-vues [role='tab'][aria-selected='true']:hover { background: var(--accent); color: var(--accent-texte); }
@@ -1568,10 +1568,11 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   padding: 10px 12px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
 }
 .vent-resume-direction { display: grid; justify-items: center; gap: 4px; }
-.vent-resume-direction small { color: var(--texte-2); font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vent-resume-direction small { color: var(--texte-2); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .vent-resume-valeur { display: grid; min-width: 0; gap: 4px; }
-.vent-resume-valeur span { color: var(--texte-2); font-size: 10.5px; line-height: 1.2; }
-.vent-resume-valeur strong { color: var(--texte); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.vent-resume-valeur span { color: var(--texte-2); font-size: 11.5px; line-height: 1.2; }
+.vent-resume-valeur strong { color: var(--texte); font-size: 18px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vent-resume-valeur [data-vent-rafales] { color: var(--vent-rafale); }
 .vent-cadran { display: block; flex: none; width: 40px; height: 40px; color: var(--vent-couleur, var(--accent)); overflow: visible; }
 .vent-cadran-grand { width: 68px; height: 68px; }
 .vent-cadran-moyen { width: 52px; height: 52px; }
@@ -2147,8 +2148,10 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
   border: 1px solid var(--bord); border-radius: 9px; background: var(--surface); color: var(--texte); font: inherit; text-align: left; cursor: pointer;
 }
 .para-balise:hover { border-color: var(--accent); }
-.para-balise strong { font-size: 12px; font-weight: 650; }
-.para-balise small { color: var(--texte-2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.para-balise strong { font-size: 13px; font-weight: 650; }
+.para-balise-vitesse strong { color: var(--vent-couleur); font-weight: 700; }
+.para-balise small { color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.para-balise .para-balise-rafale { color: var(--vent-rafale); }
 .para-balise-texte { display: grid; min-width: 0; gap: 1px; }
 .para-balise-texte strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .para-balise-vitesse { display: grid; justify-items: end; gap: 1px; white-space: nowrap; }
@@ -2160,6 +2163,8 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
   background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font-family: var(--police);
 }
 .bf[hidden] { display: none; }
+@media (min-width: 780px) { body:has(#menu-tiroir.ouvert) .bf { left: 364px; } }
+@media (min-width: 641px) and (max-width: 779px) { body:has(#menu-tiroir.ouvert) .bf { display: none; } }
 .bf-entete { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .bf-titres { display: grid; min-width: 0; gap: 6px; }
 .bf-nom { margin: 0; color: var(--texte); font-size: 17px; font-weight: 700; line-height: 1.25; letter-spacing: -.01em; text-transform: none; overflow-wrap: anywhere; }
@@ -2185,13 +2190,10 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .bf-maintenant { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px 16px; }
 .bf-rose { display: grid; justify-items: center; gap: 5px; }
 .bf-rose-dessin { width: 104px; height: 104px; }
-.bf-rose-dessin svg { display: block; width: 100%; height: 100%; }
-.bf-rose-fond { fill: var(--surface-2); stroke: var(--bord); stroke-width: 1.2; }
-.bf-rose-graduations { fill: none; stroke: var(--texte-2); stroke-width: 1; opacity: .55; }
-.bf-rose-points { fill: var(--texte-2); font: 700 9.5px var(--police); }
-.bf-rose-nord { fill: var(--texte); font-weight: 800; }
-.bf-rose-fleche { fill: var(--vent-couleur); stroke: var(--surface); stroke-width: 2; stroke-linejoin: round; }
-.bf-rose-vide { fill: var(--texte-2); }
+.bf-rose-dessin .vent-cadran { width: 100%; height: 100%; }
+.vent-cadran-cardinaux .vent-cadran-rose text { font-size: 7px; font-weight: 700; dominant-baseline: central; }
+.vent-cadran-cardinaux .vent-cadran-rose text:first-child { fill: var(--texte); font-weight: 800; }
+.vent-cadran-cardinaux .vent-cadran-rose path { stroke-width: 1; }
 .bf-provenance { color: var(--texte-2); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .bf-valeurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 10px; }
 .bf-valeur { display: grid; min-width: 0; gap: 2px; }
@@ -2212,7 +2214,7 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .bf-periodes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); }
 .bf-periodes button {
   min-height: 36px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: var(--texte-2);
-  font: 650 12.5px var(--police); cursor: pointer; font-variant-numeric: tabular-nums;
+  font: 650 12px var(--police); cursor: pointer; font-variant-numeric: tabular-nums;
 }
 .bf-periodes button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
 .bf-periodes button:focus-visible, .bf-fermer:focus-visible, .bf-graphique:focus-visible, .para-balise:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

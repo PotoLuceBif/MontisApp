@@ -12,7 +12,7 @@ import {
 } from './vent-calcul.js';
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
 const SOURCE_VENT = 'vent-previsions';
@@ -38,7 +38,8 @@ const PALIERS_LEGENDE = [
   { vitesse: 5, libelle: '0–9 km/h' },
   { vitesse: 15, libelle: '10–19 km/h' },
   { vitesse: 25, libelle: '20–29 km/h' },
-  { vitesse: 40, libelle: '30+ km/h' },
+  { vitesse: 35, libelle: '30–39 km/h' },
+  { vitesse: 50, libelle: '40+ km/h' },
 ];
 
 const cleePosition = ({ latitude, longitude }) => `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
@@ -123,7 +124,7 @@ function creerGrilleVolume(centre, demi) {
 function formaterHeure(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  const heure = `${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
+  const heure = heureCourte(date);
   const jour = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const auj = new Date();
   const ecart = Math.round((jour - new Date(auj.getFullYear(), auj.getMonth(), auj.getDate())) / 86400000);
@@ -199,7 +200,7 @@ export function creerCarteVent(map) {
         <p class="vent-volume-detail" data-volume-detail>1 doigt : tourner, incliner · 2 doigts : zoomer · double toucher : recentrer · toucher une flèche : lire sa valeur.</p>
         <div class="vent-volume-legende" aria-label="Intensité du vent">
           <span><i data-volume-vitesse="0"></i> 0–9 km/h</span><span><i data-volume-vitesse="1"></i> 10–19 km/h</span>
-          <span><i data-volume-vitesse="2"></i> 20–29 km/h</span><span><i data-volume-vitesse="3"></i> 30+ km/h</span>
+          <span><i data-volume-vitesse="2"></i> 20–29 km/h</span><span><i data-volume-vitesse="3"></i> 30–39 km/h</span><span><i data-volume-vitesse="4"></i> 40+ km/h</span>
         </div>
         <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
@@ -224,7 +225,6 @@ export function creerCarteVent(map) {
   const resumeRafales = panneau.querySelector('[data-vent-rafales]');
   const resumeProvenance = panneau.querySelector('[data-vent-provenance]');
   const cadranResume = panneau.querySelector('.vent-resume .vent-cadran');
-  const couleursResume = [resumeMoyen, resumeRafales];
   const ongletsVue = [...panneau.querySelectorAll('.vent-vues [role="tab"]')];
   const contenusVue = [...panneau.querySelectorAll('.vent-vue-contenu')];
   const blocVolume = panneau.querySelector('.vent-volume');
@@ -381,7 +381,7 @@ export function creerCarteVent(map) {
       resumeProvenance.textContent = '—';
       delete cadranResume.dataset.flux;
       cadranResume.querySelector('.vent-cadran-fleche').setAttribute('hidden', '');
-      couleursResume.forEach((element) => element.style.removeProperty('color'));
+      resumeMoyen.style.removeProperty('color');
       return;
     }
     const moyenne = points.reduce((total, point) => total + Math.hypot(point.u, point.v), 0) / points.length;
@@ -399,8 +399,6 @@ export function creerCarteVent(map) {
     flecheResume.setAttribute('transform', `rotate(${flux} 32 32)`);
     cadranResume.style.setProperty('--vent-couleur', couleurVitesse(moyenne));
     resumeMoyen.style.color = couleurVitesse(moyenne);
-    if (rafaleMax === null) resumeRafales.style.removeProperty('color');
-    else resumeRafales.style.color = couleurVitesse(rafaleMax);
   }
 
   // ---------- Volume 3D ----------

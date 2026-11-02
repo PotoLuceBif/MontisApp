@@ -1,9 +1,9 @@
+import { heureCourte } from './vent-cadran.js';
+
 // Sources de relevés de vent. Chaque source renvoie les mêmes stations :
 // { id, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
 // `direction` : d'où vient le vent, en degrés. `date` : horodatage en millisecondes.
 //
-import { paletteInterface } from './vent-cadran.js';
-
 // Une seule source à la fois : la licence d'OpenWindMap interdit de mêler ses mesures
 // à celles de capteurs dont les données ne sont pas ouvertes.
 
@@ -19,22 +19,7 @@ const DUREE_HISTORIQUE = 24 * 60 * 60 * 1000;
 const AGE_ANCIEN = 2 * 60 * 60 * 1000;
 const AGE_HORS_SERVICE = 24 * 60 * 60 * 1000;
 
-// Force du vent des balises, de calme à fort, en km/h
-export const PALIERS_BALISE = [10, 20, 30, 40];
-export const PALETTE_BALISES = ['#2ef2b4', '#ffe94d', '#ff9a2e', '#ff5580', '#b98bff'];
 export const COULEUR_BALISE_INACTIVE = '#9aa3b2';
-const VIOLET_INTERFACE = { clair: '#7c3aed', sombre: '#b98bff', cyberpunk: '#c77dff' };
-
-export const palierBalise = (vitesse) => {
-  const palier = PALIERS_BALISE.findIndex((limite) => vitesse < limite);
-  return palier < 0 ? PALIERS_BALISE.length : palier;
-};
-
-export const paletteBalise = () =>
-  [...paletteInterface(), VIOLET_INTERFACE[document.documentElement.dataset.theme] || VIOLET_INTERFACE.clair];
-
-export const couleurBalise = (vitesse) => paletteBalise()[palierBalise(vitesse)];
-
 // actif : relevé récent. ancien : plus rien depuis 2 h. hs : éteinte, muette ou sans mesure de vent.
 export function etatStation(station) {
   const age = Date.now() - station.date;
@@ -51,32 +36,8 @@ export function texteAge(date) {
   return `il y a ${Math.round(minutes / 1440)} j`;
 }
 
-export const heureCourte = (date) => {
-  const valeur = new Date(date);
-  return `${valeur.getHours()}h${String(valeur.getMinutes()).padStart(2, '0')}`;
-};
-
 export const dateComplete = (date) =>
   `le ${new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à ${heureCourte(date)}`;
-
-// Rose des vents : la flèche montre où va le vent, le nord reste en haut
-export function roseVent(flux) {
-  const graduations = Array.from({ length: 16 }, (_, index) => index * 22.5)
-    .filter((degres) => degres % 90)
-    .map((degres) => `<path d="${degres % 45 ? 'M50 7V10' : 'M50 7V12'}" transform="rotate(${degres} 50 50)"/>`)
-    .join('');
-  const fleche = Number.isFinite(flux)
-    ? `<path class="bf-rose-fleche" d="M50 21 64 49 54 45V79H46V45L36 49Z" transform="rotate(${flux} 50 50)"/>`
-    : '<circle class="bf-rose-vide" cx="50" cy="50" r="4"/>';
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">
-    <circle class="bf-rose-fond" cx="50" cy="50" r="47"/>
-    <g class="bf-rose-graduations">${graduations}</g>
-    <g class="bf-rose-points" text-anchor="middle" dominant-baseline="central">
-      <text class="bf-rose-nord" x="50" y="13">N</text><text x="87" y="50">E</text><text x="50" y="87">S</text><text x="13" y="50">O</text>
-    </g>
-    ${fleche}
-  </svg>`;
-}
 
 const nombre = (valeur) =>
   valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);

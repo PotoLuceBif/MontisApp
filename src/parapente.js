@@ -5,6 +5,7 @@ import { creerCoucheBalises } from './balises-couche.js';
 
 const URL_SITES = '/ffvl/json/sites.json';
 const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
+const DELAI_RELECTURE = 60 * 1000;
 
 const nombre = (valeur) =>
   valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);
@@ -280,7 +281,8 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       const devientVisible = visible && !balisesVisibles;
       balisesVisibles = visible;
       majVisibilite();
-      if (devientVisible && actif) relancer();
+      // Revenir sur l'onglet ne relit pas le réseau si les relevés viennent d'arriver
+      if (devientVisible && actif && Date.now() - derniereActualisation > DELAI_RELECTURE) relancer();
     },
     setSites(visible) {
       sitesVisibles = visible;

@@ -2,12 +2,8 @@
 // dans le sens du vent. Deux couches de symboles, car la pastille reste droite quand la manche
 // tourne ; on écarte nous-mêmes les balises trop proches pour que les deux restent appariées.
 import { creerFicheBalise } from './balise-fiche.js';
-import {
-  COULEUR_BALISE_INACTIVE,
-  PALETTE_BALISES,
-  etatStation,
-  palierBalise,
-} from './balises-sources.js';
+import { COULEUR_BALISE_INACTIVE, etatStation } from './balises-sources.js';
+import { PALETTE_CARTE, palierVent } from './vent-cadran.js';
 
 const SOURCE = 'balises-vent';
 const COUCHE_SELECTION = 'balises-vent-selection';
@@ -15,10 +11,11 @@ const COUCHE_MANCHE = 'balises-vent-manches';
 const COUCHE_PASTILLE = 'balises-vent-pastilles';
 const COUCHES_CLIC = [COUCHE_PASTILLE, COUCHE_MANCHE];
 const TOLERANCE_CLIC = 12;
-const CELLULE_ECART = 46; // px : une seule balise par case de cette taille
+const ECART_MIN = 42; // px entre deux balises à l'écran
 const RANG_ETAT = { actif: 0, ancien: 1, hs: 2 };
 const LONGUEURS_MANCHE = [23, 27, 30, 33, 35]; // px depuis le mât : la manche se gonfle avec le vent
 const TAILLE_MANCHE = 72;
+const DENSITE_IMAGE = 3; // assez de pixels pour rester net sur les écrans de téléphone
 const COULEUR_CERNE = 'rgba(8, 12, 24, .88)';
 const FOND_PASTILLE = '#111728';
 const FOND_PASTILLE_INACTIVE = '#2b303d';
@@ -27,10 +24,10 @@ const police = () => getComputedStyle(document.body).fontFamily;
 
 function dessinerManche(couleur, longueur) {
   const canvas = document.createElement('canvas');
-  canvas.width = TAILLE_MANCHE * 2;
-  canvas.height = TAILLE_MANCHE * 2;
+  canvas.width = TAILLE_MANCHE * DENSITE_IMAGE;
+  canvas.height = TAILLE_MANCHE * DENSITE_IMAGE;
   const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
+  ctx.scale(DENSITE_IMAGE, DENSITE_IMAGE);
   const centre = TAILLE_MANCHE / 2;
   const depart = centre - 6;
   const pointe = centre - longueur;
@@ -62,7 +59,7 @@ function dessinerManche(couleur, longueur) {
 // id : balise-pastille|couleur (palier ou état)|moyenne
 function dessinerPastille(palier, moyenne) {
   const inactive = palier === 'ancien' || palier === 'hs';
-  const bordure = inactive ? COULEUR_BALISE_INACTIVE : PALETTE_BALISES[Number(palier)];
+  const bordure = inactive ? COULEUR_BALISE_INACTIVE : PALETTE_CARTE[Number(palier)];
   const mesure = document.createElement('canvas').getContext('2d');
   const principal = `700 12.5px ${police()}`;
   mesure.font = principal;
@@ -70,10 +67,10 @@ function dessinerPastille(palier, moyenne) {
   const largeur = Math.max(hauteur, Math.ceil(mesure.measureText(moyenne).width + 11));
   const marge = 2;
   const canvas = document.createElement('canvas');
-  canvas.width = (largeur + marge * 2) * 2;
-  canvas.height = (hauteur + marge * 2) * 2;
+  canvas.width = (largeur + marge * 2) * DENSITE_IMAGE;
+  canvas.height = (hauteur + marge * 2) * DENSITE_IMAGE;
   const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
+  ctx.scale(DENSITE_IMAGE, DENSITE_IMAGE);
   ctx.beginPath();
   ctx.roundRect(marge, marge, largeur, hauteur, hauteur / 2);
   ctx.fillStyle = inactive ? FOND_PASTILLE_INACTIVE : FOND_PASTILLE;
@@ -99,32 +96,45 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
 
   function imageManche(station, etat) {
     if (etat === 'hs') return '';
-    return etat === 'ancien' ? 'balise-manche|ancien' : `balise-manche|${palierBalise(station.moyenne)}`;
+    return etat === 'ancien' ? 'balise-manche|ancien' : `balise-manche|${palierVent(station.moyenne)}`;
   }
 
   function imagePastille(station, etat) {
     if (etat === 'hs') return 'balise-pastille|hs|×';
-    const palier = etat === 'ancien' ? 'ancien' : palierBalise(station.moyenne);
+    const palier = etat === 'ancien' ? 'ancien' : palierVent(station.moyenne);
     return `balise-pastille|${palier}|${Math.round(station.moyenne)}`;
   }
 
-  // Une balise par case de la grille du monde : déplacer la carte ne change pas celles retenues
+  // Les relevés les plus utiles d'abord, puis ceux qui ne chevauchent rien. Le calcul se fait
+  // en coordonnées du monde : déplacer la carte ne change pas les balises retenues.
   function stationsRetenues() {
     const echelle = 512 * 2 ** (Math.round(map.getZoom() * 2) / 2);
-    const cases = new Map();
-    stations.forEach((station) => {
+    const candidates = stations.map((station) => {
       const etat = etatStation(station);
       const sinus = Math.sin((station.lat * Math.PI) / 180);
-      const x = ((station.lon + 180) / 360) * echelle;
-      const y = (0.5 - Math.log((1 + sinus) / (1 - sinus)) / (4 * Math.PI)) * echelle;
-      const cle = `${Math.floor(x / CELLULE_ECART)}/${Math.floor(y / CELLULE_ECART)}`;
-      const rang = station.id === fiche.idOuverte ? -1 : RANG_ETAT[etat];
-      const actuelle = cases.get(cle);
-      if (!actuelle || rang < actuelle.rang || (rang === actuelle.rang && station.date > actuelle.station.date)) {
-        cases.set(cle, { station, etat, rang });
+      return {
+        station,
+        etat,
+        rang: station.id === fiche.idOuverte ? -1 : RANG_ETAT[etat],
+        x: ((station.lon + 180) / 360) * echelle,
+        y: (0.5 - Math.log((1 + sinus) / (1 - sinus)) / (4 * Math.PI)) * echelle,
+      };
+    }).sort((a, b) => a.rang - b.rang || (b.station.date || 0) - (a.station.date || 0) || a.station.id.localeCompare(b.station.id));
+    const retenues = [];
+    const cases = new Map();
+    const cle = (x, y) => `${Math.floor(x / ECART_MIN)}/${Math.floor(y / ECART_MIN)}`;
+    candidates.forEach((candidate) => {
+      for (let dx = -ECART_MIN; dx <= ECART_MIN; dx += ECART_MIN) {
+        for (let dy = -ECART_MIN; dy <= ECART_MIN; dy += ECART_MIN) {
+          const voisines = cases.get(cle(candidate.x + dx, candidate.y + dy)) || [];
+          if (voisines.some(({ x, y }) => Math.hypot(x - candidate.x, y - candidate.y) < ECART_MIN)) return;
+        }
       }
+      retenues.push(candidate);
+      const ici = cle(candidate.x, candidate.y);
+      cases.set(ici, [...(cases.get(ici) || []), candidate]);
     });
-    return [...cases.values()];
+    return retenues;
   }
 
   function assurerImage(id) {
@@ -133,12 +143,12 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
     if (genre === 'balise-manche') {
       const inactive = valeur === 'ancien';
       const image = dessinerManche(
-        inactive ? COULEUR_BALISE_INACTIVE : PALETTE_BALISES[Number(valeur)],
+        inactive ? COULEUR_BALISE_INACTIVE : PALETTE_CARTE[Number(valeur)],
         inactive ? LONGUEURS_MANCHE[1] : LONGUEURS_MANCHE[Number(valeur)]
       );
-      map.addImage(id, image, { pixelRatio: 2 });
+      map.addImage(id, image, { pixelRatio: DENSITE_IMAGE });
     } else {
-      map.addImage(id, dessinerPastille(valeur, moyenne), { pixelRatio: 2 });
+      map.addImage(id, dessinerPastille(valeur, moyenne), { pixelRatio: DENSITE_IMAGE });
     }
   }
 
@@ -182,7 +192,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
         type: 'circle',
         source: SOURCE,
         filter: ['==', ['get', 'id'], ''],
-        paint: { 'circle-radius': 22, 'circle-color': '#ffffff', 'circle-opacity': 0.22, 'circle-stroke-color': '#111728', 'circle-stroke-width': 2 },
+        paint: { 'circle-radius': 22, 'circle-color': '#ffffff', 'circle-opacity': 0.2, 'circle-stroke-color': '#111728', 'circle-stroke-width': 2.5 },
       });
     }
     if (!map.getLayer(COUCHE_MANCHE)) {
@@ -227,7 +237,10 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
   }
 
   function marquerSelection(id) {
-    if (map.getLayer(COUCHE_SELECTION)) map.setFilter(COUCHE_SELECTION, ['==', ['get', 'id'], id ?? '']);
+    if (!map.getLayer(COUCHE_SELECTION)) return;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    map.setPaintProperty(COUCHE_SELECTION, 'circle-stroke-color', accent);
+    map.setFilter(COUCHE_SELECTION, ['==', ['get', 'id'], id ?? '']);
   }
 
   function ouvrir(id) {

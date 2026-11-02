@@ -2,8 +2,8 @@
 import { lire, ecrire } from './reglages.js';
 import { altitude as altitudeRelief, preparerTuiles } from './portee.js';
 import { creerGraphiqueBalise } from './balise-graphique.js';
-import { couleurBalise, dateComplete, etatStation, heureCourte, roseVent, texteAge } from './balises-sources.js';
-import { cadranVent, texteProvenance } from './vent-cadran.js';
+import { dateComplete, etatStation, texteAge } from './balises-sources.js';
+import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './vent-cadran.js';
 
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
@@ -107,7 +107,7 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       if (!point) return;
       $('[data-bf-c-heure]').textContent = heureCourte(point.date);
       $('[data-bf-c-moyen]').textContent = kmh(point.moyenne);
-      $('[data-bf-c-moyen]').style.color = couleurBalise(point.moyenne);
+      $('[data-bf-c-moyen]').style.color = couleurInterface(point.moyenne);
       $('[data-bf-c-rafale]').textContent = kmh(point.rafale);
       $('[data-bf-c-minimum]').textContent = kmh(point.minimum);
       const avecCap = Number.isFinite(point.direction);
@@ -128,11 +128,11 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
   function rendreMaintenant() {
     const etat = etatStation(station);
     fiche.dataset.etat = etat;
-    fiche.style.setProperty('--vent-couleur', etat === 'actif' ? couleurBalise(station.moyenne) : 'var(--texte-2)');
+    fiche.style.setProperty('--vent-couleur', etat === 'actif' ? couleurInterface(station.moyenne) : 'var(--texte-2)');
     $('.bf-nom').textContent = station.nom;
     $('.bf-etat').textContent = LIBELLES_ETAT[etat];
     const avecCap = Number.isFinite(station.direction);
-    $('.bf-rose-dessin').innerHTML = roseVent(avecCap ? (station.direction + 180) % 360 : null);
+    $('.bf-rose-dessin').innerHTML = cadranVent(avecCap ? (station.direction + 180) % 360 : null, 0, '', true);
     $('.bf-provenance').textContent = avecCap ? texteProvenance(station.direction) : 'Direction inconnue';
     $('[data-bf-moyen]').textContent = kmh(station.moyenne);
     $('[data-bf-rafale]').textContent = kmh(station.rafale);
