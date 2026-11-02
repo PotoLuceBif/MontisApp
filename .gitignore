@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Variables d'environnement : seul le modèle est commité
+.env
+.env.*
+!.env.example
+
 # Cache de travail du script d'extraction des refuges
 scripts/cache-refuges.json
 scripts/cache-bike-parks.json
@@ -21,6 +26,7 @@ scripts/cache-bike-parks.json
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
