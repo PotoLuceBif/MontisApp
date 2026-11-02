@@ -5,6 +5,7 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { creerVisiteStation } from './visite-station.js';
 
 const URL_LISTE = '/data/bike-parks.json';
+const RESULTATS_MAX = 12;
 const NIVEAUX = [
   ['verte', 'Verte', '#1f9d55'],
   ['bleue', 'Bleue', '#1f6fd6'],
@@ -13,6 +14,7 @@ const NIVEAUX = [
   ['inconnu', 'Non cotée', '#6f7884'],
 ];
 const ICONE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3.500"/><circle cx="18" cy="17" r="3.500"/><path d="M6 17 10 9h6l2 8M3 6l6 3M21 4l-5 5"/></svg>';
+const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.800" cy="10.800" r="6.300"/><path d="m16 16 4.500 4.500"/></svg>';
 
 const km = (valeur) => `${valeur.toLocaleString('fr-FR', { maximumFractionDigits: valeur < 10 ? 1 : 0 })} km`;
 const sansAccent = (texte) => texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -34,7 +36,7 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
     onFermer: () => quitter(),
     onRetour: () => {
       quitter();
-      void ouvrirListe();
+      ouvrirMenu();
     },
   });
   panneau.corps.innerHTML = `
@@ -44,6 +46,7 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
       <div class="parcours-stat"><span>Remontées</span><strong data-bp="remontees"></strong></div>
     </div>
     <div class="parcours-repartition"><div class="parcours-barre" data-bp="barre"></div><div class="parcours-legende" data-bp="legende"></div></div>
+    <div data-bp="fond"></div>
     <p class="parcours-etat">Touchez une piste pour lire son nom et sa longueur.</p>
     <details class="rando-outils">
       <summary>À savoir</summary>
@@ -54,24 +57,21 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
   `;
   const champ = (id) => panneau.corps.querySelector(`[data-bp="${id}"]`);
 
-  const panneauListe = creerPanneauCarte({
-    cle: 'bikepark-liste-reduite',
-    libelle: 'liste des bike parks',
-    classe: 'bf-outil bf-liste',
-    onFermer: () => panneauListe.masquer(),
-    onRetour: () => ouvrirMenu(),
-  });
-  panneauListe.titre.textContent = 'Bike parks';
-  panneauListe.definirResume({ rose: ICONE, nom: 'Bike parks', detail: 'Touchez pour choisir', valeur: '', unite: '' });
-  const conteneur = panneauListe.corps;
-  conteneur.innerHTML = `
+  const section = document.createElement('section');
+  section.className = 'pc-section';
+  section.setAttribute('aria-label', 'Bike parks');
+  section.innerHTML = `
+    <h3>Bike parks</h3>
     <input type="text" class="rando-champ parcours-park-recherche" placeholder="Chercher un bike park…" autocomplete="off" spellcheck="false" inputmode="search" aria-label="Chercher un bike park">
+    <div class="rando-actions-principales">
+      <button type="button" class="rando-action-principale parcours-park-zone">${ICONE_ZONE}<span>Bike parks dans la zone visible</span></button>
+    </div>
     <p class="note parcours-park-message" role="status" aria-live="polite" hidden></p>
     <div class="pc-liste parcours-park-liste"></div>
   `;
-  const recherche = conteneur.querySelector('.parcours-park-recherche');
-  const message = conteneur.querySelector('.parcours-park-message');
-  const liste = conteneur.querySelector('.parcours-park-liste');
+  const recherche = section.querySelector('.parcours-park-recherche');
+  const message = section.querySelector('.parcours-park-message');
+  const liste = section.querySelector('.parcours-park-liste');
 
   function afficherMessage(texte) {
     message.textContent = texte;
@@ -96,7 +96,6 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
       if (demande !== jeton) return;
       afficherMessage('');
       fermerMenu();
-      panneauListe.masquer();
       panneau.titre.textContent = park.nom;
       panneau.meta.textContent = park.lieu;
       champ('pistes').textContent = String(park.pistes);
@@ -118,65 +117,76 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
     }
   }
 
-  function rendre() {
-    if (!parks) return;
-    const texte = sansAccent(recherche.value.trim());
-    const { lng, lat } = map.getCenter();
-    const kLng = Math.cos((lat * Math.PI) / 180);
-    const ecart = (park) => Math.hypot((park.lng - lng) * kLng, park.lat - lat);
-    // Le plus proche de la carte d'abord : c'est sans doute celui qu'on regarde
-    const trouves = parks
-      .filter((park) => !texte || sansAccent(`${park.nom} ${park.lieu}`).includes(texte))
-      .sort((a, b) => ecart(a) - ecart(b));
-    afficherMessage(trouves.length ? '' : 'Aucun bike park à ce nom.');
-    liste.replaceChildren(...trouves.map((park) => {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'pc-ligne';
-      const nom = document.createElement('span');
-      nom.className = 'pc-ligne-nom';
-      nom.textContent = park.nom;
-      const sous = document.createElement('span');
-      sous.className = 'pc-ligne-valeur';
-      sous.textContent = `${park.pistes} pistes · ${km(park.km)}`;
-      item.append(nom, sous);
-      item.addEventListener('click', () => void visiter(park));
-      return item;
-    }));
+  function ligne(park) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'pc-ligne';
+    const nom = document.createElement('span');
+    nom.className = 'pc-ligne-nom';
+    nom.textContent = park.nom;
+    const lieu = document.createElement('span');
+    lieu.className = 'pc-ligne-sous';
+    lieu.textContent = park.lieu;
+    const pistes = document.createElement('span');
+    pistes.className = 'pc-ligne-valeur';
+    pistes.textContent = `${park.pistes} piste${park.pistes > 1 ? 's' : ''}`;
+    item.append(nom, pistes, lieu);
+    item.addEventListener('click', () => void visiter(park));
+    return item;
   }
 
-  async function ouvrirListe() {
-    fermerMenu();
-    panneauListe.afficher();
-    if (parks) {
-      rendre();
-      return;
-    }
+  async function assurerListe() {
+    if (parks) return true;
     afficherMessage('Chargement de la liste…');
     try {
       const reponse = await fetch(new URL(URL_LISTE, window.location.origin).href);
       if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
       parks = await reponse.json();
-      rendre();
+      afficherMessage('');
+      return true;
     } catch (erreur) {
       console.warn('Liste des bike parks :', erreur);
       afficherMessage('Liste indisponible pour le moment.');
+      return false;
     }
   }
 
-  recherche.addEventListener('input', rendre);
+  // Le plus proche de la carte d'abord : c'est sans doute celui qu'on regarde
+  function afficherListe(trouves, messageVide) {
+    const { lng, lat } = map.getCenter();
+    const kLng = Math.cos((lat * Math.PI) / 180);
+    const ecart = (park) => Math.hypot((park.lng - lng) * kLng, park.lat - lat);
+    afficherMessage(trouves.length ? '' : messageVide);
+    liste.replaceChildren(...[...trouves].sort((a, b) => ecart(a) - ecart(b)).slice(0, RESULTATS_MAX).map(ligne));
+  }
 
-  const section = document.createElement('section');
-  section.className = 'pc-section';
-  section.setAttribute('aria-label', 'Bike parks');
-  section.innerHTML = '<h3>Bike parks</h3><button type="button" class="para-bouton">Voir les bike parks</button>';
-  section.querySelector('button').addEventListener('click', () => void ouvrirListe());
+  async function chercherNom() {
+    const texte = sansAccent(recherche.value.trim());
+    if (!texte) {
+      afficherMessage('');
+      liste.replaceChildren();
+      return;
+    }
+    if (!(await assurerListe())) return;
+    afficherListe(
+      parks.filter((park) => sansAccent(`${park.nom} ${park.lieu}`).includes(texte)),
+      'Aucun bike park à ce nom.',
+    );
+  }
 
-  return {
-    section,
-    quitter() {
-      quitter();
-      panneauListe.masquer();
-    },
-  };
+  async function chercherZone() {
+    if (!(await assurerListe())) return;
+    recherche.value = '';
+    const limites = map.getBounds();
+    afficherListe(
+      parks.filter((park) => limites.contains([park.lng, park.lat])),
+      'Aucun bike park dans la zone visible. Dézoomez ou cherchez par nom.',
+    );
+  }
+
+  recherche.addEventListener('input', () => void chercherNom());
+  section.querySelector('.parcours-park-zone').addEventListener('click', () => void chercherZone());
+  champ('fond').append(visite.creerChoixFond());
+
+  return { section, quitter };
 }
