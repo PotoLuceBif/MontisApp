@@ -74,6 +74,8 @@ const ZONES = [
   { nom: 'Monde', aide: '' },
 ];
 
+let fondImpose = false; // sans réseau, le fond Montis prime sur le choix enregistré
+
 const coucheDe = (f) => (f.integre ? 'montis-background' : `fond-${f.id}`);
 
 // Affiche le fond choisi, cache les autres, adapte les courbes de niveau
@@ -111,7 +113,7 @@ function appliquerFond(map, id) {
 
 // Rétablit le dernier fond utilisé (appelée depuis main.js au démarrage)
 export function retablirFond(map) {
-  let id = lire('fond', 'montis');
+  let id = fondImpose ? 'montis' : lire('fond', 'montis');
   if (!FONDS.some((f) => f.id === id)) id = 'osm';
   try {
     appliquerFond(map, id);
@@ -119,6 +121,12 @@ export function retablirFond(map) {
   } catch (e) {
     console.error('Fond de carte non rétabli :', e);
   }
+}
+
+// Sans réseau, seul le fond Montis peut s'afficher entièrement. Le choix enregistré ne change pas.
+export function basculerFondHorsLigne(map, horsLigne) {
+  fondImpose = horsLigne;
+  retablirFond(map);
 }
 
 export function creerFondDeCarte(map) {

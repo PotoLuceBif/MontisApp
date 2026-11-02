@@ -13,6 +13,7 @@ import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
 import { STYLE_MONTIS } from './style-montis.js';
 import { initEchelleCarte } from './echelle-carte.js';
+import { initHorsLigne } from './hors-ligne.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -245,6 +246,7 @@ map.on('load', () => {
   retablirFond(map);
   initRecherche(map);
   initFiches(map);
+  initHorsLigne(map);
 
   map.once('idle', () => retablirFond(map)); // second passage une fois la carte au repos
 

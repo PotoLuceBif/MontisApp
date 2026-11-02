@@ -2,6 +2,7 @@ import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { FFVL_ACTIVE, SOURCES_BALISES, chargerFFVL } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
+import { dateLisible, estHorsLigne } from './hors-ligne.js';
 
 const URL_SITES = '/ffvl/json/sites.json';
 const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
@@ -59,6 +60,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let nombreSites = 0;
   let statistiques = { recentes: 0, anciennes: 0, horsService: 0 };
   let donneesDejaChargees = false;
+  let dateEnregistree = null;
   let source = SOURCES_BALISES.find(({ id }) => id === lire('balises-source', '')) ?? SOURCES_BALISES[0];
   const couchesSites = ['decollages', 'atterrissages', 'sites-noms'];
   const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise });
@@ -155,6 +157,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     const stations = await sourceDemandee.charger(signal);
     if (signal.aborted || sourceDemandee !== source) return;
     statistiques = couche.definir(stations, sourceDemandee);
+    dateEnregistree = stations.dateEnregistree ?? null;
     donneesDejaChargees = true;
     majVisibilite();
     onDonnees();
@@ -162,6 +165,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
 
   function messageReussite(heure) {
     if (!balisesVisibles) return `Mis à jour à ${heure} · ${nombreSites} sites.`;
+    if (dateEnregistree) return `Hors ligne · relevés du ${dateLisible(dateEnregistree)}, à ne pas prendre pour du vent actuel.`;
     const { recentes, anciennes, horsService } = statistiques;
     return `Mis à jour à ${heure} · ${recentes} ${recentes > 1 ? 'balises récentes' : 'balise récente'}`
       + (anciennes ? `, ${anciennes} ${anciennes > 1 ? 'anciennes' : 'ancienne'}` : '')
@@ -212,7 +216,9 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
           type: 'erreur',
           message: donneesDejaChargees
             ? `Actualisation ${source.libelle} impossible : les derniers relevés restent affichés et peuvent être périmés.`
-            : `Relevés ${source.libelle} indisponibles pour le moment. Réessayez plus tard.`,
+            : estHorsLigne()
+              ? 'Hors ligne : aucun relevé enregistré. Ouvrez les balises une fois avec du réseau.'
+              : `Relevés ${source.libelle} indisponibles pour le moment. Réessayez plus tard.`,
         });
       }
     })();

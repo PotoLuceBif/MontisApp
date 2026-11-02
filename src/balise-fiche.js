@@ -1,6 +1,7 @@
 // Fiche d'une balise : état, vent actuel, rose des vents et évolution sur 3 à 24 h.
 import { lire, ecrire } from './reglages.js';
 import { creerPanneauCarte } from './panneau-carte.js';
+import { estHorsLigne } from './hors-ligne.js';
 import { altitude as altitudeRelief, preparerTuiles } from './portee.js';
 import { creerGraphiqueBalise } from './balise-graphique.js';
 import { dateComplete, etatStation, texteAge } from './balises-sources.js';
@@ -112,7 +113,8 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
     fiche.dataset.etat = etat;
     fiche.style.setProperty('--vent-couleur', etat === 'actif' ? couleurInterface(station.moyenne) : 'var(--texte-2)');
     $('.bf-nom').textContent = station.nom;
-    $('.bf-etat').textContent = LIBELLES_ETAT[etat];
+    // Sans réseau, un relevé récent n'est plus du direct, quel que soit son âge
+    $('.bf-etat').textContent = etat === 'actif' && estHorsLigne() ? 'Enregistré' : LIBELLES_ETAT[etat];
     const avecCap = Number.isFinite(station.direction);
     $('.bf-rose-dessin').innerHTML = cadranVent(avecCap ? (station.direction + 180) % 360 : null, 0, '', true);
     $('.bf-provenance').textContent = avecCap ? texteProvenance(station.direction) : 'Direction inconnue';
@@ -203,7 +205,9 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       [canvas, $('.bf-periodes'), $('.bf-lecture')].forEach((element) => {
         element.hidden = true;
       });
-      note.textContent = 'Évolution momentanément indisponible.';
+      note.textContent = estHorsLigne()
+        ? 'Hors ligne : l’évolution de cette balise n’a pas été enregistrée.'
+        : 'Évolution momentanément indisponible.';
       note.hidden = false;
     }
   }

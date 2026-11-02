@@ -1,6 +1,7 @@
 import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { creerPanneauCarte } from './panneau-carte.js';
+import { estHorsLigne } from './hors-ligne.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -74,7 +75,9 @@ function chargerTuile(z, x, y) {
   return cache.get(cle);
 }
 
-export async function preparerTuiles(lon, lat, rayonM, z) {
+// `partiel` : accepte un relief incomplet et indique s'il l'est. Sans altitude, un rayon s'arrête :
+// la zone calculée s'arrête alors au bord du relief disponible, elle ne s'étend jamais au-delà.
+export async function preparerTuiles(lon, lat, rayonM, z, { partiel = false } = {}) {
   const dLat = rayonM / 111320;
   const dLon = rayonM / (111320 * Math.cos((lat * Math.PI) / 180));
   const a = tuileXY(lon - dLon, lat + dLat, z);
@@ -89,12 +92,15 @@ export async function preparerTuiles(lon, lat, rayonM, z) {
   }
   await Promise.all(promesses);
   derTx = -1; // on repart d'un cache de lecture propre
-  if (cles.some((cle) => !pret.has(cle))) {
+  const manquantes = cles.filter((cle) => !pret.has(cle)).length;
+  if (partiel && manquantes < cles.length) return manquantes === 0;
+  if (manquantes) {
     // Une tuile manquante fausserait le calcul : mieux vaut ne rien afficher
     const erreur = new Error('Relief indisponible pour cette zone. Vérifiez votre connexion, puis réessayez.');
     erreur.code = 'relief';
     throw erreur;
   }
+  return true;
 }
 
 export function altitude(lon, lat, z) {
@@ -118,7 +124,7 @@ export function altitude(lon, lat, z) {
 async function calculerPortee(lon, lat, finesse, h0) {
   const rayonM = Math.max(500, Math.min(MAX_KM * 1000, h0 * finesse));
   const z = rayonM <= 12000 ? 12 : 11;
-  await preparerTuiles(lon, lat, rayonM, z);
+  const reliefComplet = await preparerTuiles(lon, lat, rayonM, z, { partiel: estHorsLigne() });
 
   const kLat = 111320;
   const kLon = 111320 * Math.cos((lat * Math.PI) / 180);
@@ -224,6 +230,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
       [east, south],
       [west, south],
     ],
+    reliefComplet,
     grille: { N, west, north, dLon, dLat, agl, fmin, sol: solGrille, dist },
     dMax,
     capMax,
@@ -441,7 +448,8 @@ export function initPortee(map, { onFermer = () => {} } = {}) {
       afficherImage(res.url, res.coordinates);
       const distance = `${(res.dMax / 1000).toFixed(1)} km`;
       afficherResultat(
-        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${res.aireKm2.toFixed(0)} km²`,
+        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${res.aireKm2.toFixed(0)} km²`
+          + (res.reliefComplet ? '' : ' · limitée au relief téléchargé'),
         `Portée max ${distance}, cap ${Math.round(res.capMax)}°`
       );
     } catch (err) {

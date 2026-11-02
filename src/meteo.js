@@ -1,5 +1,6 @@
 import { lire, ecrire } from './reglages.js';
 import { Marker } from 'maplibre-gl';
+import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -254,6 +255,7 @@ export function creerRadarPluie(map) {
 
   return {
     id: 'radar',
+    reseauRequis: true,
     label: 'Radar de pluie',
     icone: 'radar',
     panneau,
@@ -933,6 +935,8 @@ export function creerConditionsLocales(map) {
       const donnees = await reponse.json();
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       afficherPrevisions(donnees);
+      const dateEnregistree = dateHorsLigne(reponse);
+      if (dateEnregistree) statut.textContent = `${texteDonneesDu(dateEnregistree)}, consultées sans réseau.`;
     } catch (erreur) {
       if (controleur !== requete || !actif || (requete.signal.aborted && !delaiDepasse)) return;
       statut.classList.add('erreur');
@@ -941,7 +945,9 @@ export function creerConditionsLocales(map) {
         : erreur instanceof Error
           ? erreur.message
           : 'erreur inconnue';
-      statut.textContent = `Prévisions indisponibles : ${message}`;
+      statut.textContent = estHorsLigne()
+        ? 'Hors ligne : aucune prévision enregistrée pour ce lieu.'
+        : `Prévisions indisponibles : ${message}`;
       boutonReessayer.hidden = false;
       console.error('Chargement des prévisions météo impossible :', erreur);
     } finally {

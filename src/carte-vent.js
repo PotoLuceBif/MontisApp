@@ -13,6 +13,7 @@ import {
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
 import { creerPanneauCarte } from './panneau-carte.js';
+import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
@@ -257,6 +258,7 @@ export function creerCarteVent(map) {
   let minuteurValidite = null;
   let evenementsCoucheAjoutes = false;
   let fermeture = null;
+  let dateEnregistree = null; // date des données si elles viennent de la dernière consultation
   let donneesVentCourantes = null;
   let resumeVentCourant = [];
   let zoneVolumeCapturee = null;
@@ -322,7 +324,9 @@ export function creerCarteVent(map) {
 
   function heureEcheance(reponses) {
     const heures = reponses[0].hourly.time;
-    const base = heures.findIndex((heure) => heure >= (reponses[0].current?.time || heures[0]));
+    const maintenantLocal = new Date(Date.now() + (reponses[0].utc_offset_seconds ?? 0) * 1000).toISOString().slice(0, 16);
+    const depart = [reponses[0].current?.time || heures[0], maintenantLocal].sort().at(-1);
+    const base = heures.findIndex((heure) => heure >= depart);
     if (base < 0) return null;
     curseurTemps.max = String(Math.max(0, Math.min(ECHEANCE_MAX, heures.length - 1 - base)));
     return heures[base + echeance()] ?? null;
@@ -585,6 +589,7 @@ export function creerCarteVent(map) {
     if (reponse.status === 429) throw new Error(MESSAGE_LIMITE);
     if (!reponse.ok) throw new Error(`Le service météo répond avec le statut ${reponse.status}.`);
     const resultat = await reponse.json();
+    dateEnregistree = dateHorsLigne(reponse);
     const donnees = Array.isArray(resultat) ? resultat : [resultat];
     if (donnees.length !== manquantes.length) {
       throw new Error('Le service météo a renvoyé un nombre de points inattendu.');
@@ -595,7 +600,7 @@ export function creerCarteVent(map) {
       }
       cache.set(cleePosition(manquantes[index]), {
         donnees: entree,
-        recue: Date.now(),
+        recue: dateEnregistree ?? Date.now(),
       });
     });
     while (cache.size > 400) cache.delete(cache.keys().next().value);
@@ -619,7 +624,7 @@ export function creerCarteVent(map) {
       const reponses = grille.positions.map((position) => cache.get(cleePosition(position)).donnees);
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
-      zoneVolumeCapturee = { centre, demi, grille, reponses, recue: Date.now() };
+      zoneVolumeCapturee = { centre, demi, grille, reponses, recue: dateEnregistree ?? Date.now() };
       zoneVolume.textContent = `±${(demi / 1000).toLocaleString('fr-FR')} km`;
       volume.definirRelief(relief);
       afficherEcheance();
@@ -632,7 +637,9 @@ export function creerCarteVent(map) {
       } else if (controleurProfil === requete && actif && vueActive === 'volume') {
         erreurVolume = true;
         statutVolume.classList.add('erreur');
-        statutVolume.textContent = `Volume 3D indisponible : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`;
+        statutVolume.textContent = estHorsLigne()
+          ? 'Hors ligne : aucun vent enregistré pour cette zone.'
+          : `Volume 3D indisponible : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`;
         console.error('Chargement du volume de vent impossible :', erreur);
       }
     } finally {
@@ -797,7 +804,7 @@ export function creerCarteVent(map) {
     const maille = grille.pasLat * METRES_PAR_DEGRE / 1000;
     statut.classList.remove('erreur');
     statut.textContent = points.length
-      ? `${points.length} points de calcul, tous les ${maille.toLocaleString('fr-FR', { maximumFractionDigits: maille < 10 ? 1 : 0 })} km`
+      ? `${dateEnregistree ? `${texteDonneesDu(dateEnregistree)} · ` : ''}${points.length} points de calcul, tous les ${maille.toLocaleString('fr-FR', { maximumFractionDigits: maille < 10 ? 1 : 0 })} km`
       : 'Aucune donnée de vent disponible à cette échéance dans cette zone.';
   }
 
@@ -826,7 +833,7 @@ export function creerCarteVent(map) {
       const reponses = positions.map((position) => cache.get(cleePosition(position)).donnees);
       heureCourante = heureEcheance(reponses);
       if (!heureCourante) throw new Error('Aucune prévision horaire à venir n’est disponible.');
-      zoneCarteCapturee = { zoom: map.getZoom(), grille, recue: Date.now() };
+      zoneCarteCapturee = { zoom: map.getZoom(), grille, recue: dateEnregistree ?? Date.now() };
       afficherDonnees(reponses, positions, heureCourante, grille);
       afficherEcheance();
     } catch (erreur) {
@@ -837,7 +844,9 @@ export function creerCarteVent(map) {
       } else if (controleur === requete && actif) {
         erreurCarte = true;
         statut.classList.add('erreur');
-        statut.textContent = erreur.message === MESSAGE_LIMITE
+        statut.textContent = estHorsLigne()
+          ? 'Hors ligne : aucun vent enregistré pour cette zone. Revenez sur une zone déjà consultée.'
+          : erreur.message === MESSAGE_LIMITE
           ? MESSAGE_LIMITE
           : `Carte de vent indisponible : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`;
         console.error('Chargement de la carte de vent impossible :', erreur);

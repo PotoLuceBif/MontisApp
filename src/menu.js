@@ -9,6 +9,7 @@ import { creerActiviteSki } from './activite-ski.js';
 import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
 import { creerCarteVent } from './carte-vent.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
+import { creerCartesHorsLigne } from './zones-hors-ligne.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -22,6 +23,7 @@ const ICONES_MENU = {
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
   reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -201,6 +203,7 @@ export function initMenu(map) {
         creerFondDeCarte(map),
         creerOptionRelief(map), // inclut les courbes de niveau
         creerElementsCarte(map),
+        creerCartesHorsLigne(map, { fermerMenu }),
       ],
       emplacement: 'flottant',
     },
@@ -344,6 +347,7 @@ export function initMenu(map) {
       }
       ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span>${module.label}</span>`;
       ligne.setAttribute('aria-pressed', 'false');
+      if (module.reseauRequis) ligne.dataset.reseauRequis = '';
 
       const contenu = document.createElement('div');
       contenu.className = 'menu-contenu';

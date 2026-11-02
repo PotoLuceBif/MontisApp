@@ -1,4 +1,5 @@
 import { heureCourte } from './vent-cadran.js';
+import { dateHorsLigne } from './hors-ligne.js';
 
 // Sources de relevés de vent. Chaque source renvoie les mêmes stations :
 // { id, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
@@ -52,7 +53,7 @@ async function lireJson(url, signal) {
   const reponse = await fetch(url, { signal, cache: 'no-store' });
   if (reponse.status === 429) throw new Error('Trop de requêtes : réessayez dans quelques minutes.');
   if (!reponse.ok) throw new Error(`Le service répond avec le statut ${reponse.status}.`);
-  return reponse.json();
+  return { ...(await reponse.json()), dateEnregistree: dateHorsLigne(reponse) };
 }
 
 function erreurFFVL(message, code) {
@@ -91,9 +92,9 @@ const OPENWINDMAP = {
   lien: 'https://www.openwindmap.org',
   attribution: 'Vent © <a href="https://www.openwindmap.org" target="_blank" rel="noopener noreferrer">contributeurs OpenWindMap</a>',
   async charger(signal) {
-    const { data } = await lireJson(URL_OPENWINDMAP, signal);
+    const { data, dateEnregistree } = await lireJson(URL_OPENWINDMAP, signal);
     if (!Array.isArray(data)) throw new Error('Format de données OpenWindMap inattendu.');
-    return data
+    const stations = data
       .filter((brut) => brut?.location?.success !== false && brut?.location?.latitude != null)
       .map((brut) => ({
         id: String(brut.id),
@@ -111,6 +112,8 @@ const OPENWINDMAP = {
         lien: `https://www.openwindmap.org/PP${brut.id}`,
       }))
       .filter(stationValide);
+    stations.dateEnregistree = dateEnregistree;
+    return stations;
   },
   async historique(id, signal) {
     const debut = new Date(Date.now() - DUREE_HISTORIQUE).toISOString();

@@ -6,7 +6,15 @@ Cartographie alpine et outils de préparation d’activités en montagne.
 
 Montis peut être ajouté à l’écran d’accueil depuis son adresse HTTPS sur Vercel. Sur Android, ouvrez le site dans Chrome, puis choisissez **Installer l’application** ou **Ajouter à l’écran d’accueil** dans le menu du navigateur. Sur iPhone, ouvrez-le dans Safari, touchez **Partager**, puis **Sur l’écran d’accueil**.
 
-L’application s’ouvre alors sans l’interface habituelle du navigateur. Une connexion Internet reste nécessaire pour la carte, le relief, la météo et les autres données en ligne ; le mode hors connexion n’est pas encore pris en charge.
+L’application s’ouvre alors sans l’interface habituelle du navigateur, et continue de s’ouvrir sans réseau.
+
+## Mode hors ligne
+
+Dans **Carte > Cartes hors ligne**, cadrez une zone sur la carte pour enregistrer le fond Montis et le relief. La taille est estimée avant de lancer, et les zones se suppriment depuis la même liste. OpenFreeMap limite chaque téléchargement à 3 000 tuiles ou 50 Mo et à 4 requêtes en parallèle : ces limites sont appliquées par `src/zones-hors-ligne.js`. Les autres fonds de carte ne se téléchargent pas : sans réseau, l’application repasse sur le fond Montis.
+
+Les dernières données consultées (balises, prévisions, randonnées) restent lisibles avec leur date, et l’indicateur « Hors ligne » apparaît sur la carte. Les fonctions qui ont besoin d’Internet (recherche, calcul d’itinéraire, radar, actualisations) sont grisées.
+
+Le service worker est écrit dans `src/sw-modele.js` et publié sous `/sw.js` par `vite.config.js` avec la liste des fichiers du build. Il n’est actif qu’en production : pour le tester, utilisez `npm run build` puis `npm run preview`.
 
 La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique.
 

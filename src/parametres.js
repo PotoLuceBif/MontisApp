@@ -1,5 +1,6 @@
 import { THEMES, ACCENTS, themeChoisi, accentChoisi, definirTheme, definirAccent } from './apparence.js';
 import { retourAZero } from './reglages.js';
+import { applicationInstallee, installationPossible, installerApplication, surInstallationChangee } from './hors-ligne.js';
 
 function groupe(titre) {
   const section = document.createElement('section');
@@ -81,6 +82,30 @@ export function creerPageParametres({ retour }) {
   apparence.appendChild(ligneAccent);
 
   corps.appendChild(apparence);
+
+  // ---------- Application ----------
+  const application = groupe('Application');
+  const aideInstallation = document.createElement('p');
+  aideInstallation.className = 'params-aide';
+  const installer = document.createElement('button');
+  installer.type = 'button';
+  installer.className = 'btn-secondaire';
+  installer.textContent = 'Installer Montis';
+  installer.addEventListener('click', () => void installerApplication());
+  function majInstallation() {
+    installer.hidden = !installationPossible();
+    if (applicationInstallee()) {
+      aideInstallation.textContent = 'Montis est installée sur cet appareil et s’ouvre sans réseau.';
+    } else if (installationPossible()) {
+      aideInstallation.textContent = 'Installez Montis pour l’ouvrir depuis l’écran d’accueil, même sans réseau.';
+    } else {
+      aideInstallation.textContent = 'Pour installer Montis, utilisez « Ajouter à l’écran d’accueil » dans le menu du navigateur (Partager sur iPhone).';
+    }
+  }
+  surInstallationChangee(majInstallation);
+  majInstallation();
+  application.append(aideInstallation, installer);
+  corps.appendChild(application);
 
   // ---------- Données ----------
   const donnees = groupe('Données');
