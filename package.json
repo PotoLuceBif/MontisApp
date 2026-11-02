@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "captures": "node scripts/captures.mjs"
   },
   "devDependencies": {
     "jsdom": "^30.1.3",

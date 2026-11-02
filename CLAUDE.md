@@ -14,9 +14,10 @@ npm run dev       # développement
 npm run build     # build de production dans dist/, avec /sw.js généré
 npm run preview   # sert dist/ : seul moyen de tester le service worker et le hors-ligne
 npm test          # tests automatiques (Vitest, dans tests/)
+npm run captures  # captures téléphone et ordinateur dans captures/, avec rapport (voir ci-dessous)
 ```
 
-`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie dans un navigateur quand c'est possible. En développement, la carte est accessible par `window.map`.
+`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais. `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond peut manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
 
 Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VITE_FFVL=1` active le code FFVL, qui suppose un relais serveur inexistant à ce jour.
 
@@ -44,7 +45,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 ## Workflow
 
 - Chaque tâche sur sa propre branche, créée depuis `main`.
-- `npm test` et `npm run build` doivent passer avant de pousser.
+- `npm test` et `npm run build` doivent passer avant de pousser ; pour une modification d'interface, `npm run captures` aussi.
 - Commits clairs en français, au présent, sans préfixe : « Ajoute les EuroVelo et la visite des bike parks ».
 - Ne jamais commiter de secret. Toute variable `VITE_` finit lisible dans le JavaScript livré : une vraie clé d'API doit rester côté serveur, derrière un relais.
 - Linux distingue les majuscules, contrairement à Windows : respecter la casse exacte dans les imports et les chemins d'assets.
@@ -73,7 +74,8 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 index.html              Point d'entrée, ne contient que #map
 vite.config.js          Génération de /sw.js, proxy /ffvl (développement seulement)
 .env.example            Variables possibles, sans valeur
-scripts/                Extraction des données, à lancer à la main (voir Données locales)
+scripts/                Extraction des données (voir Données locales) ; captures.mjs : captures d'écran
+tests/                  Tests Vitest des calculs purs
 public/
   data/                 Données locales (voir Données locales)
   icons/                Icônes PWA ; activites/ : icônes des quatre activités
@@ -201,6 +203,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
+- Si OpenFreeMap ne répond pas (TileJSON `planet`), MapLibre n'émet jamais `load` : aucune couche ni aucun menu n'apparaît.
 - Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
