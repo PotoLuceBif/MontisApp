@@ -1,5 +1,6 @@
 import { etat } from './options-carte.js';
 import { obtenirBarre } from './barre-haut.js';
+import { poserAttribut } from './i18n.js';
 
 // Sélecteur 2D | 3D toujours visible, à gauche de la recherche
 export function initBasculeMode() {
@@ -8,7 +9,7 @@ export function initBasculeMode() {
   const racine = document.createElement('div');
   racine.id = 'bascule-mode';
   racine.setAttribute('role', 'group');
-  racine.setAttribute('aria-label', 'Mode d’affichage');
+  poserAttribut(racine, 'aria-label', 'carte.mode-affichage');
   racine.innerHTML = `
     <button type="button" data-mode="2d">2D</button>
     <button type="button" data-mode="3d">3D</button>

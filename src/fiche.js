@@ -1,6 +1,7 @@
 import * as maplibregl from 'maplibre-gl';
 import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
+import { poserAttribut, t as tr } from './i18n.js';
 
 const URLS_OVERPASS = [
   'https://overpass-api.de/api/interpreter',
@@ -37,10 +38,10 @@ const GENRE_PAR_COUCHE = {
 // Quand plusieurs éléments se superposent : le plus précis gagne
 const PRIORITE = ['sommet', 'refuge', 'lieu', 'riviere', 'lac', 'glacier', 'foret', 'parc'];
 
-const NOMS_LIEUX = { city: 'Ville', town: 'Ville', village: 'Village', hamlet: 'Hameau' };
-const NOMS_COURS = { river: 'Rivière', stream: 'Ruisseau', canal: 'Canal' };
-const NOMS_EAUX = { lake: 'Lac', ocean: 'Mer ou océan', river: 'Cours d’eau', pond: 'Étang' };
-const NOMS_PARCS = { national_park: 'Parc national', nature_reserve: 'Réserve naturelle', protected_area: 'Zone protégée' };
+const NOMS_LIEUX = { city: 'fiche.ville', town: 'fiche.ville', village: 'fiche.village', hamlet: 'fiche.hameau' };
+const NOMS_COURS = { river: 'fiche.riviere', stream: 'fiche.ruisseau', canal: 'fiche.canal' };
+const NOMS_EAUX = { lake: 'fiche.lac', ocean: 'fiche.mer', river: 'fiche.cours-eau', pond: 'fiche.etang' };
+const NOMS_PARCS = { national_park: 'fiche.parc-national', nature_reserve: 'fiche.reserve', protected_area: 'fiche.zone-protegee' };
 
 const humaniser = (c) => c.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase());
 
@@ -64,22 +65,22 @@ function decrire(f, genre) {
   const p = f.properties || {};
   const nom = p.name || '';
   switch (genre) {
-    case 'sommet': return { icone: '⛰️', type: 'Sommet', nom, ele: p.ele };
+    case 'sommet': return { icone: '⛰️', type: tr('fiche.sommet'), nom, ele: p.ele };
     case 'refuge':
       return {
         icone: '🛖',
         // OpenStreetMap ne dit ni si le refuge est gardé, ni à quelle saison
-        type: p.genre === 'libre' ? 'Cabane ou abri' : 'Refuge',
+        type: tr(p.genre === 'libre' ? 'fiche.cabane' : 'fiche.refuge'),
         nom,
         ele: p.ele || undefined,
       };
-    case 'lieu': return { icone: '🏘️', type: NOMS_LIEUX[p.class] || 'Lieu', nom };
-    case 'riviere': return { icone: '🌊', type: NOMS_COURS[p.class] || 'Cours d’eau', nom };
-    case 'lac': return { icone: '💧', type: NOMS_EAUX[p.class] || 'Plan d’eau', nom };
-    case 'glacier': return { icone: '🧊', type: 'Glacier', nom };
-    case 'foret': return { icone: '🌲', type: 'Forêt', nom };
+    case 'lieu': return { icone: '🏘️', type: tr(NOMS_LIEUX[p.class] || 'fiche.lieu'), nom };
+    case 'riviere': return { icone: '🌊', type: tr(NOMS_COURS[p.class] || 'fiche.cours-eau'), nom };
+    case 'lac': return { icone: '💧', type: tr(NOMS_EAUX[p.class] || 'fiche.plan-eau'), nom };
+    case 'glacier': return { icone: '🧊', type: tr('fiche.glacier'), nom };
+    case 'foret': return { icone: '🌲', type: tr('fiche.foret'), nom };
     default:
-      return { icone: '🌿', type: NOMS_PARCS[p.class] || (p.class ? humaniser(p.class) : 'Zone protégée'), nom };
+      return { icone: '🌿', type: NOMS_PARCS[p.class] ? tr(NOMS_PARCS[p.class]) : p.class ? humaniser(p.class) : tr('fiche.zone-protegee'), nom };
   }
 }
 
@@ -141,7 +142,7 @@ function chargerTuileDem(z, x, y) {
       g.drawImage(img, 0, 0);
       resolve(g.getImageData(0, 0, 256, 256).data);
     };
-    img.onerror = () => reject(new Error('Tuile de relief indisponible'));
+    img.onerror = () => reject(new Error(tr('fiche.tuile')));
     img.src = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
   });
 }
@@ -194,7 +195,7 @@ export function initFiches(map) {
   const panneau = document.createElement('aside');
   panneau.id = 'fiche';
   panneau.setAttribute('role', 'dialog');
-  panneau.setAttribute('aria-label', 'Informations sur l’élément');
+  poserAttribut(panneau, 'aria-label', 'fiche.aria');
   panneau.hidden = true;
   document.body.appendChild(panneau);
 
@@ -233,6 +234,7 @@ export function initFiches(map) {
     const f = courant;
     const d = f.details && typeof f.details === 'object' ? f.details : null;
     const nom = f.nom || (d && d.principal && d.principal.tags.name) || '';
+    f.type = decrire(f.source, f.genre).type; // suit la langue choisie
     panneau.replaceChildren();
 
     // En-tête
@@ -248,12 +250,12 @@ export function initFiches(map) {
     titre.textContent = nom || f.type;
     const sous = document.createElement('div');
     sous.className = 'fiche-type';
-    sous.textContent = nom ? f.type : d ? 'Nom non renseigné dans OpenStreetMap' : '';
+    sous.textContent = nom ? f.type : d ? tr('fiche.sans-nom') : '';
     titres.append(titre, sous);
     const fermerBtn = document.createElement('button');
     fermerBtn.type = 'button';
     fermerBtn.className = 'fiche-fermer';
-    fermerBtn.setAttribute('aria-label', 'Fermer');
+    fermerBtn.setAttribute('aria-label', tr('fiche.fermer'));
     fermerBtn.textContent = '✕';
     fermerBtn.addEventListener('click', fermer);
     entete.append(icone, titres, fermerBtn);
@@ -272,44 +274,44 @@ export function initFiches(map) {
     const copier = document.createElement('button');
     copier.type = 'button';
     copier.className = 'fiche-copier';
-    copier.textContent = 'Copier';
+    copier.textContent = tr('lieu.copier');
     copier.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(texteCoord);
-        copier.textContent = 'Copié ✓';
+        copier.textContent = tr('lieu.copie');
       } catch (e) {
-        copier.textContent = 'Indisponible';
+        copier.textContent = tr('lieu.indisponible');
       }
-      setTimeout(() => (copier.textContent = 'Copier'), 1500);
+      setTimeout(() => (copier.textContent = tr('lieu.copier')), 1500);
     });
     pos.append(code, copier);
-    corps.appendChild(ligne('Position', pos));
+    corps.appendChild(ligne(tr('fiche.position'), pos));
 
     const eleOsm = parseFloat(f.ele ?? (d && d.principal && d.principal.tags.ele));
     if (Number.isFinite(eleOsm)) {
-      corps.appendChild(ligne('Altitude', formatAltitude(eleOsm)));
+      corps.appendChild(ligne(tr('fiche.altitude'), formatAltitude(eleOsm)));
     } else if (Number.isFinite(f.eleDem)) {
-      corps.appendChild(ligne('Altitude', `≈ ${formatAltitude(f.eleDem)} (relief)`));
+      corps.appendChild(ligne(tr('fiche.altitude'), tr('fiche.altitude-relief', { valeur: formatAltitude(f.eleDem) })));
     }
 
-    if (d && d.localisation.length) corps.appendChild(ligne('Localisation', d.localisation.join(' · ')));
+    if (d && d.localisation.length) corps.appendChild(ligne(tr('fiche.localisation'), d.localisation.join(' · ')));
     if (d && f.genre !== 'parc' && d.parcs.length) {
-      corps.appendChild(ligne('Zone protégée', d.parcs.slice(0, 3).map((p) => p.tags.name).join(' · ')));
+      corps.appendChild(ligne(tr('fiche.zone-protegee'), d.parcs.slice(0, 3).map((p) => p.tags.name).join(' · ')));
     }
     if (d && d.principal && f.genre === 'refuge') {
       const t = d.principal.tags;
       const places = t.capacity || t.beds;
-      if (places) corps.appendChild(ligne('Couchages', String(places)));
+      if (places) corps.appendChild(ligne(tr('fiche.couchages'), String(places)));
       const tel = t.phone || t['contact:phone'];
-      if (tel) corps.appendChild(ligne('Téléphone', tel));
-      if (t.opening_hours) corps.appendChild(ligne('Ouverture', t.opening_hours));
-      const resa = { required: 'Obligatoire', recommended: 'Recommandée', yes: 'Possible', no: 'Non', members_only: 'Réservée aux membres' };
-      if (t.reservation) corps.appendChild(ligne('Réservation', resa[t.reservation] || t.reservation));
+      if (tel) corps.appendChild(ligne(tr('fiche.telephone'), tel));
+      if (t.opening_hours) corps.appendChild(ligne(tr('fiche.ouverture'), t.opening_hours));
+      const resa = { required: 'fiche.resa-obligatoire', recommended: 'fiche.resa-recommandee', yes: 'fiche.resa-possible', no: 'fiche.resa-non', members_only: 'fiche.resa-membres' };
+      if (t.reservation) corps.appendChild(ligne(tr('fiche.reservation'), resa[t.reservation] ? tr(resa[t.reservation]) : t.reservation));
     }
     if (f.genre === 'refuge') {
       const avis = document.createElement('div');
       avis.className = 'fiche-attente-ligne';
-      avis.textContent = 'Vérifiez l’ouverture et le gardiennage avant de partir.';
+      avis.textContent = tr('fiche.verifiez');
       corps.appendChild(avis);
     }
     if (f.details === 'chargement') {
@@ -317,12 +319,12 @@ export function initFiches(map) {
       att.className = 'fiche-attente-ligne';
       const spin = document.createElement('span');
       spin.className = 'rech-attente';
-      att.append(spin, 'Recherche des détails…');
+      att.append(spin, tr('fiche.recherche'));
       corps.appendChild(att);
     } else if (f.details === 'erreur') {
       const err = document.createElement('div');
       err.className = 'fiche-attente-ligne';
-      err.textContent = 'Détails indisponibles pour le moment.';
+      err.textContent = tr('fiche.indisponibles');
       corps.appendChild(err);
     }
 
@@ -331,11 +333,11 @@ export function initFiches(map) {
       const liens = document.createElement('div');
       liens.className = 'fiche-liens';
       const wiki = lienWikipedia(t.wikipedia);
-      if (wiki) liens.appendChild(lien('Wikipédia', wiki));
+      if (wiki) liens.appendChild(lien(tr('fiche.wikipedia'), wiki));
       const site = t.website || t['contact:website'];
-      if (site && /^https?:\/\//i.test(site)) liens.appendChild(lien('Site web', site));
+      if (site && /^https?:\/\//i.test(site)) liens.appendChild(lien(tr('fiche.site'), site));
       liens.appendChild(lien('OpenStreetMap', `https://www.openstreetmap.org/${d.principal.type}/${d.principal.id}`));
-      corps.appendChild(ligne('Liens', liens));
+      corps.appendChild(ligne(tr('fiche.liens'), liens));
     }
 
     panneau.appendChild(corps);
@@ -406,6 +408,7 @@ export function initFiches(map) {
   function ouvrir(feature, genre, lngLat) {
     const d = decrire(feature, genre);
     courant = {
+      source: feature,
       genre,
       icone: d.icone,
       type: d.type,

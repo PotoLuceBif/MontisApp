@@ -3,6 +3,7 @@
 // Chaque flèche est un objet posé à plat dans l'espace : son cap à l'écran
 // découle de la projection, il reste donc juste quels que soient l'angle et le zoom.
 import { depuisAltitude, formatAltitude, imperial, valeurAltitude } from './unites.js';
+import { t } from './i18n.js';
 
 const ELEVATION_DEFAUT = 32;
 const ELEVATION_REFERENCE = (35 * Math.PI) / 180; // pour une échelle stable quand on incline
@@ -284,7 +285,7 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     });
 
     const { demi } = relief;
-    [['N', 0, demi], ['S', 0, -demi], ['E', demi, 0], ['O', -demi, 0]].forEach(([nom, x, y]) => {
+    [['N', 0, demi], ['S', 0, -demi], ['E', demi, 0], [t('cardinal.O'), -demi, 0]].forEach(([nom, x, y]) => {
       const point = projeter(x * 1.09, y * 1.09, relief.min);
       texte(nom, point[0], point[1], {
         alignement: 'center',

@@ -4,6 +4,7 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { distance, extraireTrace, niveau, partDesSauts, titreDe } from './rando-api.js';
 import { formatAltitude, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
+import { t, ti, tt } from './i18n.js';
 
 const PARALLELE = 3;
 const MEMOIRE_MAX = 80;
@@ -37,17 +38,17 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
 
   const panneau = creerPanneauCarte({
     cle: `${activite.id}-liste-reduite`,
-    libelle: 'liste des itinéraires',
+    libelle: 'panneau.itineraires',
     classe: 'bf-outil bf-liste',
     onFermer: () => onFermerTout(),
     onRetour: () => revenir(),
   });
   panneau.corps.innerHTML = `
     <div class="pc-groupe-stats" hidden>
-      <div class="parcours-stat"><span>Tronçons</span><strong data-g="nombre"></strong></div>
-      <div class="parcours-stat"><span>Distance connue</span><strong data-g="distance"></strong></div>
+      <div class="parcours-stat">${tt('iti.troncons')}<strong data-g="nombre"></strong></div>
+      <div class="parcours-stat">${tt('iti.distance-connue')}<strong data-g="distance"></strong></div>
     </div>
-    <button type="button" class="para-bouton pc-groupe-tout" hidden>Voir tout l’itinéraire sur la carte</button>
+    <button type="button" class="para-bouton pc-groupe-tout" hidden ${ti('iti.voir-tout')}>${t('iti.voir-tout')}</button>
     <p class="note pc-liste-message" role="status" aria-live="polite" hidden></p>
     <div class="pc-liste"></div>
     <p class="note pc-liste-note" hidden></p>
@@ -119,7 +120,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
   async function ouvrirRoute(route, { depuisGroupe = false, integral = false } = {}) {
     // Depuis le menu, ce panneau est encore caché : le message s'affiche là où l'on regarde
     const dire = panneau.ouvert ? afficherMessage : signaler;
-    dire('Chargement de l’itinéraire…');
+    dire(t('iti.chargement'));
     try {
       const { details, trace, longueur } = await detailsDe(route);
       dire('');
@@ -147,7 +148,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
         lien: `https://${hote}/#route?id=${route.id}`,
         meta: [typeDe(route), court, etapes?.length ? etapes.join(' → ') : null].filter(Boolean).join(' · '),
         infos: [
-          ...(partDesSauts(trace.chaine) > PART_SAUTS_NOTEE ? [{ texte: 'Tracé incomplet dans OpenStreetMap : les trous sont franchis en ligne droite, distance et profil sont approximatifs.' }] : []),
+          ...(partDesSauts(trace.chaine) > PART_SAUTS_NOTEE ? [{ texte: t('iti.incomplet') }] : []),
           ...(activite.infosRoute?.(details, trace) ?? []),
         ],
         onRetour: depuisGroupe && groupe ? () => reafficherGroupe() : null,
@@ -156,7 +157,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
       return true;
     } catch (erreur) {
       console.warn('Itinéraire :', erreur);
-      dire('Impossible de charger cet itinéraire pour le moment.');
+      dire(t('iti.impossible'));
       return false;
     }
   }
@@ -234,7 +235,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
     groupe = { titre, routes: troncons, longueurTotale };
     panneau.titre.textContent = titre;
     panneau.meta.textContent = '';
-    panneau.definirResume({ nom: titre, detail: `${troncons.length} tronçons`, valeur: '', unite: '', rose: activite.icone });
+    panneau.definirResume({ nom: titre, detail: t('iti.n-troncons', { n: troncons.length }), valeur: '', unite: '', rose: activite.icone });
     blocStats.hidden = false;
     $('[data-g="nombre"]').textContent = String(troncons.length);
     rendreTotal();
@@ -259,7 +260,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
       if (route.proche) {
         const pastille = document.createElement('span');
         pastille.className = 'pc-ligne-proche';
-        pastille.textContent = 'Ici';
+        pastille.textContent = t('iti.ici');
         ligne.append(pastille);
       }
       ligne.addEventListener('click', () => {
@@ -280,7 +281,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
   function afficherCatalogue() {
     panneau.titre.textContent = catalogue.titre;
     panneau.meta.textContent = '';
-    panneau.definirResume({ nom: catalogue.titre, detail: `${catalogue.entrees.length} itinéraires`, valeur: '', unite: '', rose: activite.icone });
+    panneau.definirResume({ nom: catalogue.titre, detail: t('iti.n-itineraires', { n: catalogue.entrees.length }), valeur: '', unite: '', rose: activite.icone });
     blocStats.hidden = true;
     boutonTout.hidden = true;
     note.hidden = !catalogue.note;
@@ -306,12 +307,12 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
   async function ouvrirEntree(entree) {
     jeton += 1;
     const demande = jeton;
-    afficherMessage(`Recherche des tronçons de ${entree.code}…`);
+    afficherMessage(t('iti.recherche-troncons', { code: entree.code }));
     try {
       const routes = await catalogue.chercher(entree);
       if (demande !== jeton) return;
       if (!routes.length) {
-        afficherMessage('Aucun tronçon trouvé dans OpenStreetMap pour cet itinéraire.');
+        afficherMessage(t('iti.aucun-troncon'));
         return;
       }
       const integrale = routes.find(estIntegral) ?? null;
@@ -323,12 +324,14 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
       });
     } catch (erreur) {
       console.warn('Catalogue :', erreur);
-      afficherMessage('Tronçons indisponibles pour le moment. Réessayez plus tard.');
+      afficherMessage(t('iti.troncons-indisponibles'));
     }
   }
 
   surPreferences(() => {
+    if (catalogue && !groupe && panneau.ouvert) afficherCatalogue();
     if (!groupe) return;
+    panneau.definirResume({ detail: t('iti.n-troncons', { n: groupe.routes.length }) });
     liste.querySelectorAll('[data-cle]').forEach((ligne) => {
       const route = groupe.routes[Number(ligne.dataset.rang)];
       if (route) rendreDetail(ligne, route);

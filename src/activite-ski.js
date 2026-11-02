@@ -5,6 +5,8 @@ import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPositio
 import { contientMot, creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
 import { chargerNeige, creerBlocNeige, chargerRisque, creerBlocRisque } from './ski-conditions.js';
 import { formatAltitude, valeurAltitude } from './unites.js';
+import { locale, langue, surPreferences } from './preferences.js';
+import { t, ta, ti } from './i18n.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -17,32 +19,31 @@ const ICONE_RECHERCHE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx=
 const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.6"/></svg>';
 
 const FILTRES = [
-  ['tous', 'Tous'],
-  ['alpin', 'Alpin'],
-  ['nordique', 'Fond'],
+  ['tous', 'ski.filtre-tous'],
+  ['alpin', 'ski.filtre-alpin'],
+  ['nordique', 'ski.filtre-fond'],
 ];
 const ONGLETS_FICHE = [
-  ['domaine', 'Domaine'],
-  ['neige', 'Neige'],
-  ['securite', 'Sécurité'],
+  ['domaine', 'ski.onglet-domaine'],
+  ['neige', 'ski.onglet-neige'],
+  ['securite', 'ski.onglet-securite'],
 ];
 
 const tailleStation = ({ properties: s }) => (s.kmAlpin || 0) + (s.kmNordique || 0) + (s.remontees || 0);
 
 const metres = formatAltitude;
-const pluriel = (nombre, mot) => `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
 
 function typeStation(station) {
-  if (station.alpin && station.nordique) return { court: 'Mixte', couleur: '#7a4bb7' };
-  if (station.alpin) return { court: 'Alpin', couleur: '#2f6fc4' };
-  if (station.nordique) return { court: 'Fond', couleur: '#2e9e5b' };
-  return { court: 'Station', couleur: '#6b706c' };
+  if (station.alpin && station.nordique) return { court: t('ski.type-mixte'), couleur: '#7a4bb7' };
+  if (station.alpin) return { court: t('ski.type-alpin'), couleur: '#2f6fc4' };
+  if (station.nordique) return { court: t('ski.type-fond'), couleur: '#2e9e5b' };
+  return { court: t('ski.type-station'), couleur: '#6b706c', generique: true };
 }
 
 function nomPays(code) {
   if (!code) return '';
   try {
-    return new Intl.DisplayNames(['fr'], { type: 'region' }).of(code) || '';
+    return new Intl.DisplayNames([locale()], { type: 'region' }).of(code) || '';
   } catch {
     return '';
   }
@@ -113,14 +114,14 @@ export function creerActiviteSki(map) {
   const visite = creerVisiteStation(map);
   const reperes = creerReperesZone(map, {
     pin: 'station',
-    titreGroupe: (nombre) => `${nombre} stations à proximité`,
-    libelleGroupe: (nombre) => `${nombre} stations regroupées.`,
+    titreGroupe: (nombre) => t('ski.proximite', { n: nombre }),
+    libelleGroupe: (nombre) => t('ski.regroupees', { n: nombre }),
     resume({ properties: station }) {
       const lignes = [];
-      if (station.kmAlpin) lignes.push(['Pistes alpines', km(station.kmAlpin)]);
-      if (station.kmNordique) lignes.push(['Ski de fond', km(station.kmNordique)]);
-      if (station.remontees) lignes.push(['Remontées', String(station.remontees)]);
-      if (station.altMax) lignes.push(['Altitude max', metres(station.altMax)]);
+      if (station.kmAlpin) lignes.push([t('ski.pistes-alpines'), km(station.kmAlpin)]);
+      if (station.kmNordique) lignes.push([t('ski.ski-fond'), km(station.kmNordique)]);
+      if (station.remontees) lignes.push([t('ski.remontees'), String(station.remontees)]);
+      if (station.altMax) lignes.push([t('ski.alt-max'), metres(station.altMax)]);
       return lignes;
     },
     surChoix: (feature, deplacer) => fiche.ouvrir(feature, deplacer),
@@ -131,29 +132,29 @@ export function creerActiviteSki(map) {
   panneau.innerHTML = `
     <label class="ski-champ">
       ${ICONE_RECHERCHE}
-      <input type="text" class="rando-champ" placeholder="Visiter une station…"
-        autocomplete="off" spellcheck="false" inputmode="search" aria-label="Chercher une station à visiter"
+      <input type="text" class="rando-champ" ${ta('placeholder', 'ski.placeholder')}
+        autocomplete="off" spellcheck="false" inputmode="search" ${ta('aria-label', 'ski.chercher-aria')}
         role="combobox" aria-autocomplete="list" aria-controls="ski-liste" aria-expanded="false">
     </label>
-    <div class="rando-liste" id="ski-liste" role="listbox" aria-label="Stations trouvées" hidden></div>
-    <section class="ski-favoris" aria-label="Mes stations favorites" hidden>
-      <h3 class="ski-favoris-titre">Mes favoris</h3>
-      <div class="rando-liste ski-favoris-liste" role="listbox" aria-label="Mes stations favorites"></div>
+    <div class="rando-liste" id="ski-liste" role="listbox" ${ta('aria-label', 'ski.trouvees')} hidden></div>
+    <section class="ski-favoris" ${ta('aria-label', 'ski.favoris-aria')} hidden>
+      <h3 class="ski-favoris-titre" ${ti('ski.favoris')}>${t('ski.favoris')}</h3>
+      <div class="rando-liste ski-favoris-liste" role="listbox" ${ta('aria-label', 'ski.favoris-aria')}></div>
     </section>
     <div class="ski-zone">
-      <div class="segments ski-filtres" role="group" aria-label="Type de domaine">
-        ${FILTRES.map(([id, libelle]) => `<button type="button" class="ski-filtre" data-filtre="${id}">${libelle}</button>`).join('')}
+      <div class="segments ski-filtres" role="group" ${ta('aria-label', 'ski.type-domaine')}>
+        ${FILTRES.map(([id, cle]) => `<button type="button" class="ski-filtre" data-filtre="${id}" ${ti(cle)}>${t(cle)}</button>`).join('')}
       </div>
       <div class="rando-actions-principales">
         <button type="button" class="rando-zone-bouton rando-action-principale">
           ${ICONE_ZONE}
-          <span class="rando-zone-libelle">Stations dans la zone visible</span>
+          <span class="rando-zone-libelle">${t('ski.dans-zone')}</span>
         </button>
       </div>
     </div>
     <p class="note rando-aide" role="status" aria-live="polite" hidden></p>
-    <div class="rando-liste ski-zone-liste" role="listbox" aria-label="Stations de la zone" hidden></div>
-    <p class="note ski-credits">Stations et pistes : OpenSkiData (ODbL), © contributeurs OpenStreetMap, Skimap.org. Vérifiez les ouvertures et les conditions auprès des stations.</p>
+    <div class="rando-liste ski-zone-liste" role="listbox" ${ta('aria-label', 'ski.de-la-zone')} hidden></div>
+    <p class="note ski-credits" ${ti('ski.credits')}>${t('ski.credits')}</p>
   `;
   const champ = panneau.querySelector('.rando-champ');
   const liste = panneau.querySelector('.rando-liste');
@@ -214,10 +215,10 @@ export function creerActiviteSki(map) {
     id: 'ski-fiche',
     visite,
     textes: {
-      visiter: 'Visiter la station',
-      fermer: 'Fermer la fiche de la station',
-      chercher: 'Chercher une autre station…',
-      detail: 'Afficher le détail de la station',
+      get visiter() { return t('ski.visiter'); },
+      get fermer() { return t('ski.fermer'); },
+      get chercher() { return t('ski.chercher'); },
+      get detail() { return t('ski.detail'); },
     },
     decrire({ properties: station }) {
       return {
@@ -234,9 +235,9 @@ export function creerActiviteSki(map) {
     rendreCorps(carte) {
       const onglets = el('div', 'segments ski-onglets');
       onglets.setAttribute('role', 'tablist');
-      onglets.setAttribute('aria-label', 'Informations de la station');
-      for (const [id, libelle] of ONGLETS_FICHE) {
-        const onglet = el('button', id === ongletFiche ? 'actif' : '', libelle);
+      onglets.setAttribute('aria-label', t('ski.infos'));
+      for (const [id, cle] of ONGLETS_FICHE) {
+        const onglet = el('button', id === ongletFiche ? 'actif' : '', t(cle));
         onglet.type = 'button';
         onglet.setAttribute('role', 'tab');
         onglet.setAttribute('aria-selected', String(id === ongletFiche));
@@ -262,17 +263,17 @@ export function creerActiviteSki(map) {
       if (!tailleStation(feature)) {
         const domaine = domaineProche(feature);
         if (domaine) {
-          const voir = el('button', 'fiche-copier', `Voir le domaine : ${domaine.properties.nom}`);
+          const voir = el('button', 'fiche-copier', t('ski.voir-domaine', { nom: domaine.properties.nom }));
           voir.type = 'button';
           voir.addEventListener('click', () => fiche.ouvrir(domaine, true));
           actions.append(voir);
         } else if (ongletFiche === 'domaine') {
-          contenu.append(el('div', 'rando-attente', 'Aucun détail sur les pistes pour cette station.'));
+          contenu.append(el('div', 'rando-attente', t('ski.sans-detail')));
         }
       }
       const liens = el('span', 'fiche-liens');
       const site = urlSite(station.site);
-      if (site) liens.append(lienExterne('Site de la station', site));
+      if (site) liens.append(lienExterne(t('ski.site'), site));
       if (station.osm) liens.append(lienExterne('OpenStreetMap', `https://www.openstreetmap.org/${station.osm}`));
       if (liens.children.length) actions.append(liens);
     },
@@ -283,19 +284,19 @@ export function creerActiviteSki(map) {
     const station = fiche.choisi.properties;
     const blocs = [];
     const stats = el('div', 'rando-stats');
-    if (station.kmAlpin) stats.append(stat(km(station.kmAlpin), 'Pistes alpines'));
-    if (station.kmNordique) stats.append(stat(km(station.kmNordique), 'Ski de fond'));
-    if (station.remontees) stats.append(stat(String(station.remontees), 'Remontées'));
+    if (station.kmAlpin) stats.append(stat(km(station.kmAlpin), t('ski.pistes-alpines')));
+    if (station.kmNordique) stats.append(stat(km(station.kmNordique), t('ski.ski-fond')));
+    if (station.remontees) stats.append(stat(String(station.remontees), t('ski.remontees')));
     if (station.altMin && station.altMax) {
       const bas = valeurAltitude(station.altMin);
-      stats.append(stat(`${bas} – ${metres(station.altMax)}`, 'Altitudes'));
+      stats.append(stat(`${bas} – ${metres(station.altMax)}`, t('ski.altitudes')));
     } else if (station.altMax) {
-      stats.append(stat(metres(station.altMax), 'Altitude max'));
+      stats.append(stat(metres(station.altMax), t('ski.alt-max')));
     }
     if (stats.children.length) blocs.push(stats);
     if (station.niveaux) blocs.push(creerNiveaux(station.niveaux));
     if (fiche.enVisite && visite.communes().length) {
-      blocs.push(el('div', 'rando-diff', `Communes : ${visite.communes().join(', ')}`));
+      blocs.push(el('div', 'rando-diff', t('ski.communes', { liste: visite.communes().join(', ') })));
     }
     blocs.push(creerPosition(map, fiche.choisi.geometry.coordinates));
     return blocs;
@@ -304,9 +305,9 @@ export function creerActiviteSki(map) {
   function creerOngletNeige() {
     const etat = conditions.neige?.feature === fiche.choisi ? conditions.neige : null;
     if (etat?.statut === 'ok') return creerBlocNeige(etat.donnees);
-    if (etat?.statut === 'erreur') return el('div', 'rando-attente', 'Prévisions de neige indisponibles pour le moment. Réessayez plus tard.');
+    if (etat?.statut === 'erreur') return el('div', 'rando-attente', t('ski.neige-erreur'));
     const attente = el('div', 'rando-attente');
-    attente.append(el('span', 'rech-attente'), 'Chargement des prévisions de neige…');
+    attente.append(el('span', 'rech-attente'), t('ski.neige-chargement'));
     return attente;
   }
 
@@ -317,14 +318,14 @@ export function creerActiviteSki(map) {
     if (!station.massif || etat?.statut === 'ok') {
       bloc.append(creerBlocRisque(station.massif ? etat.donnees : null, station));
     } else if (etat?.statut === 'erreur') {
-      bloc.append(el('div', 'rando-attente', 'Niveau de risque indisponible pour le moment. Consultez le bulletin officiel.'));
+      bloc.append(el('div', 'rando-attente', t('ski.risque-erreur')));
     } else {
       const attente = el('div', 'rando-attente');
-      attente.append(el('span', 'rech-attente'), 'Chargement du niveau de risque…');
+      attente.append(el('span', 'rech-attente'), t('ski.risque-chargement'));
       bloc.append(attente);
     }
 
-    bloc.append(el('p', 'ski-conditions-note', 'Carte des pentes (IGN, France) : elle montre l’inclinaison du terrain, pas le danger du jour.'));
+    bloc.append(el('p', 'ski-conditions-note', t('ski.pentes-note')));
     return bloc;
   }
 
@@ -385,26 +386,22 @@ export function creerActiviteSki(map) {
   // ---------- Recherche dans la zone visible ----------
   function rendreZone() {
     let texte = '';
-    if (etatZone === 'chargement') texte = 'Recherche des stations dans la zone…';
-    else if (etatZone === 'erreur') texte = 'Liste des stations indisponible. Vérifiez votre connexion et réessayez.';
+    if (etatZone === 'chargement') texte = t('ski.recherche-zone');
+    else if (etatZone === 'erreur') texte = t('ski.zone-erreur');
     else if (etatZone === 'ok') {
       const nombre = stationsFiltrees().length;
-      const total = nombre
-        ? `${pluriel(nombre, 'station')} trouvée${nombre > 1 ? 's' : ''}`
-        : 'Aucune station trouvée';
-      texte = zonePerimee
-        ? `${total} dans la zone précédente. Relancez la recherche après avoir déplacé la carte.`
-        : `${total} dans cette zone.`;
+      const total = nombre ? t('ski.n-trouvees', { n: nombre }) : t('ski.aucune');
+      texte = t(zonePerimee ? 'ski.zone-precedente' : 'ski.cette-zone', { total });
     }
     // Les plus grandes d'abord : à petite échelle, la zone en contient des centaines
     const stations = etatZone === 'ok' ? [...stationsFiltrees()].sort((a, b) => tailleStation(b) - tailleStation(a)) : [];
-    if (stations.length > MAX_LISTE_ZONE) texte += ` Voici les ${MAX_LISTE_ZONE} plus grandes.`;
+    if (stations.length > MAX_LISTE_ZONE) texte += t('ski.plus-grandes', { n: MAX_LISTE_ZONE });
     listeZone.hidden = !stations.length;
     listeZone.replaceChildren(...stations.slice(0, MAX_LISTE_ZONE).map((feature, i) => creerItem(feature, `ski-zone-${i}`)));
     aide.textContent = texte;
     aide.hidden = !texte;
     boutonZone.disabled = etatZone === 'chargement';
-    libelleZone.textContent = etatZone === 'chargement' ? 'Recherche…' : 'Stations dans la zone visible';
+    libelleZone.textContent = t(etatZone === 'chargement' ? 'ski.recherche' : 'ski.dans-zone');
   }
 
   async function rechercherZone() {
@@ -451,17 +448,17 @@ export function creerActiviteSki(map) {
   function creerItem(feature, identifiant) {
     const station = feature.properties;
     const pistes = (station.kmAlpin || 0) + (station.kmNordique || 0);
-    const type = typeStation(station).court;
+    const type = typeStation(station);
     return creerItemLieu({
       feature,
       identifiant,
       sous: [
-        type === 'Station' ? '' : type,
+        type.generique ? '' : type.court,
         pistes ? km(pistes) : '',
         station.region || station.lieu || nomPays(station.pays),
       ].filter(Boolean).join(' · '),
       peutVisiter: !!station.pistes,
-      descriptionVisiteImpossible: 'Visite pas encore disponible pour cette station',
+      descriptionVisiteImpossible: t('ski.visite-impossible'),
       localiser: (lieu) => fiche.localiser(lieu),
       visiter: (lieu) => fiche.visiter(lieu),
     });
@@ -492,7 +489,7 @@ export function creerActiviteSki(map) {
       completer(texte, signal) {
         const centre = map.getCenter();
         const url =
-          `${URL_PHOTON}?q=${encodeURIComponent(texte)}&limit=15&lang=fr&lat=${centre.lat.toFixed(3)}&lon=${centre.lng.toFixed(3)}` +
+          `${URL_PHOTON}?q=${encodeURIComponent(texte)}&limit=15&lang=${langue()}&lat=${centre.lat.toFixed(3)}&lon=${centre.lng.toFixed(3)}` +
           '&osm_tag=leisure:ski_resort&osm_tag=landuse:winter_sports&osm_tag=site:piste';
         return fetch(url, { signal }).then((reponse) => {
           if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
@@ -501,7 +498,7 @@ export function creerActiviteSki(map) {
       },
       fusionner: (locaux, photon, texte) => completerAvecPhoton(locaux, photon.features || [], normaliser(texte)),
       creerItem,
-      textes: { attente: 'Recherche des stations…', vide: (texte) => `Aucune station pour « ${texte} »` },
+      textes: { get attente() { return t('ski.recherche-stations'); }, vide: (texte) => t('ski.aucune-pour', { texte }) },
       peutVisiter: (feature) => !!feature.properties.pistes,
       visiter: (feature) => fiche.visiter(feature),
       localiser: (feature) => fiche.localiser(feature),
@@ -524,11 +521,15 @@ export function creerActiviteSki(map) {
   majFiltres();
 
   boutonZone.addEventListener('click', rechercherZone);
+  surPreferences(() => {
+    rendreZone();
+    rendreFavoris();
+  });
 
   // ---------- Cycle de vie de l'activité ----------
   return {
     id: 'ski',
-    label: 'Ski',
+    labelCle: 'ski.titre',
     icone: 'ski',
     panneau,
     activer() {

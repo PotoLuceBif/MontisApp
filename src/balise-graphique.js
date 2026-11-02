@@ -2,6 +2,7 @@
 import { PALIERS_VENT, paletteInterface, palierVent } from './vent-cadran.js';
 import { pointCardinal } from './vent-calcul.js';
 import { depuisVent, nombre as formatNombre, versVent } from './unites.js';
+import { t } from './i18n.js';
 
 const MARGE_GAUCHE = 30;
 const MARGE_DROITE = 8;
@@ -136,7 +137,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
         ctx.stroke();
         if (x > MARGE_GAUCHE + 8 && x < droite - 8) {
           ctx.fillStyle = texte2;
-          ctx.fillText(`${repere.getHours()}h`, x, bas + 15);
+          ctx.fillText(t('bg.heure', { h: repere.getHours() }), x, bas + 15);
         }
       }
       repere.setTime(temps + HEURE);
@@ -196,7 +197,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     ctx.font = `10px ${police}`;
     ctx.textAlign = 'right';
     ctx.fillStyle = texte2;
-    ctx.fillText('de', MARGE_GAUCHE - 6, yLettre); // la lettre dit d'où vient le vent, la flèche où il va
+    ctx.fillText(t('bg.de'), MARGE_GAUCHE - 6, yLettre); // la lettre dit d'où vient le vent, la flèche où il va
     ctx.textAlign = 'center';
     for (let index = 0; index < nombre; index += 1) {
       const a = debut + index * duree;
@@ -306,7 +307,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
   });
 
   new ResizeObserver(redimensionner).observe(canvas);
-  new MutationObserver(dessiner).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+  new MutationObserver(dessiner).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent', 'lang'] });
 
   return {
     // `heuresVoulues` : l'axe couvre toute la période, même si les relevés commencent plus tard

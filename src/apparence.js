@@ -1,20 +1,20 @@
 import { lire, ecrire } from './reglages.js';
 
 export const THEMES = [
-  { id: 'cyberpunk', nom: 'Cyberpunk' },
-  { id: 'clair', nom: 'Clair' },
-  { id: 'sombre', nom: 'Sombre' },
-  { id: 'auto', nom: 'Auto' },
+  { id: 'cyberpunk', cle: 'theme.cyberpunk' },
+  { id: 'clair', cle: 'theme.clair' },
+  { id: 'sombre', cle: 'theme.sombre' },
+  { id: 'auto', cle: 'theme.auto' },
 ];
 
 // Les couleurs réelles sont définies dans style.css ; ici, seulement de quoi dessiner les pastilles
 export const ACCENTS = [
-  { id: 'aurore', nom: 'Aurore', clair: '#4b4fc7', sombre: '#a0a6ff' },
-  { id: 'sapin', nom: 'Vert sapin', clair: '#2f6b57', sombre: '#5fb59a' },
-  { id: 'ocre', nom: 'Ocre', clair: '#b65f26', sombre: '#f0ad64' },
-  { id: 'acier', nom: 'Bleu acier', clair: '#3a5f86', sombre: '#7fabd9' },
-  { id: 'brique', nom: 'Brique', clair: '#a2402c', sombre: '#e8806a' },
-  { id: 'prune', nom: 'Prune', clair: '#6c4879', sombre: '#bb98c9' },
+  { id: 'aurore', cle: 'accent.aurore', clair: '#4b4fc7', sombre: '#a0a6ff' },
+  { id: 'sapin', cle: 'accent.sapin', clair: '#2f6b57', sombre: '#5fb59a' },
+  { id: 'ocre', cle: 'accent.ocre', clair: '#b65f26', sombre: '#f0ad64' },
+  { id: 'acier', cle: 'accent.acier', clair: '#3a5f86', sombre: '#7fabd9' },
+  { id: 'brique', cle: 'accent.brique', clair: '#a2402c', sombre: '#e8806a' },
+  { id: 'prune', cle: 'accent.prune', clair: '#6c4879', sombre: '#bb98c9' },
 ];
 
 const systemeSombre = window.matchMedia('(prefers-color-scheme: dark)');

@@ -1,15 +1,17 @@
 // Ce qu'on peut dire d'un tracé : altitudes, pentes, durée selon la pratique, surfaces, difficulté.
 import { echantillonner } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
+import { t } from './i18n.js';
 
 export const PALIERS_PENTE = [3, 6, 10, 15]; // %
 const FENETRE_PENTE = 75; // m de part et d'autre du point : en dessous, c'est le bruit du relief qu'on mesure
 
+const voie = (id, couleur) => ({ couleur, get libelle() { return t(`voie.${id}`); } });
 export const VOIES = {
-  asphalte: { libelle: 'Asphalte', couleur: '#8fa3b8' },
-  chemin: { libelle: 'Chemin', couleur: '#d8a657' },
-  single: { libelle: 'Single', couleur: '#5fd068' },
-  inconnu: { libelle: 'Inconnu', couleur: '#5b6472' },
+  asphalte: voie('asphalte', '#8fa3b8'),
+  chemin: voie('chemin', '#d8a657'),
+  single: voie('single', '#5fd068'),
+  inconnu: voie('inconnu', '#5b6472'),
 };
 
 export const ECHELLE_VTT = {

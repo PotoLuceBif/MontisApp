@@ -1,5 +1,6 @@
 // Lecture d'un fichier GPX : commune aux activités à parcours.
 import { distance } from './rando-api.js';
+import { t } from './i18n.js';
 
 const LATITUDE_MAX_MERCATOR = 85.05112878;
 
@@ -9,7 +10,7 @@ export function lireGpx(contenu, nomFichier) {
     documentXml.getElementsByTagName('parsererror').length ||
     documentXml.documentElement.localName !== 'gpx'
   ) {
-    throw new Error('Le fichier ne contient pas un GPX valide.');
+    throw new Error(t('gpx.invalide'));
   }
 
   const lirePoints = (element, nomPoint) => {
@@ -41,7 +42,7 @@ export function lireGpx(contenu, nomFichier) {
     }
   }
   if (!lignesTrace.length) {
-    throw new Error('Aucun tracé valide trouvé (il faut au moins deux points GPS).');
+    throw new Error(t('gpx.sans-trace'));
   }
 
   const chaine = lignesTrace.flat();
@@ -49,13 +50,13 @@ export function lireGpx(contenu, nomFichier) {
     for (let i = 1; i < ligne.length; i++) total += distance(ligne[i - 1], ligne[i]);
     return total;
   }, 0);
-  if (longueur <= 0) throw new Error('Le tracé ne contient pas de distance exploitable.');
+  if (longueur <= 0) throw new Error(t('gpx.sans-distance'));
 
   const metadata = documentXml.getElementsByTagNameNS('*', 'metadata')[0];
   const nomGpx =
     metadata?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim() ||
     documentXml.getElementsByTagNameNS('*', 'trk')[0]?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim() ||
     documentXml.getElementsByTagNameNS('*', 'rte')[0]?.getElementsByTagNameNS('*', 'name')[0]?.textContent?.trim();
-  const nom = nomGpx || nomFichier.replace(/\.gpx$/i, '') || 'Parcours importé';
+  const nom = nomGpx || nomFichier.replace(/\.gpx$/i, '') || t('gpx.importe');
   return { nom, trace: { lignes: lignesTrace, chaine }, longueur };
 }

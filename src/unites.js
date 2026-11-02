@@ -1,6 +1,6 @@
 // Affichage des mesures selon le système choisi. Toutes les fonctions reçoivent des valeurs
 // métriques (m, km/h, °C, mm) : on ne convertit qu'au moment d'afficher.
-import { systemeUnites, uniteVent, locale } from './preferences.js';
+import { langue, systemeUnites, uniteVent, locale } from './preferences.js';
 
 const PIEDS_PAR_METRE = 3.28084;
 const METRES_PAR_MILLE = 1609.344;
@@ -86,3 +86,12 @@ export const expressionAltitude = (champ) =>
     : ['concat', ['number-format', ['to-number', champ, 0], { 'max-fraction-digits': 0 }], ' m'];
 
 export const PIEDS = PIEDS_PAR_METRE;
+
+// ---------- Tailles de fichiers : Ko, Mo, Go en français ; KB, MB, GB en anglais ----------
+const KO = 1024;
+export function formatTaille(octets) {
+  const [ko, mo, go] = langue() === 'en' ? ['KB', 'MB', 'GB'] : ['Ko', 'Mo', 'Go'];
+  if (octets < KO * KO) return `${nombre(Math.max(1, Math.round(octets / KO)))} ${ko}`;
+  if (octets < KO * KO * KO) return `${nombre(Math.round(octets / (KO * KO)))} ${mo}`;
+  return `${nombre(octets / (KO * KO * KO), 1)} ${go}`;
+}

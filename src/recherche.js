@@ -2,6 +2,8 @@ import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
   import { obtenirBarre } from './barre-haut.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { t, ta } from './i18n.js';
+import { langue } from './preferences.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
@@ -15,30 +17,30 @@ const ICONE_LOUPE =
 
 // ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
 const CATEGORIES = [
-  { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), nom: 'Sommet', icone: '⛰️', zoom: 13 },
-  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports') || (k === 'site' && v === 'piste'), nom: 'Station de ski', icone: '🎿', zoom: 12 },
-  { test: (k, v) => k === 'place' && v === 'locality', nom: 'Lieu-dit', icone: '📍', zoom: 14 },
-  { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), nom: 'Col', icone: '⛰️', zoom: 13 },
-  { test: (k, v) => k === 'natural' && v === 'glacier', nom: 'Glacier', icone: '🧊', zoom: 12 },
-  { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), nom: 'Lac', icone: '💧', zoom: 13 },
-  { test: (k) => k === 'waterway', nom: 'Cours d’eau', icone: '🌊', zoom: 12 },
-  { test: (k, v) => k === 'natural' && v === 'valley', nom: 'Vallée', icone: '🏞️', zoom: 12 },
-  { test: (k, v) => k === 'tourism' && (v === 'alpine_hut' || v === 'wilderness_hut'), nom: 'Refuge', icone: '🛖', zoom: 15 },
-  { test: (k, v) => k === 'place' && (v === 'city' || v === 'town'), nom: 'Ville', icone: '🏙️', zoom: 12 },
-  { test: (k, v) => k === 'place' && (v === 'village' || v === 'hamlet' || v === 'isolated_dwelling'), nom: 'Village', icone: '🏘️', zoom: 14 },
+  { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), type: 'sommet', icone: '⛰️', zoom: 13 },
+  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports') || (k === 'site' && v === 'piste'), type: 'station', icone: '🎿', zoom: 12 },
+  { test: (k, v) => k === 'place' && v === 'locality', type: 'lieu-dit', icone: '📍', zoom: 14 },
+  { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), type: 'col', icone: '⛰️', zoom: 13 },
+  { test: (k, v) => k === 'natural' && v === 'glacier', type: 'glacier', icone: '🧊', zoom: 12 },
+  { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), type: 'lac', icone: '💧', zoom: 13 },
+  { test: (k) => k === 'waterway', type: 'cours-eau', icone: '🌊', zoom: 12 },
+  { test: (k, v) => k === 'natural' && v === 'valley', type: 'vallee', icone: '🏞️', zoom: 12 },
+  { test: (k, v) => k === 'tourism' && (v === 'alpine_hut' || v === 'wilderness_hut'), type: 'refuge', icone: '🛖', zoom: 15 },
+  { test: (k, v) => k === 'place' && (v === 'city' || v === 'town'), type: 'ville', icone: '🏙️', zoom: 12 },
+  { test: (k, v) => k === 'place' && (v === 'village' || v === 'hamlet' || v === 'isolated_dwelling'), type: 'village', icone: '🏘️', zoom: 14 },
 ];
 
 // Repli selon le type renvoyé par le service
 const TYPES = {
-  city: { nom: 'Ville', icone: '🏙️', zoom: 12 },
-  state: { nom: 'Région', icone: '🗺️', zoom: 8 },
-  county: { nom: 'Département', icone: '🗺️', zoom: 9 },
-  country: { nom: 'Pays', icone: '🌍', zoom: 5 },
-  district: { nom: 'Quartier', icone: '🏘️', zoom: 14 },
-  locality: { nom: 'Lieu-dit', icone: '📍', zoom: 14 },
-  street: { nom: 'Rue', icone: '🛣️', zoom: 16 },
-  house: { nom: 'Adresse', icone: '🏠', zoom: 17 },
-  other: { nom: 'Lieu', icone: '📍', zoom: 13 },
+  city: { type: 'ville', icone: '🏙️', zoom: 12 },
+  state: { type: 'region', icone: '🗺️', zoom: 8 },
+  county: { type: 'departement', icone: '🗺️', zoom: 9 },
+  country: { type: 'pays', icone: '🌍', zoom: 5 },
+  district: { type: 'quartier', icone: '🏘️', zoom: 14 },
+  locality: { type: 'lieu-dit', icone: '📍', zoom: 14 },
+  street: { type: 'rue', icone: '🛣️', zoom: 16 },
+  house: { type: 'adresse', icone: '🏠', zoom: 17 },
+  other: { type: 'lieu', icone: '📍', zoom: 13 },
 };
 
 function categorie(p) {
@@ -46,7 +48,7 @@ function categorie(p) {
 }
 
 function groupeRecherche(p, cat) {
-  if (cat.nom === 'Station de ski') return 'station';
+  if (cat.type === 'station') return 'station';
   if (p.type === 'locality' || (p.osm_key === 'place' && p.osm_value === 'locality')) return 'lieu-dit';
   if (
     (p.osm_key === 'place' && ['village', 'hamlet'].includes(p.osm_value)) ||
@@ -60,7 +62,7 @@ function normaliser(f) {
   const p = f.properties || {};
   const [lng, lat] = f.geometry.coordinates;
   const cat = categorie(p);
-  const nom = p.name || [p.housenumber, p.street].filter(Boolean).join(' ') || 'Sans nom';
+  const nom = p.name || [p.housenumber, p.street].filter(Boolean).join(' ') || t('rech.sans-nom');
   const lieux = [p.district, p.city, p.county, p.state, p.country].filter(
     (x, i, t) => x && x !== nom && t.indexOf(x) === i
   );
@@ -68,7 +70,9 @@ function normaliser(f) {
   const grandeZone = e && ['city', 'state', 'county', 'country', 'district'].includes(p.type);
   return {
     nom,
-    sous: [cat.nom, lieux.slice(0, 3).join(', ')].filter(Boolean).join(' · '),
+    // Le type se traduit à l'affichage ; les noms de lieux restent ceux du service
+    type: cat.type,
+    lieux: lieux.slice(0, 3).join(', '),
     icone: cat.icone,
     lng,
     lat,
@@ -78,6 +82,10 @@ function normaliser(f) {
     groupe: groupeRecherche(p, cat),
   };
 }
+
+// Les recherches récentes d'avant cette version n'ont qu'un sous-titre déjà écrit
+const sousTitre = (r) =>
+  r.type ? [t(`rech.type.${r.type}`), r.lieux].filter(Boolean).join(' · ') : r.sous ?? '';
 
 function equilibrerResultats(items) {
   const groupes = ['village', 'station', 'lieu-dit'];
@@ -100,7 +108,8 @@ function lireCoordonnees(texte) {
 
 const resultatGps = ({ lat, lng }) => ({
   nom: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
-  sous: 'Coordonnées GPS',
+  type: 'gps',
+  lieux: '',
   icone: '🎯',
   lng,
   lat,
@@ -114,12 +123,12 @@ export function initRecherche(map) {
   racine.id = 'recherche';
   racine.innerHTML = `
     <div class="rech-champ">
-      <button type="button" class="rech-loupe" aria-label="Rechercher">${ICONE_LOUPE}</button>
-      <input type="text" id="rech-saisie" placeholder="Rechercher"
+      <button type="button" class="rech-loupe" ${ta('aria-label', 'rech.rechercher')}>${ICONE_LOUPE}</button>
+      <input type="text" id="rech-saisie" ${ta('placeholder', 'rech.rechercher')}
         autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search"
         role="combobox" aria-expanded="false" aria-controls="rech-liste" aria-autocomplete="list">
       <span class="rech-attente" hidden></span>
-      <button type="button" class="rech-effacer" aria-label="Effacer" hidden>✕</button>
+      <button type="button" class="rech-effacer" ${ta('aria-label', 'rech.effacer')} hidden>✕</button>
     </div>
     <div class="rech-liste" id="rech-liste" role="listbox" hidden></div>
   `;
@@ -180,7 +189,7 @@ export function initRecherche(map) {
     nom.textContent = r.nom;
     const sous = document.createElement('div');
     sous.className = 'rech-sous';
-    sous.textContent = r.sous;
+    sous.textContent = sousTitre(r);
     textes.append(nom, sous);
 
     ligne.append(icone, textes);
@@ -194,7 +203,7 @@ export function initRecherche(map) {
   function creerCredit() {
     const credit = document.createElement('div');
     credit.className = 'rech-credit';
-    credit.textContent = 'Résultats © OpenStreetMap · Photon';
+    credit.textContent = t('rech.credit');
     return credit;
   }
 
@@ -204,19 +213,19 @@ export function initRecherche(map) {
     liste.replaceChildren();
 
     if (titre) {
-      const t = document.createElement('div');
-      t.className = 'rech-titre';
+      const entete = document.createElement('div');
+      entete.className = 'rech-titre';
       const libelle = document.createElement('span');
       libelle.textContent = titre;
-      t.appendChild(libelle);
+      entete.appendChild(libelle);
       if (action) {
         const bouton = document.createElement('button');
         bouton.type = 'button';
         bouton.textContent = action.libelle;
         bouton.addEventListener('click', action.fn);
-        t.appendChild(bouton);
+        entete.appendChild(bouton);
       }
-      liste.appendChild(t);
+      liste.appendChild(entete);
     }
 
     items.forEach((r, i) => liste.appendChild(creerLigne(r, i)));
@@ -254,9 +263,9 @@ export function initRecherche(map) {
       return;
     }
     dessiner(recents, {
-      titre: 'Recherches récentes',
+      titre: t('rech.recentes'),
       action: {
-        libelle: 'Effacer',
+        libelle: t('rech.effacer'),
         fn: () => {
           ecrire(CLE_RECENTS, []);
           fermerListe();
@@ -273,7 +282,7 @@ export function initRecherche(map) {
 
     const c = map.getCenter();
     const url =
-      `${URL_PHOTON}?q=${encodeURIComponent(q)}&limit=${NB_RESULTATS_RECHERCHE}&lang=fr` +
+      `${URL_PHOTON}?q=${encodeURIComponent(q)}&limit=${NB_RESULTATS_RECHERCHE}&lang=${langue()}` +
       `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`;
 
     try {
@@ -297,11 +306,11 @@ export function initRecherche(map) {
       if (items.length) {
         dessiner(equilibrerResultats(items).slice(0, NB_RESULTATS_AFFICHES), { credit: true });
       }
-      else afficherMessage(`Aucun résultat pour « ${q} »`);
+      else afficherMessage(t('rech.aucun', { q }));
     } catch (e) {
       if (e.name === 'AbortError') return;
       attente.hidden = true;
-      afficherMessage('Recherche indisponible. Vérifiez votre connexion et réessayez.');
+      afficherMessage(t('lieu.recherche-erreur'));
       console.warn('Recherche :', e);
     }
   }
@@ -315,7 +324,7 @@ export function initRecherche(map) {
     nom.textContent = r.nom;
     const sous = document.createElement('div');
     sous.className = 'rech-popup-sous';
-    sous.textContent = r.sous;
+    sous.textContent = sousTitre(r);
     const coord = document.createElement('div');
     coord.className = 'rech-popup-coord';
     const texteCoord = `${r.lat.toFixed(5)}, ${r.lng.toFixed(5)}`;
@@ -325,19 +334,19 @@ export function initRecherche(map) {
     actions.className = 'rech-popup-actions';
     const copier = document.createElement('button');
     copier.type = 'button';
-    copier.textContent = 'Copier';
+    copier.textContent = t('lieu.copier');
     copier.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(texteCoord);
-        copier.textContent = 'Copié ✓';
+        copier.textContent = t('lieu.copie');
       } catch (e) {
-        copier.textContent = 'Indisponible';
+        copier.textContent = t('lieu.indisponible');
       }
-      setTimeout(() => (copier.textContent = 'Copier'), 1500);
+      setTimeout(() => (copier.textContent = t('lieu.copier')), 1500);
     });
     const retirer = document.createElement('button');
     retirer.type = 'button';
-    retirer.textContent = 'Retirer';
+    retirer.textContent = t('rech.retirer');
     retirer.addEventListener('click', effacerTout);
     actions.append(copier, retirer);
 
@@ -498,8 +507,8 @@ export function initRecherche(map) {
 
   // Raccourci : « / » place le curseur dans la barre
   document.addEventListener('keydown', (e) => {
-    const t = e.target;
-    const enSaisie = t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    const cible = e.target;
+    const enSaisie = cible instanceof HTMLElement && (cible.tagName === 'INPUT' || cible.tagName === 'TEXTAREA' || cible.isContentEditable);
     if (e.key === '/' && !enSaisie) {
       e.preventDefault();
       loupe.click();

@@ -15,6 +15,7 @@ import { STYLE_MONTIS } from './style-montis.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
 import { surPreferences } from './preferences.js';
+import { surLangue, t } from './i18n.js';
 import { imperial, expressionAltitude, PIEDS } from './unites.js';
 
 
@@ -22,6 +23,17 @@ maplibregl.setWorkerUrl(maplibreWorkerUrl);
 appliquerApparence();
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+
+function localeCarte() {
+  return {
+    'NavigationControl.ZoomIn': t('carte.zoom-plus'),
+    'NavigationControl.ZoomOut': t('carte.zoom-moins'),
+    'NavigationControl.ResetBearing': t('carte.nord'),
+    'GeolocateControl.FindMyLocation': t('carte.position'),
+    'GeolocateControl.LocationNotAvailable': t('carte.position-indisponible'),
+    'AttributionControl.ToggleAttribution': t('carte.attribution'),
+  };
+}
 
 // Source des courbes de niveau, calculées à partir des altitudes
 const demSource = new mlcontour.DemSource({
@@ -45,7 +57,7 @@ const map = new maplibregl.Map({
         encoding: 'terrarium',
         tileSize: 256,
         maxzoom: 15,
-        attribution: 'Relief : Terrain Tiles (AWS)',
+        attribution: t('carte.relief-attribution'),
       },
       ombrage: {
         type: 'raster-dem',
@@ -73,6 +85,25 @@ const map = new maplibregl.Map({
   center: [6.87, 45.88], // massif du Mont-Blanc (longitude, latitude)
   zoom: 11.5,
   maxPitch: 85,
+  locale: localeCarte(),
+});
+
+// Boutons de MapLibre (zoom, boussole, position) : leurs libellés se posent à la création,
+// on les réécrit donc nous-mêmes au changement de langue
+surLangue(() => {
+  const libelles = {
+    '.maplibregl-ctrl-zoom-in': 'carte.zoom-plus',
+    '.maplibregl-ctrl-zoom-out': 'carte.zoom-moins',
+    '.maplibregl-ctrl-compass': 'carte.nord',
+    '.maplibregl-ctrl-geolocate': 'carte.position',
+    '.maplibregl-ctrl-attrib-button': 'carte.attribution',
+  };
+  for (const [selecteur, cle] of Object.entries(libelles)) {
+    map.getContainer().querySelectorAll(selecteur).forEach((bouton) => {
+      bouton.title = t(cle);
+      bouton.setAttribute('aria-label', t(cle));
+    });
+  }
 });
 
 map.once('load', () => {

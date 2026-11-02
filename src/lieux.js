@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { t } from './i18n.js';
 
 
 const POLICE = ['Open Sans Regular', 'Arial Unicode MS Regular'];
@@ -87,7 +88,7 @@ export function afficherRefuges(map, visible) {
     map.addSource(SOURCE_REFUGES, {
       type: 'geojson',
       data: url,
-      attribution: 'Refuges : © contributeurs OpenStreetMap',
+      attribution: t('lieux.refuges-attribution'),
     });
     fetch(url, { method: 'HEAD' })
       .then((r) => {

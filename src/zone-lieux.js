@@ -2,6 +2,7 @@
 // sur la carte. Un lieu est un Feature GeoJSON ponctuel dont les propriétés portent `nom`.
 import * as maplibregl from 'maplibre-gl';
 import { DECALAGE_PIN, imagePin } from './pins.js';
+import { t } from './i18n.js';
 
 const DISTANCE_GROUPE_PX = 56;
 const ZOOM_LISTE_GROUPE = 13;
@@ -147,7 +148,7 @@ export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume,
     const element = el('button', 'rando-repere ski-repere');
     element.type = 'button';
     element.classList.toggle('selectionne', feature === choisi);
-    element.setAttribute('aria-label', `Ouvrir la fiche de ${nom}`);
+    element.setAttribute('aria-label', t('lieu.ouvrir-fiche', { nom }));
     element.append(imagePin(pin, feature === choisi), el('span', 'rando-repere-nom', nom));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherResume(feature);
@@ -220,7 +221,7 @@ export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume,
   function creerRepereGroupe(features, coordonnees) {
     const element = el('button', 'rando-groupe ski-groupe');
     element.type = 'button';
-    element.setAttribute('aria-label', `${libelleGroupe(features.length)} Touchez pour zoomer ou choisir.`);
+    element.setAttribute('aria-label', t('lieu.groupe-aide', { libelle: libelleGroupe(features.length) }));
     element.innerHTML =
       `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${features.length}</span>`;
     element.addEventListener('pointerenter', (event) => {
@@ -296,7 +297,7 @@ export function creerRechercheLieux({ champ, liste, prefixe, surEchap, charger, 
       attente.append(el('span', 'rech-attente'), textes.attente);
       liste.append(attente);
     } else if (etatRech === 'erreur') {
-      liste.append(el('div', 'rando-attente', 'Recherche indisponible. Vérifiez votre connexion et réessayez.'));
+      liste.append(el('div', 'rando-attente', t('lieu.recherche-erreur')));
     } else {
       liste.append(el('div', 'rando-attente', textes.vide(recherche)));
     }

@@ -1,13 +1,14 @@
 import { etat, creerOptionCourbes } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
+import { t, ta, ti, tt } from './i18n.js';
+import { nombre } from './unites.js';
 
 const SOURCE_RELIEF = 'relief';
-const LIBELLE_CURSEUR = 'Hauteur du relief';
 
 // Valeur de départ (partagée avec le bouton 2D/3D de la carte)
 etat.exageration = lire('exageration', 1.2);
 
-const formaterFacteur = (v) => `×${v.toFixed(1).replace('.', ',')}`;
+const formaterFacteur = (v) => `×${nombre(v, 1)}`;
 
 export function creerOptionRelief(map) {
   const panneau = document.createElement('div');
@@ -16,21 +17,21 @@ export function creerOptionRelief(map) {
   // Un bloc avec data-seulement="2d" ou "3d" n'apparaît que dans ce mode.
   // Un bloc sans cet attribut apparaît dans les deux modes.
   panneau.innerHTML = `
-    <div class="relief-bascule" role="group" aria-label="Mode d'affichage">
+    <div class="relief-bascule" role="group" ${ta('aria-label', 'carte.mode-affichage')}>
       <button type="button" data-mode="2d">2D</button>
       <button type="button" data-mode="3d">3D</button>
     </div>
 
     <div class="relief-reglage" data-seulement="3d">
       <div class="relief-entete">
-        <span>${LIBELLE_CURSEUR}</span>
+        ${tt('relief.hauteur')}
         <strong id="val-exag">${formaterFacteur(etat.exageration)}</strong>
       </div>
       <input type="range" id="curseur-exag" min="0.5" max="4" step="0.1" value="${etat.exageration}">
     </div>
 
     <div class="relief-courbes" data-seulement="2d">
-      <h3>Courbes de niveau</h3>
+      <h3 ${ti('relief.courbes')}>${t('relief.courbes')}</h3>
     </div>
   `;
 
@@ -76,7 +77,7 @@ export function creerOptionRelief(map) {
 
   return {
     id: 'relief',
-    label: 'Relief',
+    labelCle: 'relief.titre',
     icone: 'relief',
     panneau,
     activer() {},

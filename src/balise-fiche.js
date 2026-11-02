@@ -8,19 +8,20 @@ import { dateComplete, etatStation, texteAge } from './balises-sources.js';
 import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
+import { t, ta, ti, tt } from './i18n.js';
 
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
 const COUVERTURE_TOLEREE = 15 * 60 * 1000; // en dessous, on ne signale pas de manque
 const ZOOM_RELIEF = 12;
-const LIBELLES_ETAT = { actif: 'En direct', ancien: 'Relevé ancien', hs: 'Hors service' };
+const LIBELLES_ETAT = { actif: 'bf.direct', ancien: 'bf.ancien', hs: 'bf.hs' };
 
 const kmh = (valeur) => (Number.isFinite(valeur) ? valeurVent(valeur) : '—');
 
 export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'balise-fiche-reduite',
-    libelle: 'fiche de la balise',
+    libelle: 'panneau.balise',
     onFermer: () => fermer(),
     onRetour,
     onAgrandi: () => {
@@ -30,37 +31,37 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
   const fiche = panneau.element;
   panneau.meta.innerHTML = '<span class="bf-etat"></span><span class="bf-altitude"></span><span class="bf-age"></span>';
   panneau.corps.innerHTML = `
-    <section class="bf-maintenant" aria-label="Vent actuel">
+    <section class="bf-maintenant" ${ta('aria-label', 'bf.actuel')}>
       <div class="bf-rose">
         <div class="bf-rose-dessin"></div>
         <small class="bf-provenance"></small>
       </div>
       <div class="bf-valeurs">
-        <div class="bf-valeur bf-valeur-principale"><span>Vent moyen</span><strong><b data-bf-moyen></b> <i data-unite-vent>km/h</i></strong></div>
-        <div class="bf-valeur bf-valeur-rafale"><span>Rafale</span><strong><b data-bf-rafale></b> <i data-unite-vent>km/h</i></strong></div>
-        <div class="bf-valeur bf-valeur-minimum"><span>Minimum</span><strong><b data-bf-minimum></b> <i data-unite-vent>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-principale">${tt('bf.moyen')}<strong><b data-bf-moyen></b> <i data-unite-vent>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-rafale">${tt('bf.rafale')}<strong><b data-bf-rafale></b> <i data-unite-vent>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-minimum">${tt('bf.minimum')}<strong><b data-bf-minimum></b> <i data-unite-vent>km/h</i></strong></div>
       </div>
       <p class="bf-absence" hidden></p>
     </section>
-    <section class="bf-historique" aria-label="Évolution du vent">
-      <div class="bf-periodes" role="group" aria-label="Période affichée">
-        ${PERIODES.map((heures) => `<button type="button" data-bf-periode="${heures}" aria-pressed="false">${heures} h</button>`).join('')}
+    <section class="bf-historique" ${ta('aria-label', 'bf.evolution')}>
+      <div class="bf-periodes" role="group" ${ta('aria-label', 'bf.periode')}>
+        ${PERIODES.map((heures) => `<button type="button" data-bf-periode="${heures}" aria-pressed="false">${t('bf.h', { n: heures })}</button>`).join('')}
       </div>
       <div class="bf-lecture">
         <div class="bf-legende">
-          <span><i class="bf-trait bf-trait-moyen"></i>Moyen</span>
-          <span><i class="bf-trait bf-trait-rafale"></i>Rafales</span>
-          <span><i class="bf-trait bf-trait-minimum"></i>Minimum</span>
+          <span><i class="bf-trait bf-trait-moyen"></i>${tt('bf.legende-moyen')}</span>
+          <span><i class="bf-trait bf-trait-rafale"></i>${tt('bf.legende-rafales')}</span>
+          <span><i class="bf-trait bf-trait-minimum"></i>${tt('bf.minimum')}</span>
         </div>
         <div class="bf-curseur" hidden>
           <strong data-bf-c-heure></strong>
-          <span>Moy. <b data-bf-c-moyen></b></span>
-          <span>Raf. <b class="bf-c-rafale" data-bf-c-rafale></b></span>
-          <span>Min. <b class="bf-c-minimum" data-bf-c-minimum></b></span>
+          <span>${tt('bf.moy')} <b data-bf-c-moyen></b></span>
+          <span>${tt('bf.raf')} <b class="bf-c-rafale" data-bf-c-rafale></b></span>
+          <span>${tt('bf.min')} <b class="bf-c-minimum" data-bf-c-minimum></b></span>
           <span class="bf-c-direction"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 15 13.5 13V21H10.5V13L5 15Z"/></svg><b data-bf-c-direction></b></span>
         </div>
       </div>
-      <canvas class="bf-graphique" tabindex="0" role="img" aria-label="Évolution du vent. Glisser ou utiliser les flèches du clavier pour lire une heure précise."></canvas>
+      <canvas class="bf-graphique" tabindex="0" role="img" ${ta('aria-label', 'bf.graphique-aria')}></canvas>
       <p class="bf-note"></p>
     </section>
     <p class="bf-description" hidden></p>
@@ -107,8 +108,8 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     if (!station) return;
     const etat = etatStation(station);
     $('.bf-age').textContent = Number.isFinite(station.date)
-      ? (etat === 'hs' ? `Dernier relevé ${dateComplete(station.date)}` : `Mis à jour ${texteAge(station.date)}`)
-      : 'Aucun relevé connu';
+      ? (etat === 'hs' ? t('bf.dernier', { date: dateComplete(station.date) }) : t('bf.mis-a-jour', { age: texteAge(station.date) }))
+      : t('bf.aucun-releve');
   }
 
   function rendreMaintenant() {
@@ -117,10 +118,10 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     fiche.style.setProperty('--vent-couleur', etat === 'actif' ? couleurInterface(station.moyenne) : 'var(--texte-2)');
     $('.bf-nom').textContent = station.nom;
     // Sans réseau, un relevé récent n'est plus du direct, quel que soit son âge
-    $('.bf-etat').textContent = etat === 'actif' && estHorsLigne() ? 'Enregistré' : LIBELLES_ETAT[etat];
+    $('.bf-etat').textContent = t(etat === 'actif' && estHorsLigne() ? 'bf.enregistre' : LIBELLES_ETAT[etat]);
     const avecCap = Number.isFinite(station.direction);
     $('.bf-rose-dessin').innerHTML = cadranVent(avecCap ? (station.direction + 180) % 360 : null, 0, '', true);
-    $('.bf-provenance').textContent = avecCap ? texteProvenance(station.direction) : 'Direction inconnue';
+    $('.bf-provenance').textContent = avecCap ? texteProvenance(station.direction) : t('bf.direction-inconnue');
     $('[data-bf-moyen]').textContent = kmh(station.moyenne);
     $('[data-bf-rafale]').textContent = kmh(station.rafale);
     $('[data-bf-minimum]').textContent = kmh(station.minimum);
@@ -131,16 +132,16 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
       rose: cadranVent(avecCap && etat !== 'hs' ? (station.direction + 180) % 360 : null, 0, 'vent-cadran-petit'),
       nom: station.nom,
       detail: etat === 'hs'
-        ? LIBELLES_ETAT.hs
-        : `${etat === 'ancien' ? `${LIBELLES_ETAT.ancien} · ` : ''}${texteProvenance(station.direction)}`,
+        ? t(LIBELLES_ETAT.hs)
+        : `${etat === 'ancien' ? `${t(LIBELLES_ETAT.ancien)} · ` : ''}${texteProvenance(station.direction)}`,
       valeur: etat === 'hs' ? '—' : kmh(station.moyenne),
       unite: libelleVent(),
     });
     const absence = $('.bf-absence');
     absence.hidden = etat === 'actif';
     absence.textContent = etat === 'ancien'
-      ? `Ces valeurs datent de ${heureCourte(station.date)} : la balise n’a rien transmis depuis.`
-      : 'Cette balise ne transmet plus de mesures de vent.';
+      ? t('bf.datent', { heure: heureCourte(station.date) })
+      : t('bf.ne-transmet');
     rendreAge();
     const description = $('.bf-description');
     description.textContent = station.description;
@@ -150,7 +151,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     lien.target = '_blank';
     lien.rel = 'noopener noreferrer';
     lien.textContent = `${source.libelle} ↗`;
-    $('.bf-source').replaceChildren('Relevés indicatifs · ', lien);
+    $('.bf-source').replaceChildren(t('bf.indicatifs'), lien);
   }
 
   function rendreGraphique() {
@@ -163,16 +164,16 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
       element.hidden = rien;
     });
     if (rien) {
-      note.textContent = 'Aucun relevé sur les dernières 24 h.';
+      note.textContent = t('bf.aucun-24h');
       note.hidden = false;
       return;
     }
     const visibles = graphique.definir(historique, periode);
     const debut = Date.now() - periode * 60 * 60 * 1000;
     if (!visibles.length) {
-      note.textContent = `Aucun relevé sur les ${periode} dernières heures.`;
+      note.textContent = t('bf.aucun-periode', { n: periode });
     } else if (visibles[0].date - debut > COUVERTURE_TOLEREE) {
-      note.textContent = `Pas de relevé avant ${heureCourte(visibles[0].date)} sur cette période.`;
+      note.textContent = t('bf.pas-avant', { heure: heureCourte(visibles[0].date) });
     } else {
       note.textContent = '';
     }
@@ -197,7 +198,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
       element.hidden = false;
     });
     graphique.definir([], periode);
-    note.textContent = 'Chargement de l’évolution…';
+    note.textContent = t('bf.chargement');
     note.hidden = false;
     try {
       const points = await source.historique(demandee, requete.signal);
@@ -212,8 +213,8 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
         element.hidden = true;
       });
       note.textContent = estHorsLigne()
-        ? 'Hors ligne : l’évolution de cette balise n’a pas été enregistrée.'
-        : 'Évolution momentanément indisponible.';
+        ? t('bf.hors-ligne')
+        : t('bf.indisponible');
       note.hidden = false;
     }
   }
@@ -242,7 +243,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     }
     if (jeton === jetonAltitude && Number.isFinite(valeur)) {
       champ.textContent = `≈ ${formatAltitude(valeur)}`;
-      champ.title = 'Altitude du terrain, lue sur le relief';
+      champ.title = t('bf.altitude-relief');
     }
   }
 

@@ -11,6 +11,7 @@ import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
 import { creerCarteVent } from './carte-vent.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
 import { creerCartesHorsLigne } from './zones-hors-ligne.js';
+import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -44,8 +45,12 @@ function creerIconeMenu(nom) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${dessin}</svg>`;
 }
 
-function ajouterAideMaintien(bouton, libelle) {
-  bouton.title = `${libelle} — maintenir appuyé pour afficher le libellé`;
+function ajouterAideMaintien(bouton, cleLibelle) {
+  const majTitre = () => {
+    bouton.title = t('menu.maintenir', { nom: t(cleLibelle) });
+  };
+  majTitre();
+  surLangue(majTitre);
   bouton.addEventListener('contextmenu', (event) => event.preventDefault());
 
   let minuterie;
@@ -91,26 +96,25 @@ export function initMenu(map) {
   const bouton = document.createElement('button');
   bouton.id = 'menu-bouton';
   bouton.type = 'button';
-  bouton.setAttribute('aria-label', 'Ouvrir le menu');
   bouton.setAttribute('aria-controls', 'menu-tiroir');
   bouton.setAttribute('aria-expanded', 'false');
   bouton.innerHTML = `
     <img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />
   `;
-  bouton.setAttribute('aria-label', 'Ouvrir les activités');
-  bouton.title = 'Activités';
+  poserAttribut(bouton, 'aria-label', 'menu.ouvrir-activites');
+  poserAttribut(bouton, 'title', 'menu.activites');
 
   const boutonParametres = document.createElement('button');
   boutonParametres.id = 'menu-parametres-bouton';
   boutonParametres.type = 'button';
-  boutonParametres.setAttribute('aria-label', 'Ouvrir les paramètres');
+  poserAttribut(boutonParametres, 'aria-label', 'menu.ouvrir-parametres');
   boutonParametres.setAttribute('aria-controls', 'menu-tiroir');
   boutonParametres.innerHTML = creerIconeMenu('reglages');
-  boutonParametres.title = 'Paramètres';
+  poserAttribut(boutonParametres, 'title', 'menu.parametres');
 
   const tiroir = document.createElement('aside');
   tiroir.id = 'menu-tiroir';
-  tiroir.setAttribute('aria-label', 'Menu principal');
+  poserAttribut(tiroir, 'aria-label', 'menu.principal');
   tiroir.innerHTML = `
     <div class="menu-entete">
       ${BANDEAU_MENU}
@@ -118,11 +122,11 @@ export function initMenu(map) {
         <span class="menu-logotype">
           <img src="/logos/montis-lockup-for-dark.svg" alt="Montis" width="124" height="42" />
         </span>
-        <span class="menu-sous-titre">ACTIVITÉS MONTAGNE</span>
+        <span class="menu-sous-titre" ${ti('menu.sous-titre')}>${t('menu.sous-titre')}</span>
       </div>
-      <button id="menu-fermer" type="button" aria-label="Fermer le menu">${creerIconeMenu('close')}</button>
+      <button id="menu-fermer" type="button" ${ta('aria-label', 'menu.fermer')}>${creerIconeMenu('close')}</button>
     </div>
-    <div class="menu-corps" aria-label="Activités"></div>
+    <div class="menu-corps" ${ta('aria-label', 'menu.activites')}></div>
     <div class="menu-parametres"></div>
   `;
   document.body.append(bouton, boutonParametres, tiroir);
@@ -146,7 +150,7 @@ export function initMenu(map) {
     tiroir.classList.toggle('ouvert', ouvert);
     montrerParametres(ouvert && pageParametres);
     bouton.setAttribute('aria-expanded', String(ouvert));
-    bouton.setAttribute('aria-label', ouvert ? 'Menu ouvert' : 'Ouvrir les activités');
+    poserAttribut(bouton, 'aria-label', ouvert ? 'menu.ouvert' : 'menu.ouvrir-activites');
     boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
     if (ouvert) {
       fermerPanneauxFlottants();
@@ -169,9 +173,9 @@ export function initMenu(map) {
   const categories = [
     {
       id: 'activites',
-      titre: 'Activités',
+      titre: 'menu.activites',
       icone: 'activites',
-      aide: 'Choisissez une activité pour afficher ses outils sur la carte.',
+      aide: 'menu.aide-activites',
       exclusif: true,
       modules: [
         creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent: carteVent }),
@@ -183,9 +187,9 @@ export function initMenu(map) {
     },
     {
       id: 'meteo',
-      titre: 'Météo',
+      titre: 'menu.meteo',
       icone: 'meteo',
-      aide: 'Conditions et prévisions en montagne.',
+      aide: 'menu.aide-meteo',
       exclusif: false,
       modules: [
         creerConditionsLocales(map),
@@ -196,9 +200,9 @@ export function initMenu(map) {
     },
     {
       id: 'carte',
-      titre: 'Carte',
+      titre: 'menu.carte',
       icone: 'carte',
-      aide: 'Personnalisez le fond et les informations affichées.',
+      aide: 'menu.aide-carte',
       exclusif: false,
       modules: [
         creerFondDeCarte(map),
@@ -264,7 +268,7 @@ export function initMenu(map) {
   const activiteSauvee = lire('menu-activite', null);
   const actionsFlottantes = document.createElement('div');
   actionsFlottantes.className = 'outils-rapides';
-  actionsFlottantes.setAttribute('aria-label', 'Outils de la carte');
+  poserAttribut(actionsFlottantes, 'aria-label', 'menu.outils-carte');
   document.body.appendChild(actionsFlottantes);
   const etatsParCategorie = new Map();
 
@@ -279,11 +283,11 @@ export function initMenu(map) {
     const vue = document.createElement('section');
     vue.className = 'menu-vue';
     vue.id = `menu-vue-${categorie.id}`;
-    vue.setAttribute('aria-label', categorie.titre);
+    poserAttribut(vue, 'aria-label', categorie.titre);
     vue.innerHTML = `
       <header class="menu-vue-entete">
-        <h2>${categorie.titre}</h2>
-        <p>${categorie.aide}</p>
+        <h2 ${ti(categorie.titre)}>${t(categorie.titre)}</h2>
+        <p ${ti(categorie.aide)}>${t(categorie.aide)}</p>
       </header>
     `;
 
@@ -296,22 +300,22 @@ export function initMenu(map) {
       boutonOutil.id = `outil-rapide-bouton-${categorie.id}`;
       boutonOutil.setAttribute('aria-controls', `outil-rapide-panneau-${categorie.id}`);
       boutonOutil.setAttribute('aria-expanded', 'false');
-      boutonOutil.setAttribute('aria-label', `Ouvrir les outils ${categorie.titre.toLowerCase()}`);
-      boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span>${categorie.titre}</span>`;
+      poserAttribut(boutonOutil, 'aria-label', `menu.ouvrir-outils-${categorie.id}`);
+      boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span ${ti(categorie.titre)}>${t(categorie.titre)}</span>`;
       ajouterAideMaintien(boutonOutil, categorie.titre);
 
       const panneauOutil = document.createElement('aside');
       panneauOutil.className = 'outil-rapide-panneau';
       panneauOutil.id = `outil-rapide-panneau-${categorie.id}`;
-      panneauOutil.setAttribute('aria-label', `Outils ${categorie.titre.toLowerCase()}`);
+      poserAttribut(panneauOutil, 'aria-label', categorie.id === 'meteo' ? 'menu.outils-meteo' : 'menu.outils-carte-court');
       panneauOutil.hidden = true;
       panneauOutil.innerHTML = `
         <header class="outil-rapide-entete">
           <div class="outil-rapide-titre">
             ${creerIconeMenu(categorie.icone)}
-            <strong>${categorie.titre}</strong>
+            <strong ${ti(categorie.titre)}>${t(categorie.titre)}</strong>
           </div>
-          <button type="button" class="outil-rapide-fermer" aria-label="Fermer ${categorie.titre.toLowerCase()}">${creerIconeMenu('close')}</button>
+          <button type="button" class="outil-rapide-fermer" ${ta('aria-label', `menu.fermer-${categorie.id}`)}>${creerIconeMenu('close')}</button>
         </header>
         <div class="outil-rapide-corps"></div>
       `;
@@ -347,7 +351,9 @@ export function initMenu(map) {
       if (ICONES_ACTIVITES[module.icone]) {
         ligne.classList.add('menu-ligne-activite');
       }
-      ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span>${module.label}</span>`;
+      ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span></span>`;
+      if (module.labelCle) poser(ligne.querySelector('span'), module.labelCle);
+      else ligne.querySelector('span').textContent = module.label;
       ligne.setAttribute('aria-pressed', 'false');
       if (module.reseauRequis) ligne.dataset.reseauRequis = '';
       ligne.dataset.module = module.id;

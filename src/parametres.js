@@ -1,44 +1,43 @@
 import { THEMES, ACCENTS, themeChoisi, accentChoisi, definirTheme, definirAccent } from './apparence.js';
 import { retourAZero } from './reglages.js';
 import { applicationInstallee, installationPossible, installerApplication, surInstallationChangee } from './hors-ligne.js';
-import { choixUniteVent, definirSysteme, definirUniteVent, surPreferences, systemeUnites } from './preferences.js';
+import { choixUniteVent, definirLangue, definirSysteme, definirUniteVent, langue, surPreferences, systemeUnites } from './preferences.js';
+import { poser, poserAttribut, t, ta, ti } from './i18n.js';
 
-function groupe(titre, id) {
+function groupe(cle, id) {
   const section = document.createElement('section');
   section.className = 'params-groupe';
   section.dataset.section = id;
-  const h = document.createElement('h3');
-  h.textContent = titre;
+  const h = poser(document.createElement('h3'), cle);
   section.appendChild(h);
   return section;
 }
 
-function ligne(libelle) {
+function ligne(cle) {
   const l = document.createElement('div');
   l.className = 'params-ligne';
-  const t = document.createElement('span');
-  t.textContent = libelle;
-  l.appendChild(t);
+  l.appendChild(poser(document.createElement('span'), cle));
   return l;
 }
 
-function aide(texte) {
+function aide(cle) {
   const p = document.createElement('p');
   p.className = 'params-aide';
-  p.textContent = texte;
+  if (cle) poser(p, cle);
   return p;
 }
 
-// Contrôle segmenté : `options` = [{ id, nom }], `actif()` donne l'id choisi
-function segmente(options, actif, choisir, libelle) {
+// Contrôle segmenté : `options` = [{ id, cle }] (ou { id, nom } pour un texte fixe)
+function segmente(options, actif, choisir, cleLibelle) {
   const segments = document.createElement('div');
   segments.className = 'segments';
   segments.setAttribute('role', 'group');
-  if (libelle) segments.setAttribute('aria-label', libelle);
+  if (cleLibelle) poserAttribut(segments, 'aria-label', cleLibelle);
   const boutons = options.map((option) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.textContent = option.nom;
+    if (option.cle) poser(b, option.cle);
+    else b.textContent = option.nom;
     b.addEventListener('click', () => {
       choisir(option.id);
       maj();
@@ -61,8 +60,8 @@ export function creerPageParametres({ retour }) {
   page.className = 'params';
   page.innerHTML = `
     <div class="params-entete">
-      <button type="button" class="params-retour" aria-label="Retour au menu">←</button>
-      <strong>Paramètres</strong>
+      <button type="button" class="params-retour" ${ta('aria-label', 'params.retour')}>←</button>
+      <strong ${ti('params.titre')}>${t('params.titre')}</strong>
     </div>
     <div class="params-corps"></div>
   `;
@@ -70,21 +69,21 @@ export function creerPageParametres({ retour }) {
   const corps = page.querySelector('.params-corps');
 
   // ---------- Thème ----------
-  const theme = groupe('Thème', 'theme');
-  const ligneTheme = ligne('Thème');
-  const choixTheme = segmente(THEMES, themeChoisi, definirTheme, 'Thème');
+  const theme = groupe('params.theme', 'theme');
+  const ligneTheme = ligne('params.theme');
+  const choixTheme = segmente(THEMES, themeChoisi, definirTheme, 'params.theme');
   ligneTheme.appendChild(choixTheme.element);
   theme.appendChild(ligneTheme);
 
-  const ligneAccent = ligne('Couleur d’accent');
+  const ligneAccent = ligne('params.accent');
   const pastilles = document.createElement('div');
   pastilles.className = 'pastilles';
   const boutonsAccent = ACCENTS.map((a) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'pastille';
-    b.title = a.nom;
-    b.setAttribute('aria-label', a.nom);
+    poserAttribut(b, 'title', a.cle);
+    poserAttribut(b, 'aria-label', a.cle);
     b.style.setProperty('--c-clair', a.clair);
     b.style.setProperty('--c-sombre', a.sombre);
     b.addEventListener('click', () => {
@@ -102,21 +101,17 @@ export function creerPageParametres({ retour }) {
   corps.appendChild(theme);
 
   // ---------- Unités ----------
-  const unites = groupe('Unités', 'unites');
-  const ligneSysteme = ligne('Système');
+  const unites = groupe('params.unites', 'unites');
+  const ligneSysteme = ligne('params.systeme');
   const choixSysteme = segmente(
-    [{ id: 'metrique', nom: 'Métrique' }, { id: 'imperial', nom: 'Impérial' }],
+    [{ id: 'metrique', cle: 'params.metrique' }, { id: 'imperial', cle: 'params.imperial' }],
     systemeUnites,
     definirSysteme,
-    'Système d’unités'
+    'params.systeme-aria'
   );
   ligneSysteme.appendChild(choixSysteme.element);
-  const aideSysteme = aide('');
-  const majAideSysteme = () => {
-    aideSysteme.textContent = systemeUnites() === 'imperial'
-      ? 'Milles, pieds, mph et °F. Les traces GPX restent enregistrées en mètres.'
-      : 'Kilomètres, mètres, km/h et °C.';
-  };
+  const aideSysteme = aide();
+  const majAideSysteme = () => poser(aideSysteme, systemeUnites() === 'imperial' ? 'params.aide-imperial' : 'params.aide-metrique');
   majAideSysteme();
   ligneSysteme.appendChild(aideSysteme);
   unites.appendChild(ligneSysteme);
@@ -124,64 +119,75 @@ export function creerPageParametres({ retour }) {
   // Option avancée : en vol, on garde souvent km/h ou nœuds quel que soit le système
   const avance = document.createElement('details');
   avance.className = 'params-avance';
-  avance.innerHTML = '<summary>Options avancées</summary>';
-  const ligneVent = ligne('Vitesse du vent');
+  avance.innerHTML = `<summary ${ti('params.avance')}>${t('params.avance')}</summary>`;
+  const ligneVent = ligne('params.vent');
   const choixVent = segmente(
     [
-      { id: 'auto', nom: 'Auto' },
+      { id: 'auto', cle: 'params.vent-auto' },
       { id: 'kmh', nom: 'km/h' },
       { id: 'ms', nom: 'm/s' },
-      { id: 'kt', nom: 'nœuds' },
+      { id: 'kt', cle: 'params.vent-noeuds' },
       { id: 'mph', nom: 'mph' },
     ],
     choixUniteVent,
     definirUniteVent,
-    'Unité de vitesse du vent'
+    'params.vent-aria'
   );
-  ligneVent.append(choixVent.element, aide('Auto suit le système choisi. Utile en parapente, où l’on garde souvent km/h ou nœuds.'));
+  ligneVent.append(choixVent.element, aide('params.aide-vent'));
   avance.appendChild(ligneVent);
   unites.appendChild(avance);
   corps.appendChild(unites);
+
+  // ---------- Langue ----------
+  const sectionLangue = groupe('params.langue', 'langue');
+  const ligneLangue = ligne('params.langue-interface');
+  // Chaque langue s'écrit dans sa propre langue, pour qu'on la retrouve quoi qu'il arrive
+  const choixLangue = segmente(
+    [{ id: 'fr', nom: 'Français' }, { id: 'en', nom: 'English' }],
+    langue,
+    definirLangue,
+    'params.langue'
+  );
+  ligneLangue.append(choixLangue.element, aide('params.aide-langue'));
+  sectionLangue.appendChild(ligneLangue);
+  corps.appendChild(sectionLangue);
 
   // Une restauration de sauvegarde peut tout changer d'un coup
   surPreferences(() => {
     choixSysteme.maj();
     choixVent.maj();
+    choixLangue.maj();
     majAideSysteme();
     choixTheme.maj();
     majAccent();
   });
 
   // ---------- Application ----------
-  const application = groupe('Application', 'application');
-  const aideInstallation = aide('');
+  const application = groupe('params.application', 'application');
+  const aideInstallation = aide();
   const installer = document.createElement('button');
   installer.type = 'button';
   installer.className = 'btn-secondaire';
-  installer.textContent = 'Installer Montis';
+  poser(installer, 'params.installer');
   installer.addEventListener('click', () => void installerApplication());
   function majInstallation() {
     installer.hidden = !installationPossible();
-    if (applicationInstallee()) {
-      aideInstallation.textContent = 'Montis est installée sur cet appareil et s’ouvre sans réseau.';
-    } else if (installationPossible()) {
-      aideInstallation.textContent = 'Installez Montis pour l’ouvrir depuis l’écran d’accueil, même sans réseau.';
-    } else {
-      aideInstallation.textContent = 'Pour installer Montis, utilisez « Ajouter à l’écran d’accueil » dans le menu du navigateur (Partager sur iPhone).';
-    }
+    if (applicationInstallee()) poser(aideInstallation, 'params.installee');
+    else if (installationPossible()) poser(aideInstallation, 'params.installable');
+    else poser(aideInstallation, 'params.installer-manuel');
   }
   surInstallationChangee(majInstallation);
   majInstallation();
   application.append(aideInstallation, installer);
 
-  const aideReset = aide('Remet les réglages de la carte à zéro et recentre l’application sur votre position. Le thème, les unités et la langue sont conservés.');
+  const aideReset = aide('params.aide-reset');
   aideReset.classList.add('params-aide-espace');
   const reset = document.createElement('button');
   reset.type = 'button';
   reset.className = 'btn-secondaire btn-danger';
-  reset.textContent = '↺ Retour à zéro';
+  poser(reset, 'params.reset');
   reset.addEventListener('click', () => {
-    if (confirm('Tout remettre à zéro et recentrer la carte sur votre position ?')) retourAZero();
+    if (confirm(t('params.reset-confirmer'))) retourAZero();
   });
   application.append(aideReset, reset);
   corps.appendChild(application);

@@ -1,4 +1,5 @@
 import { lire, ecrire } from './reglages.js';
+import { tt } from './i18n.js';
 
 // État partagé : le bouton 3D et le menu doivent s'accorder sur l'affichage des courbes
 // (courbes et altitudes sont rétablies depuis la dernière visite)
@@ -23,8 +24,8 @@ export function majCourbes(map) {
 export function creerOptionCourbes(map) {
   const panneau = document.createElement('div');
   panneau.innerHTML = `
-    <label class="ligne-coche"><input type="checkbox" id="opt-courbes"> Afficher les courbes de niveau</label>
-    <label class="ligne-coche"><input type="checkbox" id="opt-altitudes"> Afficher les altitudes sur les courbes</label>
+    <label class="ligne-coche"><input type="checkbox" id="opt-courbes"> ${tt('courbes.afficher')}</label>
+    <label class="ligne-coche"><input type="checkbox" id="opt-altitudes"> ${tt('courbes.altitudes')}</label>
   `;
   const caseCourbes = panneau.querySelector('#opt-courbes');
   const caseAltitudes = panneau.querySelector('#opt-altitudes');
@@ -46,5 +47,5 @@ export function creerOptionCourbes(map) {
     majCourbes(map);
   });
 
-  return { id: 'courbes', label: 'Courbes de niveau', icone: 'courbes', panneau, activer() {}, desactiver() {} };
+  return { id: 'courbes', labelCle: 'relief.courbes', icone: 'courbes', panneau, activer() {}, desactiver() {} };
 }

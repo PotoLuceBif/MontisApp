@@ -5,6 +5,7 @@ import { estHorsLigne } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { depuisAltitude, formatAltitude, formatDistance, formatSurface, nombre, uniteAltitude, versAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
+import { t, ta, ti, tt } from './i18n.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -99,7 +100,7 @@ export async function preparerTuiles(lon, lat, rayonM, z, { partiel = false } = 
   if (partiel && manquantes < cles.length) return manquantes === 0;
   if (manquantes) {
     // Une tuile manquante fausserait le calcul : mieux vaut ne rien afficher
-    const erreur = new Error('Relief indisponible pour cette zone. Vérifiez votre connexion, puis réessayez.');
+    const erreur = new Error(t('portee.relief-indisponible'));
     erreur.code = 'relief';
     throw erreur;
   }
@@ -243,45 +244,44 @@ async function calculerPortee(lon, lat, finesse, h0) {
 
 // ---------- Interface ----------
 const ICONE_PORTEE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>';
-const MESSAGE_ACCUEIL = 'Touchez la carte pour placer le point de départ.';
+const MESSAGE_ACCUEIL = 'portee.accueil';
 
 export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'portee-panneau-reduit',
-    libelle: 'portée de vol',
+    libelle: 'panneau.portee',
     classe: 'bf-outil',
     onFermer: () => onFermer(),
     onRetour,
   });
-  panneau.titre.textContent = 'Portée de vol';
+  panneau.titre.textContent = t('portee.titre');
   const conteneur = panneau.corps;
   conteneur.innerHTML = `
     <div class="pt">
       <div class="pt-point">
-        <p id="pt-resultat" role="status" aria-live="polite">${MESSAGE_ACCUEIL}</p>
-        <button type="button" id="pt-effacer" aria-label="Effacer le point et la zone" title="Effacer le point et la zone" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <p id="pt-resultat" role="status" aria-live="polite">${t(MESSAGE_ACCUEIL)}</p>
+        <button type="button" id="pt-effacer" ${ta('aria-label', 'portee.effacer')} ${ta('title', 'portee.effacer')} hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="pt-finesse">
-        <label for="pt-finesse">Finesse de la voile</label>
+        <label for="pt-finesse" ${ti('portee.finesse')}>${t('portee.finesse')}</label>
         <div class="pt-pas">
-          <button type="button" data-pt-pas="-0.5" aria-label="Diminuer la finesse">−</button>
+          <button type="button" data-pt-pas="-0.5" ${ta('aria-label', 'portee.diminuer')}>−</button>
           <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8" inputmode="decimal">
-          <button type="button" data-pt-pas="0.5" aria-label="Augmenter la finesse">+</button>
+          <button type="button" data-pt-pas="0.5" ${ta('aria-label', 'portee.augmenter')}>+</button>
         </div>
       </div>
       <div class="pt-champs">
-        <label>Altitude (<span data-unite-alt>${uniteAltitude()}</span>) <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
-        <label>Hauteur / sol (<span data-unite-alt>${uniteAltitude()}</span>) <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
+        <label><span>${tt('portee.altitude')} (<span data-unite-alt>${uniteAltitude()}</span>)</span> <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
+        <label><span>${tt('portee.hauteur')} (<span data-unite-alt>${uniteAltitude()}</span>)</span> <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
       </div>
       <div class="pt-legende" hidden>
         <div class="pt-degrade"></div>
-        <div class="pt-echelle"><span data-pt-borne="0">${formatAltitude(0)}</span><span>Hauteur au-dessus du sol</span><span data-pt-borne="600">${formatAltitude(600, { pas: 10 })} +</span></div>
+        <div class="pt-echelle"><span data-pt-borne="0">${formatAltitude(0)}</span>${tt('portee.hauteur-sol')}<span data-pt-borne="600">${formatAltitude(600, { pas: 10 })} +</span></div>
       </div>
       <details class="rando-outils">
-        <summary>À savoir</summary>
+        <summary ${ti('commun.a-savoir')}>${t('commun.a-savoir')}</summary>
         <div class="rando-outils-contenu">
-          <p class="note">Calcul théorique en air calme, en ligne droite, sans thermique ni vent. Ce n’est pas un outil de décision de vol.
-          Utilisez une finesse réaliste (finesse sol), pas celle du constructeur. Pour une transition en vol, indiquez la hauteur de départ au-dessus du sol.</p>
+          <p class="note" ${ti('portee.note')}>${t('portee.note')}</p>
         </div>
       </details>
     </div>
@@ -319,10 +319,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   function afficherResultat(texte, court = texte) {
     resultat.textContent = texte;
     boutonEffacer.hidden = !point;
-    panneau.definirResume({ detail: court, valeur: inFinesse.value, unite: 'finesse' });
+    panneau.definirResume({ detail: court, valeur: inFinesse.value, unite: t('portee.unite') });
   }
 
-  panneau.definirResume({ rose: ICONE_PORTEE, nom: 'Portée de vol', detail: MESSAGE_ACCUEIL, valeur: inFinesse.value, unite: 'finesse' });
+  panneau.definirResume({ rose: ICONE_PORTEE, nom: t('portee.titre'), detail: t(MESSAGE_ACCUEIL), valeur: inFinesse.value, unite: t('portee.unite') });
 
   function afficherImage(url, coordinates) {
     legende.hidden = false;
@@ -365,10 +365,12 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     const agl = g.agl[idx];
     if (Number.isNaN(agl)) return masquerInfo();
     infobulle.innerHTML =
-      `Hauteur / sol : <b>${formatAltitude(agl)}</b><br>` +
-      `Altitude : <b>${formatAltitude(g.sol[idx] + agl)}</b><br>` +
-      `Finesse mini : <b>${nombre(g.fmin[idx], 1)}</b><br>` +
-      `Distance : ${formatDistance(g.dist[idx])}`;
+      t('portee.info', {
+        agl: formatAltitude(agl),
+        alt: formatAltitude(g.sol[idx] + agl),
+        finesse: nombre(g.fmin[idx], 1),
+        distance: formatDistance(g.dist[idx]),
+      });
     infobulle.style.left = `${e.originalEvent.clientX + 14}px`;
     infobulle.style.top = `${e.originalEvent.clientY + 14}px`;
     infobulle.style.display = 'block';
@@ -381,7 +383,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     if (marqueur) marqueur.remove();
     retirerZone();
     inSol.value = '';
-    afficherResultat(MESSAGE_ACCUEIL);
+    afficherResultat(t(MESSAGE_ACCUEIL));
   }
 
   boutonEffacer.addEventListener('click', reinitialiser);
@@ -402,7 +404,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     if (!marqueur) marqueur = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN });
     pin.changerEtat('selected');
     marqueur.setLngLat(point).addTo(map);
-    afficherResultat('Lecture du relief…');
+    afficherResultat(t('portee.lecture'));
     try {
       await preparerTuiles(depart[0], depart[1], 200, 12);
     } catch (err) {
@@ -441,34 +443,34 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     const sol = depuisChamp(inSol);
     const haut = depuisChamp(inHaut) || 0;
     if (!(finesse > 1) || isNaN(sol)) {
-      afficherResultat('Renseignez une finesse et une altitude valides.');
+      afficherResultat(t('portee.invalide'));
       return;
     }
     const mon = ++compteur;
     pin.changerEtat('selected');
-    afficherResultat('Calcul en cours…');
+    afficherResultat(t('portee.calcul'));
     try {
       const res = await calculerPortee(point[0], point[1], finesse, sol + haut);
       if (mon !== compteur) return;
       if (res.vide) {
         retirerZone();
-        afficherResultat('Aucune zone atteignable depuis ce point avec cette finesse.');
+        afficherResultat(t('portee.aucune'));
         return;
       }
       grille = res.grille;
       afficherImage(res.url, res.coordinates);
       const distance = formatDistance(res.dMax);
       afficherResultat(
-        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${formatSurface(res.aireKm2)}`
-          + (res.reliefComplet ? '' : ' · limitée au relief téléchargé'),
-        `Portée max ${distance}, cap ${Math.round(res.capMax)}°`
+        t('portee.resultat', { distance, cap: Math.round(res.capMax), surface: formatSurface(res.aireKm2) })
+          + (res.reliefComplet ? '' : t('portee.limitee')),
+        t('portee.resultat-court', { distance, cap: Math.round(res.capMax) })
       );
     } catch (err) {
       if (mon !== compteur) return;
       console.warn('Portée :', err);
       pin.changerEtat('disabled');
       retirerZone();
-      afficherResultat(err.code === 'relief' ? err.message : 'Calcul impossible pour ce point.');
+      afficherResultat(err.code === 'relief' ? err.message : t('portee.impossible'));
     }
   }
 
@@ -489,7 +491,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       const valeur = Number(borne.dataset.ptBorne);
       borne.textContent = valeur ? `${formatAltitude(valeur, { pas: 10 })} +` : formatAltitude(0);
     });
+    panneau.titre.textContent = t('portee.titre');
+    panneau.definirResume({ nom: t('portee.titre') });
     if (point && grille) recalculer();
+    else if (!point) afficherResultat(t(MESSAGE_ACCUEIL));
   });
 
   return {
