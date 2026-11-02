@@ -5,6 +5,7 @@ const ESPACEMENT_MIN = 84; // px entre deux flèches, jamais plus du double
 const MAX_FLECHES = 500;
 const DUREE_IMAGE = 33; // environ 30 images par seconde, pour ménager la batterie
 const POINTS_TRACE = 18;
+const COULEUR_CERNE = 'rgba(8, 12, 24, .82)'; // lisible sur fond clair, invisible sur fond sombre
 const DUREE_IMAGE_LENTE = 120; // ms
 const IMAGES_LENTES_MAX = 24; // à la suite : l'appareil ne suit pas, on coupe les traînées
 
@@ -15,7 +16,7 @@ const vitesseParticule = (vitesse) => 8 + vitesse; // px/s, indépendant du zoom
 
 // Flèches et traînées dessinées au-dessus de la carte. Elles sont rééchantillonnées
 // depuis le champ de vent : zoomer ou déplacer la carte ne demande aucune donnée.
-export function creerCoucheVent(map, { couleur, halo, onFleches = () => {} }) {
+export function creerCoucheVent(map, { couleur, onFleches = () => {} }) {
   const canvas = document.createElement('canvas');
   canvas.className = 'vent-couche';
   canvas.setAttribute('aria-hidden', 'true');
@@ -108,29 +109,28 @@ export function creerCoucheVent(map, { couleur, halo, onFleches = () => {} }) {
       const { x, y, dx, dy, longueur } = fleche;
       const pointeX = x + dx * longueur / 2;
       const pointeY = y + dy * longueur / 2;
-      const baseX = pointeX - dx * 8;
-      const baseY = pointeY - dy * 8;
+      const baseX = pointeX - dx * 10;
+      const baseY = pointeY - dy * 10;
       const chemin = new Path2D();
       chemin.moveTo(x - dx * longueur / 2, y - dy * longueur / 2);
       chemin.lineTo(baseX, baseY);
       const pointe = new Path2D();
       pointe.moveTo(pointeX, pointeY);
-      pointe.lineTo(baseX - dy * 4, baseY + dx * 4);
-      pointe.lineTo(baseX + dy * 4, baseY - dx * 4);
+      pointe.lineTo(baseX - dy * 5.5, baseY + dx * 5.5);
+      pointe.lineTo(baseX + dy * 5.5, baseY - dx * 5.5);
       pointe.closePath();
       return { chemin, pointe };
     };
-    const couleurHalo = halo();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     const traces = fleches.map(tracer);
-    ctx.strokeStyle = couleurHalo;
-    ctx.lineWidth = 3.6;
+    ctx.strokeStyle = COULEUR_CERNE;
+    ctx.lineWidth = 5;
     traces.forEach(({ chemin, pointe }) => {
       ctx.stroke(chemin);
       ctx.stroke(pointe);
     });
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.6;
     traces.forEach(({ chemin, pointe }, index) => {
       const teinte = couleur(fleches[index].vitesse);
       ctx.strokeStyle = teinte;
@@ -215,10 +215,20 @@ export function creerCoucheVent(map, { couleur, halo, onFleches = () => {} }) {
       }
     }
     ctx.lineCap = 'round';
-    ctx.lineWidth = 1.7;
+    const opacites = [0.3, 0.55, 0.95];
+    // Le cerne d'abord, sinon il mordrait sur les traînées voisines
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = COULEUR_CERNE;
+    lots.forEach((chemins) => {
+      opacites.forEach((opacite, index) => {
+        ctx.globalAlpha = opacite * 0.6;
+        ctx.stroke(chemins[index]);
+      });
+    });
+    ctx.lineWidth = 2.2;
     lots.forEach((chemins, teinte) => {
       ctx.strokeStyle = teinte;
-      [0.2, 0.45, 0.85].forEach((opacite, index) => {
+      opacites.forEach((opacite, index) => {
         ctx.globalAlpha = opacite;
         ctx.stroke(chemins[index]);
       });
@@ -287,11 +297,12 @@ export function creerCoucheVent(map, { couleur, halo, onFleches = () => {} }) {
   mouvementReduit.addEventListener('change', relancer);
 
   return {
-    definirChamp(nouveauChamp) {
+    // `continu` : même zone à une autre heure, les traînées en cours se prolongent
+    definirChamp(nouveauChamp, continu = false) {
       champ = nouveauChamp;
       if (!visible) return;
       calculerFleches();
-      preparerParticules();
+      if (!continu || !particules.length) preparerParticules();
       onFleches(fleches);
       relancer();
     },
@@ -314,6 +325,5 @@ export function creerCoucheVent(map, { couleur, halo, onFleches = () => {} }) {
       animable = valeur;
       relancer();
     },
-    redessiner: dessiner,
   };
 }

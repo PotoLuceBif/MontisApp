@@ -22,6 +22,9 @@ const MAX_POINTS = 48;
 const MARGE_ZONE = 0.25; // part de l'écran chargée en plus de chaque côté
 const PAS_MIN_GRILLE = 1 / 64; // environ 1,7 km, de l'ordre de la maille du modèle
 const DUREE_CACHE = 15 * 60 * 1000;
+const DUREE_VALIDITE = 60 * 60 * 1000; // au-delà, on propose de recharger les prévisions
+const DELAI_CURSEUR = 120; // ms entre deux mises à jour pendant que le curseur glisse
+const ECHEANCE_MAX = 48;
 const MESSAGE_LIMITE = 'Limite de requêtes Open-Meteo atteinte. Réessayez plus tard.';
 const PLAFONDS_VOLUME = [500, 1000, 2000];
 const ETENDUES_VOLUME = [5000, 10000, 20000, 40000]; // demi-côté du bloc, en mètres
@@ -35,14 +38,10 @@ const PALETTES = {
   sombre: ['#43c98b', '#edc653', '#f28a50', '#ff647c'],
   cyberpunk: ['#4debd4', '#ffe45c', '#ff9b45', '#ff5da2'],
 };
+// Couleurs des flèches sur la carte : vives et cernées de sombre pour rester lisibles
+// sur tous les fonds, quel que soit le thème de l'application
+const PALETTE_CARTE = ['#2ef2b4', '#ffe94d', '#ff9a2e', '#ff5580'];
 const LIBELLE_HAUTEUR = (hauteur) => `${hauteur.toLocaleString('fr-FR')} m`;
-const ECHEANCES = [
-  { valeur: '0', libelle: 'Prochaine heure' },
-  { valeur: '3', libelle: 'Dans 3 heures' },
-  { valeur: '6', libelle: 'Dans 6 heures' },
-  { valeur: '12', libelle: 'Dans 12 heures' },
-  { valeur: '24', libelle: 'Dans 24 heures' },
-];
 const PALIERS_LEGENDE = [
   { vitesse: 5, libelle: '0–9 km/h' },
   { vitesse: 15, libelle: '10–19 km/h' },
@@ -129,10 +128,27 @@ function creerGrilleVolume(centre, demi) {
   };
 }
 
-function directionVent(degres) {
-  if (!Number.isFinite(degres)) return 'indisponible';
-  return `${pointCardinal(degres)} (${Math.round(degres)}°)`;
+// Cadran orienté : la flèche montre où va le vent et le repère N suit la vue.
+// `repere` : 'carte' suit la rotation de la carte, sinon l'angle de la vue en degrés.
+function cadranVent(flux, repere, classe = '') {
+  const attributFlux = Number.isFinite(flux) ? ` data-flux="${flux}"` : '';
+  const attributRepere = repere === 'carte' ? ' data-repere="carte"' : '';
+  const angle = repere === 'carte' ? 0 : repere;
+  const graduations = [45, 90, 135, 180, 225, 270, 315]
+    .map((degres) => `<path d="M32 4.5V8" transform="rotate(${degres} 32 32)"/>`).join('');
+  return `<svg class="vent-cadran ${classe}" viewBox="0 0 64 64" aria-hidden="true"${attributFlux}${attributRepere}>
+    <g class="vent-cadran-rose" transform="rotate(${-angle} 32 32)">
+      <circle cx="32" cy="32" r="29"/>${graduations}
+      <text x="32" y="13.5" text-anchor="middle">N</text>
+    </g>
+    <path class="vent-cadran-fleche" d="M32 13 45 33 36 30V52H28V30L19 33Z" transform="rotate(${(flux ?? 0) - angle} 32 32)"${Number.isFinite(flux) ? '' : ' hidden'}/>
+  </svg>`;
 }
+
+const texteProvenance = (provenance) => {
+  const point = pointCardinal(provenance);
+  return `${point.length === 1 && point !== 'S' && point !== 'N' ? 'de l’' : 'du '}${point} · ${Math.round(provenance)}°`;
+};
 
 function formaterHeure(iso) {
   const date = new Date(iso);
@@ -148,45 +164,43 @@ function formaterHeure(iso) {
 
 function iconeLegende(palier, vitesse) {
   const longueur = longueurFleche(vitesse);
-  return `<svg data-palier="${palier}" width="${longueur}" height="10" viewBox="0 0 ${longueur} 10" aria-hidden="true"><path d="M1 5 H${longueur - 7}" /><path class="plein" d="M${longueur - 1} 5 L${longueur - 8} 1 V9 Z"/></svg>`;
+  const fleche = `<path d="M2 7 H${longueur - 8}"/><path class="pointe" d="M${longueur - 2} 7 L${longueur - 10} 2.5 V11.5 Z"/>`;
+  return `<svg data-palier="${palier}" width="${longueur}" height="14" viewBox="0 0 ${longueur} 14" aria-hidden="true"><g class="cerne">${fleche}</g><g class="teinte">${fleche}</g></svg>`;
 }
 
 export function creerCarteVent(map) {
   const panneau = document.createElement('div');
   panneau.className = 'vent-carte';
   panneau.innerHTML = `
-    <header class="vent-carte-entete">
-      <h3>Vent prévu</h3>
-      <span class="vent-carte-modele">Météo-France</span>
-    </header>
-    <div class="vent-vues" role="tablist" aria-label="Vues de l’analyse vent">
+    <div class="vent-vues" role="tablist" aria-label="Vues de l’analyse du vent">
       <button type="button" role="tab" id="vent-vue-carte-onglet" aria-selected="true" aria-controls="vent-vue-carte">Carte</button>
       <button type="button" role="tab" id="vent-vue-volume-onglet" aria-selected="false" aria-controls="vent-vue-volume" tabindex="-1">Volume 3D</button>
     </div>
+    <div class="vent-temps">
+      <div class="vent-temps-heure"><strong data-temps-heure>—</strong><span data-temps-ecart></span></div>
+      <input class="vent-temps-curseur" type="range" min="0" max="${ECHEANCE_MAX}" step="1" value="0" aria-label="Échéance des prévisions">
+      <div class="vent-temps-reperes" aria-hidden="true"><span>Maintenant</span><span>+12 h</span><span>+24 h</span><span>+36 h</span><span>+48 h</span></div>
+    </div>
     <div class="vent-zone-alerte" role="status" hidden>
       <p data-zone-message></p>
-      <button type="button" class="vent-zone-actualiser">Actualiser sur cette zone</button>
+      <button type="button" class="vent-zone-actualiser">Actualiser</button>
     </div>
     <section class="vent-vue-contenu" id="vent-vue-carte" role="tabpanel" aria-labelledby="vent-vue-carte-onglet">
-      <div class="vent-carte-controles">
-        <label><span>Hauteur au-dessus du sol</span><select class="vent-carte-niveau" aria-label="Hauteur du vent au-dessus du sol">
-          ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
-        </select></label>
-        <label><span>Échéance</span><select class="vent-carte-echeance" aria-label="Échéance des prévisions">
-          ${ECHEANCES.map(({ valeur, libelle }) => `<option value="${valeur}">${libelle}</option>`).join('')}
-        </select></label>
-      </div>
-      <div class="vent-carte-resume" aria-label="Résumé du vent">
-        <div><span>Vent moyen</span><strong data-vent-moyen>—</strong></div>
-        <div><span>Rafales au sol, max.</span><strong data-vent-rafales>—</strong></div>
-        <div><span>Vient de → va vers</span><strong data-vent-direction>—</strong></div>
+      <label class="vent-carte-niveau-ligne"><span>Hauteur au-dessus du sol</span><select class="vent-carte-niveau">
+        ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
+      </select></label>
+      <div class="vent-resume" aria-label="Résumé du vent">
+        <div class="vent-resume-direction">
+          ${cadranVent(null, 'carte', 'vent-cadran-grand')}
+          <small data-vent-provenance>—</small>
+        </div>
+        <div class="vent-resume-valeur"><span>Vent moyen</span><strong data-vent-moyen>—</strong></div>
+        <div class="vent-resume-valeur"><span>Rafales au sol, max.</span><strong data-vent-rafales>—</strong></div>
       </div>
       <div class="vent-carte-legende" aria-label="Intensité du vent en kilomètres par heure">
         ${PALIERS_LEGENDE.map(({ vitesse, libelle }, index) => `<span>${iconeLegende(index, vitesse)} ${libelle}</span>`).join('')}
       </div>
-      <p class="vent-carte-statut" role="status" aria-live="polite">Active le calque pour charger le vent sur la carte.</p>
-      <button class="vent-carte-actualiser" type="button">Actualiser la carte</button>
-      <p class="vent-carte-note">Chaque flèche pointe là où va le vent, et sa longueur suit sa vitesse. Les traînées suivent le même sens. Modèle Météo-France (AROME selon couverture, ARPEGE ailleurs), interpolé entre les points de calcul. Données indicatives · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>.</p>
+      <p class="vent-carte-statut" role="status" aria-live="polite"></p>
     </section>
     <section class="vent-vue-contenu" id="vent-vue-volume" role="tabpanel" aria-labelledby="vent-vue-volume-onglet" hidden>
       <section class="vent-volume" aria-labelledby="vent-volume-titre">
@@ -205,8 +219,6 @@ export function creerCarteVent(map) {
             ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
           </select></label>
         </div>
-        <div class="vent-volume-heure"><strong data-volume-heure>—</strong><span>Échéance</span></div>
-        <input class="vent-volume-temps" type="range" min="0" max="24" value="0" aria-label="Échéance horaire du volume 3D">
         <div class="vent-volume-scene">
           <canvas class="vent-volume-canvas" role="img" tabindex="0" aria-label="Volume 3D du vent au-dessus du relief. Glisser pour tourner et incliner, pincer pour zoomer."></canvas>
           <div class="vent-volume-boutons">
@@ -219,32 +231,37 @@ export function creerCarteVent(map) {
           <span><i data-volume-vitesse="0"></i> 0–9 km/h</span><span><i data-volume-vitesse="1"></i> 10–19 km/h</span>
           <span><i data-volume-vitesse="2"></i> 20–29 km/h</span><span><i data-volume-vitesse="3"></i> 30+ km/h</span>
         </div>
-        <p class="vent-volume-statut" role="status" aria-live="polite">Ouvre cette vue pour charger le profil vertical de la zone.</p>
-        <button class="vent-volume-actualiser" type="button">Actualiser le volume</button>
-        <p class="vent-volume-note">Graduations de gauche : altitude réelle. Graduations de droite : hauteur de chaque couche au-dessus du sol. Les flèches pointent là où va le vent et leur longueur suit sa vitesse. Le vent est interpolé entre les vents de surface et les niveaux de pression du modèle ; les effets locaux du relief ne sont pas résolus.</p>
+        <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
     </section>
+    <p class="vent-source">Modèle Météo-France · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p>
+    <details class="rando-outils vent-apropos">
+      <summary>Comment lire ces données</summary>
+      <div class="rando-outils-contenu">
+        <p class="note">Chaque flèche pointe là où va le vent, et sa longueur suit sa vitesse. Le vent est interpolé entre les points de calcul du modèle (AROME selon la couverture, ARPEGE ailleurs) : les effets locaux du relief ne sont pas résolus et les valeurs restent indicatives.</p>
+        <p class="note">Volume 3D, graduations de gauche : altitude réelle. Graduations de droite : hauteur de chaque couche au-dessus du sol.</p>
+      </div>
+    </details>
   `;
 
   const selecteurNiveau = panneau.querySelector('.vent-carte-niveau');
-  const selecteurEcheance = panneau.querySelector('.vent-carte-echeance');
+  const curseurTemps = panneau.querySelector('.vent-temps-curseur');
+  const blocTemps = panneau.querySelector('.vent-temps');
+  const heureTemps = panneau.querySelector('[data-temps-heure]');
+  const ecartTemps = panneau.querySelector('[data-temps-ecart]');
   const statut = panneau.querySelector('.vent-carte-statut');
-  const actualiser = panneau.querySelector('.vent-carte-actualiser');
-  const pastillesLegende = [...panneau.querySelectorAll('.vent-carte-legende [data-palier]')];
   const resumeMoyen = panneau.querySelector('[data-vent-moyen]');
   const resumeRafales = panneau.querySelector('[data-vent-rafales]');
-  const resumeDirection = panneau.querySelector('[data-vent-direction]');
+  const resumeProvenance = panneau.querySelector('[data-vent-provenance]');
+  const cadranResume = panneau.querySelector('.vent-resume .vent-cadran');
   const couleursResume = [resumeMoyen, resumeRafales];
   const ongletsVue = [...panneau.querySelectorAll('.vent-vues [role="tab"]')];
   const contenusVue = [...panneau.querySelectorAll('.vent-vue-contenu')];
   const blocVolume = panneau.querySelector('.vent-volume');
   const canvasVolume = panneau.querySelector('.vent-volume-canvas');
   const statutVolume = panneau.querySelector('.vent-volume-statut');
-  const actualiserVolume = panneau.querySelector('.vent-volume-actualiser');
-  const heureVolume = panneau.querySelector('[data-volume-heure]');
   const zoneVolume = panneau.querySelector('[data-volume-zone]');
   const detailVolume = panneau.querySelector('[data-volume-detail]');
-  const tempsVolume = panneau.querySelector('.vent-volume-temps');
   const plafondsVolume = [...panneau.querySelectorAll('input[name="vent-volume-plafond"]')];
   const selecteurCouche = panneau.querySelector('.vent-volume-couche select');
   const boutonAgrandir = panneau.querySelector('.vent-volume-agrandir');
@@ -252,20 +269,27 @@ export function creerCarteVent(map) {
   const alerteZone = panneau.querySelector('.vent-zone-alerte');
   const messageZone = panneau.querySelector('[data-zone-message]');
   const actualiserZone = panneau.querySelector('.vent-zone-actualiser');
+  const reglagesVolume = panneau.querySelector('.vent-volume-reglages');
   const aideVolume = detailVolume.textContent;
   const cache = new Map();
   let actif = false;
   let controleur = null;
   let controleurProfil = null;
   let heureCourante = '';
+  let erreurCarte = false;
+  let erreurVolume = false;
+  let minuteurCurseur = null;
+  let curseurEnAttente = false;
+  let minuteurValidite = null;
   let evenementsCoucheAjoutes = false;
   let emplacementParDefaut = null;
   let donneesVentCourantes = null;
   let resumeVentCourant = [];
   let zoneVolumeCapturee = null;
   let zoneCarteCapturee = null;
-  let vueActive = 'carte';
+  let vueActive = lire('vent-vue', 'carte') === 'volume' ? 'volume' : 'carte';
   let emplacementVolume = null;
+  let emplacementTemps = null;
   let plafondVolume = Number(lire('vent-volume-plafond', 2000));
   if (!PLAFONDS_VOLUME.includes(plafondVolume)) plafondVolume = 2000;
   plafondsVolume.forEach((radio) => {
@@ -276,21 +300,23 @@ export function creerCarteVent(map) {
 
   selecteurNiveau.value = String(lire('vent-niveau', 10));
   if (!HAUTEURS_VENT.includes(Number(selecteurNiveau.value))) selecteurNiveau.value = '10';
-  selecteurEcheance.value = String(lire('vent-echeance', 0));
-  if (!ECHEANCES.some(({ valeur }) => valeur === selecteurEcheance.value)) {
-    selecteurEcheance.value = '0';
-  }
+  const echeanceLue = Math.round(Number(lire('vent-echeance', 0)));
+  curseurTemps.value = String(Number.isFinite(echeanceLue) ? Math.max(0, Math.min(ECHEANCE_MAX, echeanceLue)) : 0);
+  const coucheLue = String(lire('vent-volume-couche', 'toutes'));
+  selecteurCouche.value = coucheLue === 'toutes' || HAUTEURS_VENT.includes(Number(coucheLue)) ? coucheLue : 'toutes';
+  panneau.querySelectorAll('.vent-carte-legende [data-palier]').forEach((pastille, index) => {
+    pastille.style.setProperty('--vent-couleur', PALETTE_CARTE[index]);
+  });
 
   function couleurVitesse(vitesse) {
     const couleurs = PALETTES[document.documentElement.dataset.theme] || PALETTES.clair;
     return vitesse < 10 ? couleurs[0] : vitesse < 20 ? couleurs[1] : vitesse < 30 ? couleurs[2] : couleurs[3];
   }
 
+  const couleurCarte = (vitesse) => PALETTE_CARTE[vitesse < 10 ? 0 : vitesse < 20 ? 1 : vitesse < 30 ? 2 : 3];
+
   const coucheVent = creerCoucheVent(map, {
-    couleur: couleurVitesse,
-    halo: () => (['sombre', 'cyberpunk'].includes(document.documentElement.dataset.theme)
-      ? 'rgba(10, 14, 18, .85)'
-      : 'rgba(255, 255, 255, .92)'),
+    couleur: couleurCarte,
     onFleches(fleches) {
       map.getSource(SOURCE_VENT)?.setData({
         type: 'FeatureCollection',
@@ -310,18 +336,97 @@ export function creerCarteVent(map) {
       ecrire('vent-volume-rotation', Math.round(degres * 10) / 10);
     },
     onSelection(fleche) {
-      detailVolume.textContent = fleche
-        ? `${LIBELLE_HAUTEUR(fleche.hauteur)} au-dessus du sol · ${Math.round(fleche.vitesse)} km/h · vient de ${pointCardinal(fleche.provenance)}, va vers ${pointCardinal(fleche.flux)}`
-        : aideVolume;
+      if (!fleche) {
+        detailVolume.textContent = aideVolume;
+        return;
+      }
+      detailVolume.innerHTML = `${cadranVent(fleche.flux, volume.rotation, 'vent-cadran-petit')}<span><strong>${Math.round(fleche.vitesse)} km/h</strong> à ${LIBELLE_HAUTEUR(fleche.hauteur)} du sol · ${texteProvenance(fleche.provenance)}</span>`;
     },
   });
+
+  // Le cadran est dans le référentiel de l'écran : une carte tournée le fait tourner aussi
+  function orienterCadrans() {
+    const cap = map.getBearing();
+    [panneau, map.getContainer()].forEach((conteneur) => {
+      conteneur.querySelectorAll('.vent-cadran[data-repere="carte"]').forEach((cadran) => {
+        cadran.querySelector('.vent-cadran-rose').setAttribute('transform', `rotate(${-cap} 32 32)`);
+        const flux = Number(cadran.dataset.flux);
+        if (Number.isFinite(flux)) cadran.querySelector('.vent-cadran-fleche').setAttribute('transform', `rotate(${flux - cap} 32 32)`);
+      });
+    });
+  }
+
+  // ---------- Échéance, commune à la carte et au volume ----------
+  const echeance = () => Number(curseurTemps.value);
+
+  const reponsesVue = () => (vueActive === 'volume' ? zoneVolumeCapturee?.reponses : donneesVentCourantes?.reponses);
+
+  function heureEcheance(reponses) {
+    const heures = reponses[0].hourly.time;
+    const base = heures.findIndex((heure) => heure >= (reponses[0].current?.time || heures[0]));
+    if (base < 0) return null;
+    curseurTemps.max = String(Math.max(0, Math.min(ECHEANCE_MAX, heures.length - 1 - base)));
+    return heures[base + echeance()] ?? null;
+  }
+
+  function afficherEcheance() {
+    const reponses = reponsesVue();
+    const heure = reponses ? heureEcheance(reponses) : null;
+    let date = heure;
+    if (!date) {
+      // Pas encore de données : l'heure entière à venir, comme le fera le modèle
+      date = new Date();
+      date.setMinutes(0, 0, 0);
+      date.setHours(date.getHours() + 1 + echeance());
+    }
+    const libelle = formaterHeure(date);
+    const ecart = echeance() === 0 ? 'Prochaine heure' : `dans ${echeance()} h`;
+    heureTemps.textContent = libelle;
+    ecartTemps.textContent = ecart;
+    curseurTemps.setAttribute('aria-valuetext', `${libelle}, ${ecart}`);
+  }
+
+  function appliquerEcheance() {
+    ecrire('vent-echeance', echeance());
+    afficherEcheance();
+    if (vueActive === 'volume') {
+      construireCouches();
+    } else if (donneesVentCourantes) {
+      const { reponses, positions, grille } = donneesVentCourantes;
+      const heure = heureEcheance(reponses);
+      if (!heure) {
+        statut.textContent = 'Cette échéance n’est pas disponible pour cette zone.';
+        return;
+      }
+      heureCourante = heure;
+      afficherDonnees(reponses, positions, heureCourante, grille, true);
+    }
+  }
+
+  // La carte suit le curseur pendant le glissé, au plus une fois par délai
+  function planifierEcheance() {
+    if (minuteurCurseur !== null) {
+      curseurEnAttente = true;
+      return;
+    }
+    appliquerEcheance();
+    minuteurCurseur = setTimeout(() => {
+      minuteurCurseur = null;
+      if (curseurEnAttente) {
+        curseurEnAttente = false;
+        planifierEcheance();
+      }
+    }, DELAI_CURSEUR);
+  }
 
   function afficherResume(points) {
     resumeVentCourant = points;
     if (!points.length) {
       resumeMoyen.textContent = '—';
       resumeRafales.textContent = '—';
-      resumeDirection.textContent = '—';
+      resumeProvenance.textContent = '—';
+      delete cadranResume.dataset.flux;
+      cadranResume.querySelector('.vent-cadran-fleche').setAttribute('hidden', '');
       couleursResume.forEach((element) => element.style.removeProperty('color'));
       return;
     }
@@ -333,34 +438,26 @@ export function creerCarteVent(map) {
     const rafaleMax = rafales.length ? Math.max(...rafales) : null;
     resumeMoyen.textContent = `${Math.round(moyenne)} km/h`;
     resumeRafales.textContent = rafaleMax === null ? '—' : `${Math.round(rafaleMax)} km/h`;
-    resumeDirection.textContent = `${pointCardinal(provenance)} → ${pointCardinal(flux)}`;
-    resumeDirection.title = `Le vent vient de ${directionVent(provenance)} et va vers ${directionVent(flux)}`;
+    resumeProvenance.textContent = texteProvenance(provenance);
+    cadranResume.dataset.flux = String(flux);
+    cadranResume.querySelector('.vent-cadran-fleche').removeAttribute('hidden');
+    cadranResume.style.setProperty('--vent-couleur', couleurVitesse(moyenne));
+    orienterCadrans();
     resumeMoyen.style.color = couleurVitesse(moyenne);
     if (rafaleMax === null) resumeRafales.style.removeProperty('color');
     else resumeRafales.style.color = couleurVitesse(rafaleMax);
   }
 
   // ---------- Volume 3D ----------
-  function indexBaseVolume() {
-    const premier = zoneVolumeCapturee?.reponses[0];
-    const heures = premier?.hourly?.time;
-    if (!heures) return -1;
-    return heures.findIndex((heure) => heure >= (premier.current?.time || heures[0]));
-  }
-
   function construireCouches() {
     if (!zoneVolumeCapturee) return;
     const { reponses, grille, demi, centre } = zoneVolumeCapturee;
-    const heures = reponses[0].hourly.time;
-    const base = Math.max(0, indexBaseVolume());
-    tempsVolume.max = String(Math.max(0, Math.min(48, heures.length - 1 - base)));
-    const heureCible = heures[base + Number(tempsVolume.value)];
+    const heureCible = heureEcheance(reponses);
     if (!heureCible) {
       statutVolume.classList.remove('erreur');
       statutVolume.textContent = 'Cette échéance n’est pas disponible pour cette zone.';
       return;
     }
-    heureVolume.textContent = formaterHeure(heureCible);
 
     const colonnes = reponses.map((donnees) => {
       const index = donnees.hourly.time.indexOf(heureCible);
@@ -458,34 +555,36 @@ export function creerCarteVent(map) {
     return { demi, n, altitudes, min, max };
   }
 
-  // Rien ne se recharge quand la carte bouge : le champ chargé est rééchantillonné,
-  // et on prévient seulement quand il ne suffit plus
-  function mettreAJourAlerte() {
-    if (!actif) {
-      alerteZone.hidden = true;
-      return;
-    }
-    let message = '';
-    if (vueActive === 'volume' && zoneVolumeCapturee) {
-      const { centre, demi } = zoneVolumeCapturee;
+  // Rien ne se recharge quand la carte bouge : le champ chargé est rééchantillonné.
+  // Le bouton n'apparaît que si le rechargement apporte quelque chose : l'échéance,
+  // elle, s'applique sans réseau car les prévisions de la zone sont déjà là.
+  function raisonActualiser() {
+    if (vueActive === 'volume') {
+      if (erreurVolume) return 'Le chargement du volume a échoué.';
+      if (!zoneVolumeCapturee) return '';
+      const { centre, demi, recue } = zoneVolumeCapturee;
       const courant = map.getCenter();
       const ecart = Math.hypot((courant.lng - centre.lng) * metresParDegreLng(centre.lat), (courant.lat - centre.lat) * METRES_PAR_DEGRE);
-      if (ecart > demi * 0.5 || demiCoteVisible() !== demi) {
-        message = 'Vous ne visez plus la même zone : ce volume reste celui de la zone actualisée.';
-      }
-    } else if (vueActive !== 'volume' && zoneCarteCapturee) {
-      const { grille, zoom } = zoneCarteCapturee;
-      const limites = map.getBounds();
-      const depasse = limites.getWest() < grille.ouest
-        || limites.getSouth() < grille.sud
-        || limites.getEast() > grille.ouest + (grille.nx - 1) * grille.pasLng
-        || limites.getNorth() > grille.sud + (grille.ny - 1) * grille.pasLat;
-      if (depasse) {
-        message = 'La carte dépasse la zone chargée : les flèches s’arrêtent à son bord.';
-      } else if (map.getZoom() - zoom >= 1.5 && grille.pasLat > PAS_MIN_GRILLE) {
-        message = 'Vous êtes plus près : actualisez pour un vent plus détaillé.';
-      }
+      if (ecart > demi * 0.5 || demiCoteVisible() !== demi) return 'La zone visée a changé : ce volume reste celui de la zone précédente.';
+      return Date.now() - recue > DUREE_VALIDITE ? 'Ces prévisions ont été chargées il y a plus d’une heure.' : '';
     }
+    if (map.getZoom() < 7) return '';
+    if (erreurCarte) return 'Le chargement du vent a échoué.';
+    if (!zoneCarteCapturee) return 'Aucun vent n’est chargé sur cette zone.';
+    const { grille, zoom, recue } = zoneCarteCapturee;
+    const limites = map.getBounds();
+    const depasse = limites.getWest() < grille.ouest
+      || limites.getSouth() < grille.sud
+      || limites.getEast() > grille.ouest + (grille.nx - 1) * grille.pasLng
+      || limites.getNorth() > grille.sud + (grille.ny - 1) * grille.pasLat;
+    if (depasse) return 'La carte dépasse la zone chargée : les flèches s’arrêtent à son bord.';
+    if (map.getZoom() - zoom >= 1.5 && grille.pasLat > PAS_MIN_GRILLE) return 'Vous êtes plus près : un vent plus détaillé est disponible.';
+    return Date.now() - recue > DUREE_VALIDITE ? 'Ces prévisions ont été chargées il y a plus d’une heure.' : '';
+  }
+
+  function mettreAJourAlerte() {
+    const enCours = vueActive === 'volume' ? controleurProfil : controleur;
+    const message = actif && !enCours ? raisonActualiser() : '';
     messageZone.textContent = message;
     alerteZone.hidden = !message;
   }
@@ -537,7 +636,8 @@ export function creerCarteVent(map) {
     const grille = creerGrilleVolume(centre, demi);
     const requete = new AbortController();
     controleurProfil = requete;
-    actualiserVolume.disabled = true;
+    erreurVolume = false;
+    mettreAJourAlerte();
     statutVolume.classList.remove('erreur');
     statutVolume.textContent = 'Chargement du vent et du relief pour le volume…';
     const minuteurDelai = setTimeout(() => requete.abort(), DELAI_CHARGEMENT);
@@ -546,16 +646,18 @@ export function creerCarteVent(map) {
       const reponses = grille.positions.map((position) => cache.get(cleePosition(position)).donnees);
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
-      zoneVolumeCapturee = { centre, demi, grille, reponses };
+      zoneVolumeCapturee = { centre, demi, grille, reponses, recue: Date.now() };
       zoneVolume.textContent = `±${(demi / 1000).toLocaleString('fr-FR')} km`;
       volume.definirRelief(relief);
+      afficherEcheance();
       construireCouches();
-      mettreAJourAlerte();
     } catch (erreur) {
       if (requete.signal.aborted && controleurProfil === requete && actif && vueActive === 'volume') {
+        erreurVolume = true;
         statutVolume.classList.add('erreur');
         statutVolume.textContent = 'Le chargement du volume prend trop de temps. Vérifie ta connexion puis actualise.';
       } else if (controleurProfil === requete && actif && vueActive === 'volume') {
+        erreurVolume = true;
         statutVolume.classList.add('erreur');
         statutVolume.textContent = `Volume 3D indisponible : ${erreur instanceof Error ? erreur.message : 'erreur inconnue'}`;
         console.error('Chargement du volume de vent impossible :', erreur);
@@ -564,7 +666,7 @@ export function creerCarteVent(map) {
       clearTimeout(minuteurDelai);
       if (controleurProfil === requete) {
         controleurProfil = null;
-        actualiserVolume.disabled = false;
+        mettreAJourAlerte();
       }
     }
   }
@@ -575,10 +677,15 @@ export function creerCarteVent(map) {
       // Sorti du panneau : un parent transformé ou défilant le limiterait
       emplacementVolume = document.createComment('vent-volume');
       blocVolume.before(emplacementVolume);
+      emplacementTemps = document.createComment('vent-temps');
+      blocTemps.before(emplacementTemps);
+      reglagesVolume.after(blocTemps);
       document.body.append(blocVolume);
     } else {
       emplacementVolume?.replaceWith(blocVolume);
       emplacementVolume = null;
+      emplacementTemps?.replaceWith(blocTemps);
+      emplacementTemps = null;
     }
     blocVolume.classList.toggle('vent-volume-plein', plein);
     boutonRetour.hidden = !plein;
@@ -588,6 +695,7 @@ export function creerCarteVent(map) {
 
   function selectionnerVue(nom, focus = false) {
     vueActive = nom;
+    ecrire('vent-vue', nom);
     ongletsVue.forEach((onglet, index) => {
       const actifOnglet = onglet.id === `vent-vue-${nom}-onglet`;
       onglet.setAttribute('aria-selected', String(actifOnglet));
@@ -600,30 +708,27 @@ export function creerCarteVent(map) {
       if (controleur) {
         controleur.abort();
         controleur = null;
-        actualiser.disabled = false;
       }
       if (actif && !zoneVolumeCapturee) void chargerProfilVolume();
     } else {
       if (controleurProfil) {
         controleurProfil.abort();
         controleurProfil = null;
-        actualiserVolume.disabled = false;
       }
       if (actif && !donneesVentCourantes) void chargerVent();
     }
+    // L'autre vue a pu garder l'échéance d'avant
+    if (reponsesVue()) appliquerEcheance();
+    else afficherEcheance();
     mettreAJourAlerte();
   }
 
   function appliquerPalette() {
     const couleurs = PALETTES[document.documentElement.dataset.theme] || PALETTES.clair;
-    pastillesLegende.forEach((pastille, index) => {
-      pastille.style.setProperty('--vent-couleur', couleurs[index]);
-    });
     panneau.querySelectorAll('[data-volume-vitesse]').forEach((pastille, index) => {
       pastille.style.setProperty('--vent-couleur', couleurs[index]);
     });
     afficherResume(resumeVentCourant);
-    coucheVent.redessiner();
     volume.actualiserTheme();
   }
 
@@ -677,24 +782,23 @@ export function creerCarteVent(map) {
     titre.textContent = `Vent modélisé à ${LIBELLE_HAUTEUR(Number(selecteurNiveau.value))} au-dessus du sol`;
     const heure = document.createElement('p');
     heure.textContent = `Prévision : ${formaterHeure(heureCible)}`;
-    const vitesse = document.createElement('p');
-    vitesse.textContent = `Vent : ${Math.round(proprietes.vitesse)} km/h`;
-    const provenance = document.createElement('p');
-    provenance.textContent = `Vient de : ${directionVent(proprietes.provenance)}`;
-    const direction = document.createElement('p');
-    direction.textContent = `Va vers : ${directionVent(proprietes.flux)}`;
+    const direction = document.createElement('div');
+    direction.className = 'vent-carte-popup-direction';
+    direction.style.setProperty('--vent-couleur', couleurVitesse(proprietes.vitesse));
+    direction.innerHTML = `${cadranVent(proprietes.flux, 'carte', 'vent-cadran-moyen')}<div><strong>${Math.round(proprietes.vitesse)} km/h</strong><small>${texteProvenance(proprietes.provenance)}</small></div>`;
     const rafales = document.createElement('p');
     rafales.textContent = `Rafales au sol : ${Number.isFinite(rafalesProches) ? `${Math.round(rafalesProches)} km/h` : 'indisponibles'}`;
     const altitude = document.createElement('p');
     altitude.textContent = `Altitude du terrain : ${Number.isFinite(proche?.elevation) ? `${Math.round(proche.elevation)} m` : 'indisponible'}`;
-    contenu.append(titre, heure, vitesse, provenance, direction, rafales, altitude);
+    contenu.append(titre, heure, direction, rafales, altitude);
     new Popup({ closeButton: true, offset: 14 })
       .setLngLat(feature.geometry.coordinates)
       .setDOMContent(contenu)
       .addTo(map);
+    orienterCadrans();
   }
 
-  function afficherDonnees(reponses, positions, heureCible, grille) {
+  function afficherDonnees(reponses, positions, heureCible, grille, continu = false) {
     const hauteur = Number(selecteurNiveau.value);
     const points = [];
     const valeurs = positions.map((_, index) => {
@@ -709,23 +813,12 @@ export function creerCarteVent(map) {
     });
     donneesVentCourantes = { reponses, positions, heureCible, grille };
     afficherResume(points);
-    coucheVent.definirChamp(creerChamp(grille, valeurs));
+    coucheVent.definirChamp(creerChamp(grille, valeurs), continu);
     const maille = grille.pasLat * METRES_PAR_DEGRE / 1000;
     statut.classList.remove('erreur');
     statut.textContent = points.length
-      ? `${LIBELLE_HAUTEUR(hauteur)} au-dessus du sol · ${formaterHeure(heureCible)} · ${points.length} points de calcul, tous les ${maille.toLocaleString('fr-FR', { maximumFractionDigits: maille < 10 ? 1 : 0 })} km`
+      ? `${points.length} points de calcul, tous les ${maille.toLocaleString('fr-FR', { maximumFractionDigits: maille < 10 ? 1 : 0 })} km`
       : 'Aucune donnée de vent disponible à cette échéance dans cette zone.';
-  }
-
-  function heurePourEcheance(reponses) {
-    const heures = reponses[0].hourly.time;
-    const indexHeureBase = heures.findIndex((heure) => heure >= reponses[0].current.time);
-    if (indexHeureBase < 0) throw new Error('Aucune prévision horaire à venir n’est disponible.');
-    const indexCible = indexHeureBase + Number(selecteurEcheance.value);
-    if (indexCible >= heures.length) {
-      throw new Error('Cette échéance n’est pas disponible pour la zone affichée.');
-    }
-    return heures[indexCible];
   }
 
   async function chargerVent() {
@@ -739,7 +832,8 @@ export function creerCarteVent(map) {
     controleur?.abort();
     const requete = new AbortController();
     controleur = requete;
-    actualiser.disabled = true;
+    erreurCarte = false;
+    mettreAJourAlerte();
     statut.classList.remove('erreur');
     statut.textContent = 'Chargement du vent sur la zone visible…';
     const grille = creerGrille(map);
@@ -750,15 +844,18 @@ export function creerCarteVent(map) {
       await chargerPointsManquants(positions, requete.signal);
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       const reponses = positions.map((position) => cache.get(cleePosition(position)).donnees);
-      heureCourante = heurePourEcheance(reponses);
-      zoneCarteCapturee = { zoom: map.getZoom(), grille };
+      heureCourante = heureEcheance(reponses);
+      if (!heureCourante) throw new Error('Aucune prévision horaire à venir n’est disponible.');
+      zoneCarteCapturee = { zoom: map.getZoom(), grille, recue: Date.now() };
       afficherDonnees(reponses, positions, heureCourante, grille);
-      mettreAJourAlerte();
+      afficherEcheance();
     } catch (erreur) {
       if (requete.signal.aborted && controleur === requete && actif) {
+        erreurCarte = true;
         statut.classList.add('erreur');
         statut.textContent = 'Le chargement prend trop de temps. Vérifie ta connexion puis actualise.';
       } else if (controleur === requete && actif) {
+        erreurCarte = true;
         statut.classList.add('erreur');
         statut.textContent = erreur.message === MESSAGE_LIMITE
           ? MESSAGE_LIMITE
@@ -767,28 +864,23 @@ export function creerCarteVent(map) {
       }
     } finally {
       clearTimeout(minuteurDelai);
-      if (controleur === requete) actualiser.disabled = false;
+      if (controleur === requete) {
+        controleur = null;
+        mettreAJourAlerte();
+      }
     }
   }
 
-  // Hauteur et échéance réutilisent les données déjà reçues pour la zone actualisée
+  // Hauteur et échéance réutilisent les données déjà reçues pour la zone chargée
   selecteurNiveau.addEventListener('change', () => {
     ecrire('vent-niveau', Number(selecteurNiveau.value));
     if (!donneesVentCourantes) return;
     const { reponses, positions, grille } = donneesVentCourantes;
     afficherDonnees(reponses, positions, heureCourante, grille);
   });
-  selecteurEcheance.addEventListener('change', () => {
-    ecrire('vent-echeance', Number(selecteurEcheance.value));
-    if (!donneesVentCourantes) return;
-    const { reponses, positions, grille } = donneesVentCourantes;
-    try {
-      heureCourante = heurePourEcheance(reponses);
-      afficherDonnees(reponses, positions, heureCourante, grille);
-    } catch (erreur) {
-      statut.classList.add('erreur');
-      statut.textContent = `Carte de vent indisponible : ${erreur.message}`;
-    }
+  curseurTemps.addEventListener('input', () => {
+    afficherEcheance();
+    planifierEcheance();
   });
   ongletsVue.forEach((onglet, index) => {
     onglet.addEventListener('click', () => {
@@ -804,15 +896,19 @@ export function creerCarteVent(map) {
         : (index + (event.key === 'ArrowRight' ? 1 : -1) + ongletsVue.length) % ongletsVue.length;
     selectionnerVue(['carte', 'volume'][prochain], true);
   });
-  actualiserVolume.addEventListener('click', () => void chargerProfilVolume());
-  tempsVolume.addEventListener('input', construireCouches);
-  selecteurCouche.addEventListener('change', construireCouches);
+  selecteurCouche.addEventListener('change', () => {
+    ecrire('vent-volume-couche', selecteurCouche.value);
+    construireCouches();
+  });
   plafondsVolume.forEach((radio) => {
     radio.addEventListener('change', () => {
       if (!radio.checked) return;
       plafondVolume = Number(radio.value);
       ecrire('vent-volume-plafond', plafondVolume);
-      if (Number(selecteurCouche.value) > plafondVolume) selecteurCouche.value = 'toutes';
+      if (Number(selecteurCouche.value) > plafondVolume) {
+        selecteurCouche.value = 'toutes';
+        ecrire('vent-volume-couche', 'toutes');
+      }
       construireCouches();
     });
   });
@@ -822,12 +918,12 @@ export function creerCarteVent(map) {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') basculerPleinEcran(false);
   });
-  actualiser.addEventListener('click', () => void chargerVent());
   actualiserZone.addEventListener('click', () => {
     if (vueActive === 'volume') void chargerProfilVolume();
     else void chargerVent();
   });
   map.on('moveend', mettreAJourAlerte);
+  map.on('rotate', orienterCadrans);
   map.on('style.load', () => {
     if (!actif) return;
     assurerCouche();
@@ -836,10 +932,12 @@ export function creerCarteVent(map) {
   const observateurTheme = new MutationObserver(appliquerPalette);
   observateurTheme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   appliquerPalette();
+  afficherEcheance();
+  selectionnerVue(vueActive);
 
   return {
     id: 'vent',
-    label: 'Vent et prévisions',
+    label: 'Analyse du vent',
     icone: 'vent',
     panneau,
     definirEmplacementParDefaut(conteneur) {
@@ -862,16 +960,19 @@ export function creerCarteVent(map) {
       } else if (!donneesVentCourantes) {
         void chargerVent();
       }
+      afficherEcheance();
       mettreAJourAlerte();
+      clearInterval(minuteurValidite);
+      minuteurValidite = setInterval(mettreAJourAlerte, 60000);
     },
     desactiver() {
       actif = false;
+      clearInterval(minuteurValidite);
       alerteZone.hidden = true;
       basculerPleinEcran(false);
       controleur?.abort();
       controleurProfil?.abort();
       controleurProfil = null;
-      actualiserVolume.disabled = false;
       coucheVent.definirVisible(false);
       if (map.getLayer(COUCHE_VENT)) map.setLayoutProperty(COUCHE_VENT, 'visibility', 'none');
     },

@@ -1550,63 +1550,63 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 }
 .vent-vues [role='tab'][aria-selected='true'],
 .vent-vues [role='tab'][aria-selected='true']:hover { background: var(--accent); color: var(--accent-texte); }
-.vent-vues [role='tab']:focus-visible,
-.vent-volume-actualiser:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vent-vues [role='tab']:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vent-vue-contenu { display: grid; min-width: 0; gap: 10px; }
-.vent-carte-entete, .vent-volume-entete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.vent-carte-entete h3, .vent-volume-entete h4 { margin: 0; color: var(--texte); font-size: 14px; font-weight: 650; letter-spacing: -.01em; text-transform: none; }
-.vent-carte-modele, .vent-volume-badge {
+.vent-volume-entete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vent-volume-entete h4 { margin: 0; color: var(--texte); font-size: 14px; font-weight: 650; letter-spacing: -.01em; text-transform: none; }
+.vent-volume-badge {
   padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--bord));
   border-radius: 7px; color: var(--accent); background: var(--accent-doux); font-size: 10.5px; font-weight: 750;
 }
-.vent-carte-controles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.vent-carte-controles label { display: grid; min-width: 0; gap: 5px; color: var(--texte-2); font-size: 11px; }
-.vent-carte-controles select {
-  width: 100%;
-  min-width: 0;
-  min-height: 36px;
-  padding: 5px 7px;
-  border: 1px solid var(--bord);
-  border-radius: 7px;
-  background: var(--surface);
-  color: var(--texte);
-  font: 600 11px var(--police);
+.vent-temps { display: grid; gap: 3px; }
+.vent-temps-heure { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--texte-2); font-size: 11px; }
+.vent-temps-heure strong { color: var(--texte); font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.vent-temps-heure strong::first-letter { text-transform: uppercase; }
+.vent-temps-curseur { width: 100%; height: 28px; margin: 0; accent-color: var(--accent); cursor: pointer; touch-action: pan-y; }
+.vent-temps-curseur:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vent-temps-reperes { display: flex; justify-content: space-between; margin-top: -3px; color: var(--texte-2); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.vent-carte-niveau-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.vent-carte-niveau-ligne select {
+  flex: none; min-width: 92px; min-height: 36px; padding: 5px 7px; border: 1px solid var(--bord); border-radius: 7px;
+  background: var(--surface); color: var(--texte); font: 600 12px var(--police);
 }
-.vent-carte-controles select:focus-visible,
-.vent-carte-actualiser:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.vent-carte-resume { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
-.vent-carte-resume > div {
-  display: grid; min-width: 0; gap: 5px; padding: 8px 7px;
-  border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
+.vent-carte-niveau-ligne select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vent-resume {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface);
 }
-.vent-carte-resume span { color: var(--texte-2); font-size: 10.5px; line-height: 1.2; }
-.vent-carte-resume strong { overflow: hidden; color: var(--texte); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.vent-resume-direction { display: grid; justify-items: center; gap: 4px; }
+.vent-resume-direction small { color: var(--texte-2); font-size: 10.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vent-resume-valeur { display: grid; min-width: 0; gap: 4px; }
+.vent-resume-valeur span { color: var(--texte-2); font-size: 10.5px; line-height: 1.2; }
+.vent-resume-valeur strong { color: var(--texte); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.vent-cadran { display: block; flex: none; width: 40px; height: 40px; color: var(--vent-couleur, var(--accent)); overflow: visible; }
+.vent-cadran-grand { width: 68px; height: 68px; }
+.vent-cadran-moyen { width: 52px; height: 52px; }
+.vent-cadran-petit { width: 34px; height: 34px; }
+.vent-cadran-rose { fill: none; stroke: var(--bord); stroke-width: 1.5; }
+.vent-cadran-rose circle { fill: var(--surface-2); }
+.vent-cadran-rose text { fill: var(--texte-2); stroke: none; font: 800 9.5px var(--police); }
+.vent-cadran-fleche { fill: currentColor; stroke: var(--surface); stroke-width: 1.5; stroke-linejoin: round; }
+.vent-cadran-fleche[hidden] { display: none; }
 .vent-carte-legende { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; color: var(--texte-2); font-size: 11px; }
-.vent-carte-legende span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.vent-carte-legende svg { flex: none; fill: none; stroke: var(--vent-couleur); stroke-width: 2; stroke-linecap: round; }
-.vent-carte-legende svg .plein { fill: var(--vent-couleur); stroke: none; }
+.vent-carte-legende span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.vent-carte-legende svg { flex: none; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.vent-carte-legende .cerne { stroke: rgba(8, 12, 24, .82); stroke-width: 4.5; fill: rgba(8, 12, 24, .82); }
+.vent-carte-legende .teinte { stroke: var(--vent-couleur); stroke-width: 2.4; }
+.vent-carte-legende .teinte .pointe { fill: var(--vent-couleur); stroke: none; }
 .vent-couche { position: absolute; top: 0; left: 0; pointer-events: none; }
 .vent-carte-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.5; }
 .vent-carte-statut.erreur { color: #e05b67; }
-.vent-carte-actualiser {
-  min-height: 36px;
-  padding: 6px 9px;
-  border: 1px solid var(--bord);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--texte);
-  font: 600 11px var(--police);
-  cursor: pointer;
-}
-.vent-carte-actualiser:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.vent-carte-actualiser:disabled { opacity: 0.55; cursor: wait; }
-.vent-carte-note { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
-.vent-carte-note a { color: var(--accent); }
+.vent-source { margin: 0; color: var(--texte-2); font-size: 11px; }
+.vent-source a { color: var(--accent); }
+.vent-apropos { margin-top: 0; }
 .vent-zone-alerte {
-  display: grid; gap: 7px; padding: 9px 10px; border: 1px solid color-mix(in srgb, #d99522 60%, var(--bord));
-  border-radius: 9px; background: color-mix(in srgb, #d99522 14%, var(--surface-2));
+  display: grid; gap: 7px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--bord));
+  border-radius: 9px; background: var(--accent-doux);
   color: var(--texte); font-size: 12px; line-height: 1.4;
 }
+.vent-zone-alerte[hidden] { display: none; }
 .vent-zone-alerte p { margin: 0; }
 .vent-zone-alerte button {
   min-height: 36px; padding: 6px 9px; border: 0; border-radius: 8px;
@@ -1652,38 +1652,31 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-volume-boutons svg, .vent-volume-retour svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .vent-volume-boutons button:focus-visible, .vent-volume-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vent-volume-boutons button[hidden], .vent-volume-retour[hidden] { display: none; }
-.vent-volume-detail { min-height: 26px; margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.35; }
+.vent-volume-detail { display: flex; align-items: center; gap: 8px; min-height: 34px; margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.35; }
+.vent-volume-detail strong { color: var(--texte); }
 .vent-volume-plein {
   position: fixed; inset: 0; z-index: 1000;
-  display: grid; grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto;
+  display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
   gap: 8px; padding: max(12px, env(safe-area-inset-top)) 14px max(12px, env(safe-area-inset-bottom));
   border: 0; border-radius: 0; background: var(--surface-2);
 }
 .vent-volume-plein .vent-volume-entete { justify-content: flex-start; }
 .vent-volume-plein .vent-volume-badge { margin-left: auto; }
 .vent-volume-plein .vent-volume-canvas { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; border: 0; }
-.vent-volume-plein .vent-volume-heure strong { font-size: 20px; color: var(--accent); }
-.vent-volume-plein .vent-volume-statut,
-.vent-volume-plein .vent-volume-actualiser,
-.vent-volume-plein .vent-volume-note { display: none; }
-.vent-volume-heure { display: flex; justify-content: space-between; align-items: baseline; color: var(--texte-2); font-size: 11px; }
-.vent-volume-heure strong { color: var(--texte); font-size: 13px; }
-.vent-volume-temps { width: 100%; margin: -4px 0 0; accent-color: var(--accent); }
+.vent-volume-plein .vent-temps-heure strong { font-size: 20px; color: var(--accent); }
+.vent-volume-plein .vent-volume-statut { display: none; }
 .vent-volume-legende { display: flex; flex-wrap: wrap; gap: 7px 12px; }
 .vent-volume-legende span { display: flex; min-width: 0; align-items: center; gap: 5px; color: var(--texte-2); font-size: 10.5px; white-space: nowrap; }
 .vent-volume-legende i { width: 8px; height: 3px; flex: none; border-radius: 3px; background: var(--vent-couleur); }
 .vent-volume-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
 .vent-volume-statut.erreur { color: #e05b67; }
-.vent-volume-actualiser {
-  min-height: 34px; padding: 5px 8px; border: 1px solid var(--bord); border-radius: 8px;
-  background: var(--surface-2); color: var(--texte); font: 650 11px var(--police); cursor: pointer;
-}
-.vent-volume-actualiser:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-.vent-volume-actualiser:disabled { opacity: .55; cursor: wait; }
-.vent-volume-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.4; }
 .vent-carte-popup { color: var(--texte); font: 12px/1.45 var(--police); }
 .vent-carte-popup p { margin: 4px 0 0; }
 .vent-carte-popup strong { font-size: 13px; }
+.vent-carte-popup-direction { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.vent-carte-popup-direction div { display: grid; gap: 1px; }
+.vent-carte-popup-direction strong { font-size: 16px; }
+.vent-carte-popup-direction small { color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
 .vent-carte.erreur .vent-carte-statut { color: #e05b67; }
 .radar-controles { display: grid; gap: 12px; }
 .radar-sources {

@@ -518,6 +518,9 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     get exageration() {
       return exageration;
     },
+    get rotation() {
+      return rotation;
+    },
     actualiserTheme() {
       lireCouleurs();
       if (relief) {
