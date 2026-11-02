@@ -16,8 +16,6 @@ const ICONE_RECHERCHE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx=
 const ICONE_LOCALISER = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.4"/></svg>';
 const ICONE_VISITER = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 19.5 6.5-13 4 7.5 2-3 5.5 8.5H3Z"/><path d="m7.3 11 2.2 1.6 1.8-1.6"/></svg>';
 const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.6"/></svg>';
-const ICONE_COURBES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18c3-1 4-5 9-5s6 4 9 5"/><path d="M6 13c2-.8 3-4 6-4s4 3.2 6 4"/><path d="M9.5 8c.9-.6 1.4-2 2.5-2s1.600 1.400 2.500 2"/></svg>';
-const ICONE_PENTES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18L6.500 6 3 20Z"/><path d="M11.500 20a7 7 0 0 0-1.400-4.200"/></svg>';
 const ICONE_FAVORI ='<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.6Z"/></svg>';
 
 const FILTRES = [
@@ -29,12 +27,6 @@ const ONGLETS_FICHE = [
   ['domaine', 'Domaine'],
   ['neige', 'Neige'],
   ['securite', 'Sécurité'],
-];
-const CLASSES_PENTES = [
-  ['30-35°', '#f7e600'],
-  ['35-40°', '#f5801f'],
-  ['40-45°', '#e8005f'],
-  ['45° et +', '#c98abf'],
 ];
 
 const NIVEAUX = [
@@ -328,7 +320,8 @@ export function creerActiviteSki(map) {
       entete.append(fermer);
     }
     carte.append(entete);
-    if (etatVisite === 'active') carte.append(creerCalquesVisite());
+    // Toujours visibles pendant la visite, même fiche réduite
+    if (etatVisite === 'active') carte.append(visite.creerOptions({ surChangement: placerRechercheFiche }));
     majReduction();
 
     const onglets = el('div', 'segments ski-onglets');
@@ -444,49 +437,6 @@ export function creerActiviteSki(map) {
     const attente = el('div', 'rando-attente');
     attente.append(el('span', 'rech-attente'), 'Chargement des prévisions de neige…');
     return attente;
-  }
-
-  function creerBoutonCalque(icone, libelle, description, actif, surChangement) {
-    const bouton = el('button', 'ski-visite-calque');
-    bouton.type = 'button';
-    bouton.innerHTML = icone;
-    bouton.append(libelle);
-    bouton.title = description;
-    bouton.setAttribute('aria-label', description);
-    bouton.setAttribute('aria-pressed', String(actif));
-    bouton.addEventListener('click', () => {
-      const coche = bouton.getAttribute('aria-pressed') !== 'true';
-      bouton.setAttribute('aria-pressed', String(coche));
-      surChangement(coche);
-    });
-    return bouton;
-  }
-
-  // Toujours visibles pendant la visite, même fiche réduite
-  function creerCalquesVisite() {
-    const bloc = el('div', 'ski-visite-calques');
-    const legende = el('div', 'ski-pentes-legende');
-    legende.hidden = !visite.pentesVisibles();
-    for (const [libelle, couleur] of CLASSES_PENTES) {
-      const entree = el('span', 'ski-niveaux-entree');
-      const pastille = el('i');
-      pastille.style.background = couleur;
-      entree.append(pastille, libelle);
-      legende.append(entree);
-    }
-    bloc.append(
-      creerBoutonCalque(ICONE_COURBES, 'Courbes', 'Courbes de niveau et altitudes', visite.courbesVisibles(), (coche) => {
-        visite.afficherCourbes(coche);
-      }),
-      creerBoutonCalque(ICONE_PENTES, 'Pentes 30°+', 'Pentes de plus de 30 degrés', visite.pentesVisibles(), (coche) => {
-        visite.afficherPentes(coche);
-        legende.hidden = !coche;
-        placerRechercheFiche();
-      }),
-      legende,
-      visite.creerChoixFond()
-    );
-    return bloc;
   }
 
   function creerOngletSecurite() {

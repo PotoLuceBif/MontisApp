@@ -2234,7 +2234,9 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .pc-filtres button[aria-checked='true'] { background: var(--accent-doux); color: var(--accent); }
 .pc-entonnoir:focus-visible, .pc-filtre-actif:focus-visible, .pc-filtres button:focus-visible, .pc-entree:focus-visible, .pc-ligne:focus-visible, .bf-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .visite-fonds { margin: 0; }
-.ski-visite-calques .visite-fonds { grid-column: 1 / -1; width: 100%; }
+.ski-visite-calques .visite-fonds { display: grid; flex-basis: 100%; grid-template-columns: none; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
+.ski-visite-calque[hidden] { display: none; }
+.bf-bikepark .ski-visite-calques { padding: 0; }
 .bf-bikepark .bf-corps [hidden] { display: none; }
 .parcours-park-visiter { min-height: 44px; }
 .pc-ligne-sous { grid-column: 1 / -1; color: var(--texte-2); font-size: 11px; line-height: 1.3; }

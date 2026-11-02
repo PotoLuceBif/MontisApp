@@ -86,7 +86,7 @@ export function creerBikeParks(map, { fermerMenu = () => {}, ouvrirMenu = () => 
   const champ = (id) => panneau.corps.querySelector(`[data-bp="${id}"]`);
   const boutonVisiter = panneau.corps.querySelector('.parcours-park-visiter');
   const erreurVisite = panneau.corps.querySelector('.parcours-park-erreur');
-  champ('options').append(visite.creerChoixFond());
+  champ('options').append(visite.creerOptions());
 
   const section = document.createElement('section');
   section.className = 'pc-section';

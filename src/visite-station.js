@@ -35,11 +35,18 @@ const brouillard = (couleur) => ({
   'fog-ground-blend': 0.55,
   'atmosphere-blend': 0,
 });
-const FONDS_VISITE = [
-  { id: 'defaut', libelle: 'Clair' },
-  { id: 'relief', libelle: 'Relief', source: SOURCE_TOPO },
-  { id: 'satellite', libelle: 'Satellite', source: SOURCE_SATELLITE },
+const SATELLITE = { id: 'satellite', libelle: 'Satellite', source: SOURCE_SATELLITE };
+// Le premier de chaque liste est le fond par défaut
+const FONDS_SKI = [{ id: 'defaut', libelle: 'Blanc' }, SATELLITE];
+const FONDS_BIKEPARK = [SATELLITE, { id: 'relief', libelle: 'Relief', source: SOURCE_TOPO }, { id: 'defaut', libelle: 'Clair' }];
+const CLASSES_PENTES = [
+  ['30-35°', '#f7e600'],
+  ['35-40°', '#f5801f'],
+  ['40-45°', '#e8005f'],
+  ['45° et +', '#c98abf'],
 ];
+const ICONE_COURBES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18c3-1 4-5 9-5s6 4 9 5"/><path d="M6 13c2-.8 3-4 6-4s4 3.2 6 4"/><path d="M9.5 8c.9-.6 1.4-2 2.5-2s1.600 1.400 2.500 2"/></svg>';
+const ICONE_PENTES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18L6.500 6 3 20Z"/><path d="M11.500 20a7 7 0 0 0-1.400-4.200"/></svg>';
 // Sous un fond en image, le décor dessiné ferait double emploi
 const COUCHES_DECOR = {
   relief: ['visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes'],
@@ -442,16 +449,20 @@ function attenuer(calque, contour) {
 export function creerVisiteStation(map, {
   ete = false,
   dossier = '/data/pistes',
-  cleFond = ete ? 'visite-fond-bikepark' : 'visite-fond-ski',
   attribution = 'Pistes : <a href="https://openskidata.org" target="_blank">OpenSkiData</a> (ODbL), © contributeurs OpenStreetMap',
 } = {}) {
   const decor = ete ? DECORS.ete : DECORS.hiver;
+  const fonds = ete ? FONDS_BIKEPARK : FONDS_SKI;
+  // Réglages séparés pour le ski et les bike parks ; le fond général de l'app n'est jamais touché
+  const CLES = ete
+    ? { fond: 'bikepark-fond', courbes: 'bikepark-courbes', pentes: 'bikepark-pentes' }
+    : { fond: 'visite-fond-ski', courbes: 'visite-courbes', pentes: 'visite-pentes' };
   let enCours = null; // { vue, etaitEn3D, communes, calquesMasques, cadre, reliefCoupe }
   let idsCalques = [];
   let popup = null;
-  let courbesVisibles = lire('visite-courbes', true);
-  let pentesVisibles = lire('visite-pentes', false);
-  let idFond = FONDS_VISITE.some(({ id }) => id === lire(cleFond, '')) ? lire(cleFond, '') : 'defaut';
+  let courbesVisibles = lire(CLES.courbes, true);
+  let pentesVisibles = lire(CLES.pentes, false);
+  let idFond = fonds.some(({ id }) => id === lire(CLES.fond, '')) ? lire(CLES.fond, '') : fonds[0].id;
   const choixFond = new Set();
 
   function fermerPopup() {
@@ -519,7 +530,7 @@ export function creerVisiteStation(map, {
     });
 
     const calques = [
-      ...calquesDecor(decor, courbesVisibles, !ete && pentesVisibles),
+      ...calquesDecor(decor, courbesVisibles, pentesVisibles),
       ...calquesPistes(communes, courbesVisibles),
     ].map((calque) => {
       const source = SOURCES_LIMITEES[calque.source];
@@ -528,7 +539,7 @@ export function creerVisiteStation(map, {
     });
     calques.forEach((calque) => map.addLayer(calque));
     // Les fonds en image, juste au-dessus de la couleur du sol
-    FONDS_VISITE.filter(({ source }) => source && map.getSource(source)).forEach(({ id, source }) => {
+    fonds.filter(({ source }) => source && map.getSource(source)).forEach(({ id, source }) => {
       map.addLayer({ id: `visite-image-${id}`, type: 'raster', source, layout: { visibility: 'none' } }, 'visite-forets');
     });
     idsCalques = map.getStyle().layers.map(({ id }) => id).filter((id) => id.startsWith('visite-'));
@@ -537,7 +548,7 @@ export function creerVisiteStation(map, {
 
   function appliquerFondVisite() {
     if (!enCours) return;
-    FONDS_VISITE.forEach(({ id }) => {
+    fonds.forEach(({ id }) => {
       const couche = `visite-image-${id}`;
       if (map.getLayer(couche)) map.setLayoutProperty(couche, 'visibility', id === idFond ? 'visible' : 'none');
     });
@@ -562,13 +573,15 @@ export function creerVisiteStation(map, {
         choixFond.delete(bloc);
         return;
       }
-      bloc.querySelectorAll('button').forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.fond === idFond)));
+      bloc.querySelectorAll('[data-fond]').forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.fond === idFond)));
+      // OpenTopoMap dessine déjà ses courbes : l'option n'aurait pas d'effet
+      bloc.querySelector('.visite-option-courbes').hidden = idFond === 'relief';
     });
   }
 
   function definirFond(id) {
     idFond = id;
-    ecrire(cleFond, id); // à part pour le ski et les bike parks : le fond général de l'app ne bouge pas
+    ecrire(CLES.fond, id);
     appliquerFondVisite();
     majChoixFond();
   }
@@ -677,33 +690,82 @@ export function creerVisiteStation(map, {
 
   function afficherCourbes(visibles) {
     courbesVisibles = visibles;
-    ecrire('visite-courbes', visibles);
+    ecrire(CLES.courbes, visibles);
     if (!enCours) return;
     appliquerFondVisite();
   }
 
   function afficherPentes(visibles) {
     pentesVisibles = visibles;
-    ecrire('visite-pentes', visibles);
+    ecrire(CLES.pentes, visibles);
     if (enCours && map.getLayer('visite-pentes')) {
       map.setLayoutProperty('visite-pentes', 'visibility', visibles ? 'visible' : 'none');
     }
   }
 
-  function creerChoixFond() {
+  function creerBoutonCalque(icone, libelle, description, actif, surChangement) {
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'ski-visite-calque';
+    bouton.innerHTML = icone;
+    bouton.append(libelle);
+    bouton.title = description;
+    bouton.setAttribute('aria-label', description);
+    bouton.setAttribute('aria-pressed', String(actif));
+    bouton.addEventListener('click', () => {
+      const coche = bouton.getAttribute('aria-pressed') !== 'true';
+      bouton.setAttribute('aria-pressed', String(coche));
+      surChangement(coche);
+    });
+    return bouton;
+  }
+
+  // Le fond et ses calques, tels qu'ils s'affichent dans la fiche de la visite
+  function creerOptions({ surChangement = () => {} } = {}) {
     const bloc = document.createElement('div');
-    bloc.className = 'parcours-pratiques visite-fonds';
-    bloc.setAttribute('role', 'group');
-    bloc.setAttribute('aria-label', 'Fond de carte de la visite');
-    FONDS_VISITE.forEach(({ id, libelle }) => {
+    bloc.className = 'ski-visite-calques';
+
+    const choix = document.createElement('div');
+    choix.className = 'parcours-pratiques visite-fonds';
+    choix.setAttribute('role', 'group');
+    choix.setAttribute('aria-label', 'Fond de carte de la visite');
+    fonds.forEach(({ id, libelle }) => {
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.dataset.fond = id;
       bouton.textContent = libelle;
       bouton.setAttribute('aria-pressed', String(id === idFond));
-      bouton.addEventListener('click', () => definirFond(id));
-      bloc.append(bouton);
+      bouton.addEventListener('click', () => {
+        definirFond(id);
+        surChangement();
+      });
+      choix.append(bouton);
     });
+
+    const courbes = creerBoutonCalque(ICONE_COURBES, 'Courbes', 'Courbes de niveau et altitudes', courbesVisibles, (coche) => {
+      afficherCourbes(coche);
+    });
+    courbes.classList.add('visite-option-courbes');
+    courbes.hidden = idFond === 'relief';
+
+    const legende = document.createElement('div');
+    legende.className = 'ski-pentes-legende';
+    legende.hidden = !pentesVisibles;
+    CLASSES_PENTES.forEach(([libelle, couleur]) => {
+      const entree = document.createElement('span');
+      entree.className = 'ski-niveaux-entree';
+      const pastille = document.createElement('i');
+      pastille.style.background = couleur;
+      entree.append(pastille, libelle);
+      legende.append(entree);
+    });
+    const pentes = creerBoutonCalque(ICONE_PENTES, 'Pentes 30°+', 'Pentes de plus de 30 degrés', pentesVisibles, (coche) => {
+      afficherPentes(coche);
+      legende.hidden = !coche;
+      surChangement();
+    });
+
+    bloc.append(choix, courbes, pentes, legende);
     choixFond.add(bloc);
     return bloc;
   }
@@ -711,12 +773,8 @@ export function creerVisiteStation(map, {
   return {
     charger,
     demarrer,
-    creerChoixFond,
+    creerOptions,
     quitter,
-    afficherCourbes,
-    afficherPentes,
-    courbesVisibles: () => courbesVisibles,
-    pentesVisibles: () => pentesVisibles,
     communes: () => enCours?.communes ?? [],
   };
 }
