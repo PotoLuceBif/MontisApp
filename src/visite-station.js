@@ -4,6 +4,7 @@ import { bloquerFiches } from './fiche.js';
 import { SOURCE_SATELLITE, SOURCE_TOPO, retablirFond } from './fond-de-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
+import { expressionAltitude, formatDenivele, formatLongueur, imperial } from './unites.js';
 
 const SOURCE_PISTES = 'visite-pistes';
 const SOURCE_MASQUE = 'visite-masque';
@@ -268,7 +269,8 @@ function calquesPistes(communes, courbesVisibles) {
         visibility: courbesVisibles ? 'visible' : 'none',
         'symbol-placement': 'line',
         'symbol-spacing': 320,
-        'text-field': ['concat', ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }], ' m'],
+        // Les courbes sont déjà calculées dans l'unité affichée (voir main.js)
+        'text-field': ['concat', ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }], imperial() ? ' ft' : ' m'],
         'text-font': POLICE,
         'text-size': 10,
       },
@@ -303,7 +305,7 @@ function calquesPistes(communes, courbesVisibles) {
         'text-field': [
           'case',
           ['has', 'ele'],
-          ['concat', ['coalesce', ['get', 'name:fr'], ['get', 'name']], '\n', ['get', 'ele'], ' m'],
+          ['concat', ['coalesce', ['get', 'name:fr'], ['get', 'name']], '\n', expressionAltitude(['get', 'ele'])],
           ['coalesce', ['get', 'name:fr'], ['get', 'name']],
         ],
         'text-font': POLICE,
@@ -393,8 +395,8 @@ function contenuInfos(p) {
     stats.append(ligne);
   };
   if (p.nom) ajouter('Type', type);
-  if (p.longueur) ajouter('Longueur', `${Math.round(p.longueur).toLocaleString('fr-FR')} m`);
-  if (p.denivele) ajouter('Dénivelé', `${Math.round(p.denivele).toLocaleString('fr-FR')} m`);
+  if (p.longueur) ajouter('Longueur', formatLongueur(p.longueur));
+  if (p.denivele) ajouter('Dénivelé', formatDenivele(p.denivele));
   if (stats.children.length) contenu.append(stats);
   return contenu;
 }

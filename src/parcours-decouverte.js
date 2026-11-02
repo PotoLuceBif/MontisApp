@@ -4,12 +4,13 @@ import * as maplibregl from 'maplibre-gl';
 import { distance, echantillonner, extraireTrace, titreDe } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
 import { DECALAGE_PIN, imagePin } from './pins.js';
+import { formatAltitude, formatDistance } from './unites.js';
 
 const PARALLELISME_REPERES = 2;
 const DISTANCE_GRAPPE_PX = 56;
 
-const km = (m) => `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
-const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
+const km = formatDistance;
+const metres = formatAltitude;
 
 function el(balise, classe, texte) {
   const e = document.createElement(balise);

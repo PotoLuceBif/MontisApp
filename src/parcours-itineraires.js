@@ -2,6 +2,8 @@
 // liste compacte. Un tronçon s'ouvre dans la fiche habituelle ; la flèche retour ramène à la liste.
 import { creerPanneauCarte } from './panneau-carte.js';
 import { distance, extraireTrace, niveau, partDesSauts, titreDe } from './rando-api.js';
+import { formatAltitude, formatDistance } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const PARALLELE = 3;
 const MEMOIRE_MAX = 80;
@@ -11,8 +13,8 @@ const PART_SAUTS_NOTEE = 0.05; // ces raccords comptent déjà dans la longueur 
 // Le nom d'un itinéraire entier ne précise ni partie ni étape : on évite d'en charger les ~10 Mo pour rien
 const NOM_DE_TRONCON = /part|partie|tron[cç]on|etapa|section|france|deel|teil|[–,→]|\d{2}|verbindung|variant/i;
 
-const km = (m) => `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: m < 100000 ? 1 : 0 })} km`;
-const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
+const km = formatDistance;
+const metres = formatAltitude;
 
 export const estIntegral = (route) => !NOM_DE_TRONCON.test(route.name ?? '');
 
@@ -324,6 +326,15 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
       afficherMessage('Tronçons indisponibles pour le moment. Réessayez plus tard.');
     }
   }
+
+  surPreferences(() => {
+    if (!groupe) return;
+    liste.querySelectorAll('[data-cle]').forEach((ligne) => {
+      const route = groupe.routes[Number(ligne.dataset.rang)];
+      if (route) rendreDetail(ligne, route);
+    });
+    rendreTotal();
+  });
 
   return {
     get ouvert() {

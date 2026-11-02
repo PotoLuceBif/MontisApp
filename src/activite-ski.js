@@ -4,6 +4,7 @@ import { lire, ecrire } from './reglages.js';
 import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPosition, el, km, stat } from './fiche-lieu.js';
 import { contientMot, creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
 import { chargerNeige, creerBlocNeige, chargerRisque, creerBlocRisque } from './ski-conditions.js';
+import { formatAltitude, valeurAltitude } from './unites.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -28,7 +29,7 @@ const ONGLETS_FICHE = [
 
 const tailleStation = ({ properties: s }) => (s.kmAlpin || 0) + (s.kmNordique || 0) + (s.remontees || 0);
 
-const metres = (valeur) => `${Math.round(valeur).toLocaleString('fr-FR')} m`;
+const metres = formatAltitude;
 const pluriel = (nombre, mot) => `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
 
 function typeStation(station) {
@@ -286,7 +287,7 @@ export function creerActiviteSki(map) {
     if (station.kmNordique) stats.append(stat(km(station.kmNordique), 'Ski de fond'));
     if (station.remontees) stats.append(stat(String(station.remontees), 'Remontées'));
     if (station.altMin && station.altMax) {
-      const bas = station.altMin.toLocaleString('fr-FR');
+      const bas = valeurAltitude(station.altMin);
       stats.append(stat(`${bas} – ${metres(station.altMax)}`, 'Altitudes'));
     } else if (station.altMax) {
       stats.append(stat(metres(station.altMax), 'Altitude max'));

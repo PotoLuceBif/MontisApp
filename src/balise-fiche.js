@@ -6,6 +6,8 @@ import { altitude as altitudeRelief, preparerTuiles } from './portee.js';
 import { creerGraphiqueBalise } from './balise-graphique.js';
 import { dateComplete, etatStation, texteAge } from './balises-sources.js';
 import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './vent-cadran.js';
+import { formatAltitude, libelleVent, valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
@@ -13,7 +15,7 @@ const COUVERTURE_TOLEREE = 15 * 60 * 1000; // en dessous, on ne signale pas de m
 const ZOOM_RELIEF = 12;
 const LIBELLES_ETAT = { actif: 'En direct', ancien: 'Relevé ancien', hs: 'Hors service' };
 
-const kmh = (valeur) => (Number.isFinite(valeur) ? String(Math.round(valeur)) : '—');
+const kmh = (valeur) => (Number.isFinite(valeur) ? valeurVent(valeur) : '—');
 
 export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
@@ -34,9 +36,9 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
         <small class="bf-provenance"></small>
       </div>
       <div class="bf-valeurs">
-        <div class="bf-valeur bf-valeur-principale"><span>Vent moyen</span><strong><b data-bf-moyen></b> <i>km/h</i></strong></div>
-        <div class="bf-valeur bf-valeur-rafale"><span>Rafale</span><strong><b data-bf-rafale></b> <i>km/h</i></strong></div>
-        <div class="bf-valeur bf-valeur-minimum"><span>Minimum</span><strong><b data-bf-minimum></b> <i>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-principale"><span>Vent moyen</span><strong><b data-bf-moyen></b> <i data-unite-vent>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-rafale"><span>Rafale</span><strong><b data-bf-rafale></b> <i data-unite-vent>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-minimum"><span>Minimum</span><strong><b data-bf-minimum></b> <i data-unite-vent>km/h</i></strong></div>
       </div>
       <p class="bf-absence" hidden></p>
     </section>
@@ -122,6 +124,9 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
     $('[data-bf-moyen]').textContent = kmh(station.moyenne);
     $('[data-bf-rafale]').textContent = kmh(station.rafale);
     $('[data-bf-minimum]').textContent = kmh(station.minimum);
+    panneau.corps.querySelectorAll('[data-unite-vent]').forEach((unite) => {
+      unite.textContent = libelleVent();
+    });
     panneau.definirResume({
       rose: cadranVent(avecCap && etat !== 'hs' ? (station.direction + 180) % 360 : null, 0, 'vent-cadran-petit'),
       nom: station.nom,
@@ -129,7 +134,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
         ? LIBELLES_ETAT.hs
         : `${etat === 'ancien' ? `${LIBELLES_ETAT.ancien} · ` : ''}${texteProvenance(station.direction)}`,
       valeur: etat === 'hs' ? '—' : kmh(station.moyenne),
-      unite: 'km/h',
+      unite: libelleVent(),
     });
     const absence = $('.bf-absence');
     absence.hidden = etat === 'actif';
@@ -217,7 +222,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
   async function afficherAltitude() {
     const champ = $('.bf-altitude');
     if (Number.isFinite(station.altitude)) {
-      champ.textContent = `${Math.round(station.altitude).toLocaleString('fr-FR')} m`;
+      champ.textContent = formatAltitude(station.altitude);
       return;
     }
     champ.textContent = '';
@@ -236,7 +241,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
       }
     }
     if (jeton === jetonAltitude && Number.isFinite(valeur)) {
-      champ.textContent = `≈ ${Math.round(valeur).toLocaleString('fr-FR')} m`;
+      champ.textContent = `≈ ${formatAltitude(valeur)}`;
       champ.title = 'Altitude du terrain, lue sur le relief';
     }
   }
@@ -274,6 +279,12 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null } =
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') fermer();
+  });
+  surPreferences(() => {
+    if (!station) return;
+    rendreMaintenant();
+    rendreGraphique();
+    void afficherAltitude();
   });
 
   return {

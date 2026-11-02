@@ -3,6 +3,7 @@ import { lire, ecrire } from './reglages.js';
 import { FFVL_ACTIVE, SOURCES_BALISES, chargerFFVL } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
+import { formatAltitude } from './unites.js';
 
 const URL_SITES = '/ffvl/json/sites.json';
 const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
@@ -109,7 +110,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
             .setHTML(
               `<strong>${esc(properties.nom)}</strong><br>${esc(titre)}` +
                 (properties.sous_nom ? ` – ${esc(properties.sous_nom)}` : '') +
-                `<br>Altitude : ${esc(properties.alt)} m` +
+                `<br>Altitude : ${esc(formatAltitude(Number(properties.alt)))}` +
                 (properties.orientation ? `<br>Orientation : ${esc(properties.orientation)}` : '') +
                 (properties.vent_favo ? `<br>Vent favorable : ${esc(properties.vent_favo)}` : '')
             )

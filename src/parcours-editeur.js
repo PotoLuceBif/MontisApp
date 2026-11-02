@@ -12,6 +12,8 @@ import { calculerTroncon, tronconLibre } from './parcours-routage.js';
 import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
 import { creerProfilParcours } from './parcours-profil.js';
 import { compacter } from './parcours-stockage.js';
+import { formatAltitude, formatDistance, formatLongueur, uniteAllure, uniteDistance, valeurDistance, versAllure, depuisAllure } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
@@ -32,10 +34,24 @@ const COMMANDES = [
   ['effacer', 'Tout effacer', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'],
 ];
 
-const km = (m) => `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: m < 100000 ? 1 : 0 })} km`;
+const km = formatDistance;
 const copier = (etapes) => etapes.map((etape) => ({ ...etape }));
-const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
+const metres = formatAltitude;
 const pourcent = (partie, total) => (total ? Math.round((partie / total) * 100) : 0);
+
+// L'allure est mémorisée en min/km ; elle se saisit dans l'unité affichée
+const lireDuree = (texte) => {
+  const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(String(texte).trim());
+  return resultat ? Number(resultat[1]) + Number(resultat[2] || 0) / 60 : 0;
+};
+const ecrireDuree = (minutes) => {
+  const secondes = Math.round(minutes * 60);
+  return `${Math.floor(secondes / 60)}:${String(secondes % 60).padStart(2, '0')}`;
+};
+const allureAffichee = (memo) => {
+  const minutes = lireDuree(memo);
+  return minutes > 0 ? ecrireDuree(versAllure(minutes)) : memo;
+};
 
 function barre(parts, total) {
   return parts
@@ -105,7 +121,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         <div class="parcours-stat"><span>Alt. max</span><strong data-v="max">—</strong></div>
         <div class="parcours-stat"><span>Alt. min</span><strong data-v="min">—</strong></div>
         <div class="parcours-stat"><span>Pente max</span><strong data-v="pente">—</strong></div>
-        ${activite.allure ? `<label class="parcours-stat parcours-allure"><span>Allure (min/km)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="10:00" value="${lire(`${activite.id}-allure`, '10:00')}" title="Temps par kilomètre au format minutes:secondes" aria-label="Temps par kilomètre au format minutes:secondes"><strong aria-live="polite">—</strong></label>` : ''}
+        ${activite.allure ? `<label class="parcours-stat parcours-allure"><span>Allure (<b data-unite-allure>${uniteAllure()}</b>)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="10:00" value="${allureAffichee(lire(`${activite.id}-allure`, '10:00'))}" title="Temps par kilomètre au format minutes:secondes" aria-label="Temps par kilomètre au format minutes:secondes"><strong aria-live="polite">—</strong></label>` : ''}
       </div>
       <div class="parcours-profil">
         <p class="parcours-lecture">Touchez le profil pour lire un point du tracé.</p>
@@ -482,7 +498,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       else stockage.effacerBrouillon();
     }
     boutonEnregistrer.disabled = etapes.length < 2;
-    panneau.definirResume({ detail: total ? km(total) : 'Touchez la carte', valeur: total ? (total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '', unite: total ? 'km' : '' });
+    panneau.definirResume({ detail: total ? km(total) : 'Touchez la carte', valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
     rendre();
   }
 
@@ -641,11 +657,11 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   function rendreAllure() {
     const champ = $('.parcours-allure input');
     if (!champ || !analyse) return;
-    const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(champ.value.trim());
-    const heuresParKm = resultat ? (Number(resultat[1]) + Number(resultat[2] || 0) / 60) / 60 : 0;
+    const minutesParKm = depuisAllure(lireDuree(champ.value));
+    const heuresParKm = minutesParKm / 60;
     champ.setAttribute('aria-invalid', String(!(heuresParKm > 0)));
     $('.parcours-allure strong').textContent = heuresParKm > 0 ? `≈ ${formaterDuree((analyse.total / 1000) * heuresParKm)}` : '—';
-    if (heuresParKm > 0) ecrire(`${activite.id}-allure`, champ.value.trim());
+    if (heuresParKm > 0) ecrire(`${activite.id}-allure`, ecrireDuree(minutesParKm));
   }
 
   // Ce qui peut surprendre sur le terrain : pentes, marches, sentiers très techniques
@@ -660,7 +676,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       bouton.type = 'button';
       const portage = activite.portage && pente >= PENTE_PORTAGE;
       bouton.className = `parcours-alerte${portage ? ' parcours-alerte-forte' : ''}`;
-      bouton.textContent = `${portage ? 'Portage probable' : pente > 0 ? 'Montée raide' : 'Descente raide'} · ${pente > 0 ? '+' : ''}${Math.round(pente)} % sur ${metres(longueur)} · km ${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}`;
+      bouton.textContent = `${portage ? 'Portage probable' : pente > 0 ? 'Montée raide' : 'Descente raide'} · ${pente > 0 ? '+' : ''}${Math.round(pente)} % sur ${formatLongueur(longueur)} · ${uniteDistance()} ${valeurDistance(d)}`;
       bouton.addEventListener('click', () => {
         profil.placerDepuisCarte(indice);
         afficherCurseur(indice);
@@ -681,9 +697,9 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       ligne.textContent = `Et ${passages.length - PASSAGES_AFFICHES} autre${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} passage${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} raide${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''}.`;
       elements.push(ligne);
     }
-    if (activite.portage && repartition?.marches) ajouterTexte(`Marches sur le tracé : ${metres(repartition.marches)}`);
+    if (activite.portage && repartition?.marches) ajouterTexte(`Marches sur le tracé : ${formatLongueur(repartition.marches)}`);
     const techniques = repartition?.difficultes.at(-1) ?? 0;
-    if (techniques) ajouterTexte(`${echelle.texteTechnique} : ${metres(techniques)}`);
+    if (techniques) ajouterTexte(`${echelle.texteTechnique} : ${formatLongueur(techniques)}`);
     bloc.replaceChildren(...elements);
     bloc.hidden = !elements.length;
   }
@@ -791,6 +807,28 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       recalculer();
     });
   });
+
+  // Unités ou langue changées : tout ce qui est affiché se réécrit, sans recalcul
+  function reafficher() {
+    const champAllure = $('.parcours-allure input');
+    if (champAllure) {
+      champAllure.value = allureAffichee(lire(`${activite.id}-allure`, '10:00'));
+      $('[data-unite-allure]').textContent = uniteAllure();
+    }
+    if (repartition) {
+      const total = repartition.total;
+      panneau.definirResume({ detail: total ? km(total) : '', valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
+      if (!analyse) valeur('distance').textContent = km(total);
+      rendreRepartition();
+    }
+    if (analyse) {
+      profil.definir(analyse);
+      rendreStats();
+      rendreAlertes();
+      afficherCurseur(null);
+    }
+  }
+  surPreferences(reafficher);
 
   return {
     get ouvert() {

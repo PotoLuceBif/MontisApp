@@ -14,6 +14,8 @@ import { appliquerApparence } from './apparence.js';
 import { STYLE_MONTIS } from './style-montis.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
+import { surPreferences } from './preferences.js';
+import { imperial, expressionAltitude, PIEDS } from './unites.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -91,7 +93,8 @@ map.addControl(
   }),
   'top-right'
 );
-map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+const echelle = new maplibregl.ScaleControl({ maxWidth: 120, unit: imperial() ? 'imperial' : 'metric' });
+map.addControl(echelle, 'bottom-left');
 initEchelleCarte(map);
 
 // ===== Mémoire de la position de la carte =====
@@ -180,28 +183,48 @@ function appliquerMode(mode3D) {
 
 etat.basculerMode = () => appliquerMode(!etat.mode3D);
 
+// Les courbes sont calculées dans l'unité affichée : des pieds ronds en impérial
+const SEUILS_METRES = { 9: [500, 1000], 10: [200, 1000], 11: [100, 500], 12: [20, 100], 13: [20, 100], 14: [10, 100] };
+const SEUILS_PIEDS = { 9: [2000, 4000], 10: [1000, 5000], 11: [500, 2000], 12: [100, 500], 13: [50, 250], 14: [40, 200] };
+const urlCourbes = () =>
+  demSource.contourProtocolUrl({
+    multiplier: imperial() ? PIEDS : 1,
+    thresholds: imperial() ? SEUILS_PIEDS : SEUILS_METRES,
+    contourLayer: 'contours',
+    elevationKey: 'ele',
+    levelKey: 'level',
+    extent: 4096,
+    buffer: 1,
+  });
+const texteCourbe = () => [
+  'concat',
+  ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }],
+  imperial() ? ' ft' : ' m',
+];
+
+surPreferences(() => {
+  echelle.setUnit(imperial() ? 'imperial' : 'metric');
+  if (!map.getSource('courbes')) return;
+  map.getSource('courbes').setTiles([urlCourbes()]);
+  map.setLayoutProperty('courbes-altitude', 'text-field', texteCourbe());
+  if (map.getLayer('montis-summit')) {
+    map.setLayoutProperty('montis-summit', 'text-field', texteSommetFond());
+  }
+}, ['unites', '*']);
+
+const texteSommetFond = () => [
+  'concat',
+  ['coalesce', ['get', 'name:fr'], ['get', 'name']],
+  '\n',
+  expressionAltitude(['get', 'ele']),
+];
+
 // ===== Tout ce qui s'ajoute une fois la carte chargée =====
 map.on('load', () => {
   // ---------- Courbes de niveau ----------
   map.addSource('courbes', {
     type: 'vector',
-    tiles: [
-      demSource.contourProtocolUrl({
-        thresholds: {
-          9: [500, 1000],
-          10: [200, 1000],
-          11: [100, 500],
-          12: [20, 100],
-          13: [20, 100],
-          14: [10, 100],
-        },
-        contourLayer: 'contours',
-        elevationKey: 'ele',
-        levelKey: 'level',
-        extent: 4096,
-        buffer: 1,
-      }),
-    ],
+    tiles: [urlCourbes()],
     maxzoom: 15,
   });
 
@@ -226,11 +249,7 @@ map.on('load', () => {
     layout: {
       'symbol-placement': 'line',
       'symbol-spacing': 300,
-      'text-field': [
-        'concat',
-        ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }],
-        ' m',
-      ],
+      'text-field': texteCourbe(),
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
       'text-size': 11,
     },

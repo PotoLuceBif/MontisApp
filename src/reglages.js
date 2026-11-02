@@ -45,9 +45,9 @@ export function quandPret(map, action) {
 // Efface tous les réglages, puis recharge l'appli centrée sur la position de l'utilisateur
 // (si la géolocalisation est refusée, l'appli repart de sa position par défaut)
 export function retourAZero() {
-    // On garde l'apparence : ce sont des préférences, pas des réglages de carte
+  // On garde l'apparence, les unités et la langue : ce sont des préférences, pas des réglages de carte
   const gardes = {};
-  for (const cle of ['theme', 'accent']) if (cle in donnees) gardes[cle] = donnees[cle];
+  for (const cle of ['theme', 'accent', 'unites', 'unite-vent', 'langue']) if (cle in donnees) gardes[cle] = donnees[cle];
   donnees = gardes;
   try {
     localStorage.setItem(CLE, JSON.stringify(donnees));

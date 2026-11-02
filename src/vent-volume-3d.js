@@ -2,6 +2,7 @@
 // Repère en mètres : x vers l'est, y vers le nord, z altitude.
 // Chaque flèche est un objet posé à plat dans l'espace : son cap à l'écran
 // découle de la projection, il reste donc juste quels que soient l'angle et le zoom.
+import { depuisAltitude, formatAltitude, imperial, valeurAltitude } from './unites.js';
 
 const ELEVATION_DEFAUT = 32;
 const ELEVATION_REFERENCE = (35 * Math.PI) / 180; // pour une échelle stable quand on incline
@@ -253,7 +254,9 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     const gauche = coins.reduce((meilleur, coin) => (coin.bas[0] < meilleur.bas[0] ? coin : meilleur));
     const droite = coins.reduce((meilleur, coin) => (coin.bas[0] > meilleur.bas[0] ? coin : meilleur));
     const zHaut = relief.min + hauteurTotale();
-    const pas = hauteurTotale() > 3200 ? 1000 : 500;
+    // Graduations rondes dans l'unité affichée (m ou ft)
+    const pasAffiche = imperial() ? (hauteurTotale() > 3200 ? 5000 : 2000) : (hauteurTotale() > 3200 ? 1000 : 500);
+    const pas = depuisAltitude(pasAffiche);
     ctx.beginPath();
     const graduations = [];
     for (let z = Math.ceil(relief.min / pas) * pas; z <= zHaut; z += pas) {
@@ -268,7 +271,7 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     let dernierY = Infinity;
     graduations.forEach(([z, point]) => {
       if (Math.abs(dernierY - point[1]) < 12) return;
-      texte(`${z.toLocaleString('fr-FR')} m`, point[0] - 6, point[1], { alignement: 'right' });
+      texte(formatAltitude(z, { pas: 10 }), point[0] - 6, point[1], { alignement: 'right' });
       dernierY = point[1];
     });
 
@@ -276,7 +279,7 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     couches.forEach((couche) => {
       const point = projeter(droite.x, droite.y, altitudeTerrain(droite.x, droite.y) + couche.hauteur);
       if (Math.abs(dernierY - point[1]) < 12) return;
-      texte(`+${couche.hauteur.toLocaleString('fr-FR')}`, point[0] + 5, point[1], { alignement: 'left' });
+      texte(`+${valeurAltitude(couche.hauteur, { pas: imperial() ? 10 : 1 })}`, point[0] + 5, point[1], { alignement: 'left' });
       dernierY = point[1];
     });
 

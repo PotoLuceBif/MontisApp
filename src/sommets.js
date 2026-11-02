@@ -1,4 +1,6 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { expressionAltitude } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const COUCHE = 'sommets';
 const ICONE = 'sommet-triangle';
@@ -23,7 +25,23 @@ function creerIcone() {
   return g.getImageData(0, 0, t, t);
 }
 
+const texteSommet = () => [
+  'format',
+  ['get', 'name'], {},
+  '\n', {},
+  ['case', ['has', 'ele'], expressionAltitude(['get', 'ele']), ''],
+  { 'font-scale': 0.85 },
+];
+
+let suiviUnites = false;
+
 export function afficherSommets(map, visible) {
+  if (!suiviUnites) {
+    suiviUnites = true;
+    surPreferences(() => {
+      if (map.getLayer(COUCHE)) map.setLayoutProperty(COUCHE, 'text-field', texteSommet());
+    }, ['unites', '*']);
+  }
   assurerSourceVecteur(map);
 
   if (!map.hasImage(ICONE)) {
@@ -47,13 +65,7 @@ export function afficherSommets(map, visible) {
         'icon-image': ICONE,
         // Les sommets les plus hauts sont placés en premier (prioritaires)
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
-        'text-field': [
-          'format',
-          ['get', 'name'], {},
-          '\n', {},
-          ['case', ['has', 'ele'], ['concat', ['to-string', ['get', 'ele']], ' m'], ''],
-          { 'font-scale': 0.85 },
-        ],
+        'text-field': texteSommet(),
         'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
         'text-anchor': 'top',

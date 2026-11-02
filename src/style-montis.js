@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR } from './source-vecteur.js';
+import { expressionAltitude } from './unites.js';
 
 const classes = (valeurs) => ['in', ['get', 'class'], ['literal', valeurs]];
 
@@ -171,8 +172,7 @@ export const STYLE_MONTIS = {
           'concat',
           ['coalesce', ['get', 'name:fr'], ['get', 'name']],
           '\n',
-          ['get', 'ele'],
-          ' m',
+          expressionAltitude(['get', 'ele']),
         ],
         'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],

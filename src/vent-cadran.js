@@ -1,5 +1,6 @@
 // Couleurs du vent et cadran de direction, communs à l'analyse du vent et aux balises.
 import { pointCardinal } from './vent-calcul.js';
+import { valeurVent } from './unites.js';
 
 // Force du vent, de calme à fort, en km/h : une seule échelle pour le vent prévu et les balises
 export const PALIERS_VENT = [10, 20, 30, 40];
@@ -52,4 +53,10 @@ export const heureCourte = (date) => {
 export const texteProvenance = (provenance) => {
   const point = pointCardinal(provenance);
   return `${point === 'E' || point === 'O' ? 'de l’' : 'du '}${point} · ${Math.round(provenance)}°`;
+};
+
+// Bornes des paliers dans l'unité choisie : « < 10 », « 10–20 »… « 40+ » en km/h
+export const libellesPaliersVent = () => {
+  const bornes = PALIERS_VENT.map((limite) => valeurVent(limite));
+  return [`< ${bornes[0]}`, ...bornes.slice(1).map((borne, i) => `${bornes[i]}–${borne}`), `${bornes.at(-1)}+`];
 };

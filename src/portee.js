@@ -3,6 +3,8 @@ import { lire, ecrire } from './reglages.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { depuisAltitude, formatAltitude, formatDistance, formatSurface, nombre, uniteAltitude, versAltitude } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -268,12 +270,12 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
         </div>
       </div>
       <div class="pt-champs">
-        <label>Altitude (m) <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
-        <label>Hauteur / sol (m) <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
+        <label>Altitude (<span data-unite-alt>${uniteAltitude()}</span>) <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
+        <label>Hauteur / sol (<span data-unite-alt>${uniteAltitude()}</span>) <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
       </div>
       <div class="pt-legende" hidden>
         <div class="pt-degrade"></div>
-        <div class="pt-echelle"><span>0 m</span><span>Hauteur au-dessus du sol</span><span>600 m +</span></div>
+        <div class="pt-echelle"><span data-pt-borne="0">${formatAltitude(0)}</span><span>Hauteur au-dessus du sol</span><span data-pt-borne="600">${formatAltitude(600, { pas: 10 })} +</span></div>
       </div>
       <details class="rando-outils">
         <summary>À savoir</summary>
@@ -298,7 +300,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   } catch {
     /* stockage indisponible : on ignore */
   }
-  inHaut.value = String(Number(lire('portee-hauteur', 0)) || 0);
+  // Les champs se saisissent dans l'unité affichée ; le calcul et la mémoire restent en mètres
+  const versChamp = (metres) => String(Math.round(versAltitude(metres)));
+  const depuisChamp = (champ) => depuisAltitude(parseFloat(champ.value));
+  inHaut.value = versChamp(Number(lire('portee-hauteur', 0)) || 0);
 
   const infobulle = document.createElement('div');
   infobulle.className = 'pt-infobulle';
@@ -360,10 +365,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     const agl = g.agl[idx];
     if (Number.isNaN(agl)) return masquerInfo();
     infobulle.innerHTML =
-      `Hauteur / sol : <b>${Math.round(agl)} m</b><br>` +
-      `Altitude : <b>${Math.round(g.sol[idx] + agl)} m</b><br>` +
-      `Finesse mini : <b>${g.fmin[idx].toFixed(1)}</b><br>` +
-      `Distance : ${(g.dist[idx] / 1000).toFixed(1)} km`;
+      `Hauteur / sol : <b>${formatAltitude(agl)}</b><br>` +
+      `Altitude : <b>${formatAltitude(g.sol[idx] + agl)}</b><br>` +
+      `Finesse mini : <b>${nombre(g.fmin[idx], 1)}</b><br>` +
+      `Distance : ${formatDistance(g.dist[idx])}`;
     infobulle.style.left = `${e.originalEvent.clientX + 14}px`;
     infobulle.style.top = `${e.originalEvent.clientY + 14}px`;
     infobulle.style.display = 'block';
@@ -409,7 +414,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       return;
     }
     if (point !== depart) return; // effacé ou remplacé pendant la lecture
-    inSol.value = Math.round(altitude(depart[0], depart[1], 12));
+    inSol.value = versChamp(altitude(depart[0], depart[1], 12));
     recalculer();
   });
   map.on('mousemove', afficherInfo);
@@ -426,15 +431,15 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   });
   inSol.addEventListener('change', recalculer);
   inHaut.addEventListener('change', () => {
-    ecrire('portee-hauteur', parseFloat(inHaut.value) || 0);
+    ecrire('portee-hauteur', depuisChamp(inHaut) || 0);
     recalculer();
   });
 
   async function recalculer() {
     if (!point) return;
     const finesse = parseFloat(inFinesse.value);
-    const sol = parseFloat(inSol.value);
-    const haut = parseFloat(inHaut.value) || 0;
+    const sol = depuisChamp(inSol);
+    const haut = depuisChamp(inHaut) || 0;
     if (!(finesse > 1) || isNaN(sol)) {
       afficherResultat('Renseignez une finesse et une altitude valides.');
       return;
@@ -452,9 +457,9 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       }
       grille = res.grille;
       afficherImage(res.url, res.coordinates);
-      const distance = `${(res.dMax / 1000).toFixed(1)} km`;
+      const distance = formatDistance(res.dMax);
       afficherResultat(
-        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${res.aireKm2.toFixed(0)} km²`
+        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${formatSurface(res.aireKm2)}`
           + (res.reliefComplet ? '' : ' · limitée au relief téléchargé'),
         `Portée max ${distance}, cap ${Math.round(res.capMax)}°`
       );
@@ -466,6 +471,26 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       afficherResultat(err.code === 'relief' ? err.message : 'Calcul impossible pour ce point.');
     }
   }
+
+  // Changement d'unités : les champs gardent la même valeur en mètres, le texte se réécrit
+  let uniteChamps = uniteAltitude();
+  surPreferences(() => {
+    if (uniteChamps !== uniteAltitude()) {
+      const facteur = uniteAltitude() === 'ft' ? 3.28084 : 1 / 3.28084;
+      [inSol, inHaut].forEach((champ) => {
+        if (champ.value !== '') champ.value = String(Math.round(parseFloat(champ.value) * facteur));
+      });
+      uniteChamps = uniteAltitude();
+    }
+    conteneur.querySelectorAll('[data-unite-alt]').forEach((unite) => {
+      unite.textContent = uniteAltitude();
+    });
+    conteneur.querySelectorAll('[data-pt-borne]').forEach((borne) => {
+      const valeur = Number(borne.dataset.ptBorne);
+      borne.textContent = valeur ? `${formatAltitude(valeur, { pas: 10 })} +` : formatAltitude(0);
+    });
+    if (point && grille) recalculer();
+  });
 
   return {
     ouvrir() {

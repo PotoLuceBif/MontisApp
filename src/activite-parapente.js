@@ -2,10 +2,11 @@ import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 import { lire, ecrire } from './reglages.js';
 import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from './balises-sources.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, libellesPaliersVent, texteProvenance } from './vent-cadran.js';
+import { formatVent, libelleVent, valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const BALISES_LISTEES = 6;
-const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
 
 const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
@@ -39,11 +40,11 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       <label class="option-case"><input type="checkbox" data-para-layer-balises> Balises de vent
         <small>Relevés en temps réel, touchez une balise pour ouvrir sa fiche</small></label>
       <div class="para-legende" aria-label="Vent moyen en kilomètres par heure">
-        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} ${palier}</span>`).join('')}
+        ${libellesPaliersVent().map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} <b data-palier-libelle>${palier}</b></span>`).join('')}
         <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
         <span><i class="para-hs">×</i> Hors service</span>
       </div>
-      <p class="note para-legende-note">La manche pointe où va le vent, le chiffre donne le vent moyen en km/h.</p>
+      <p class="note para-legende-note">La manche pointe où va le vent, le chiffre donne le vent moyen en <span data-unite-vent>${libelleVent()}</span>.</p>
       <div class="para-balises" hidden>
         <h3>Balises de la zone</h3>
         <div class="para-balises-liste"></div>
@@ -112,12 +113,12 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       const vitesse = document.createElement('span');
       vitesse.className = 'para-balise-vitesse';
       const moyenne = document.createElement('strong');
-      moyenne.textContent = `${Math.round(station.moyenne)} km/h`;
+      moyenne.textContent = formatVent(station.moyenne);
       vitesse.append(moyenne);
       if (Number.isFinite(station.rafale)) {
         const rafale = document.createElement('small');
         rafale.className = 'para-balise-rafale';
-        rafale.textContent = `raf. ${Math.round(station.rafale)}`;
+        rafale.textContent = `raf. ${valeurVent(station.rafale)}`;
         vitesse.append(rafale);
       }
       ligne.append(texte, vitesse);
@@ -164,6 +165,16 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     synchroniserCarte();
   });
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
+  surPreferences(() => {
+    const paliers = libellesPaliersVent();
+    panneau.querySelectorAll('[data-palier-libelle]').forEach((libelle, index) => {
+      libelle.textContent = paliers[index];
+    });
+    panneau.querySelectorAll('[data-unite-vent]').forEach((unite) => {
+      unite.textContent = libelleVent();
+    });
+    rendreBalises();
+  });
   map.on('moveend', rendreBalises);
 
   function ouvrirOutil() {

@@ -1,4 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
+import { formatAltitude } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const URLS_OVERPASS = [
   'https://overpass-api.de/api/interpreter',
@@ -285,9 +287,9 @@ export function initFiches(map) {
 
     const eleOsm = parseFloat(f.ele ?? (d && d.principal && d.principal.tags.ele));
     if (Number.isFinite(eleOsm)) {
-      corps.appendChild(ligne('Altitude', `${Math.round(eleOsm).toLocaleString('fr-FR')} m`));
+      corps.appendChild(ligne('Altitude', formatAltitude(eleOsm)));
     } else if (Number.isFinite(f.eleDem)) {
-      corps.appendChild(ligne('Altitude', `≈ ${Math.round(f.eleDem).toLocaleString('fr-FR')} m (relief)`));
+      corps.appendChild(ligne('Altitude', `≈ ${formatAltitude(f.eleDem)} (relief)`));
     }
 
     if (d && d.localisation.length) corps.appendChild(ligne('Localisation', d.localisation.join(' · ')));
@@ -389,6 +391,10 @@ export function initFiches(map) {
     }
     anneau.setLngLat([lngLat.lng, lngLat.lat]).addTo(map);
   }
+
+  surPreferences(() => {
+    if (courant && !panneau.hidden) rendre();
+  });
 
   function fermer() {
     if (controleur) controleur.abort();

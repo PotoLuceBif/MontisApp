@@ -1,8 +1,8 @@
 // Profil d'un parcours, coloré selon la pente. Le toucher y lit un point précis du tracé.
 import { paletteInterface } from './vent-cadran.js';
 import { palierPente } from './parcours-analyse.js';
+import { formatAltitude, nombre, uniteDistance, versDistance } from './unites.js';
 
-const MARGE_GAUCHE = 40;
 const MARGE_DROITE = 8;
 const MARGE_HAUT = 8;
 const HAUTEUR_AXE = 18;
@@ -14,9 +14,10 @@ export function creerProfilParcours(canvas, { onCurseur = () => {} } = {}) {
   let curseur = null;
   let largeur = 0;
   let hauteur = 0;
+  let margeGauche = 40; // s'élargit pour les altitudes longues (pieds)
 
-  const largeurTrace = () => Math.max(1, largeur - MARGE_GAUCHE - MARGE_DROITE);
-  const xDe = (d) => MARGE_GAUCHE + (d / analyse.total) * largeurTrace();
+  const largeurTrace = () => Math.max(1, largeur - margeGauche - MARGE_DROITE);
+  const xDe = (d) => margeGauche + (d / analyse.total) * largeurTrace();
 
   function dessiner() {
     if (!largeur) return;
@@ -36,6 +37,7 @@ export function creerProfilParcours(canvas, { onCurseur = () => {} } = {}) {
     const yDe = (a) => basTrace - ((a - bas) / (haut - bas)) * (basTrace - MARGE_HAUT);
 
     ctx.font = `10.5px ${style.fontFamily}`;
+    margeGauche = Math.max(40, Math.ceil(Math.max(...[bas, haut].map((a) => ctx.measureText(formatAltitude(a)).width))) + 9);
     ctx.lineWidth = 1;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
@@ -44,20 +46,23 @@ export function creerProfilParcours(canvas, { onCurseur = () => {} } = {}) {
       ctx.strokeStyle = bord;
       ctx.globalAlpha = index ? 0.55 : 1;
       ctx.beginPath();
-      ctx.moveTo(MARGE_GAUCHE, y);
+      ctx.moveTo(margeGauche, y);
       ctx.lineTo(largeur - MARGE_DROITE, y);
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = texte2;
-      ctx.fillText(`${Math.round(valeur)} m`, MARGE_GAUCHE - 5, Math.max(6, y));
+      ctx.fillText(formatAltitude(valeur), margeGauche - 5, Math.max(6, y));
     });
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    const pasKm = PAS_KM.find((pas) => total / 1000 / pas <= 6) ?? 500;
-    for (let km = pasKm; km * 1000 < total; km += pasKm) {
+    // Graduations rondes dans l'unité affichée (km ou mi)
+    const metresParUnite = 1000 / versDistance(1000);
+    const totalAffiche = total / metresParUnite;
+    const pas = PAS_KM.find((valeur) => totalAffiche / valeur <= 6) ?? 500;
+    for (let graduation = pas; graduation < totalAffiche; graduation += pas) {
       ctx.fillStyle = texte2;
-      ctx.fillText(`${km.toLocaleString('fr-FR')} km`, xDe(km * 1000), hauteur - 4);
+      ctx.fillText(`${nombre(graduation, 1)} ${uniteDistance()}`, xDe(graduation * metresParUnite), hauteur - 4);
     }
 
     // Colonnes colorées par la pente ; en descente, plus discrètes
@@ -122,7 +127,7 @@ export function creerProfilParcours(canvas, { onCurseur = () => {} } = {}) {
 
   function indiceProche(clientX) {
     const { left } = canvas.getBoundingClientRect();
-    const fraction = Math.max(0, Math.min(1, (clientX - left - MARGE_GAUCHE) / largeurTrace()));
+    const fraction = Math.max(0, Math.min(1, (clientX - left - margeGauche) / largeurTrace()));
     return Math.round(fraction * (analyse.points.length - 1));
   }
 

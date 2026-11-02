@@ -2,6 +2,8 @@ import { lire, ecrire } from './reglages.js';
 import { Marker } from 'maplibre-gl';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -702,7 +704,7 @@ export function creerConditionsLocales(map) {
       const symbole = creerIconeMeteo(donnees.weather_code[index]);
       const temperature = document.createElement('strong');
       temperature.textContent = Number.isFinite(donnees.temperature_2m[index])
-        ? `${Math.round(donnees.temperature_2m[index])}°`
+        ? formatTemp(donnees.temperature_2m[index], { court: true })
         : '—';
       const probabilite = document.createElement('span');
       probabilite.textContent = Number.isFinite(donnees.precipitation_probability[index])
@@ -711,17 +713,17 @@ export function creerConditionsLocales(map) {
       probabilite.title = `Probabilité de précipitation : ${probabilite.textContent}`;
       const pluie = document.createElement('span');
       pluie.textContent = Number.isFinite(donnees.rain?.[index])
-        ? `${donnees.rain[index].toFixed(1)} mm pluie`
-        : '— mm pluie';
+        ? `${formatPluie(donnees.rain[index])} pluie`
+        : 'Pluie —';
       const neige = document.createElement('span');
       neige.textContent = Number.isFinite(donnees.snowfall?.[index])
-        ? `${donnees.snowfall[index].toFixed(1)} cm neige`
-        : '— cm neige';
+        ? `${formatNeige(donnees.snowfall[index])} neige`
+        : 'Neige —';
       const vent = document.createElement('span');
       vent.textContent = Number.isFinite(donnees.wind_gusts_10m?.[index])
-        ? `Raf. ${Math.round(donnees.wind_gusts_10m[index])} km/h`
+        ? `Raf. ${formatVent(donnees.wind_gusts_10m[index])}`
         : Number.isFinite(donnees.wind_speed_10m?.[index])
-          ? `Vent ${Math.round(donnees.wind_speed_10m[index])} km/h`
+          ? `Vent ${formatVent(donnees.wind_speed_10m[index])}`
           : 'Vent —';
       carte.append(heureLocale, symbole, temperature, probabilite, pluie, neige, vent);
       heures.appendChild(carte);
@@ -767,10 +769,10 @@ export function creerConditionsLocales(map) {
       bouton.dataset.date = date;
       bouton.setAttribute('aria-pressed', String(date === dateSelectionnee));
       const minimum = Number.isFinite(daily.temperature_2m_min[index])
-        ? `${Math.round(daily.temperature_2m_min[index])}°`
+        ? formatTemp(daily.temperature_2m_min[index], { court: true })
         : '—';
       const maximum = Number.isFinite(daily.temperature_2m_max[index])
-        ? `${Math.round(daily.temperature_2m_max[index])}°`
+        ? formatTemp(daily.temperature_2m_max[index], { court: true })
         : '—';
       const probabilitePluie = Number.isFinite(daily.precipitation_probability_max[index])
         ? Math.round(daily.precipitation_probability_max[index])
@@ -800,7 +802,7 @@ export function creerConditionsLocales(map) {
       const vent = document.createElement('span');
       vent.className = 'meteo-jour-vent';
       vent.textContent = Number.isFinite(daily.wind_speed_10m_max[index])
-        ? `Vent ${Math.round(daily.wind_speed_10m_max[index])} km/h`
+        ? `Vent ${formatVent(daily.wind_speed_10m_max[index])}`
         : 'Vent —';
       bouton.append(nom, icone, temperature, pluie, vent);
       jours.appendChild(bouton);
@@ -860,18 +862,18 @@ export function creerConditionsLocales(map) {
     condition.textContent = descriptionMeteo(actuel.weather_code);
     const temperature = document.createElement('p');
     temperature.className = 'meteo-temperature';
-    temperature.textContent = `${Math.round(actuel.temperature_2m)}°`;
+    temperature.textContent = formatTemp(actuel.temperature_2m, { court: true });
     const details = document.createElement('div');
     details.className = 'meteo-details';
 
     const indexHeureActuelle = hourly.time.findIndex((heure) => heure >= actuel.time);
     const valeurs = [
-      ['Altitude estimée', Number.isFinite(donnees.elevation) ? `${Math.round(donnees.elevation)} m` : '—'],
-      ['Ressenti', Number.isFinite(actuel.apparent_temperature) ? `${Math.round(actuel.apparent_temperature)}°` : '—'],
-      ['Vent', Number.isFinite(actuel.wind_speed_10m) ? `${Math.round(actuel.wind_speed_10m)} km/h ${formaterDirection(actuel.wind_direction_10m)}` : '—'],
-      ['Rafales', Number.isFinite(actuel.wind_gusts_10m) ? `${Math.round(actuel.wind_gusts_10m)} km/h` : '—'],
-      ['Précipitations', Number.isFinite(actuel.precipitation) ? `${actuel.precipitation.toFixed(1)} mm` : '—'],
-      ['Niveau de congélation', Number.isFinite(hourly.freezing_level_height?.[indexHeureActuelle]) ? `${Math.round(hourly.freezing_level_height[indexHeureActuelle])} m` : '—'],
+      ['Altitude estimée', Number.isFinite(donnees.elevation) ? formatAltitude(donnees.elevation) : '—'],
+      ['Ressenti', Number.isFinite(actuel.apparent_temperature) ? formatTemp(actuel.apparent_temperature) : '—'],
+      ['Vent', Number.isFinite(actuel.wind_speed_10m) ? `${formatVent(actuel.wind_speed_10m)} ${formaterDirection(actuel.wind_direction_10m)}` : '—'],
+      ['Rafales', Number.isFinite(actuel.wind_gusts_10m) ? formatVent(actuel.wind_gusts_10m) : '—'],
+      ['Précipitations', Number.isFinite(actuel.precipitation) ? formatPluie(actuel.precipitation) : '—'],
+      ['Niveau de congélation', Number.isFinite(hourly.freezing_level_height?.[indexHeureActuelle]) ? formatAltitude(hourly.freezing_level_height[indexHeureActuelle]) : '—'],
     ];
 
     for (const [label, valeur] of valeurs) {
@@ -946,6 +948,7 @@ export function creerConditionsLocales(map) {
       const donnees = await reponse.json();
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       afficherPrevisions(donnees);
+      dernieresDonnees = donnees;
       const dateEnregistree = dateHorsLigne(reponse);
       if (dateEnregistree) statut.textContent = `${texteDonneesDu(dateEnregistree)}, consultées sans réseau.`;
     } catch (erreur) {
@@ -980,6 +983,20 @@ export function creerConditionsLocales(map) {
   jours.addEventListener('click', (event) => {
     const bouton = event.target.closest('.meteo-jour');
     if (bouton) selectionnerJour(bouton.dataset.date);
+  });
+
+  // Unités ou langue : on réaffiche les dernières prévisions reçues, sans les redemander
+  let dernieresDonnees = null;
+  surPreferences(() => {
+    if (!dernieresDonnees || actuelle.hidden) return;
+    const statutGarde = statut.textContent;
+    const jourGarde = dateSelectionnee;
+    afficherPrevisions(dernieresDonnees);
+    statut.textContent = statutGarde;
+    if (jourGarde) {
+      dateSelectionnee = null;
+      selectionnerJour(jourGarde);
+    }
   });
 
   return {

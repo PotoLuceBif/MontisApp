@@ -8,6 +8,8 @@ import { creerEditeurParcours } from './parcours-editeur.js';
 import { creerItineraires, estIntegral } from './parcours-itineraires.js';
 import { creerDecouverte } from './parcours-decouverte.js';
 import { dateLisible } from './hors-ligne.js';
+import { formatDenivele, formatDistance } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const ZOOM_MIN_ZONE = 7;
 const REPERES_MAX = 40;
@@ -300,8 +302,8 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const nom = document.createElement('strong');
     nom.textContent = parcours.nom;
     const detail = document.createElement('small');
-    const distance = `${(parcours.total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
-    const denivele = Number.isFinite(parcours.plus) ? ` · D+ ${Math.round(parcours.plus).toLocaleString('fr-FR')} m` : '';
+    const distance = formatDistance(parcours.total);
+    const denivele = Number.isFinite(parcours.plus) ? ` · D+ ${formatDenivele(parcours.plus)}` : '';
     const libelle = activite.pratiques[parcours.pratique]?.libelleListe;
     detail.textContent = `${libelle ? `${libelle} · ` : ''}${distance}${denivele} · ${dateLisible(parcours.date).split(' à ')[0]}`;
     ouvrir.append(nom, detail);
@@ -430,6 +432,11 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
 
   rendreFiltres();
   rendreMesParcours();
+
+  surPreferences(() => {
+    rendreMesParcours();
+    if (brutes.length) liste.replaceChildren(...regrouper(brutes.filter((route) => !filtre.garde || filtre.garde(route))).map(ligneResultat));
+  });
 
   return {
     id: activite.id,

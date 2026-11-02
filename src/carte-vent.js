@@ -14,7 +14,9 @@ import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
+import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
 const SOURCE_VENT = 'vent-previsions';
@@ -35,8 +37,8 @@ const MAILLE_RELIEF = 36;
 const FLECHES_PAR_COTE = 5;
 const FLECHES_PAR_COTE_COUCHE_SEULE = 10;
 const METRES_PAR_DEGRE = 111320;
-const LIBELLE_HAUTEUR = (hauteur) => `${hauteur.toLocaleString('fr-FR')} m`;
-const PALIERS_LEGENDE = ['0–9', '10–19', '20–29', '30–39', '40+'];
+const LIBELLE_HAUTEUR = (hauteur) => formatAltitude(hauteur);
+const LIBELLE_PLAFOND = (plafond) => formatAltitude(plafond, { pas: imperial() ? 100 : 1 });
 
 const cleePosition = ({ latitude, longitude }) => `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
 const metresParDegreLng = (latitude) => METRES_PAR_DEGRE * Math.cos((latitude * Math.PI) / 180);
@@ -178,7 +180,7 @@ export function creerCarteVent(map) {
         ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
       </select></label>
       <div class="vent-carte-legende" aria-label="Intensité du vent en kilomètres par heure">
-        ${PALIERS_LEGENDE.map((libelle, index) => `<span>${iconeLegende(index)} ${libelle}</span>`).join('')}<span>km/h</span>
+        ${libellesPaliersVent().map((libelle, index) => `<span>${iconeLegende(index)} <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
       </div>
       <p class="vent-carte-statut" role="status" aria-live="polite"></p>
     </section>
@@ -192,7 +194,7 @@ export function creerCarteVent(map) {
         <div class="vent-volume-reglages">
           <fieldset class="vent-volume-plafonds">
             <legend>Jusqu’à</legend>
-            ${PLAFONDS_VOLUME.map((plafond) => `<label><input type="radio" name="vent-volume-plafond" value="${plafond}"${plafond === 2000 ? ' checked' : ''}><span>${plafond.toLocaleString('fr-FR')} m</span></label>`).join('')}
+            ${PLAFONDS_VOLUME.map((plafond) => `<label><input type="radio" name="vent-volume-plafond" value="${plafond}"${plafond === 2000 ? ' checked' : ''}><span data-plafond-libelle>${LIBELLE_PLAFOND(plafond)}</span></label>`).join('')}
           </fieldset>
           <label class="vent-volume-couche"><span>Couches</span><select aria-label="Couche de vent affichée">
             <option value="toutes">Toutes</option>
@@ -208,7 +210,7 @@ export function creerCarteVent(map) {
         </div>
         <p class="vent-volume-detail" data-volume-detail>1 doigt : tourner, incliner · 2 doigts : zoomer · double toucher : recentrer · toucher une flèche : lire sa valeur.</p>
         <div class="vent-volume-legende" aria-label="Intensité du vent">
-          ${PALIERS_LEGENDE.map((libelle, index) => `<span><i data-volume-vitesse="${index}"></i> ${libelle}</span>`).join('')}<span>km/h</span>
+          ${libellesPaliersVent().map((libelle, index) => `<span><i data-volume-vitesse="${index}"></i> <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
         </div>
         <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
@@ -264,6 +266,7 @@ export function creerCarteVent(map) {
   let dateEnregistree = null; // date des données si elles viennent de la dernière consultation
   let donneesVentCourantes = null;
   let resumeVentCourant = [];
+  let moyenneCourante = null;
   let zoneVolumeCapturee = null;
   let zoneCarteCapturee = null;
   let vueActive = lire('vent-vue', 'carte') === 'volume' ? 'volume' : 'carte';
@@ -316,7 +319,7 @@ export function creerCarteVent(map) {
         detailVolume.textContent = aideVolume;
         return;
       }
-      detailVolume.innerHTML = `${cadranVent(fleche.flux, volume.rotation, 'vent-cadran-petit')}<span><strong>${Math.round(fleche.vitesse)} km/h</strong> à ${LIBELLE_HAUTEUR(fleche.hauteur)} du sol · ${texteProvenance(fleche.provenance)}</span>`;
+      detailVolume.innerHTML = `${cadranVent(fleche.flux, volume.rotation, 'vent-cadran-petit')}<span><strong>${formatVent(fleche.vitesse)}</strong> à ${LIBELLE_HAUTEUR(fleche.hauteur)} du sol · ${texteProvenance(fleche.provenance)}</span>`;
     },
   });
 
@@ -340,8 +343,8 @@ export function creerCarteVent(map) {
     panneauCarte.definirResume({
       nom: `Vent à ${LIBELLE_HAUTEUR(Number(selecteurNiveau.value))} du sol`,
       detail: heureTemps.textContent,
-      valeur: moyen.replace(' km/h', ''),
-      unite: 'km/h',
+      valeur: Number.isFinite(moyenneCourante) ? valeurVent(moyenneCourante) : moyen,
+      unite: Number.isFinite(moyenneCourante) ? libelleVent() : '',
       rose: cadranVent(resumeVentCourant.length ? Number(cadranResume.dataset.flux) : null, 0, 'vent-cadran-petit'),
     });
   }
@@ -399,6 +402,7 @@ export function creerCarteVent(map) {
 
   function afficherResume(points) {
     resumeVentCourant = points;
+    moyenneCourante = null;
     if (!points.length) {
       resumeMoyen.textContent = '—';
       resumeRafales.textContent = '—';
@@ -415,8 +419,9 @@ export function creerCarteVent(map) {
     const v = points.reduce((total, point) => total + point.v, 0);
     const { flux, provenance } = depuisComposantes(u, v);
     const rafaleMax = rafales.length ? Math.max(...rafales) : null;
-    resumeMoyen.textContent = `${Math.round(moyenne)} km/h`;
-    resumeRafales.textContent = rafaleMax === null ? '—' : `${Math.round(rafaleMax)} km/h`;
+    moyenneCourante = moyenne;
+    resumeMoyen.textContent = formatVent(moyenne);
+    resumeRafales.textContent = rafaleMax === null ? '—' : formatVent(rafaleMax);
     resumeProvenance.textContent = texteProvenance(provenance);
     cadranResume.dataset.flux = String(flux);
     const flecheResume = cadranResume.querySelector('.vent-cadran-fleche');
@@ -491,7 +496,7 @@ export function creerCarteVent(map) {
       return;
     }
     const exageration = volume.exageration;
-    statutVolume.textContent = `${nombreFleches} flèches · jusqu’à ${plafondVolume.toLocaleString('fr-FR')} m au-dessus du sol`
+    statutVolume.textContent = `${nombreFleches} flèches · jusqu’à ${LIBELLE_PLAFOND(plafondVolume)} au-dessus du sol`
       + (exageration > 1.05 ? ` · hauteurs ×${exageration.toFixed(1).replace('.', ',')} à l’écran` : '');
   }
 
@@ -628,7 +633,7 @@ export function creerCarteVent(map) {
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
       zoneVolumeCapturee = { centre, demi, grille, reponses, recue: dateEnregistree ?? Date.now() };
-      zoneVolume.textContent = `±${(demi / 1000).toLocaleString('fr-FR')} km`;
+      zoneVolume.textContent = `±${formatDistance(demi)}`;
       volume.definirRelief(relief);
       afficherEcheance();
       construireCouches();
@@ -773,11 +778,11 @@ export function creerCarteVent(map) {
     const direction = document.createElement('div');
     direction.className = 'vent-carte-popup-direction';
     direction.style.setProperty('--vent-couleur', couleurVitesse(proprietes.vitesse));
-    direction.innerHTML = `${cadranVent(proprietes.flux, 0, 'vent-cadran-moyen')}<div><strong>${Math.round(proprietes.vitesse)} km/h</strong><small>${texteProvenance(proprietes.provenance)}</small></div>`;
+    direction.innerHTML = `${cadranVent(proprietes.flux, 0, 'vent-cadran-moyen')}<div><strong>${formatVent(proprietes.vitesse)}</strong><small>${texteProvenance(proprietes.provenance)}</small></div>`;
     const rafales = document.createElement('p');
-    rafales.textContent = `Rafales au sol : ${Number.isFinite(rafalesProches) ? `${Math.round(rafalesProches)} km/h` : 'indisponibles'}`;
+    rafales.textContent = `Rafales au sol : ${Number.isFinite(rafalesProches) ? formatVent(rafalesProches) : 'indisponibles'}`;
     const altitude = document.createElement('p');
-    altitude.textContent = `Altitude du terrain : ${Number.isFinite(proche?.elevation) ? `${Math.round(proche.elevation)} m` : 'indisponible'}`;
+    altitude.textContent = `Altitude du terrain : ${Number.isFinite(proche?.elevation) ? formatAltitude(proche.elevation) : 'indisponible'}`;
     contenu.append(titre, heure, direction, rafales, altitude);
     new Popup({ closeButton: true, offset: 14 })
       .setLngLat(feature.geometry.coordinates)
@@ -804,7 +809,7 @@ export function creerCarteVent(map) {
     const maille = grille.pasLat * METRES_PAR_DEGRE / 1000;
     statut.classList.remove('erreur');
     statut.textContent = points.length
-      ? `${dateEnregistree ? `${texteDonneesDu(dateEnregistree)} · ` : ''}${points.length} points de calcul, tous les ${maille.toLocaleString('fr-FR', { maximumFractionDigits: maille < 10 ? 1 : 0 })} km`
+      ? `${dateEnregistree ? `${texteDonneesDu(dateEnregistree)} · ` : ''}${points.length} points de calcul, tous les ${formatDistance(maille * 1000)}`
       : 'Aucune donnée de vent disponible à cette échéance dans cette zone.';
   }
 
@@ -923,6 +928,35 @@ export function creerCarteVent(map) {
   appliquerPalette();
   afficherEcheance();
   selectionnerVue(vueActive);
+
+  // Unités ou langue : les libellés fixes et les valeurs affichées se réécrivent sur place
+  function reafficherUnites() {
+    panneau.querySelectorAll('.vent-carte-niveau option, .vent-volume-couche option[value]:not([value="toutes"])').forEach((option) => {
+      option.textContent = LIBELLE_HAUTEUR(Number(option.value));
+    });
+    panneau.querySelectorAll('[data-plafond-libelle]').forEach((libelle, index) => {
+      libelle.textContent = LIBELLE_PLAFOND(PLAFONDS_VOLUME[index]);
+    });
+    const paliers = libellesPaliersVent();
+    panneau.querySelectorAll('.vent-carte-legende, .vent-volume-legende').forEach((legende) => {
+      legende.querySelectorAll('[data-palier-libelle]').forEach((libelle, index) => {
+        libelle.textContent = paliers[index];
+      });
+    });
+    panneau.querySelectorAll('[data-unite-vent]').forEach((unite) => {
+      unite.textContent = libelleVent();
+    });
+    afficherResume(resumeVentCourant);
+    afficherEcheance();
+    if (vueActive === 'volume' && zoneVolumeCapturee) {
+      zoneVolume.textContent = `±${formatDistance(zoneVolumeCapturee.demi)}`;
+      construireCouches();
+    } else if (donneesVentCourantes && actif) {
+      const { reponses, positions, heureCible, grille } = donneesVentCourantes;
+      afficherDonnees(reponses, positions, heureCible, grille, true);
+    }
+  }
+  surPreferences(reafficherUnites);
 
   return {
     id: 'vent',

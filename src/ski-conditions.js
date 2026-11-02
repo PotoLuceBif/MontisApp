@@ -1,4 +1,5 @@
 // Enneigement (prévisions Open-Meteo) et risque d'avalanche (bulletins EAWS) d'une station
+import { formatAltitude, formatNeige, formatTemp, formatVent, nombre as formatNombre, uniteNeige, versNeige } from './unites.js';
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const URL_RISQUES = 'https://static.avalanche.report/eaws_bulletins';
 const DUREE_CACHE_NEIGE_MS = 30 * 60 * 1000;
@@ -104,12 +105,12 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   points.forEach((point, i) => {
     const carte = el('div', 'ski-neige-point');
     const titre = points.length > 1 ? (i === 0 ? 'Haut du domaine' : 'Bas du domaine') : 'Station';
-    carte.append(el('span', 'ski-neige-lieu', point.altitude != null ? `${titre} · ${point.altitude.toLocaleString('fr-FR')} m` : titre));
-    const neige = el('strong', 'ski-neige-valeur', point.neigeCm != null ? `${point.neigeCm} cm` : '—');
+    carte.append(el('span', 'ski-neige-lieu', point.altitude != null ? `${titre} · ${formatAltitude(point.altitude)}` : titre));
+    const neige = el('strong', 'ski-neige-valeur', point.neigeCm != null ? formatNeige(point.neigeCm) : '—');
     carte.append(neige, el('span', 'ski-neige-legende', 'de neige au sol (estimation)'));
     const details = [
-      point.temperature != null ? `${point.temperature} °C` : '',
-      point.rafales != null ? `rafales ${point.rafales} km/h` : '',
+      point.temperature != null ? formatTemp(point.temperature) : '',
+      point.rafales != null ? `rafales ${formatVent(point.rafales)}` : '',
     ].filter(Boolean).join(' · ');
     if (details) carte.append(el('span', 'ski-neige-details', details));
     cartes.append(carte);
@@ -122,13 +123,13 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   const graphique = el('div', 'ski-neige-jours');
   for (const jour of jours) {
     const colonne = el('div', 'ski-neige-jour');
-    colonne.setAttribute('aria-label', `${jour.libelle} : ${jour.cm.toFixed(1)} cm`);
+    colonne.setAttribute('aria-label', `${jour.libelle} : ${formatNeige(jour.cm)}`);
     colonne.setAttribute('role', 'img');
     const piste = el('div', 'ski-neige-piste');
     const barre = el('i');
     barre.style.height = `${(jour.cm / maximum) * 100}%`;
     piste.append(barre);
-    colonne.append(el('strong', null, `${jour.cm < 10 ? jour.cm.toFixed(1).replace('.', ',') : Math.round(jour.cm)}`), piste, el('span', null, jour.libelle));
+    colonne.append(el('strong', null, formatNombre(versNeige(jour.cm), versNeige(jour.cm) < 10 ? 1 : 0)), piste, el('span', null, jour.libelle));
     graphique.append(colonne);
   }
   bloc.append(graphique);
@@ -136,8 +137,8 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   const isotherme = points[0]?.isotherme;
   const pied = el('p', 'ski-conditions-note');
   pied.append(
-    isotherme != null ? `Isotherme 0 °C vers ${isotherme.toLocaleString('fr-FR')} m. ` : '',
-    'Prévisions de modèle en cm, pas des relevés de la station. Source : ',
+    isotherme != null ? `Isotherme ${formatTemp(0)} vers ${formatAltitude(isotherme)}. ` : '',
+    `Prévisions de modèle en ${uniteNeige()}, pas des relevés de la station. Source : `,
     lienExterne('Open-Meteo', 'https://open-meteo.com/'),
     ' (CC BY 4.0).'
   );

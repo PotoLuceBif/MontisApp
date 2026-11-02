@@ -350,6 +350,7 @@ export function initMenu(map) {
       ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span>${module.label}</span>`;
       ligne.setAttribute('aria-pressed', 'false');
       if (module.reseauRequis) ligne.dataset.reseauRequis = '';
+      ligne.dataset.module = module.id;
 
       const contenu = document.createElement('div');
       contenu.className = 'menu-contenu';

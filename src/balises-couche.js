@@ -4,6 +4,8 @@
 import { creerFicheBalise } from './balise-fiche.js';
 import { COULEUR_BALISE_INACTIVE, etatStation } from './balises-sources.js';
 import { PALETTE_CARTE, palierVent } from './vent-cadran.js';
+import { valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const SOURCE = 'balises-vent';
 const COUCHE_SELECTION = 'balises-vent-selection';
@@ -102,7 +104,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   function imagePastille(station, etat) {
     if (etat === 'hs') return 'balise-pastille|hs|×';
     const palier = etat === 'ancien' ? 'ancien' : palierVent(station.moyenne);
-    return `balise-pastille|${palier}|${Math.round(station.moyenne)}`;
+    return `balise-pastille|${palier}|${valeurVent(station.moyenne)}`;
   }
 
   // Les relevés les plus utiles d'abord, puis ceux qui ne chevauchent rien. Le calcul se fait
@@ -235,6 +237,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
     zoomCalcule = Math.round(map.getZoom() * 2);
     map.getSource(SOURCE)?.setData(donnees());
   }
+  surPreferences(publier, ['unites', 'unite-vent', '*']);
 
   function marquerSelection(id) {
     if (!map.getLayer(COUCHE_SELECTION)) return;

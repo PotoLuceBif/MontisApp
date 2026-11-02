@@ -1,6 +1,8 @@
 // La fiche d'un lieu (station, bike park), en bas de la carte : infos, favori, recherche d'un autre
 // lieu, puis la visite 3D sur demande. Chaque activité n'apporte que ses textes et son contenu.
 import { lire, ecrire } from './reglages.js';
+import { formatDistance } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const ZOOM_POSITION = 14;
 const ZOOM_FICHE = 12.5;
@@ -23,8 +25,8 @@ export function el(balise, classe, texte) {
   return e;
 }
 
-export const km = (valeur) =>
-  `${valeur.toLocaleString('fr-FR', { maximumFractionDigits: valeur < 10 ? 1 : 0 })} km`;
+// Longueurs de pistes, données en km
+export const km = (valeur) => formatDistance(valeur * 1000);
 const surTelephone = () => window.matchMedia('(max-width: 640px)').matches;
 const fermerMenu = () => document.getElementById('menu-fermer')?.click();
 
@@ -368,6 +370,9 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
   }
 
   window.addEventListener('resize', placerRecherche);
+  surPreferences(() => {
+    if (choisi) rendre();
+  });
 
   return {
     rendre,
