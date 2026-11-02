@@ -2224,7 +2224,7 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .velo-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .velo-legende-pente, .velo-legende { display: flex; flex-wrap: wrap; gap: 3px 10px; color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
 .velo-legende-pente span, .velo-legende span { display: inline-flex; align-items: center; gap: 4px; }
-.velo-legende-pente i, .velo-legende i { width: 9px; height: 9px; flex: none; border-radius: 3px; }
+.velo-legende-pente i, .velo-legende i { width: 9px; height: 9px; flex: none; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
 .velo-repartition { display: grid; gap: 5px; }
 .velo-repartition[hidden] { display: none; }
 .velo-repartition h4 { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 650; text-transform: none; letter-spacing: 0; }
@@ -2269,8 +2269,21 @@ button.velo-alerte { cursor: pointer; }
 .velo-alerte-forte { border-left-color: #e05b67; background: color-mix(in srgb, #e05b67 13%, transparent); }
 .velo-alerte-suite { margin: 0; color: var(--texte-2); font-size: 11.5px; }
 .velo .option-case { margin: 0; }
+.velo-repli .rando-outils-contenu { display: grid; gap: 7px; }
+.velo-ev-liste { display: grid; gap: 4px; max-height: 240px; overflow-y: auto; }
+.velo-ev {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 40px; padding: 4px 9px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); color: var(--texte); font: 500 12.5px var(--police); text-align: left; cursor: pointer;
+}
+.velo-ev b { color: var(--accent); font-weight: 750; font-variant-numeric: tabular-nums; }
+.velo-ev[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); }
+.velo-stats-park { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.velo-stats-park .velo-stat strong { font-size: 18px; }
+.bf-bikepark .velo-source { line-height: 1.4; }
 .velo-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .bf-velo-lecture .velo-commandes, .bf-velo-lecture .velo-pratiques-panneau, .bf-velo-lecture .velo-etat { display: none; }
+.bf-velo-lecture.bf-velo-ensemble .velo-etat { display: block; }
+.bf-velo-ensemble :is(.velo-pied, .velo-nom) { display: none; }
 .velo-etape {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%;
   background: var(--velo-couleur); color: #0b111b; box-shadow: 0 1px 5px rgba(0, 0, 0, .55); font: 800 12px var(--police); cursor: grab; touch-action: none;

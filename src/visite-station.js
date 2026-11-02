@@ -7,7 +7,15 @@ import { SOURCE_VECTEUR } from './source-vecteur.js';
 
 const SOURCE_PISTES = 'visite-pistes';
 const SOURCE_MASQUE = 'visite-masque';
-const COULEUR_NEIGE = '#f5f8fb';
+// Le décor autour des pistes : la neige des stations, ou l'été des bike parks
+const DECORS = {
+  hiver: {
+    sol: '#f5f8fb', forets: '#8fa39a', eau: '#d3e3ee', ombre: '#a9bbd0', accent: '#c6d3e1', courbes: '#56708f', routes: '#aab3bd',
+  },
+  ete: {
+    sol: '#eef0e2', forets: '#9dbb8a', eau: '#b4d6e8', ombre: '#8f9a84', accent: '#b4bca6', courbes: '#8a7a5c', routes: '#b5ae9e',
+  },
+};
 const MARGE_ZONE_M = 3000; // autour des pistes, ce qu'on affiche et télécharge pendant la visite
 const METRES_PAR_DEGRE = 111_320;
 const POINTS_PAR_ARRONDI = 8;
@@ -94,25 +102,25 @@ function creerIconeSommet() {
 
 const filtreCommunes = (communes) => ['in', ['get', 'name'], ['literal', communes]];
 
-// Paysage enneigé : ces calques recouvrent le fond choisi, qui reste intact en dessous
-function calquesNeige(courbesVisibles, pentesVisibles) {
+// Ces calques recouvrent le fond choisi, qui reste intact en dessous
+function calquesDecor(decor, courbesVisibles, pentesVisibles) {
   const visibilite = courbesVisibles ? 'visible' : 'none';
   return [
-    { id: 'visite-neige', type: 'background', paint: { 'background-color': COULEUR_NEIGE } },
+    { id: 'visite-neige', type: 'background', paint: { 'background-color': decor.sol } },
     {
       id: 'visite-forets',
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'landcover',
       filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]],
-      paint: { 'fill-color': '#8fa39a', 'fill-opacity': 0.5 },
+      paint: { 'fill-color': decor.forets, 'fill-opacity': 0.5 },
     },
     {
       id: 'visite-eau',
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'water',
-      paint: { 'fill-color': '#d3e3ee' },
+      paint: { 'fill-color': decor.eau },
     },
     {
       id: 'visite-ombrage',
@@ -121,8 +129,8 @@ function calquesNeige(courbesVisibles, pentesVisibles) {
       paint: {
         'hillshade-exaggeration': 0.6,
         'hillshade-illumination-direction': 315,
-        'hillshade-shadow-color': '#a9bbd0',
-        'hillshade-accent-color': '#c6d3e1',
+        'hillshade-shadow-color': decor.ombre,
+        'hillshade-accent-color': decor.accent,
         'hillshade-highlight-color': '#ffffff',
       },
     },
@@ -140,7 +148,7 @@ function calquesNeige(courbesVisibles, pentesVisibles) {
       'source-layer': 'contours',
       layout: { visibility: visibilite },
       paint: {
-        'line-color': '#56708f',
+        'line-color': decor.courbes,
         'line-opacity': ['match', ['get', 'level'], 1, 0.7, 0.32],
         'line-width': ['match', ['get', 'level'], 1, 1, 0.5],
       },
@@ -159,7 +167,7 @@ function calquesNeige(courbesVisibles, pentesVisibles) {
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
       filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor']]],
-      paint: { 'line-color': '#aab3bd', 'line-width': largeur(0.5, 2.5) },
+      paint: { 'line-color': decor.routes, 'line-width': largeur(0.5, 2.5) },
     },
   ];
 }
@@ -397,26 +405,32 @@ function donneesMasque(contour) {
   };
 }
 
-function calquesMasque() {
+function calquesMasque(decor) {
   return [
     {
       id: 'visite-masque',
       type: 'fill',
       source: SOURCE_MASQUE,
       filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'fill-color': COULEUR_NEIGE },
+      paint: { 'fill-color': decor.sol },
     },
     {
       id: 'visite-masque-bord',
       type: 'line',
       source: SOURCE_MASQUE,
       filter: ['==', ['geometry-type'], 'LineString'],
-      paint: { 'line-color': COULEUR_NEIGE, 'line-width': 46, 'line-blur': 34 },
+      paint: { 'line-color': decor.sol, 'line-width': 46, 'line-blur': 34 },
     },
   ];
 }
 
-export function creerVisiteStation(map) {
+// `ete` : décor d'été et pas de carte des pentes d'avalanche, sans objet hors neige
+export function creerVisiteStation(map, {
+  ete = false,
+  dossier = '/data/pistes',
+  attribution = 'Pistes : <a href="https://openskidata.org" target="_blank">OpenSkiData</a> (ODbL), © contributeurs OpenStreetMap',
+} = {}) {
+  const decor = ete ? DECORS.ete : DECORS.hiver;
   let enCours = null; // { vue, etaitEn3D, communes, calquesMasques, cadre, reliefCoupe }
   let idsCalques = [];
   let popup = null;
@@ -486,13 +500,13 @@ export function creerVisiteStation(map) {
     map.addSource(SOURCE_PISTES, {
       type: 'geojson',
       data: donnees,
-      attribution: 'Pistes : <a href="https://openskidata.org" target="_blank">OpenSkiData</a> (ODbL), © contributeurs OpenStreetMap',
+      attribution,
     });
 
     const dansZone = ['within', { type: 'Polygon', coordinates: [contour] }];
     const calques = [
-      ...calquesNeige(courbesVisibles, pentesVisibles),
-      ...calquesMasque(),
+      ...calquesDecor(decor, courbesVisibles, !ete && pentesVisibles),
+      ...calquesMasque(decor),
       ...calquesPistes(communes, courbesVisibles),
     ].map((calque) => {
       const source = SOURCES_LIMITEES[calque.source];
@@ -546,14 +560,15 @@ export function creerVisiteStation(map) {
 
   // Charge les pistes avant de toucher à la carte : en cas d'échec, rien n'a changé
   async function charger(idStation) {
-    const reponse = await fetch(new URL(`/data/pistes/${idStation}.json`, window.location.origin).href);
+    const reponse = await fetch(new URL(`${dossier}/${idStation}.json`, window.location.origin).href);
     if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
     return reponse.json();
   }
 
   // Une nouvelle station pendant une visite remplace juste sa zone : quitter ramènera
   // toujours à la vue d'avant la première visite
-  function demarrer(donnees) {
+  // `marges` : la place que prend un panneau sur la carte
+  function demarrer(donnees, marges = {}) {
     const communes = donnees.communes || [];
     if (enCours) {
       fermerPopup();
@@ -577,11 +592,14 @@ export function creerVisiteStation(map) {
     }
 
     const etroit = map.getContainer().clientWidth <= 640;
-    const limites = limitesDe(donnees.features);
+    // L'été, on cadre les pistes : les remontées du domaine de ski s'étendent souvent bien au-delà
+    const pistes = donnees.features.filter(({ properties }) => properties.genre === 'piste');
+    const limites = limitesDe(ete && pistes.length ? pistes : donnees.features);
     const camera = map.cameraForBounds(limites, {
-      padding: etroit
-        ? { top: 90, bottom: 90, left: 24, right: 24 }
-        : { top: 110, bottom: 110, left: 50, right: 50 },
+      padding: {
+        ...(etroit ? { top: 90, bottom: 90, left: 24, right: 24 } : { top: 110, bottom: 110, left: 50, right: 50 }),
+        ...marges,
+      },
       bearing: donnees.cap,
       pitch: INCLINAISON,
     });

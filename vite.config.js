@@ -3,8 +3,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { defineConfig } from 'vite';
 
-// Les pistes (18 Mo) se chargent station par station : elles n'ont pas à être gardées d'office
-const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/'];
+// Les pistes se chargent station par station : elles n'ont pas à être gardées d'office
+const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/', '/data/bike-parks/'];
 
 function fichiersPublics(dossier, racine = dossier) {
   return readdirSync(dossier).flatMap((nom) => {

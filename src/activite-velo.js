@@ -6,11 +6,33 @@ import { listerParcours, renommerParcours, supprimerParcours } from './velo-parc
 import { dateLisible } from './hors-ligne.js';
 import { PRATIQUES } from './velo-routage.js';
 import { creerEditeurVelo } from './velo-editeur.js';
+import { creerBikeParks } from './velo-bike-parks.js';
 
 const ZOOM_MIN_ZONE = 7;
 const CLIENTS = { mtb: clientItineraires('mtb'), cycling: clientItineraires('cycling') };
 const LIBELLES_CARTE = { mtb: 'VTT', cycling: 'Vélo' };
 const TAILLE_MAX_GPX = 10 * 1024 * 1024;
+// Noms et numéros de fr.eurovelo.com. Les tracés viennent d'OpenStreetMap, pas du site
+const EUROVELO = [
+  [1, 'Atlantic Coast Route'],
+  [2, 'Véloroute des Capitales'],
+  [3, 'Véloroute des Pèlerins'],
+  [4, 'Véloroute de l’Europe Centrale'],
+  [5, 'Via Romea (Francigena)'],
+  [6, 'Atlantique - Mer Noire'],
+  [7, 'Véloroute du Soleil'],
+  [8, 'Véloroute de la Méditerranée'],
+  [9, 'Baltique - Adriatique'],
+  [10, 'Véloroute de la Baltique'],
+  [11, 'Véloroute de l’Europe de l’Est'],
+  [12, 'Véloroute de la Mer du Nord'],
+  [13, 'Véloroute du Rideau de Fer'],
+  [14, 'Lacs et Rivières d’Europe Centrale'],
+  [15, 'Véloroute Rhin'],
+  [17, 'Véloroute du Rhône'],
+  [19, 'La Meuse à Vélo'],
+];
+const TRONCONS_MAX = 50;
 
 export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
   const panneau = document.createElement('div');
@@ -41,6 +63,21 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
       <h3>Mes parcours</h3>
       <div class="velo-mes-liste"></div>
     </section>
+    <details class="rando-outils velo-repli velo-repli-parks">
+      <summary>Visiter un bike park</summary>
+      <div class="rando-outils-contenu velo-parks"></div>
+    </details>
+    <details class="rando-outils velo-repli">
+      <summary>EuroVelo</summary>
+      <div class="rando-outils-contenu velo-eurovelo">
+        <div class="velo-ev-liste">
+          ${EUROVELO.map(([numero, nom]) => `<button type="button" class="velo-ev" data-ev="${numero}" aria-pressed="false"><b>EV${numero}</b><span>${nom}</span></button>`).join('')}
+        </div>
+        <p class="note velo-ev-message" role="status" aria-live="polite" hidden></p>
+        <div class="rando-liste velo-ev-troncons" hidden></div>
+        <p class="note">EuroVelo® est une marque de l’ECF. Tracés issus d’OpenStreetMap, parfois différents du tracé officiel : consultez <a class="para-lien" href="https://fr.eurovelo.com/" target="_blank" rel="noopener noreferrer">fr.eurovelo.com ↗</a></p>
+      </div>
+    </details>
     <label class="option-case"><input type="checkbox" class="velo-calque"> Itinéraires balisés sur la carte
       <small>Superpose le réseau de la pratique choisie (Waymarked Trails)</small></label>
     <details class="rando-outils">
@@ -60,6 +97,10 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
   const listeMes = panneau.querySelector('.velo-mes-liste');
   const champFichier = panneau.querySelector('.velo-fichier');
   const caseCalque = panneau.querySelector('.velo-calque');
+  const boutonsEv = [...panneau.querySelectorAll('[data-ev]')];
+  const messageEv = panneau.querySelector('.velo-ev-message');
+  const listeEv = panneau.querySelector('.velo-ev-troncons');
+  let controleurEv = null;
   let actif = false;
   caseCalque.checked = lire('velo-calque', true) !== false;
   let controleurListe = null;
@@ -73,6 +114,11 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     onEnregistre: () => rendreMesParcours(),
   });
 
+  const bikeParks = creerBikeParks(map, { conteneur: panneau.querySelector('.velo-parks'), fermerMenu });
+  panneau.querySelector('.velo-repli-parks').addEventListener('toggle', (event) => {
+    if (event.target.open) void bikeParks.charger();
+  });
+
   function afficherMessage(texte) {
     messageListe.textContent = texte;
     messageListe.hidden = !texte;
@@ -82,13 +128,14 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     afficherMessage('Chargement de l’itinéraire…');
     try {
       const details = await CLIENTS[route.carte].details(route.id);
-      const { chaine } = extraireTrace(details);
+      const { chaine, lignes } = extraireTrace(details);
       if (chaine.length < 2) throw new Error('tracé vide');
       afficherMessage('');
       fermerMenu();
       editeur.ouvrirTrace({
         nom: titreDe(route),
         chaine,
+        lignes,
         lien: `https://${route.carte}.waymarkedtrails.org/#route?id=${route.id}`,
       });
     } catch (erreur) {
@@ -100,28 +147,69 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
   function afficherResultats(routes, vide) {
     liste.hidden = !routes.length;
     afficherMessage(routes.length ? '' : vide);
-    liste.replaceChildren(...routes.map((route) => {
-      const { court, couleur } = niveau(route.group);
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'rando-item velo-item';
-      const badge = document.createElement('span');
-      badge.className = 'rando-badge';
-      badge.textContent = court;
-      badge.style.background = couleur;
-      const textes = document.createElement('span');
-      textes.className = 'rando-item-textes';
-      const nomRoute = document.createElement('span');
-      nomRoute.className = 'rando-item-nom';
-      nomRoute.textContent = titreDe(route);
-      const sous = document.createElement('span');
-      sous.className = 'rando-item-sous';
-      sous.textContent = [LIBELLES_CARTE[route.carte], route.itinerary?.join(' → ')].filter(Boolean).join(' · ');
-      textes.append(nomRoute, sous);
-      item.append(badge, textes);
-      item.addEventListener('click', () => void ouvrirItineraire(route));
-      return item;
-    }));
+    liste.replaceChildren(...routes.map(ligneItineraire));
+  }
+
+  function ligneItineraire(route) {
+    const { court, couleur } = niveau(route.group);
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'rando-item velo-item';
+    const badge = document.createElement('span');
+    badge.className = 'rando-badge';
+    badge.textContent = court;
+    badge.style.background = couleur;
+    const textes = document.createElement('span');
+    textes.className = 'rando-item-textes';
+    const nomRoute = document.createElement('span');
+    nomRoute.className = 'rando-item-nom';
+    nomRoute.textContent = titreDe(route);
+    const sous = document.createElement('span');
+    sous.className = 'rando-item-sous';
+    sous.textContent = [LIBELLES_CARTE[route.carte], route.itinerary?.join(' → ')].filter(Boolean).join(' · ');
+    textes.append(nomRoute, sous);
+    item.append(badge, textes);
+    item.addEventListener('click', () => void ouvrirItineraire(route));
+    return item;
+  }
+
+  // Une EuroVelo existe en dizaines de relations dans OSM : celles de la zone, puis de France, d'abord
+  async function afficherEuroVelo(numero) {
+    boutonsEv.forEach((bouton) => bouton.setAttribute('aria-pressed', String(Number(bouton.dataset.ev) === numero)));
+    controleurEv?.abort();
+    const requete = new AbortController();
+    controleurEv = requete;
+    listeEv.hidden = true;
+    messageEv.hidden = false;
+    messageEv.textContent = 'Recherche des tronçons…';
+    const client = CLIENTS.cycling;
+    const estCette = ({ group, ref, name }) => group === 'INT'
+      && (new RegExp(`^EV\\s*${numero}$`, 'i').test(ref ?? '') || new RegExp(`Euro ?V[eé]lo ${numero}\\b`, 'i').test(name ?? ''));
+    const reponses = await Promise.allSettled([
+      client.chercher(`EuroVelo ${numero}`, requete.signal, TRONCONS_MAX),
+      client.chercher(`EV${numero}`, requete.signal, TRONCONS_MAX),
+      map.getZoom() >= ZOOM_MIN_ZONE ? client.dansLaZone(map.getBounds(), requete.signal) : Promise.resolve([]),
+    ]);
+    if (requete.signal.aborted) return;
+    if (reponses.every(({ status }) => status === 'rejected')) {
+      messageEv.textContent = 'Tronçons indisponibles pour le moment. Réessayez plus tard.';
+      return;
+    }
+    const [parNom, parRef, dansZone] = reponses.map((reponse) => (reponse.status === 'fulfilled' ? reponse.value : []));
+    const proches = new Set(dansZone.filter(estCette).map(({ id }) => id));
+    const rang = (route) => {
+      if (proches.has(route.id)) return 0;
+      return /france|fran[cç]ais|\bFR\b/i.test(route.name ?? '') ? 1 : 2;
+    };
+    const routes = [...new Map([...dansZone, ...parNom, ...parRef].filter(estCette).map((route) => [route.id, route])).values()]
+      .sort((a, b) => rang(a) - rang(b) || String(a.name).localeCompare(String(b.name), 'fr'))
+      .slice(0, TRONCONS_MAX)
+      .map((route) => ({ ...route, carte: 'cycling' }));
+    messageEv.textContent = routes.length
+      ? (proches.size ? `${proches.size} tronçon${proches.size > 1 ? 's' : ''} dans la zone visible, en tête de liste.` : 'Aucun tronçon dans la zone visible.')
+      : 'Aucun tronçon trouvé dans OpenStreetMap pour cet itinéraire.';
+    listeEv.hidden = !routes.length;
+    listeEv.replaceChildren(...routes.map(ligneItineraire));
   }
 
   // Chaque pratique interroge ses cartes : une carte en panne n'empêche pas les autres de répondre
@@ -292,6 +380,9 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     minuteurRecherche = setTimeout(chercherTexte, 350);
   });
   champFichier.addEventListener('change', () => void importerGpx());
+  boutonsEv.forEach((bouton) => {
+    bouton.addEventListener('click', () => void afficherEuroVelo(Number(bouton.dataset.ev)));
+  });
   caseCalque.addEventListener('change', () => {
     ecrire('velo-calque', caseCalque.checked);
     appliquerCalque();
@@ -312,6 +403,8 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
       actif = false;
       appliquerCalque();
       controleurListe?.abort();
+      controleurEv?.abort();
+      bikeParks.quitter();
       editeur.fermer();
     },
   };

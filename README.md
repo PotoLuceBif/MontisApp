@@ -30,6 +30,8 @@ Dans **Activités > Vélo**, choisissez VTT, gravel ou route. Ce choix pilote le
 
 Le routage passe par le serveur public de BRouter, seul à indiquer surfaces et difficulté, avec Valhalla en secours. Ces serveurs n’offrent aucune garantie : un tronçon non calculé apparaît en ligne droite tiretée. Les altitudes viennent des tuiles de relief, et la durée reste une estimation selon la pratique. Les parcours enregistrés gardent leur tracé dans le navigateur et se rouvrent sans réseau ; le profil a besoin du relief de la zone (voir Mode hors ligne).
 
+Le menu Vélo donne aussi accès aux 17 EuroVelo, dont les tracés et les tronçons viennent d’OpenStreetMap via Waymarked Trails, et à la visite des bike parks. Leur liste est produite par `node scripts/extraire-bike-parks.mjs` : ce sont des secteurs de pistes de descente balisées dans OpenStreetMap, rattachés à la station de ski voisine, et non un annuaire officiel.
+
 ## Stations de ski
 
 Dans **Activités > Ski**, lancez **Rechercher dans cette zone** après avoir cadré un massif. Les stations cartographiées dans OpenStreetMap apparaissent dans une liste et sur la carte ; les groupes se déplient en zoomant. La barre de recherche générale peut aussi trouver une station par son nom. La couverture et les détails (altitude, exploitant, site web) dépendent des contributions OpenStreetMap ; vérifiez les conditions d’ouverture auprès de la station.

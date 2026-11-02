@@ -84,8 +84,8 @@ export function clientItineraires(carte) {
   }
 
   return {
-    async chercher(texte, signal) {
-      const json = await appeler(`/list/search?query=${encodeURIComponent(texte)}&limit=25`, signal, cacheListes);
+    async chercher(texte, signal, limite = 25) {
+      const json = await appeler(`/list/search?query=${encodeURIComponent(texte)}&limit=${limite}`, signal, cacheListes);
       return dedoublonner(json.results || []);
     },
     async dansLaZone(limites, signal) {

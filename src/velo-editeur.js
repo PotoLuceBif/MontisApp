@@ -21,6 +21,7 @@ const SOURCE_CURSEUR = 'velo-curseur';
 const COUCHE_CURSEUR = 'velo-curseur-point';
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
+const LONGUEUR_MAX_DETAIL = 400000; // m : au-delà, le profil demanderait des centaines de tuiles de relief
 const ATTENTE_ANALYSE = 250; // ms : on ne relit pas le relief à chaque modification rapprochée
 const MODES_COULEUR = [['pratique', 'Pratique'], ['pente', 'Pente'], ['surface', 'Surface'], ['difficulte', 'Difficulté']];
 const COULEUR_CERNE = '#0b111b';
@@ -68,6 +69,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   let controleur = null;
   let nom = 'Nouveau parcours';
   let idParcours = null;
+  let lignesEnsemble = null; // très long itinéraire : affiché, mais ni analysé ni modifiable
   let analyse = null;
   let repartition = null;
   let jetonAnalyse = 0;
@@ -148,7 +150,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
   // ---------- Couches ----------
   function assurerCouches() {
     if (map.getSource(SOURCE_TRACE)) return;
-    map.addSource(SOURCE_TRACE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    // tolerance 0 : sinon, de loin, la carte supprime les milliers de petits morceaux d'un long itinéraire
+    map.addSource(SOURCE_TRACE, { type: 'geojson', tolerance: 0, data: { type: 'FeatureCollection', features: [] } });
     const lissage = { 'line-cap': 'round', 'line-join': 'round' };
     map.addLayer({
       id: COUCHE_CONTOUR,
@@ -215,7 +218,11 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     const couleur = pratique.couleur;
     map.getSource(SOURCE_TRACE).setData({
       type: 'FeatureCollection',
-      features: modeCouleur !== 'pratique' && analyse ? morceauxColores() : etapes.slice(1).filter(({ troncon }) => troncon).map(({ troncon }) => ({
+      features: lignesEnsemble ? [{
+        type: 'Feature',
+        geometry: { type: 'MultiLineString', coordinates: lignesEnsemble },
+        properties: { couleur, libre: false },
+      }] : modeCouleur !== 'pratique' && analyse ? morceauxColores() : etapes.slice(1).filter(({ troncon }) => troncon).map(({ troncon }) => ({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: troncon.geom },
         properties: { couleur, libre: troncon.source === 'libre' },
@@ -542,11 +549,19 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
 
   // Le panneau couvre une partie de la carte : le tracé doit tenir dans le reste
   function cadrer(chaine) {
-    const lngs = chaine.map(([lng]) => lng);
-    const lats = chaine.map(([, lat]) => lat);
     const cadre = panneau.element.getBoundingClientRect();
+    let ouest = 180;
+    let est = -180;
+    let sud = 90;
+    let nord = -90;
+    chaine.forEach(([lng, lat]) => {
+      ouest = Math.min(ouest, lng);
+      est = Math.max(est, lng);
+      sud = Math.min(sud, lat);
+      nord = Math.max(nord, lat);
+    });
     const toutLaLargeur = cadre.width >= window.innerWidth - 4;
-    map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], {
+    map.fitBounds([[ouest, sud], [est, nord]], {
       padding: {
         top: 90,
         right: toutLaLargeur ? 30 : 80,
@@ -733,8 +748,37 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       if (panneau.ouvert) recalculer();
     },
     // Itinéraire balisé ou trace importée : consultation d'abord, modification ensuite si besoin
-    ouvrirTrace({ nom: nomTrace, chaine, lien }) {
+    ouvrirTrace({ nom: nomTrace, chaine, lignes, lien }) {
       controleur?.abort();
+      const longueur = (lignes ?? [chaine]).reduce((total, ligne) => {
+        let somme = total;
+        for (let i = 1; i < ligne.length; i += 1) somme += distance(ligne[i - 1], ligne[i]);
+        return somme;
+      }, 0);
+      if (longueur > LONGUEUR_MAX_DETAIL) {
+        etapes = [];
+        idParcours = null;
+        passe = [];
+        futur = [];
+        lignesEnsemble = lignes ?? [chaine];
+        definirNom(nomTrace);
+        source.hidden = !lien;
+        if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
+        bloquerFiches(true);
+        panneau.afficher();
+        panneau.element.classList.add('bf-velo-ensemble');
+        definirEdition(false);
+        analyse = null;
+        jetonAnalyse += 1;
+        blocAnalyse.hidden = true;
+        message.textContent = `Environ ${km(longueur)} avec les variantes. Sur un itinéraire aussi long, le profil et l’export ne sont pas proposés : ouvrez plutôt un tronçon.`;
+        panneau.definirResume({ detail: km(longueur), valeur: '', unite: '' });
+        dessinerTrace();
+        cadrer(lignesEnsemble.flat());
+        return;
+      }
+      lignesEnsemble = null;
+      panneau.element.classList.remove('bf-velo-ensemble');
       etapes = etapesDepuisChaine(chaine);
       idParcours = null;
       passe = [];
@@ -751,6 +795,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     // Un parcours enregistré se rouvre tel quel : son tracé n'a pas à être recalculé
     ouvrirEnregistre(parcours) {
       controleur?.abort();
+      lignesEnsemble = null;
+      panneau.element.classList.remove('bf-velo-ensemble');
       etapes = parcours.etapes.map((etape) => ({ ...etape }));
       idParcours = parcours.id;
       passe = [];
@@ -765,6 +811,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     },
     // Reprend le parcours en cours s'il y en a un : le téléphone a pu fermer l'app entre-temps
     ouvrirCreation() {
+      lignesEnsemble = null;
+      panneau.element.classList.remove('bf-velo-ensemble');
       const brouillon = lireBrouillon();
       if (edition && etapes.length) {
         /* déjà en cours */
@@ -790,6 +838,8 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
       controleur = null;
       edition = false;
       idParcours = null;
+      lignesEnsemble = null;
+      panneau.element.classList.remove('bf-velo-ensemble');
       bloquerFiches(false);
       panneau.masquer();
       fermerPopup();
