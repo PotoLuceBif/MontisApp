@@ -4,12 +4,14 @@ import * as maplibregl from 'maplibre-gl';
 import { distance, echantillonner, extraireTrace, titreDe } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
 import { DECALAGE_PIN, imagePin } from './pins.js';
+import { formatAltitude, formatDistance } from './unites.js';
+import { t } from './i18n.js';
 
 const PARALLELISME_REPERES = 2;
 const DISTANCE_GRAPPE_PX = 56;
 
-const km = (m) => `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
-const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
+const km = formatDistance;
+const metres = formatAltitude;
 
 function el(balise, classe, texte) {
   const e = document.createElement(balise);
@@ -67,7 +69,7 @@ function ancrer(trace, limites, centre) {
   return coordonnees;
 }
 
-export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => false, nomPluriel = 'itinéraires' }) {
+export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => false, nomPluriel = 'velo.pluriel' }) {
   let actif = false;
   let entrees = [];
   let marqueurs = [];
@@ -126,16 +128,16 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
       ligne.append(el('span', null, libelle), el('strong', null, valeur));
       stats.append(ligne);
     };
-    ajouterStat(km(total), 'Distance');
+    ajouterStat(km(total), t('editeur.distance'));
     if (entree.resumeAltitude) {
-      ajouterStat(`+${metres(entree.resumeAltitude.plus)}`, 'Dénivelé +');
-      ajouterStat(`−${metres(entree.resumeAltitude.moins)}`, 'Dénivelé −');
-      ajouterStat(metres(entree.resumeAltitude.max), 'Altitude max');
-      ajouterStat(metres(entree.resumeAltitude.min), 'Altitude min');
+      ajouterStat(`+${metres(entree.resumeAltitude.plus)}`, t('decouverte.denivele-plus'));
+      ajouterStat(`−${metres(entree.resumeAltitude.moins)}`, t('decouverte.denivele-moins'));
+      ajouterStat(metres(entree.resumeAltitude.max), t('decouverte.alt-max'));
+      ajouterStat(metres(entree.resumeAltitude.min), t('decouverte.alt-min'));
     } else if (entree.erreurResumeAltitude) {
-      ajouterStat('Indisponible', 'Dénivelé et altitudes');
+      ajouterStat(t('decouverte.indisponible'), t('decouverte.denivele-altitudes'));
     } else {
-      ajouterStat('Calcul…', 'Dénivelé et altitudes');
+      ajouterStat(t('decouverte.calcul'), t('decouverte.denivele-altitudes'));
     }
     contenu.append(stats);
 
@@ -204,8 +206,8 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
     const { route, coordonnees } = entree;
     const element = el('button', 'rando-repere');
     element.type = 'button';
-    element.setAttribute('aria-label', `Afficher le résumé de ${titreDe(route)}; sélectionner pour ouvrir le parcours`);
-    element.title = 'Survoler ou maintenir appuyé pour afficher le résumé';
+    element.setAttribute('aria-label', t('decouverte.resume-aria', { nom: titreDe(route) }));
+    element.title = t('decouverte.resume-aide');
     element.append(imagePin(route.carte === 'hiking' ? 'rando' : 'route'), el('span', 'rando-repere-nom', titreDe(route)));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherResume(entree);
@@ -259,7 +261,7 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
     popupGrappe?.remove();
 
     const contenu = el('div', 'rando-groupe-liste');
-    contenu.appendChild(el('strong', 'rando-groupe-titre', `${routes.length} ${nomPluriel} à proximité`));
+    contenu.appendChild(el('strong', 'rando-groupe-titre', t('decouverte.proximite', { n: routes.length, nom: t(nomPluriel) })));
     routes.forEach((entree) => {
       const choix = el('button', 'rando-groupe-choix', titreDe(entree.route));
       choix.type = 'button';
@@ -298,8 +300,8 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
   function creerGrappe(routes, coordonnees) {
     const element = el('button', 'rando-groupe');
     element.type = 'button';
-    element.setAttribute('aria-label', `${routes.length} ${nomPluriel} regroupés. Survolez ou touchez pour afficher la liste.`);
-    element.title = `${routes.length} ${nomPluriel} : afficher la liste`;
+    element.setAttribute('aria-label', t('decouverte.regroupes-aria', { n: routes.length, nom: t(nomPluriel) }));
+    element.title = t('decouverte.regroupes-aide', { n: routes.length, nom: t(nomPluriel) });
     element.innerHTML =
       `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${routes.length}</span>`;
     element.addEventListener('pointerenter', (event) => {

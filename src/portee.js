@@ -3,11 +3,12 @@ import { lire, ecrire } from './reglages.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { depuisAltitude, formatAltitude, formatDistance, formatSurface, nombre, uniteAltitude, versAltitude } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { t, ta, ti, tt } from './i18n.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
-const PAS_M = 50;
-const NB_RAYONS = 1440;
 const TAILLE_MAX_GRILLE = 400;
 const CLE_FINESSE = 'montis.finesse';
 
@@ -97,7 +98,7 @@ export async function preparerTuiles(lon, lat, rayonM, z, { partiel = false } = 
   if (partiel && manquantes < cles.length) return manquantes === 0;
   if (manquantes) {
     // Une tuile manquante fausserait le calcul : mieux vaut ne rien afficher
-    const erreur = new Error('Relief indisponible pour cette zone. Vérifiez votre connexion, puis réessayez.');
+    const erreur = new Error(t('portee.relief-indisponible'));
     erreur.code = 'relief';
     throw erreur;
   }
@@ -122,6 +123,64 @@ export function altitude(lon, lat, z) {
 }
 
 // ---------- Calcul de la zone atteignable ----------
+// 16 directions (dont les « sauts de cavalier ») : l'écart avec la ligne droite reste sous 3 %,
+// contre 8 % avec les seules 8 cases voisines
+const VOISINS = [
+  [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1],
+  [2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2],
+].map(([di, dj]) => [di, dj, Math.hypot(di, dj)]);
+
+// File de priorité minimale (tas binaire) sur des indices de cellules
+function creerTas(capacite) {
+  let cles = new Float64Array(capacite);
+  let valeurs = new Int32Array(capacite);
+  let n = 0;
+  const agrandir = () => {
+    const c = new Float64Array(cles.length * 2);
+    const v = new Int32Array(cles.length * 2);
+    c.set(cles);
+    v.set(valeurs);
+    cles = c;
+    valeurs = v;
+  };
+  return {
+    get taille() {
+      return n;
+    },
+    ajouter(valeur, cle) {
+      if (n === cles.length) agrandir();
+      let k = n++;
+      while (k > 0) {
+        const parent = (k - 1) >> 1;
+        if (cles[parent] <= cle) break;
+        cles[k] = cles[parent];
+        valeurs[k] = valeurs[parent];
+        k = parent;
+      }
+      cles[k] = cle;
+      valeurs[k] = valeur;
+    },
+    extraire() {
+      const sommet = valeurs[0];
+      n -= 1;
+      const cle = cles[n];
+      const valeur = valeurs[n];
+      let k = 0;
+      for (;;) {
+        let enfant = 2 * k + 1;
+        if (enfant >= n) break;
+        if (enfant + 1 < n && cles[enfant + 1] < cles[enfant]) enfant += 1;
+        if (cles[enfant] >= cle) break;
+        cles[k] = cles[enfant];
+        valeurs[k] = valeurs[enfant];
+        k = enfant;
+      }
+      cles[k] = cle;
+      valeurs[k] = valeur;
+      return sommet;
+    },
+  };
+}
 async function calculerPortee(lon, lat, finesse, h0) {
   const rayonM = Math.max(500, Math.min(MAX_KM * 1000, h0 * finesse));
   const z = rayonM <= 12000 ? 12 : 11;
@@ -129,34 +188,8 @@ async function calculerPortee(lon, lat, finesse, h0) {
 
   const kLat = 111320;
   const kLon = 111320 * Math.cos((lat * Math.PI) / 180);
-  const nPas = Math.floor(rayonM / PAS_M);
 
-  // 1) Pour chaque rayon : finesse minimale nécessaire pour atteindre chaque pas
-  const tables = new Array(NB_RAYONS);
-  const longueurs = new Int32Array(NB_RAYONS);
-  for (let r = 0; r < NB_RAYONS; r++) {
-    const cap = (2 * Math.PI * r) / NB_RAYONS;
-    const sx = Math.sin(cap);
-    const cy = Math.cos(cap);
-    const tab = new Float32Array(nPas);
-    let fmax = 0;
-    let n = 0;
-    for (let k = 1; k <= nPas; k++) {
-      const d = k * PAS_M;
-      const sol = altitude(lon + (d * sx) / kLon, lat + (d * cy) / kLat, z);
-      const dh = h0 - sol;
-      if (!(dh > 0)) break; // le relief est plus haut que le départ
-      const freq = d / dh;
-      if (freq > fmax) fmax = freq;
-      if (fmax > finesse) break; // hors de portée avec cette finesse
-      tab[k - 1] = fmax;
-      n = k;
-    }
-    tables[r] = tab;
-    longueurs[r] = n;
-  }
-
-  // 2) Grille de cellules (une cellule = un pixel de l'image)
+  // 1) Grille de cellules (une cellule = un pixel de l'image) et relief de chacune
   const tailleCell = Math.max(40, (2 * rayonM) / TAILLE_MAX_GRILLE);
   const N = Math.ceil((2 * rayonM) / tailleCell);
   const dLat = tailleCell / kLat;
@@ -166,11 +199,52 @@ async function calculerPortee(lon, lat, finesse, h0) {
   const east = west + N * dLon;
   const south = north - N * dLat;
 
-  const agl = new Float32Array(N * N).fill(NaN);
-  const fmin = new Float32Array(N * N);
   const solGrille = new Float32Array(N * N);
-  const dist = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      solGrille[j * N + i] = altitude(west + (i + 0.5) * dLon, north - (j + 0.5) * dLat, z);
+    }
+  }
 
+  // 2) Chemin le plus court en vol plané (Dijkstra). La voile peut tourner : contourner un
+  // relief ou suivre une vallée coûte de la distance, donc de la hauteur. Une cellule n'est
+  // franchissable que si la voile y passe encore au-dessus du sol. La distance ne fait que
+  // croître : la première arrivée sur une cellule est la plus haute possible.
+  const dist = new Float32Array(N * N).fill(Infinity);
+  const fmin = new Float32Array(N * N);
+  const fige = new Uint8Array(N * N);
+  const tas = creerTas(N * N);
+  const i0 = Math.min(N - 1, Math.max(0, Math.floor((lon - west) / dLon)));
+  const j0 = Math.min(N - 1, Math.max(0, Math.floor((north - lat) / dLat)));
+  const depart = j0 * N + i0;
+  dist[depart] = 0;
+  tas.ajouter(depart, 0);
+  while (tas.taille) {
+    const idx = tas.extraire();
+    if (fige[idx]) continue;
+    fige[idx] = 1;
+    const i = idx % N;
+    const j = (idx - i) / N;
+    const d0 = dist[idx];
+    for (const [di, dj, longueur] of VOISINS) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue;
+      const voisin = nj * N + ni;
+      if (fige[voisin]) continue;
+      const d = d0 + longueur * tailleCell;
+      if (d > rayonM || !(d < dist[voisin])) continue;
+      const dh = h0 - solGrille[voisin];
+      if (!(dh > 0) || d / dh > finesse) continue; // la voile toucherait le sol
+      dist[voisin] = d;
+      fmin[voisin] = Math.max(fmin[idx], d / dh);
+      tas.ajouter(voisin, d);
+    }
+  }
+
+  // 3) Image : couleur selon la hauteur restante au-dessus du sol
+  const agl = new Float32Array(N * N).fill(NaN);
+  const direct = new Float32Array(N * N);
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = N;
   const ctx = canvas.getContext('2d');
@@ -180,42 +254,30 @@ async function calculerPortee(lon, lat, finesse, h0) {
   let dMax = 0;
   let capMax = 0;
 
-  for (let j = 0; j < N; j++) {
-    for (let i = 0; i < N; i++) {
-      const lo = west + (i + 0.5) * dLon;
-      const la = north - (j + 0.5) * dLat;
-      const dx = (lo - lon) * kLon;
-      const dy = (la - lat) * kLat;
-      const d = Math.hypot(dx, dy);
-      const k = Math.max(1, Math.round(d / PAS_M));
-      if (k > nPas) continue;
+  for (let idx = 0; idx < N * N; idx++) {
+    if (!fige[idx]) continue;
+    const hauteur = h0 - dist[idx] / finesse - solGrille[idx];
+    if (!(hauteur >= 0)) continue;
+    const i = idx % N;
+    const j = (idx - i) / N;
+    const dx = (i - i0) * tailleCell;
+    const dy = (j0 - j) * tailleCell;
+    const d = Math.hypot(dx, dy);
+    agl[idx] = hauteur;
+    direct[idx] = d;
+    nb++;
+    if (d > dMax) {
+      dMax = d;
       let b = Math.atan2(dx, dy);
       if (b < 0) b += 2 * Math.PI;
-      const r = Math.round((b / (2 * Math.PI)) * NB_RAYONS) % NB_RAYONS;
-      if (k > longueurs[r]) continue;
-
-      const sol = altitude(lo, la, z);
-      const hauteur = h0 - d / finesse - sol; // hauteur de la voile au-dessus du sol
-      if (!(hauteur >= 0)) continue;
-
-      const idx = j * N + i;
-      agl[idx] = hauteur;
-      fmin[idx] = tables[r][k - 1];
-      solGrille[idx] = sol;
-      dist[idx] = d;
-      nb++;
-      if (d > dMax) {
-        dMax = d;
-        capMax = (b * 180) / Math.PI;
-      }
-
-      const [rr, gg, bb] = couleurAgl(hauteur);
-      const p = idx * 4;
-      img.data[p] = rr;
-      img.data[p + 1] = gg;
-      img.data[p + 2] = bb;
-      img.data[p + 3] = 255;
+      capMax = (b * 180) / Math.PI;
     }
+    const [rr, gg, bb] = couleurAgl(hauteur);
+    const p = idx * 4;
+    img.data[p] = rr;
+    img.data[p + 1] = gg;
+    img.data[p + 2] = bb;
+    img.data[p + 3] = 255;
   }
 
   if (nb === 0) return { vide: true };
@@ -232,7 +294,7 @@ async function calculerPortee(lon, lat, finesse, h0) {
       [west, south],
     ],
     reliefComplet,
-    grille: { N, west, north, dLon, dLat, agl, fmin, sol: solGrille, dist },
+    grille: { N, west, north, dLon, dLat, agl, fmin, sol: solGrille, dist: direct, chemin: dist },
     dMax,
     capMax,
     aireKm2: (nb * tailleCell * tailleCell) / 1e6,
@@ -241,45 +303,44 @@ async function calculerPortee(lon, lat, finesse, h0) {
 
 // ---------- Interface ----------
 const ICONE_PORTEE = '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>';
-const MESSAGE_ACCUEIL = 'Touchez la carte pour placer le point de départ.';
+const MESSAGE_ACCUEIL = 'portee.accueil';
 
 export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'portee-panneau-reduit',
-    libelle: 'portée de vol',
+    libelle: 'panneau.portee',
     classe: 'bf-outil',
     onFermer: () => onFermer(),
     onRetour,
   });
-  panneau.titre.textContent = 'Portée de vol';
+  panneau.titre.textContent = t('portee.titre');
   const conteneur = panneau.corps;
   conteneur.innerHTML = `
     <div class="pt">
       <div class="pt-point">
-        <p id="pt-resultat" role="status" aria-live="polite">${MESSAGE_ACCUEIL}</p>
-        <button type="button" id="pt-effacer" aria-label="Effacer le point et la zone" title="Effacer le point et la zone" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <p id="pt-resultat" role="status" aria-live="polite">${t(MESSAGE_ACCUEIL)}</p>
+        <button type="button" id="pt-effacer" ${ta('aria-label', 'portee.effacer')} ${ta('title', 'portee.effacer')} hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="pt-finesse">
-        <label for="pt-finesse">Finesse de la voile</label>
+        <label for="pt-finesse" ${ti('portee.finesse')}>${t('portee.finesse')}</label>
         <div class="pt-pas">
-          <button type="button" data-pt-pas="-0.5" aria-label="Diminuer la finesse">−</button>
+          <button type="button" data-pt-pas="-0.5" ${ta('aria-label', 'portee.diminuer')}>−</button>
           <input id="pt-finesse" type="number" min="2" max="20" step="0.5" value="8" inputmode="decimal">
-          <button type="button" data-pt-pas="0.5" aria-label="Augmenter la finesse">+</button>
+          <button type="button" data-pt-pas="0.5" ${ta('aria-label', 'portee.augmenter')}>+</button>
         </div>
       </div>
       <div class="pt-champs">
-        <label>Altitude (m) <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
-        <label>Hauteur / sol (m) <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
+        <label><span>${tt('portee.altitude')} (<span data-unite-alt>${uniteAltitude()}</span>)</span> <input id="pt-sol" type="number" step="10" inputmode="numeric"></label>
+        <label><span>${tt('portee.hauteur')} (<span data-unite-alt>${uniteAltitude()}</span>)</span> <input id="pt-haut" type="number" min="0" step="50" value="0" inputmode="numeric"></label>
       </div>
       <div class="pt-legende" hidden>
         <div class="pt-degrade"></div>
-        <div class="pt-echelle"><span>0 m</span><span>Hauteur au-dessus du sol</span><span>600 m +</span></div>
+        <div class="pt-echelle"><span data-pt-borne="0">${formatAltitude(0)}</span>${tt('portee.hauteur-sol')}<span data-pt-borne="600">${formatAltitude(600, { pas: 10 })} +</span></div>
       </div>
       <details class="rando-outils">
-        <summary>À savoir</summary>
+        <summary ${ti('commun.a-savoir')}>${t('commun.a-savoir')}</summary>
         <div class="rando-outils-contenu">
-          <p class="note">Calcul théorique en air calme, en ligne droite, sans thermique ni vent. Ce n’est pas un outil de décision de vol.
-          Utilisez une finesse réaliste (finesse sol), pas celle du constructeur. Pour une transition en vol, indiquez la hauteur de départ au-dessus du sol.</p>
+          <p class="note" ${ti('portee.note')}>${t('portee.note')}</p>
         </div>
       </details>
     </div>
@@ -298,7 +359,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   } catch {
     /* stockage indisponible : on ignore */
   }
-  inHaut.value = String(Number(lire('portee-hauteur', 0)) || 0);
+  // Les champs se saisissent dans l'unité affichée ; le calcul et la mémoire restent en mètres
+  const versChamp = (metres) => String(Math.round(versAltitude(metres)));
+  const depuisChamp = (champ) => depuisAltitude(parseFloat(champ.value));
+  inHaut.value = versChamp(Number(lire('portee-hauteur', 0)) || 0);
 
   const infobulle = document.createElement('div');
   infobulle.className = 'pt-infobulle';
@@ -314,10 +378,10 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   function afficherResultat(texte, court = texte) {
     resultat.textContent = texte;
     boutonEffacer.hidden = !point;
-    panneau.definirResume({ detail: court, valeur: inFinesse.value, unite: 'finesse' });
+    panneau.definirResume({ detail: court, valeur: inFinesse.value, unite: t('portee.unite') });
   }
 
-  panneau.definirResume({ rose: ICONE_PORTEE, nom: 'Portée de vol', detail: MESSAGE_ACCUEIL, valeur: inFinesse.value, unite: 'finesse' });
+  panneau.definirResume({ rose: ICONE_PORTEE, nom: t('portee.titre'), detail: t(MESSAGE_ACCUEIL), valeur: inFinesse.value, unite: t('portee.unite') });
 
   function afficherImage(url, coordinates) {
     legende.hidden = false;
@@ -360,10 +424,12 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     const agl = g.agl[idx];
     if (Number.isNaN(agl)) return masquerInfo();
     infobulle.innerHTML =
-      `Hauteur / sol : <b>${Math.round(agl)} m</b><br>` +
-      `Altitude : <b>${Math.round(g.sol[idx] + agl)} m</b><br>` +
-      `Finesse mini : <b>${g.fmin[idx].toFixed(1)}</b><br>` +
-      `Distance : ${(g.dist[idx] / 1000).toFixed(1)} km`;
+      t('portee.info', {
+        agl: formatAltitude(agl),
+        alt: formatAltitude(g.sol[idx] + agl),
+        finesse: nombre(g.fmin[idx], 1),
+        distance: formatDistance(g.dist[idx]),
+      });
     infobulle.style.left = `${e.originalEvent.clientX + 14}px`;
     infobulle.style.top = `${e.originalEvent.clientY + 14}px`;
     infobulle.style.display = 'block';
@@ -376,7 +442,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     if (marqueur) marqueur.remove();
     retirerZone();
     inSol.value = '';
-    afficherResultat(MESSAGE_ACCUEIL);
+    afficherResultat(t(MESSAGE_ACCUEIL));
   }
 
   boutonEffacer.addEventListener('click', reinitialiser);
@@ -397,7 +463,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     if (!marqueur) marqueur = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN });
     pin.changerEtat('selected');
     marqueur.setLngLat(point).addTo(map);
-    afficherResultat('Lecture du relief…');
+    afficherResultat(t('portee.lecture'));
     try {
       await preparerTuiles(depart[0], depart[1], 200, 12);
     } catch (err) {
@@ -409,7 +475,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       return;
     }
     if (point !== depart) return; // effacé ou remplacé pendant la lecture
-    inSol.value = Math.round(altitude(depart[0], depart[1], 12));
+    inSol.value = versChamp(altitude(depart[0], depart[1], 12));
     recalculer();
   });
   map.on('mousemove', afficherInfo);
@@ -426,46 +492,69 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
   });
   inSol.addEventListener('change', recalculer);
   inHaut.addEventListener('change', () => {
-    ecrire('portee-hauteur', parseFloat(inHaut.value) || 0);
+    ecrire('portee-hauteur', depuisChamp(inHaut) || 0);
     recalculer();
   });
 
   async function recalculer() {
     if (!point) return;
     const finesse = parseFloat(inFinesse.value);
-    const sol = parseFloat(inSol.value);
-    const haut = parseFloat(inHaut.value) || 0;
+    const sol = depuisChamp(inSol);
+    const haut = depuisChamp(inHaut) || 0;
     if (!(finesse > 1) || isNaN(sol)) {
-      afficherResultat('Renseignez une finesse et une altitude valides.');
+      afficherResultat(t('portee.invalide'));
       return;
     }
     const mon = ++compteur;
     pin.changerEtat('selected');
-    afficherResultat('Calcul en cours…');
+    afficherResultat(t('portee.calcul'));
     try {
       const res = await calculerPortee(point[0], point[1], finesse, sol + haut);
       if (mon !== compteur) return;
       if (res.vide) {
         retirerZone();
-        afficherResultat('Aucune zone atteignable depuis ce point avec cette finesse.');
+        afficherResultat(t('portee.aucune'));
         return;
       }
       grille = res.grille;
       afficherImage(res.url, res.coordinates);
-      const distance = `${(res.dMax / 1000).toFixed(1)} km`;
+      const distance = formatDistance(res.dMax);
       afficherResultat(
-        `Portée max : ${distance} (cap ${Math.round(res.capMax)}°) · surface : ${res.aireKm2.toFixed(0)} km²`
-          + (res.reliefComplet ? '' : ' · limitée au relief téléchargé'),
-        `Portée max ${distance}, cap ${Math.round(res.capMax)}°`
+        t('portee.resultat', { distance, cap: Math.round(res.capMax), surface: formatSurface(res.aireKm2) })
+          + (res.reliefComplet ? '' : t('portee.limitee')),
+        t('portee.resultat-court', { distance, cap: Math.round(res.capMax) })
       );
     } catch (err) {
       if (mon !== compteur) return;
       console.warn('Portée :', err);
       pin.changerEtat('disabled');
       retirerZone();
-      afficherResultat(err.code === 'relief' ? err.message : 'Calcul impossible pour ce point.');
+      afficherResultat(err.code === 'relief' ? err.message : t('portee.impossible'));
     }
   }
+
+  // Changement d'unités : les champs gardent la même valeur en mètres, le texte se réécrit
+  let uniteChamps = uniteAltitude();
+  surPreferences(() => {
+    if (uniteChamps !== uniteAltitude()) {
+      const facteur = uniteAltitude() === 'ft' ? 3.28084 : 1 / 3.28084;
+      [inSol, inHaut].forEach((champ) => {
+        if (champ.value !== '') champ.value = String(Math.round(parseFloat(champ.value) * facteur));
+      });
+      uniteChamps = uniteAltitude();
+    }
+    conteneur.querySelectorAll('[data-unite-alt]').forEach((unite) => {
+      unite.textContent = uniteAltitude();
+    });
+    conteneur.querySelectorAll('[data-pt-borne]').forEach((borne) => {
+      const valeur = Number(borne.dataset.ptBorne);
+      borne.textContent = valeur ? `${formatAltitude(valeur, { pas: 10 })} +` : formatAltitude(0);
+    });
+    panneau.titre.textContent = t('portee.titre');
+    panneau.definirResume({ nom: t('portee.titre') });
+    if (point && grille) recalculer();
+    else if (!point) afficherResultat(t(MESSAGE_ACCUEIL));
+  });
 
   return {
     ouvrir() {

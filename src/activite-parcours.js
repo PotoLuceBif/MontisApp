@@ -7,7 +7,9 @@ import { creerStockageParcours } from './parcours-stockage.js';
 import { creerEditeurParcours } from './parcours-editeur.js';
 import { creerItineraires, estIntegral } from './parcours-itineraires.js';
 import { creerDecouverte } from './parcours-decouverte.js';
-import { dateLisible } from './hors-ligne.js';
+import { formatDenivele, formatDistance } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { formatDate, poser, t, ta, ti, tt } from './i18n.js';
 
 const ZOOM_MIN_ZONE = 7;
 const REPERES_MAX = 40;
@@ -32,20 +34,20 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   const panneau = document.createElement('div');
   panneau.className = 'parcours';
   panneau.innerHTML = `
-    <div class="rando-actions-principales" role="group" aria-label="Actions">
-      <button type="button" class="rando-action-principale parcours-creer">${icone(ICONES.creer)}<span>Créer un parcours</span></button>
-      <button type="button" class="rando-action-principale parcours-zone">${icone(ICONES.zone)}<span>Rechercher ici</span></button>
-      <label class="rando-importer rando-action-principale">${icone(ICONES.importer)}<span>Importer un GPX</span>
+    <div class="rando-actions-principales" role="group" ${ta('aria-label', 'parcours.actions')}>
+      <button type="button" class="rando-action-principale parcours-creer">${icone(ICONES.creer)}${tt('parcours.creer')}</button>
+      <button type="button" class="rando-action-principale parcours-zone">${icone(ICONES.zone)}${tt('parcours.rechercher-ici')}</button>
+      <label class="rando-importer rando-action-principale">${icone(ICONES.importer)}${tt('parcours.importer')}
         <input type="file" class="rando-fichier parcours-fichier" accept=".gpx,application/gpx+xml,application/xml,text/xml">
       </label>
     </div>
     <div class="pc-recherche">
-      <input type="text" class="rando-champ parcours-recherche" placeholder="${activite.placeholder}" autocomplete="off" spellcheck="false" inputmode="search" aria-label="${activite.placeholder}">
+      <input type="text" class="rando-champ parcours-recherche" ${ta('placeholder', activite.placeholder)} autocomplete="off" spellcheck="false" inputmode="search" ${ta('aria-label', activite.placeholder)}>
       ${activite.filtres.length > 1 ? `
         <button type="button" class="pc-filtre-actif" hidden><span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-        <button type="button" class="pc-entonnoir" title="Filtres" aria-label="Filtres" aria-haspopup="menu" aria-expanded="false">${icone(ICONES.entonnoir)}</button>
-        <div class="pc-filtres" role="menu" aria-label="Filtrer les itinéraires" hidden>
-          ${activite.filtres.map(({ id, libelle }) => `<button type="button" role="menuitemradio" data-filtre="${id}" aria-checked="false">${libelle}</button>`).join('')}
+        <button type="button" class="pc-entonnoir" ${ta('title', 'parcours.filtres')} aria-haspopup="menu" aria-expanded="false">${icone(ICONES.entonnoir)}</button>
+        <div class="pc-filtres" role="menu" ${ta('aria-label', 'parcours.filtrer')} hidden>
+          ${activite.filtres.map(({ id, cle }) => `<button type="button" role="menuitemradio" data-filtre="${id}" aria-checked="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
         </div>` : ''}
     </div>
     <p class="note parcours-message" role="status" aria-live="polite" hidden></p>
@@ -53,13 +55,13 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     <div class="pc-entrees"></div>
     <div class="pc-sections"></div>
     <section class="parcours-mes" hidden>
-      <h3>Mes parcours</h3>
+      <h3 ${ti('parcours.mes')}>${t('parcours.mes')}</h3>
       <div class="parcours-mes-liste"></div>
     </section>
     <div class="pc-options"></div>
     <details class="rando-outils">
-      <summary>À propos</summary>
-      <div class="rando-outils-contenu">${activite.aPropos}</div>
+      <summary ${ti('commun.a-propos')}>${t('commun.a-propos')}</summary>
+      <div class="rando-outils-contenu" data-i18n-html="${activite.aPropos}">${t(activite.aPropos)}</div>
     </details>
   `;
   const $ = (selecteur) => panneau.querySelector(selecteur);
@@ -164,7 +166,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const sous = document.createElement('span');
     sous.className = 'rando-item-sous';
     sous.textContent = enGroupe
-      ? `${typeDe(route)} · ${membres.length} tronçons`
+      ? t('parcours.troncons', { type: typeDe(route), n: membres.length })
       : [typeDe(route), route.itinerary?.join(' → ')].filter(Boolean).join(' · ');
     textes.append(nom, sous);
     item.append(badge, textes);
@@ -195,9 +197,9 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       decouverte.retirer();
       return;
     }
-    const resultat = await decouverte.charger(aPoser, (termines, total) => afficherMessage(`Positionnement des départs… ${termines}/${total}`));
+    const resultat = await decouverte.charger(aPoser, (termines, total) => afficherMessage(t('parcours.positionnement', { n: termines, total })));
     if (!resultat) return;
-    afficherMessage(resultat.manquants ? `${resultat.affiches} repère${resultat.affiches > 1 ? 's' : ''} sur la carte, ${resultat.manquants} hors de la zone ou sans tracé.` : '');
+    afficherMessage(resultat.manquants ? t('parcours.reperes-manquants', { n: resultat.affiches, manquants: resultat.manquants }) : '');
   }
 
   // Une carte d'itinéraires en panne n'empêche pas les autres de répondre
@@ -213,7 +215,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (requete.signal.aborted) return;
     brutes = resultats.flatMap((resultat) => (resultat.status === 'fulfilled' ? resultat.value : []));
     vide = !brutes.length && resultats.every(({ status }) => status === 'rejected')
-      ? 'Itinéraires indisponibles pour le moment. Réessayez plus tard.'
+      ? t('parcours.indisponibles')
       : messageVide;
     rendreResultats();
   }
@@ -221,14 +223,14 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   function chercherDansLaZone() {
     if (map.getZoom() < ZOOM_MIN_ZONE) {
       brutes = [];
-      vide = 'Zoomez davantage pour chercher dans cette zone.';
+      vide = t('parcours.zoomer');
       derniereDemande = chercherDansLaZone;
       rendreResultats();
       return;
     }
     const limites = map.getBounds();
     derniereDemande = chercherDansLaZone;
-    void chargerListe((client, signal) => client.dansLaZone(limites, signal), 'Recherche dans la zone visible…', 'Aucun itinéraire dans cette zone.');
+    void chargerListe((client, signal) => client.dansLaZone(limites, signal), t('parcours.recherche-zone'), t('parcours.aucun-zone'));
   }
 
   function chercherTexte() {
@@ -238,7 +240,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     void chargerListe(async (client, signal) => {
       const listes = await Promise.all(ecritures(texte).map((ecriture) => client.chercher(ecriture, signal)));
       return [...new Map(listes.flat().map((route) => [route.id, route])).values()];
-    }, 'Recherche…', 'Aucun itinéraire trouvé.');
+    }, t('parcours.recherche'), t('parcours.aucun'));
   }
 
   // ---------- Réseau sur la carte ----------
@@ -254,7 +256,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
           tiles: [`https://tile.waymarkedtrails.org/${carte}/{z}/{x}/{y}.png`],
           tileSize: 256,
           maxzoom: 18,
-          attribution: 'Itinéraires : © Waymarked Trails (CC BY-SA), © contributeurs OpenStreetMap',
+          attribution: t('parcours.calque-attribution'),
         });
         const dessous = `${activite.id}-groupe-ligne`;
         map.addLayer(
@@ -271,10 +273,10 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (!entonnoir) return;
     const filtrant = filtre.id !== activite.filtres[0].id;
     entonnoir.classList.toggle('actif', filtrant);
-    entonnoir.setAttribute('aria-label', filtrant ? `Filtres : ${filtre.libelle}` : 'Filtres');
+    entonnoir.setAttribute('aria-label', filtrant ? t('parcours.filtres-actif', { nom: t(filtre.cle) }) : t('parcours.filtres'));
     filtreActif.hidden = !filtrant;
-    filtreActif.setAttribute('aria-label', `Retirer le filtre ${filtre.libelle}`);
-    filtreActif.querySelector('span').textContent = filtre.libelle;
+    filtreActif.setAttribute('aria-label', t('parcours.retirer-filtre', { nom: t(filtre.cle) }));
+    filtreActif.querySelector('span').textContent = t(filtre.cle);
   }
 
   function choisirFiltre(id) {
@@ -300,10 +302,11 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const nom = document.createElement('strong');
     nom.textContent = parcours.nom;
     const detail = document.createElement('small');
-    const distance = `${(parcours.total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
-    const denivele = Number.isFinite(parcours.plus) ? ` · D+ ${Math.round(parcours.plus).toLocaleString('fr-FR')} m` : '';
-    const libelle = activite.pratiques[parcours.pratique]?.libelleListe;
-    detail.textContent = `${libelle ? `${libelle} · ` : ''}${distance}${denivele} · ${dateLisible(parcours.date).split(' à ')[0]}`;
+    const distance = formatDistance(parcours.total);
+    const denivele = Number.isFinite(parcours.plus) ? ` · D+ ${formatDenivele(parcours.plus)}` : '';
+    const pratique = Object.keys(activite.pratiques).length > 1 ? activite.pratiques[parcours.pratique] : null;
+    const libelle = pratique ? t(pratique.cle) : '';
+    detail.textContent = `${libelle ? `${libelle} · ` : ''}${distance}${denivele} · ${formatDate(parcours.date, { day: 'numeric', month: 'short' })}`;
     ouvrir.append(nom, detail);
     ouvrir.addEventListener('click', () => {
       fermerMenu();
@@ -314,7 +317,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const renommer = document.createElement('button');
     renommer.type = 'button';
     renommer.className = 'zh-zone-bouton';
-    renommer.setAttribute('aria-label', `Renommer ${parcours.nom}`);
+    renommer.setAttribute('aria-label', t('parcours.renommer', { nom: parcours.nom }));
     renommer.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13 7l4 4"/></svg>';
     renommer.addEventListener('click', () => {
       const champ = document.createElement('input');
@@ -322,7 +325,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       champ.maxLength = 60;
       champ.value = parcours.nom;
       champ.className = 'parcours-parcours-champ';
-      champ.setAttribute('aria-label', 'Nouveau nom');
+      champ.setAttribute('aria-label', t('parcours.nouveau-nom'));
       const valider = () => {
         const valeur = champ.value.trim();
         if (valeur && valeur !== parcours.nom) stockage.renommer(parcours.id, valeur);
@@ -339,10 +342,10 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const supprimer = document.createElement('button');
     supprimer.type = 'button';
     supprimer.className = 'zh-zone-bouton zh-zone-supprimer';
-    supprimer.setAttribute('aria-label', `Supprimer ${parcours.nom}`);
+    supprimer.setAttribute('aria-label', t('parcours.supprimer', { nom: parcours.nom }));
     supprimer.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg>';
     supprimer.addEventListener('click', () => {
-      if (!confirm(`Supprimer « ${parcours.nom} » ?`)) return;
+      if (!confirm(t('parcours.supprimer-confirmer', { nom: parcours.nom }))) return;
       stockage.supprimer(parcours.id);
       rendreMesParcours();
     });
@@ -361,20 +364,20 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     champFichier.value = '';
     if (!fichier) return;
     if (fichier.size > TAILLE_MAX_GPX) {
-      afficherMessage('Ce fichier dépasse 10 Mo : importez une trace plus légère.');
+      afficherMessage(t('parcours.gpx-lourd'));
       return;
     }
-    afficherMessage('Lecture du fichier GPX…');
+    afficherMessage(t('parcours.gpx-lecture'));
     try {
       const { nom, trace } = lireGpx(await fichier.text(), fichier.name);
       afficherMessage('');
       fermerMenu();
       itineraires.fermer();
       decouverte.masquer();
-      editeur.ouvrirTrace({ nom, chaine: trace.chaine, lignes: trace.lignes, meta: 'Trace importée' });
+      editeur.ouvrirTrace({ nom, chaine: trace.chaine, lignes: trace.lignes, meta: t('parcours.trace-importee') });
     } catch (erreur) {
       console.warn('Import GPX :', erreur);
-      afficherMessage(erreur instanceof Error ? erreur.message : 'Impossible de lire ce fichier GPX.');
+      afficherMessage(erreur instanceof Error ? erreur.message : t('parcours.gpx-illisible'));
     }
   }
 
@@ -419,7 +422,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ligne.className = 'pc-entree';
     ligne.innerHTML = `<span><strong></strong><small></small></span>${icone(ICONES.chevron)}`;
     ligne.querySelector('strong').textContent = libelle;
-    ligne.querySelector('small').textContent = sous;
+    poser(ligne.querySelector('small'), sous);
     ligne.addEventListener('click', ouvrir);
     $('.pc-entrees').append(ligne);
   });
@@ -431,9 +434,15 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   rendreFiltres();
   rendreMesParcours();
 
+  surPreferences(() => {
+    rendreFiltres();
+    rendreMesParcours();
+    if (brutes.length) liste.replaceChildren(...regrouper(brutes.filter((route) => !filtre.garde || filtre.garde(route))).map(ligneResultat));
+  });
+
   return {
     id: activite.id,
-    label: activite.label,
+    labelCle: activite.labelCle,
     icone: activite.iconeMenu,
     panneau,
     activer() {

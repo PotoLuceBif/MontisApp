@@ -1,5 +1,6 @@
 import { lire, ecrire } from './reglages.js';
 import { CALQUES_MONTIS } from './style-montis.js';
+import { surLangue, t, ti } from './i18n.js';
 
 const wmts = (couche, format) =>
   'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
@@ -12,7 +13,7 @@ export const SOURCE_SATELLITE = 'esri-sat';
 
 // Pour ajouter un fond : une entrée de plus dans cette liste (zone : 'France' ou 'Monde')
 const FONDS = [
-  { id: 'montis', label: 'Montis · relief', zone: 'Monde', photo: false, integre: true },
+  { id: 'montis', cle: 'fond.montis', zone: 'Monde', photo: false, integre: true },
   {
     id: 'osm',
     label: 'OpenStreetMap',
@@ -21,7 +22,7 @@ const FONDS = [
     source: {
       tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       maxzoom: 19,
-      attribution: '© les contributeurs OpenStreetMap',
+      get attribution() { return t('fond.osm-attribution'); },
     },
   },
   {
@@ -32,12 +33,12 @@ const FONDS = [
     source: {
       tiles: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
       maxzoom: 17,
-      attribution: '© OpenTopoMap (CC-BY-SA), © les contributeurs OpenStreetMap',
+      get attribution() { return t('fond.otm-attribution'); },
     },
   },
   {
     id: 'ign-plan',
-    label: 'Plan IGN',
+    cle: 'fond.ign-plan',
     zone: 'France',
     photo: false,
     source: {
@@ -48,7 +49,7 @@ const FONDS = [
   },
   {
     id: 'ign-ortho',
-    label: 'Photo aérienne IGN',
+    cle: 'fond.ign-photo',
     zone: 'France',
     photo: true,
     source: {
@@ -59,7 +60,7 @@ const FONDS = [
   },
   {
     id: 'esri-sat',
-    label: 'Satellite Esri',
+    cle: 'fond.esri',
     zone: 'Monde',
     photo: true,
     source: {
@@ -73,13 +74,16 @@ const FONDS = [
 const ZONES = [
   {
     nom: 'France',
-    aide: 'Couverture France uniquement : hors de France, la carte reste vide. Repasse alors sur un fond « Monde ».',
+    cle: 'fond.zone-france',
+    aide: 'fond.aide-france',
   },
-  { nom: 'Monde', aide: '' },
+  { nom: 'Monde', cle: 'fond.zone-monde', aide: '' },
 ];
 
 let fondImpose = false; // sans réseau, le fond Montis prime sur le choix enregistré
 
+// Les noms propres (OpenStreetMap, OpenTopoMap) restent tels quels
+const nomFond = (f) => (f.cle ? t(f.cle) : f.label);
 const coucheDe = (f) => (f.integre ? 'montis-background' : `fond-${f.id}`);
 
 // Affiche le fond choisi, cache les autres, adapte les courbes de niveau
@@ -155,7 +159,7 @@ export function creerFondDeCarte(map) {
   const panneau = document.createElement('div');
   panneau.innerHTML = `
     <div class="fond-onglets" role="tablist">
-      ${ZONES.map((z) => `<button type="button" data-zone="${z.nom}">${z.nom}</button>`).join('')}
+      ${ZONES.map((z) => `<button type="button" data-zone="${z.nom}" ${ti(z.cle)}>${t(z.cle)}</button>`).join('')}
     </div>
     <p class="note fond-aide"></p>
     <div class="liste-fonds"></div>
@@ -170,9 +174,10 @@ export function creerFondDeCarte(map) {
   function afficher() {
     boutonsOnglets.forEach((b) => b.classList.toggle('actif', b.dataset.zone === zoneCourante));
 
-    aide.textContent = ZONES.find((z) => z.nom === zoneCourante).aide;
+    const cleAide = ZONES.find((z) => z.nom === zoneCourante).aide;
+    aide.textContent = cleAide ? t(cleAide) : '';
     aide.style.display = aide.textContent ? 'block' : 'none';
-    actuel.textContent = `Fond actuel : ${FONDS.find((f) => f.id === idActif).label}`;
+    actuel.textContent = t('fond.actuel', { nom: nomFond(FONDS.find((f) => f.id === idActif)) });
 
     liste.innerHTML = '';
     for (const f of FONDS.filter((x) => x.zone === zoneCourante)) {
@@ -188,12 +193,12 @@ export function creerFondDeCarte(map) {
         idActif = f.id;
         appliquerFond(map, idActif);
         ecrire('fond', idActif);
-        actuel.textContent = `Fond actuel : ${f.label}`;
+        actuel.textContent = t('fond.actuel', { nom: nomFond(f) });
       });
 
       const nom = document.createElement('span');
       nom.className = 'fond-nom';
-      nom.textContent = f.label;
+      nom.textContent = nomFond(f);
 
       ligne.append(radio, nom);
       liste.appendChild(ligne);
@@ -209,6 +214,7 @@ export function creerFondDeCarte(map) {
   });
 
   afficher();
+  surLangue(afficher);
 
-  return { id: 'fond', label: 'Fond de carte', icone: 'fond', panneau, activer() {}, desactiver() {} };
+  return { id: 'fond', labelCle: 'fond.titre', icone: 'fond', panneau, activer() {}, desactiver() {} };
 }

@@ -12,30 +12,47 @@ import { calculerTroncon, tronconLibre } from './parcours-routage.js';
 import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
 import { creerProfilParcours } from './parcours-profil.js';
 import { compacter } from './parcours-stockage.js';
+import { formatAltitude, formatDistance, formatLongueur, uniteAllure, uniteDistance, valeurDistance, versAllure, depuisAllure } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { poser, poserAttribut, t, ta, ti, tt } from './i18n.js';
 
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
 const LONGUEUR_MAX_DETAIL = 400000; // m : au-delà, le profil demanderait des centaines de tuiles de relief
 const ATTENTE_ANALYSE = 250; // ms : on ne relit pas le relief à chaque modification rapprochée
-const MODES_COULEUR = [['pratique', 'Pratique'], ['pente', 'Pente'], ['surface', 'Surface'], ['difficulte', 'Difficulté']];
+const MODES_COULEUR = [['pratique', 'editeur.couleur-pratique'], ['pente', 'editeur.couleur-pente'], ['surface', 'editeur.couleur-surface'], ['difficulte', 'editeur.couleur-difficulte']];
 const COULEUR_CERNE = '#0b111b';
 const TOLERANCE_LIGNE = 16; // px pour insérer un point sur le tracé
 const MAX_HISTORIQUE = 60;
 const PASSAGES_AFFICHES = 3;
 const PENTE_PORTAGE = 25; // % au-delà desquels on pousse ou on porte le plus souvent
 const COMMANDES = [
-  ['annuler', 'Annuler', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'],
-  ['retablir', 'Rétablir', '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>'],
-  ['libre', 'Tracé libre, en ligne droite', '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>'],
-  ['boucle', 'Boucler le parcours', '<path d="M17 2.5 21 6.500 17 10.500"/><path d="M3 12V9.500a3 3 0 0 1 3-3h15"/><path d="M7 21.500 3 17.500 7 13.500"/><path d="M21 12v2.500a3 3 0 0 1-3 3H3"/>'],
-  ['allerRetour', 'Aller-retour par le même chemin', '<path d="M4 8h14l-4-4"/><path d="M20 16H6l4 4"/>'],
-  ['effacer', 'Tout effacer', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'],
+  ['annuler', 'editeur.annuler', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'],
+  ['retablir', 'editeur.retablir', '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>'],
+  ['libre', 'editeur.libre', '<path d="M5 19 19 5"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/>'],
+  ['boucle', 'editeur.boucler', '<path d="M17 2.5 21 6.500 17 10.500"/><path d="M3 12V9.500a3 3 0 0 1 3-3h15"/><path d="M7 21.500 3 17.500 7 13.500"/><path d="M21 12v2.500a3 3 0 0 1-3 3H3"/>'],
+  ['allerRetour', 'editeur.aller-retour', '<path d="M4 8h14l-4-4"/><path d="M20 16H6l4 4"/>'],
+  ['effacer', 'editeur.effacer', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'],
 ];
 
-const km = (m) => `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: m < 100000 ? 1 : 0 })} km`;
+const km = formatDistance;
 const copier = (etapes) => etapes.map((etape) => ({ ...etape }));
-const metres = (m) => `${Math.round(m).toLocaleString('fr-FR')} m`;
+const metres = formatAltitude;
 const pourcent = (partie, total) => (total ? Math.round((partie / total) * 100) : 0);
+
+// L'allure est mémorisée en min/km ; elle se saisit dans l'unité affichée
+const lireDuree = (texte) => {
+  const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(String(texte).trim());
+  return resultat ? Number(resultat[1]) + Number(resultat[2] || 0) / 60 : 0;
+};
+const ecrireDuree = (minutes) => {
+  const secondes = Math.round(minutes * 60);
+  return `${Math.floor(secondes / 60)}:${String(secondes % 60).padStart(2, '0')}`;
+};
+const allureAffichee = (memo) => {
+  const minutes = lireDuree(memo);
+  return minutes > 0 ? ecrireDuree(versAllure(minutes)) : memo;
+};
 
 function barre(parts, total) {
   return parts
@@ -72,7 +89,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   let marqueurs = [];
   let popup = null;
   let controleur = null;
-  let nom = 'Nouveau parcours';
+  let nom = t('editeur.nouveau');
   let idParcours = null;
   let lignesEnsemble = null; // très long itinéraire : affiché, mais ni analysé ni modifiable
   let analyse = null;
@@ -89,40 +106,40 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     onRetour: () => retourCourant?.(),
   });
   panneau.corps.innerHTML = `
-    <div class="parcours-pratiques parcours-pratiques-panneau" role="group" aria-label="Pratique"${Object.keys(pratiques).length < 2 ? ' hidden' : ''}>
-      ${Object.values(pratiques).map(({ id, libelle }) => `<button type="button" data-pratique="${id}" aria-pressed="false">${libelle}</button>`).join('')}
+    <div class="parcours-pratiques parcours-pratiques-panneau" role="group" ${ta('aria-label', 'editeur.pratique')}${Object.keys(pratiques).length < 2 ? ' hidden' : ''}>
+      ${Object.values(pratiques).map(({ id, cle }) => `<button type="button" data-pratique="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
     </div>
-    <div class="parcours-commandes" role="group" aria-label="Modifier le parcours">
-      ${COMMANDES.map(([id, libelle, dessin]) => `<button type="button" data-commande="${id}" aria-label="${libelle}" title="${libelle}"><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
+    <div class="parcours-commandes" role="group" ${ta('aria-label', 'editeur.modifier-parcours')}>
+      ${COMMANDES.map(([id, cle, dessin]) => `<button type="button" data-commande="${id}" ${ta('aria-label', cle)} ${ta('title', cle)}><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
     </div>
     <p class="parcours-etat" role="status" aria-live="polite"></p>
     <div class="parcours-analyse" hidden>
       <div class="parcours-stats">
-        <div class="parcours-stat parcours-stat-principale"><span>Distance</span><strong data-v="distance">—</strong></div>
-        <div class="parcours-stat parcours-stat-principale"><span>Durée estimée</span><strong data-v="duree">—</strong></div>
+        <div class="parcours-stat parcours-stat-principale">${tt('editeur.distance')}<strong data-v="distance">—</strong></div>
+        <div class="parcours-stat parcours-stat-principale">${tt('editeur.duree')}<strong data-v="duree">—</strong></div>
         <div class="parcours-stat"><span>D+</span><strong data-v="plus">—</strong></div>
         <div class="parcours-stat"><span>D−</span><strong data-v="moins">—</strong></div>
-        <div class="parcours-stat"><span>Alt. max</span><strong data-v="max">—</strong></div>
-        <div class="parcours-stat"><span>Alt. min</span><strong data-v="min">—</strong></div>
-        <div class="parcours-stat"><span>Pente max</span><strong data-v="pente">—</strong></div>
-        ${activite.allure ? `<label class="parcours-stat parcours-allure"><span>Allure (min/km)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="10:00" value="${lire(`${activite.id}-allure`, '10:00')}" title="Temps par kilomètre au format minutes:secondes" aria-label="Temps par kilomètre au format minutes:secondes"><strong aria-live="polite">—</strong></label>` : ''}
+        <div class="parcours-stat">${tt('editeur.alt-max')}<strong data-v="max">—</strong></div>
+        <div class="parcours-stat">${tt('editeur.alt-min')}<strong data-v="min">—</strong></div>
+        <div class="parcours-stat">${tt('editeur.pente-max')}<strong data-v="pente">—</strong></div>
+        ${activite.allure ? `<label class="parcours-stat parcours-allure"><span><span ${ti('editeur.allure')}>${t('editeur.allure')}</span> (<b data-unite-allure>${uniteAllure()}</b>)</span><input type="text" inputmode="decimal" autocomplete="off" placeholder="10:00" value="${allureAffichee(lire(`${activite.id}-allure`, '10:00'))}" data-aide-allure><strong aria-live="polite">—</strong></label>` : ''}
       </div>
       <div class="parcours-profil">
-        <p class="parcours-lecture">Touchez le profil pour lire un point du tracé.</p>
-        <canvas class="parcours-graphique" tabindex="0" role="img" aria-label="Profil du parcours coloré selon la pente. Glisser ou utiliser les flèches du clavier pour lire un point."></canvas>
+        <p class="parcours-lecture">${t('editeur.lire-profil')}</p>
+        <canvas class="parcours-graphique" tabindex="0" role="img" ${ta('aria-label', 'editeur.profil-aria')}></canvas>
         <div class="parcours-legende-pente" aria-hidden="true"></div>
       </div>
       <div class="parcours-alertes" hidden></div>
-      <div class="parcours-repartition" data-bloc="surfaces" hidden><h4>Surfaces</h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
-      <div class="parcours-repartition" data-bloc="difficulte" hidden><h4>${echelle.titre} <small>${echelle.note}</small></h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
-      <label class="parcours-couleur"><span>Colorer le tracé selon</span><select>
-        ${MODES_COULEUR.map(([id, libelle]) => `<option value="${id}">${id === 'pratique' && Object.keys(pratiques).length < 2 ? 'Couleur unie' : libelle}</option>`).join('')}
+      <div class="parcours-repartition" data-bloc="surfaces" hidden><h4 ${ti('editeur.surfaces')}>${t('editeur.surfaces')}</h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
+      <div class="parcours-repartition" data-bloc="difficulte" hidden><h4>${tt(echelle.titre)} <small ${ti(echelle.note)}>${t(echelle.note)}</small></h4><div class="parcours-barre"></div><div class="parcours-legende"></div></div>
+      <label class="parcours-couleur">${tt('editeur.colorer')}<select>
+        ${MODES_COULEUR.map(([id, cle]) => { const c = id === 'pratique' && Object.keys(pratiques).length < 2 ? 'editeur.couleur-unie' : cle; return `<option value="${id}" ${ti(c)}>${t(c)}</option>`; }).join('')}
       </select></label>
     </div>
-    <label class="parcours-nom"><span>Nom</span><input type="text" maxlength="60" placeholder="Nom du parcours"></label>
+    <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
     <div class="parcours-pied">
-      <button type="button" class="para-bouton parcours-terminer">Terminer</button>
-      <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer">Enregistrer</button>
+      <button type="button" class="para-bouton parcours-terminer">${t('editeur.terminer')}</button>
+      <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer" ${ti('editeur.enregistrer')}>${t('editeur.enregistrer')}</button>
       <button type="button" class="para-bouton parcours-gpx" disabled>GPX</button>
     </div>
     <div class="pc-infos" hidden></div>
@@ -246,7 +263,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       features: point ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [point.lng, point.lat] }, properties: {} }] : [],
     });
     if (!point) {
-      lecture.textContent = 'Touchez le profil pour lire un point du tracé.';
+      lecture.textContent = t('editeur.lire-profil');
       return;
     }
     const pente = analyse.pentes[index];
@@ -282,8 +299,8 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       element.type = 'button';
       element.className = `parcours-etape${index === 0 ? ' parcours-etape-depart' : dernier ? ' parcours-etape-arrivee' : ''}`;
       element.style.setProperty('--parcours-couleur', pratique.couleur);
-      element.textContent = index === 0 ? 'D' : dernier ? 'A' : String(index);
-      element.setAttribute('aria-label', index === 0 ? 'Départ' : dernier ? 'Arrivée' : `Point ${index}`);
+      element.textContent = index === 0 ? t('editeur.depart-lettre') : dernier ? t('editeur.arrivee-lettre') : String(index);
+      element.setAttribute('aria-label', index === 0 ? t('editeur.depart') : dernier ? t('editeur.arrivee') : t('editeur.point', { n: index }));
       if (!edition && index !== 0 && !dernier) element.hidden = true;
       const marqueur = new maplibregl.Marker({ element, draggable: edition }).setLngLat([etape.lng, etape.lat]).addTo(map);
       marqueur.on('dragend', () => {
@@ -308,7 +325,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (index === 0 && etapes.length > 1 && !dejaBoucle) {
       const boucle = document.createElement('button');
       boucle.type = 'button';
-      boucle.textContent = 'Boucler le parcours';
+      boucle.textContent = t('editeur.boucler');
       boucle.addEventListener('click', () => {
         fermerPopup();
         boucler();
@@ -318,7 +335,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (index > 0) {
       const libre = document.createElement('button');
       libre.type = 'button';
-      libre.textContent = etape.mode === 'libre' ? 'Suivre les chemins pour venir ici' : 'Venir ici en ligne droite';
+      libre.textContent = t(etape.mode === 'libre' ? 'editeur.suivre-chemins' : 'editeur.ligne-droite');
       libre.addEventListener('click', () => {
         fermerPopup();
         memoriser();
@@ -330,7 +347,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const retirer = document.createElement('button');
     retirer.type = 'button';
     retirer.className = 'parcours-popup-retirer';
-    retirer.textContent = 'Supprimer ce point';
+    retirer.textContent = t('editeur.supprimer-point');
     retirer.addEventListener('click', () => {
       fermerPopup();
       memoriser();
@@ -440,7 +457,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       if (etape.mode === 'libre') {
         etape.troncon = tronconLibre(de, vers);
       } else {
-        message.textContent = 'Calcul du tracé…';
+        message.textContent = t('editeur.calcul');
         try {
           if (estHorsLigne()) throw new Error('hors ligne');
           const troncon = await calculerTroncon(de, vers, pratique, requete.signal);
@@ -467,22 +484,18 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     programmerAnalyse();
     rendreRepartition();
     if (echecs) {
-      message.textContent = estHorsLigne()
-        ? 'Hors ligne : les tronçons sont tracés en ligne droite (tiretés).'
-        : `${echecs} tronçon${echecs > 1 ? 's' : ''} non calculé${echecs > 1 ? 's' : ''} : tracé en ligne droite. Rapprochez les points ou réessayez.`;
+      message.textContent = estHorsLigne() ? t('editeur.hors-ligne-droit') : t('editeur.echecs', { n: echecs });
     } else if (etapes.length < 2) {
-      message.textContent = etapes.length ? 'Touchez la carte pour poser le point suivant.' : 'Touchez la carte pour poser le départ.';
+      message.textContent = t(etapes.length ? 'editeur.point-suivant' : 'editeur.poser-depart');
     } else {
-      message.textContent = secours
-        ? 'Tracé de secours : surfaces et difficulté indisponibles sur ce tronçon.'
-        : 'Touchez la carte pour ajouter un point, ou le tracé pour y insérer un passage.';
+      message.textContent = t(secours ? 'editeur.secours' : 'editeur.ajouter');
     }
     if (edition) {
       if (etapes.length) stockage.ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
       else stockage.effacerBrouillon();
     }
     boutonEnregistrer.disabled = etapes.length < 2;
-    panneau.definirResume({ detail: total ? km(total) : 'Touchez la carte', valeur: total ? (total / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '', unite: total ? 'km' : '' });
+    panneau.definirResume({ detail: total ? km(total) : t('editeur.touchez-carte'), valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
     rendre();
   }
 
@@ -518,9 +531,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         console.warn('Profil du parcours :', erreur);
         analyse = null;
         profil.definir(null);
-        lecture.textContent = estHorsLigne()
-          ? 'Hors ligne : le relief de cette zone n’est pas enregistré.'
-          : 'Profil indisponible pour le moment : le relief ne répond pas.';
+        lecture.textContent = t(estHorsLigne() ? 'editeur.relief-hors-ligne' : 'editeur.relief-indisponible');
         dessinerTrace();
       }
     }, ATTENTE_ANALYSE);
@@ -561,9 +572,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       plus: analyse?.plus ?? null,
       etapes: compacter(etapes),
     });
-    message.textContent = reussi
-      ? `« ${nom} » est dans Mes parcours.`
-      : 'Enregistrement impossible : l’espace du navigateur est plein. Supprimez un ancien parcours.';
+    message.textContent = reussi ? t('editeur.enregistre', { nom }) : t('editeur.stockage-plein');
     if (reussi) {
       stockage.effacerBrouillon();
       onEnregistre();
@@ -641,11 +650,11 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   function rendreAllure() {
     const champ = $('.parcours-allure input');
     if (!champ || !analyse) return;
-    const resultat = /^(\d{1,3})(?:[:.,]([0-5]\d))?$/.exec(champ.value.trim());
-    const heuresParKm = resultat ? (Number(resultat[1]) + Number(resultat[2] || 0) / 60) / 60 : 0;
+    const minutesParKm = depuisAllure(lireDuree(champ.value));
+    const heuresParKm = minutesParKm / 60;
     champ.setAttribute('aria-invalid', String(!(heuresParKm > 0)));
     $('.parcours-allure strong').textContent = heuresParKm > 0 ? `≈ ${formaterDuree((analyse.total / 1000) * heuresParKm)}` : '—';
-    if (heuresParKm > 0) ecrire(`${activite.id}-allure`, champ.value.trim());
+    if (heuresParKm > 0) ecrire(`${activite.id}-allure`, ecrireDuree(minutesParKm));
   }
 
   // Ce qui peut surprendre sur le terrain : pentes, marches, sentiers très techniques
@@ -660,7 +669,13 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       bouton.type = 'button';
       const portage = activite.portage && pente >= PENTE_PORTAGE;
       bouton.className = `parcours-alerte${portage ? ' parcours-alerte-forte' : ''}`;
-      bouton.textContent = `${portage ? 'Portage probable' : pente > 0 ? 'Montée raide' : 'Descente raide'} · ${pente > 0 ? '+' : ''}${Math.round(pente)} % sur ${metres(longueur)} · km ${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}`;
+      bouton.textContent = t('editeur.passage', {
+        type: t(portage ? 'editeur.portage' : pente > 0 ? 'editeur.montee' : 'editeur.descente'),
+        pente: `${pente > 0 ? '+' : ''}${Math.round(pente)}`,
+        longueur: formatLongueur(longueur),
+        unite: uniteDistance(),
+        position: valeurDistance(d),
+      });
       bouton.addEventListener('click', () => {
         profil.placerDepuisCarte(indice);
         afficherCurseur(indice);
@@ -678,12 +693,12 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (passages.length > PASSAGES_AFFICHES) {
       const ligne = document.createElement('p');
       ligne.className = 'parcours-alerte-suite';
-      ligne.textContent = `Et ${passages.length - PASSAGES_AFFICHES} autre${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} passage${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} raide${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''}.`;
+      ligne.textContent = t('editeur.autres-passages', { n: passages.length - PASSAGES_AFFICHES });
       elements.push(ligne);
     }
-    if (activite.portage && repartition?.marches) ajouterTexte(`Marches sur le tracé : ${metres(repartition.marches)}`);
+    if (activite.portage && repartition?.marches) ajouterTexte(t('editeur.marches', { longueur: formatLongueur(repartition.marches) }));
     const techniques = repartition?.difficultes.at(-1) ?? 0;
-    if (techniques) ajouterTexte(`${echelle.texteTechnique} : ${metres(techniques)}`);
+    if (techniques) ajouterTexte(t('editeur.technique', { texte: t(echelle.texteTechnique), longueur: formatLongueur(techniques) }));
     bloc.replaceChildren(...elements);
     bloc.hidden = !elements.length;
   }
@@ -694,7 +709,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const connues = total - voies.inconnu;
     blocSurfaces.hidden = !connues;
     if (connues) {
-      const parts = Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle: activite.libelleVoies?.[id] ?? libelle, couleur, longueur: voies[id] }));
+      const parts = Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle: activite.libelleVoies?.[id] ? t(activite.libelleVoies[id]) : libelle, couleur, longueur: voies[id] }));
       blocSurfaces.querySelector('.parcours-barre').innerHTML = barre(parts, total);
       blocSurfaces.querySelector('.parcours-legende').innerHTML = legende(parts, total);
     }
@@ -703,7 +718,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     blocDifficulte.hidden = !cotes;
     if (cotes) {
       const parts = DIFFICULTES.map(({ libelle, couleur }, index) => ({ libelle, couleur, longueur: difficultes[index] }));
-      parts.push({ libelle: 'Non coté', couleur: VOIES.inconnu.couleur, longueur: total - cotes });
+      parts.push({ libelle: t('editeur.non-cote'), couleur: VOIES.inconnu.couleur, longueur: total - cotes });
       blocDifficulte.querySelector('.parcours-barre').innerHTML = barre(parts, total);
       blocDifficulte.querySelector('.parcours-legende').innerHTML = legende(parts, total);
     }
@@ -716,7 +731,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   function definirEdition(valeurEdition) {
     edition = valeurEdition;
     map.getCanvas().style.cursor = edition ? 'crosshair' : '';
-    boutonTerminer.textContent = edition ? 'Terminer' : 'Modifier';
+    poser(boutonTerminer, edition ? 'editeur.terminer' : 'editeur.modifier');
     panneau.element.classList.toggle('bf-parcours-lecture', !edition);
     fermerPopup();
     dessinerMarqueurs();
@@ -768,7 +783,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
   boutonGpx.addEventListener('click', exporterGpx);
   boutonEnregistrer.addEventListener('click', enregistrer);
-  champNom.addEventListener('input', () => definirNom(champNom.value.trim() || 'Parcours sans nom'));
+  champNom.addEventListener('input', () => definirNom(champNom.value.trim() || t('editeur.sans-nom')));
   commande('annuler').addEventListener('click', () => restaurer(passe, futur));
   commande('retablir').addEventListener('click', () => restaurer(futur, passe));
   commande('libre').addEventListener('click', () => {
@@ -792,6 +807,40 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     });
   });
 
+  // Unités ou langue changées : tout ce qui est affiché se réécrit, sans recalcul
+  function reafficher() {
+    const champAllure = $('.parcours-allure input');
+    if (champAllure) {
+      champAllure.value = allureAffichee(lire(`${activite.id}-allure`, '10:00'));
+      $('[data-unite-allure]').textContent = uniteAllure();
+      majAideAllure();
+    }
+    if (!analyse) lecture.textContent = t('editeur.lire-profil');
+    if (etapes.length) dessinerMarqueurs();
+    rendre();
+    if (repartition) {
+      const total = repartition.total;
+      panneau.definirResume({ detail: total ? km(total) : '', valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
+      if (!analyse) valeur('distance').textContent = km(total);
+      rendreRepartition();
+    }
+    if (analyse) {
+      profil.definir(analyse);
+      rendreStats();
+      rendreAlertes();
+      afficherCurseur(null);
+    }
+  }
+  surPreferences(reafficher);
+  function majAideAllure() {
+    const champ = $('[data-aide-allure]');
+    if (!champ) return;
+    const aide = t(uniteAllure() === 'min/mi' ? 'editeur.allure-aide-mi' : 'editeur.allure-aide');
+    champ.title = aide;
+    champ.setAttribute('aria-label', aide);
+  }
+  majAideAllure();
+
   return {
     get ouvert() {
       return panneau.ouvert;
@@ -807,7 +856,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       definirNom(nomTrace);
       panneau.meta.textContent = meta;
       source.hidden = !lien;
-      if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer">Fiche sur Waymarked Trails ↗</a> · © contributeurs OpenStreetMap`;
+      if (lien) source.innerHTML = `<a href="${lien}" target="_blank" rel="noopener noreferrer" ${ti('editeur.waymarked')}>${t('editeur.waymarked')}</a> · ${tt('editeur.osm')}`;
       rendreInfos(infos);
       bloquerFiches(true);
       const longueur = (lignes ?? [chaine]).reduce((total, ligne) => {
@@ -824,9 +873,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         analyse = null;
         jetonAnalyse += 1;
         blocAnalyse.hidden = true;
-        message.textContent = longueur > LONGUEUR_MAX_DETAIL
-          ? `Environ ${km(longueur)} avec les variantes. Sur un itinéraire aussi long, le profil et l’export ne sont pas proposés.`
-          : `Environ ${km(longueur)}. Cet itinéraire a des variantes ou des morceaux séparés : son profil ne serait pas juste, il n’est pas calculé.`;
+        message.textContent = t(longueur > LONGUEUR_MAX_DETAIL ? 'editeur.long-variantes' : 'editeur.long-morceaux', { distance: km(longueur) });
         panneau.definirResume({ detail: km(longueur), valeur: '', unite: '' });
         dessinerTrace();
         cadrer(lignesEnsemble.flat());
@@ -876,11 +923,11 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       } else if (brouillon?.etapes?.length) {
         etapes = brouillon.etapes.map((etape) => ({ ...etape }));
         idParcours = null;
-        definirNom(brouillon.nom || 'Nouveau parcours');
+        definirNom(brouillon.nom || t('editeur.nouveau'));
       } else {
         etapes = [];
         idParcours = null;
-        definirNom('Nouveau parcours');
+        definirNom(t('editeur.nouveau'));
       }
       passe = [];
       futur = [];

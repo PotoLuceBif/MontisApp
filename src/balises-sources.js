@@ -1,4 +1,4 @@
-import { heureCourte } from './vent-cadran.js';
+import { dateEtHeure, t } from './i18n.js';
 import { dateHorsLigne } from './hors-ligne.js';
 
 // Sources de relevés de vent. Chaque source renvoie les mêmes stations :
@@ -31,14 +31,13 @@ export function etatStation(station) {
 
 export function texteAge(date) {
   const minutes = Math.max(0, Math.round((Date.now() - date) / 60000));
-  if (minutes < 1) return 'à l’instant';
-  if (minutes < 60) return `il y a ${minutes} min`;
-  if (minutes < 48 * 60) return `il y a ${Math.round(minutes / 60)} h`;
-  return `il y a ${Math.round(minutes / 1440)} j`;
+  if (minutes < 1) return t('age.instant');
+  if (minutes < 60) return t('age.minutes', { n: minutes });
+  if (minutes < 48 * 60) return t('age.heures', { n: Math.round(minutes / 60) });
+  return t('age.jours', { n: Math.round(minutes / 1440) });
 }
 
-export const dateComplete = (date) =>
-  `le ${new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à ${heureCourte(date)}`;
+export const dateComplete = (date) => t('commun.le-date', { date: dateEtHeure(date) });
 
 const nombre = (valeur) =>
   valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);
@@ -51,8 +50,8 @@ function stationValide(station) {
 
 async function lireJson(url, signal) {
   const reponse = await fetch(url, { signal, cache: 'no-store' });
-  if (reponse.status === 429) throw new Error('Trop de requêtes : réessayez dans quelques minutes.');
-  if (!reponse.ok) throw new Error(`Le service répond avec le statut ${reponse.status}.`);
+  if (reponse.status === 429) throw new Error(t('balises.trop-requetes'));
+  if (!reponse.ok) throw new Error(t('commun.statut-http', { statut: reponse.status }));
   return { ...(await reponse.json()), dateEnregistree: dateHorsLigne(reponse) };
 }
 
@@ -70,7 +69,7 @@ export async function chargerFFVL(url, signal) {
     rep.status === 403 ||
     /available using an ffvl api key|clé api|api key/i.test(texte)
   ) {
-    throw erreurFFVL('L’accès aux données nécessite une clé API FFVL.', 'acces');
+    throw erreurFFVL(t('balises.ffvl-cle'), 'acces');
   }
   if (!rep.ok) throw new Error(`${url} : erreur HTTP ${rep.status} – ${texte.slice(0, 200)}`);
 
@@ -98,7 +97,7 @@ const OPENWINDMAP = {
       .filter((brut) => brut?.location?.success !== false && brut?.location?.latitude != null)
       .map((brut) => ({
         id: String(brut.id),
-        nom: brut.meta?.name || `Balise ${brut.id}`,
+        nom: brut.meta?.name || t('balises.nom-defaut', { id: brut.id }),
         description: brut.meta?.description?.trim() || '',
         lat: nombre(brut.location?.latitude),
         lon: nombre(brut.location?.longitude),
@@ -153,7 +152,7 @@ const FFVL = {
         const releve = parId.get(String(balise.idBalise));
         return {
           id: String(balise.idBalise),
-          nom: balise.nom || `Balise ${balise.idBalise}`,
+          nom: balise.nom || t('balises.nom-defaut', { id: balise.idBalise }),
           description: '',
           lat: nombre(balise.latitude),
           lon: nombre(balise.longitude),

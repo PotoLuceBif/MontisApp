@@ -1,6 +1,8 @@
 // Graphique de l'évolution d'une balise : vent moyen, rafales, minimum et cap sous l'axe du temps.
 import { PALIERS_VENT, paletteInterface, palierVent } from './vent-cadran.js';
 import { pointCardinal } from './vent-calcul.js';
+import { depuisVent, nombre as formatNombre, versVent } from './unites.js';
+import { t } from './i18n.js';
 
 const MARGE_GAUCHE = 30;
 const MARGE_DROITE = 8;
@@ -101,8 +103,11 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
     ctx.lineWidth = 1;
-    const pas = maximum > 60 ? 20 : 10;
-    for (let valeur = 0; valeur <= maximum; valeur += pas) {
+    // Graduations rondes dans l'unité choisie pour le vent
+    const maximumAffiche = versVent(maximum);
+    const pas = [1, 2, 5, 10, 20, 50].find((valeur) => maximumAffiche / valeur <= 6) ?? 100;
+    for (let affichee = 0; affichee <= maximumAffiche + 1e-6; affichee += pas) {
+      const valeur = depuisVent(affichee);
       const y = Math.round(yDe(valeur)) + 0.5;
       ctx.strokeStyle = bord;
       ctx.globalAlpha = valeur ? 0.55 : 1;
@@ -112,7 +117,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.fillStyle = texte2;
-      ctx.fillText(String(valeur), MARGE_GAUCHE - 6, y);
+      ctx.fillText(formatNombre(affichee), MARGE_GAUCHE - 6, y);
     }
 
     // Heures rondes
@@ -132,7 +137,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
         ctx.stroke();
         if (x > MARGE_GAUCHE + 8 && x < droite - 8) {
           ctx.fillStyle = texte2;
-          ctx.fillText(`${repere.getHours()}h`, x, bas + 15);
+          ctx.fillText(t('bg.heure', { h: repere.getHours() }), x, bas + 15);
         }
       }
       repere.setTime(temps + HEURE);
@@ -192,7 +197,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     ctx.font = `10px ${police}`;
     ctx.textAlign = 'right';
     ctx.fillStyle = texte2;
-    ctx.fillText('de', MARGE_GAUCHE - 6, yLettre); // la lettre dit d'où vient le vent, la flèche où il va
+    ctx.fillText(t('bg.de'), MARGE_GAUCHE - 6, yLettre); // la lettre dit d'où vient le vent, la flèche où il va
     ctx.textAlign = 'center';
     for (let index = 0; index < nombre; index += 1) {
       const a = debut + index * duree;
@@ -302,7 +307,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
   });
 
   new ResizeObserver(redimensionner).observe(canvas);
-  new MutationObserver(dessiner).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+  new MutationObserver(dessiner).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-accent', 'lang'] });
 
   return {
     // `heuresVoulues` : l'axe couvre toute la période, même si les relevés commencent plus tard

@@ -233,7 +233,48 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .params-ligne { margin-bottom: 14px; }
 .params-ligne > span { display: block; margin-bottom: 6px; }
 .params-aide { margin: 0 0 10px; font-size: 12px; color: var(--texte-2); }
-.pastilles { display: flex; gap: 12px; }
+.pastilles { display: flex; flex-wrap: wrap; gap: 12px; }
+.params-ligne .params-aide { margin: 8px 0 0; }
+.params-aide-espace { margin-top: 18px; }
+.params-avance { margin: 4px 0 6px; }
+.params-stockage-total { margin: 0 0 8px; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.params-jauge { height: 6px; margin-bottom: 10px; overflow: hidden; border-radius: 3px; background: var(--surface-2); }
+.params-jauge i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.params-stockage {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; margin: 0;
+  padding: 10px 12px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface);
+}
+.params-stockage:empty { display: none; }
+.params-stockage dt { display: grid; min-width: 0; gap: 1px; font-size: 13px; }
+.params-stockage dt small { color: var(--texte-2); font-size: 11px; }
+.params-stockage dd { margin: 0; align-self: center; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.params-ligne > .zh-liste { margin-bottom: 8px; }
+.params-option { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-height: 40px; padding: 4px 0; }
+.params-option input { width: 20px; height: 20px; margin: 0; }
+.params-option small { grid-column: 2; margin-left: 0; }
+.params-ligne > .btn-secondaire { min-height: 44px; }
+.params-note { padding: 8px 10px; border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; background: var(--surface-2); }
+.params-boutons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+.params-boutons .btn-secondaire { display: grid; place-items: center; min-height: 44px; height: auto; }
+.params-fichier { position: relative; overflow: hidden; }
+.params-fichier input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.params-fichier:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.params-apercu { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.params-apercu > strong { font-size: 14px; }
+.params-apercu .params-aide { margin: 0; }
+.btn-principal { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+.btn-principal:hover { background: var(--accent); filter: brightness(1.08); }
+.params-erreur { color: #e8806a; font-weight: 600; }
+:root[data-theme='clair'] .params-erreur { color: #a2402c; }
+:root[data-theme='cyberpunk'] .btn-principal { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+.params-avance > summary {
+  display: flex; align-items: center; min-height: 40px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--texte-2); list-style: none;
+}
+.params-avance > summary::-webkit-details-marker { display: none; }
+.params-avance > summary::before { content: '▸'; margin-right: 8px; transition: transform 0.15s ease; }
+.params-avance[open] > summary::before { transform: rotate(90deg); }
+.params-avance[open] > summary { margin-bottom: 6px; }
 .pastille { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: var(--c-clair); cursor: pointer; }
 :root[data-theme='sombre'] .pastille { background: var(--c-sombre); }
 .pastille.actif { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--texte); }
@@ -1490,7 +1531,8 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 }
 :root[data-theme='cyberpunk'] .params-ligne .segments {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
 }
 :root[data-theme='cyberpunk'] .params-ligne .segments button {
   min-width: 0;
@@ -2246,7 +2288,11 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .ski-visite-calques .visite-fonds { display: grid; flex-basis: 100%; grid-template-columns: none; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; }
 .ski-visite-calque[hidden] { display: none; }
 .ski-fiche-contenu > .ski-conditions-note { padding: 0 14px; }
-.visite-recentrer { margin-left: auto; width: 36px; padding: 0; justify-content: center; }
+/* Rond parfait, à la hauteur des pastilles voisines */
+.ski-visite-calque.visite-recentrer {
+  box-sizing: border-box; flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; margin-left: auto; padding: 0;
+  justify-content: center; border-radius: 50%; aspect-ratio: 1;
+}
 .ski-niveau-inconnu { background: #6f7884; }
 .pc-ligne-sous { grid-column: 1 / -1; color: var(--texte-2); font-size: 11px; line-height: 1.3; }
 .pc-section .rando-actions-principales { margin: 0; grid-template-columns: minmax(0, 1fr); }
@@ -2789,10 +2835,11 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .ski-visite-calques { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 7px; padding: 0 14px 10px; }
 .ski-visite-calque {
   display: inline-flex;
-  min-height: 32px;
+  box-sizing: border-box;
+  min-height: 36px;
   align-items: center;
   gap: 6px;
-  padding: 4px 11px 4px 8px;
+  padding: 4px 12px 4px 9px;
   border: 1px solid var(--bord);
   border-radius: 99px;
   background: var(--surface-2);
@@ -2841,7 +2888,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .ski-fiche-recherche input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ski-fiche-recherche .rando-liste { max-height: min(280px, 40vh); margin-top: 8px; }
 @media (max-width: 700px) {
-  body:has(:is(#ski-fiche, #bikepark-fiche):not([hidden])) .maplibregl-ctrl-bottom-left { display: none; }
+  /* Fiche dépliée : elle passe devant les boutons de la carte et les accès Météo et Carte */
+  :is(#ski-fiche, #bikepark-fiche):not(.fiche-reduite) { z-index: 14; }
   :is(#ski-fiche, #bikepark-fiche).fiche-reduite,
   body:has(#menu-tiroir.ouvert) :is(#ski-fiche, #bikepark-fiche).fiche-reduite {
     right: 12px;
@@ -2971,11 +3019,22 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 #menu-bouton:active { transform: scale(0.96); }
 
 /* ===== Commandes flottantes : même forme, léger effet de verre ===== */
+/* Fond presque opaque avec un léger relief : à 90 %, le beige de la carte remontait et
+   donnait un gris délavé. Même matière pour toutes les commandes posées sur la carte. */
 #menu-parametres-bouton, #bascule-mode, .rech-champ, .maplibregl-ctrl-group, .outil-rapide-bouton {
-  background: color-mix(in srgb, var(--surface) 90%, transparent);
-  box-shadow: var(--ombre);
+  border-color: color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--surface) 97%, transparent);
+  box-shadow: var(--ombre), inset 0 1px 0 color-mix(in srgb, var(--texte) 7%, transparent);
   -webkit-backdrop-filter: blur(12px) saturate(1.3);
   backdrop-filter: blur(12px) saturate(1.3);
+}
+:root[data-theme='cyberpunk'] .maplibregl-ctrl-group {
+  border-color: color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--surface) 97%, transparent);
 }
 .outil-rapide-bouton { border-radius: var(--rayon); }
 .maplibregl-ctrl-scale { border-radius: 0 0 5px 5px; border-width: 0 1px 1px; background: color-mix(in srgb, var(--surface) 78%, transparent); }

@@ -1,5 +1,9 @@
 // Couleurs du vent et cadran de direction, communs à l'analyse du vent et aux balises.
-import { pointCardinal } from './vent-calcul.js';
+import { codeCardinal, pointCardinal } from './vent-calcul.js';
+import { heureCourte, t } from './i18n.js';
+
+export { heureCourte };
+import { valeurVent } from './unites.js';
 
 // Force du vent, de calme à fort, en km/h : une seule échelle pour le vent prévu et les balises
 export const PALIERS_VENT = [10, 20, 30, 40];
@@ -32,7 +36,7 @@ export function cadranVent(flux, angle = 0, classe = '', cardinaux = false) {
   const graduations = (cardinaux ? [45, 135, 225, 315] : [45, 90, 135, 180, 225, 270, 315])
     .map((degres) => `<path d="M32 4.5V8" transform="rotate(${degres} 32 32)"/>`).join('');
   const points = cardinaux
-    ? '<text x="32" y="10.5">N</text><text x="53.5" y="32">E</text><text x="32" y="53.5">S</text><text x="10.5" y="32">O</text>'
+    ? `<text x="32" y="10.5">N</text><text x="53.5" y="32">E</text><text x="32" y="53.5">S</text><text x="10.5" y="32">${t('cardinal.O')}</text>`
     : '<text x="32" y="13.5">N</text>';
   const fleche = cardinaux ? 'M32 15 43 33 35.5 30V49H28.5V30L21 33Z' : 'M32 13 45 33 36 30V52H28V30L19 33Z';
   return `<svg class="vent-cadran ${classe}${cardinaux ? ' vent-cadran-cardinaux' : ''}" viewBox="0 0 64 64" aria-hidden="true"${attributFlux}>
@@ -44,12 +48,15 @@ export function cadranVent(flux, angle = 0, classe = '', cardinaux = false) {
   </svg>`;
 }
 
-export const heureCourte = (date) => {
-  const valeur = new Date(date);
-  return `${valeur.getHours()}h${String(valeur.getMinutes()).padStart(2, '0')}`;
-};
 
 export const texteProvenance = (provenance) => {
-  const point = pointCardinal(provenance);
-  return `${point === 'E' || point === 'O' ? 'de l’' : 'du '}${point} · ${Math.round(provenance)}°`;
+  const code = codeCardinal(provenance);
+  const cle = code === 'E' || code === 'O' ? 'vent.provenance-voyelle' : 'vent.provenance';
+  return t(cle, { point: pointCardinal(provenance), degres: Math.round(provenance) });
+};
+
+// Bornes des paliers dans l'unité choisie : « < 10 », « 10–20 »… « 40+ » en km/h
+export const libellesPaliersVent = () => {
+  const bornes = PALIERS_VENT.map((limite) => valeurVent(limite));
+  return [`< ${bornes[0]}`, ...bornes.slice(1).map((borne, i) => `${bornes[i]}–${borne}`), `${bornes.at(-1)}+`];
 };

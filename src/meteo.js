@@ -2,6 +2,10 @@ import { lire, ecrire } from './reglages.js';
 import { Marker } from 'maplibre-gl';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt } from './i18n.js';
+import { pointCardinal } from './vent-calcul.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -19,10 +23,7 @@ const DELAI_PREVISIONS = 15000;
 const TYPES_LIEU = ['city', 'town', 'village', 'hamlet', 'locality', 'municipality'];
 const ECART_CENTRE_KM = 0.5; // au-delà, les prévisions ne correspondent plus au centre de la carte
 
-function formaterHeure(timestamp) {
-  return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    .format(new Date(timestamp * 1000));
-}
+const formaterHeure = (timestamp) => heureCourte(timestamp * 1000);
 
 function lireImagesRadar(donnees) {
   if (
@@ -31,7 +32,7 @@ function lireImagesRadar(donnees) {
     typeof donnees.host !== 'string' ||
     !Array.isArray(donnees.radar?.past)
   ) {
-    throw new Error('Le service radar a renvoyé des données inattendues.');
+    throw new Error(t('radar.inattendu'));
   }
 
   const host = new URL(donnees.host);
@@ -39,7 +40,7 @@ function lireImagesRadar(donnees) {
     host.protocol !== 'https:' ||
     (host.hostname !== 'rainviewer.com' && !host.hostname.endsWith('.rainviewer.com'))
   ) {
-    throw new Error('Le domaine du service radar est invalide.');
+    throw new Error(t('radar.domaine'));
   }
 
   const images = donnees.radar.past
@@ -51,7 +52,7 @@ function lireImagesRadar(donnees) {
     .sort((a, b) => a.time - b.time);
 
   if (images.length === 0) {
-    throw new Error('Aucune image radar récente n’est disponible.');
+    throw new Error(t('radar.aucune'));
   }
 
   return { host: host.origin, images };
@@ -61,35 +62,31 @@ export function creerRadarPluie(map) {
   const panneau = document.createElement('div');
   panneau.className = 'radar-panneau';
   panneau.innerHTML = `
-    <div class="radar-sources" role="tablist" aria-label="Source du radar">
-      <button type="button" id="radar-source-rainviewer" role="tab" aria-controls="radar-vue-rainviewer">
-        Monde · RainViewer
-      </button>
-      <button type="button" id="radar-source-meteosuisse" role="tab" aria-controls="radar-vue-meteosuisse">
-        Alpes · MétéoSuisse
-      </button>
+    <div class="radar-sources" role="tablist" ${ta('aria-label', 'radar.source')}>
+      <button type="button" id="radar-source-rainviewer" role="tab" aria-controls="radar-vue-rainviewer" ${ti('radar.monde')}>${t('radar.monde')}</button>
+      <button type="button" id="radar-source-meteosuisse" role="tab" aria-controls="radar-vue-meteosuisse" ${ti('radar.alpes')}>${t('radar.alpes')}</button>
     </div>
     <section id="radar-vue-rainviewer" class="radar-source-vue" role="tabpanel" aria-labelledby="radar-source-rainviewer" hidden>
-      <p class="radar-statut" role="status" aria-live="polite">Activez le radar pour charger les précipitations.</p>
+      <p class="radar-statut" role="status" aria-live="polite">${t('radar.activer')}</p>
       <div class="radar-controles" hidden>
         <div class="radar-actions">
-          <button type="button" class="radar-lecture">Lire l’animation</button>
-          <button type="button" class="radar-actuel">Actualiser</button>
+          <button type="button" class="radar-lecture">${t('radar.lire')}</button>
+          <button type="button" class="radar-actuel" ${ti('radar.actualiser')}>${t('radar.actualiser')}</button>
         </div>
         <label class="radar-temps">
           <span class="radar-heure"></span>
-          <input class="radar-curseur" type="range" min="0" max="0" value="0" step="1" aria-label="Image radar">
+          <input class="radar-curseur" type="range" min="0" max="0" value="0" step="1" ${ta('aria-label', 'radar.image')}>
         </label>
-        <p class="radar-aide">Couverture mondiale · images récentes espacées d’environ 10 minutes. Tuiles HD, zoom de données limité à 7.</p>
-        <p class="radar-credit">Radar : <a href="https://www.rainviewer.com/" target="_blank" rel="noopener noreferrer">RainViewer</a></p>
+        <p class="radar-aide" ${ti('radar.aide')}>${t('radar.aide')}</p>
+        <p class="radar-credit" data-i18n-html="radar.credit">${t('radar.credit')}</p>
       </div>
     </section>
     <section id="radar-vue-meteosuisse" class="radar-source-vue" role="tabpanel" aria-labelledby="radar-source-meteosuisse" hidden>
-      <p class="radar-description">Radar officiel de MétéoSuisse, avec une couverture centrée sur la Suisse et les régions voisines des Alpes.</p>
+      <p class="radar-description" ${ti('radar.ms-description')}>${t('radar.ms-description')}</p>
       <a class="radar-lien-externe" href="${PAGE_METEOSUISSE}" target="_blank" rel="noopener noreferrer">
-        Ouvrir le radar MétéoSuisse <span aria-hidden="true">↗</span>
+        ${tt('radar.ms-ouvrir')} <span aria-hidden="true">↗</span>
       </a>
-      <p class="radar-aide">Le radar s’ouvre sur le site officiel et n’est pas superposé à la carte Montis.</p>
+      <p class="radar-aide" ${ti('radar.ms-aide')}>${t('radar.ms-aide')}</p>
     </section>
   `;
 
@@ -120,7 +117,7 @@ export function creerRadarPluie(map) {
   function arreterLecture() {
     if (minuteurLecture !== null) clearInterval(minuteurLecture);
     minuteurLecture = null;
-    lecture.textContent = 'Lire l’animation';
+    lecture.textContent = t('radar.lire');
   }
 
   function urlTuiles(image) {
@@ -132,7 +129,7 @@ export function creerRadarPluie(map) {
     indexCourant = Math.max(0, Math.min(index, images.length - 1));
     const image = images[indexCourant];
     curseur.value = String(indexCourant);
-    heure.textContent = `Image radar · ${formaterHeure(image.time)}`;
+    heure.textContent = t('radar.image-heure', { heure: formaterHeure(image.time) });
 
     if (map.getSource(SOURCE_RADAR)) {
       map.getSource(SOURCE_RADAR).setTiles([urlTuiles(image)]);
@@ -143,7 +140,7 @@ export function creerRadarPluie(map) {
         tileSize: 512,
         maxzoom: MAX_ZOOM_RADAR,
         attribution:
-          'Radar météo : <a href="https://www.rainviewer.com/" target="_blank" rel="noopener noreferrer">RainViewer</a>',
+          t('radar.attribution'),
       });
 
       const premiereEtiquette = map.getStyle().layers.find((layer) => layer.type === 'symbol');
@@ -165,13 +162,13 @@ export function creerRadarPluie(map) {
     controleur?.abort();
     controleur = new AbortController();
     statut.classList.remove('erreur');
-    statut.textContent = 'Chargement des images radar…';
+    statut.textContent = t('radar.chargement');
     actuel.disabled = true;
 
     try {
       const reponse = await fetch(API_RADAR, { signal: controleur.signal });
       if (!reponse.ok) {
-        throw new Error(`Le service radar répond avec le statut ${reponse.status}.`);
+        throw new Error(t('radar.statut-http', { statut: reponse.status }));
       }
 
       const resultat = lireImagesRadar(await reponse.json());
@@ -183,11 +180,11 @@ export function creerRadarPluie(map) {
       controles.hidden = false;
       arreterLecture();
       afficherImage(images.length - 1);
-      statut.textContent = `Radar chargé · ${images.length} images disponibles.`;
+      statut.textContent = t('radar.charge', { n: images.length });
     } catch (erreur) {
       if (erreur.name === 'AbortError') return;
       statut.classList.add('erreur');
-      statut.textContent = `Radar indisponible : ${erreur.message}`;
+      statut.textContent = t('radar.indisponible', { message: erreur.message });
       actuel.disabled = false;
       console.error('Chargement du radar météo impossible :', erreur);
     } finally {
@@ -242,7 +239,7 @@ export function creerRadarPluie(map) {
     }
 
     if (indexCourant >= images.length - 1) afficherImage(0);
-    lecture.textContent = 'Pause';
+    lecture.textContent = t('radar.pause');
     minuteurLecture = setInterval(() => {
       if (indexCourant >= images.length - 1) {
         arreterLecture();
@@ -253,11 +250,17 @@ export function creerRadarPluie(map) {
   });
   actuel.addEventListener('click', chargerImages);
   choisirSource(sourceCourante);
+  surLangue(() => {
+    lecture.textContent = t(minuteurLecture !== null ? 'radar.pause' : 'radar.lire');
+    if (indexCourant >= 0 && images[indexCourant]) afficherImage(indexCourant);
+    if (images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.charge', { n: images.length });
+    else if (!images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.activer');
+  });
 
   return {
     id: 'radar',
     reseauRequis: true,
-    label: 'Radar de pluie',
+    labelCle: 'radar.titre',
     icone: 'radar',
     panneau,
     activer() {
@@ -276,39 +279,10 @@ export function creerRadarPluie(map) {
   };
 }
 
-const CODES_METEO = {
-  0: 'Ciel dégagé',
-  1: 'Plutôt dégagé',
-  2: 'Partiellement nuageux',
-  3: 'Couvert',
-  45: 'Brouillard',
-  48: 'Brouillard givrant',
-  51: 'Bruine légère',
-  53: 'Bruine modérée',
-  55: 'Bruine dense',
-  56: 'Bruine verglaçante',
-  57: 'Bruine verglaçante dense',
-  61: 'Pluie faible',
-  63: 'Pluie modérée',
-  65: 'Forte pluie',
-  66: 'Pluie verglaçante',
-  67: 'Forte pluie verglaçante',
-  71: 'Neige faible',
-  73: 'Neige modérée',
-  75: 'Forte neige',
-  77: 'Grains de neige',
-  80: 'Averses faibles',
-  81: 'Averses modérées',
-  82: 'Fortes averses',
-  85: 'Averses de neige',
-  86: 'Fortes averses de neige',
-  95: 'Orage',
-  96: 'Orage avec grêle',
-  99: 'Orage avec forte grêle',
-};
+const CODES_METEO = [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99];
 
 function descriptionMeteo(code) {
-  return CODES_METEO[code] || 'Conditions météo variables';
+  return t(CODES_METEO.includes(code) ? `meteo.code.${code}` : 'meteo.code.variable');
 }
 
 function typeMeteo(code) {
@@ -345,7 +319,7 @@ function creerIconeMeteo(code) {
 
 function formaterDirection(degres) {
   if (!Number.isFinite(degres)) return '—';
-  return ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'][Math.round(degres / 45) % 8];
+  return pointCardinal(degres);
 }
 
 function lirePositionMeteo() {
@@ -429,40 +403,40 @@ export function creerConditionsLocales(map) {
   const panneau = document.createElement('div');
   panneau.className = 'meteo-locale';
   panneau.innerHTML = `
-    <section class="meteo-actuelle" hidden aria-label="Conditions actuelles"></section>
-    <section class="meteo-horaire" hidden aria-label="Prévisions heure par heure">
-      <h3>Prochaines 24 heures</h3>
+    <section class="meteo-actuelle" hidden ${ta('aria-label', 'meteo.actuelles')}></section>
+    <section class="meteo-horaire" hidden ${ta('aria-label', 'meteo.horaire')}>
+      <h3>${t('meteo.24h')}</h3>
       <div class="meteo-heures"></div>
     </section>
-    <section class="meteo-jours" hidden aria-label="Prévisions sur cinq jours">
-      <h3>Les 5 prochains jours</h3>
-      <div class="meteo-jours-liste" role="group" aria-label="Choisir un jour pour afficher le détail horaire"></div>
+    <section class="meteo-jours" hidden ${ta('aria-label', 'meteo.5-jours-aria')}>
+      <h3 ${ti('meteo.5-jours')}>${t('meteo.5-jours')}</h3>
+      <div class="meteo-jours-liste" role="group" ${ta('aria-label', 'meteo.choisir-jour')}></div>
     </section>
-    <section class="meteo-emplacement" aria-label="Lieu des prévisions">
+    <section class="meteo-emplacement" ${ta('aria-label', 'meteo.lieu')}>
       <div class="meteo-emplacement-entete">
         <div>
-          <p class="meteo-emplacement-titre">Lieu des prévisions</p>
-          <p class="meteo-locale-lieu">Centre de la carte</p>
+          <p class="meteo-emplacement-titre" ${ti('meteo.lieu')}>${t('meteo.lieu')}</p>
+          <p class="meteo-locale-lieu">${t('meteo.centre')}</p>
         </div>
         <button type="button" class="meteo-choisir" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M20 7v5h-5M4 17v-5h5"/>
             <path d="M5.6 9a7 7 0 0 1 11.6-2L20 9M4 15l2.8 2a7 7 0 0 0 11.6-2"/>
           </svg>
-          <span>Déplacer le point sur la carte</span>
+          <span>${t('meteo.deplacer')}</span>
         </button>
       </div>
       <p class="meteo-coordonnees">
-        <span class="meteo-coordonnees-valeurs">En attente du chargement des coordonnées…</span>
+        <span class="meteo-coordonnees-valeurs">${t('meteo.attente-coord')}</span>
         <span class="meteo-lieu-proche" hidden></span>
         <span class="meteo-code-postal" hidden></span>
       </p>
-      <p class="meteo-emplacement-aide">Par défaut, les prévisions concernent le centre de la carte. Pour les déplacer, clique sur le bouton puis à l’endroit voulu sur la carte. Le repère indique le point utilisé.</p>
-      <button type="button" class="meteo-reessayer meteo-recentrer" hidden>Utiliser le centre de la carte</button>
+      <p class="meteo-emplacement-aide" ${ti('meteo.aide-lieu')}>${t('meteo.aide-lieu')}</p>
+      <button type="button" class="meteo-reessayer meteo-recentrer" hidden ${ti('meteo.utiliser-centre')}>${t('meteo.utiliser-centre')}</button>
     </section>
-    <p class="meteo-locale-statut" role="status" aria-live="polite">Prévisions calculées au centre de la carte.</p>
-    <button type="button" class="meteo-reessayer" hidden>Réessayer le chargement</button>
-    <p class="meteo-credit">Prévisions : <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · CC BY 4.0 · usage gratuit non commercial</p>
+    <p class="meteo-locale-statut" role="status" aria-live="polite">${t('meteo.calculees-centre')}</p>
+    <button type="button" class="meteo-reessayer" hidden ${ti('meteo.reessayer')}>${t('meteo.reessayer')}</button>
+    <p class="meteo-credit" data-i18n-html="meteo.credit">${t('meteo.credit')}</p>
   `;
 
   const boutonChoisir = panneau.querySelector('.meteo-choisir');
@@ -505,9 +479,7 @@ export function creerConditionsLocales(map) {
     if (!actif || !position) return;
     const eloigne = distanceEntrePositions(position, centreCarte()) > ECART_CENTRE_KM;
     boutonCentre.hidden = !eloigne;
-    lieu.textContent = positionChoisie
-      ? 'Point choisi sur la carte'
-      : eloigne ? 'Ancien centre de la carte' : 'Centre de la carte';
+    lieu.textContent = t(positionChoisie ? 'meteo.point-choisi' : eloigne ? 'meteo.ancien-centre' : 'meteo.centre');
   }
 
   function afficherCoordonnees(position) {
@@ -555,7 +527,7 @@ export function creerConditionsLocales(map) {
   }
 
   async function chargerCodePostal(position, requete) {
-    codePostal.textContent = '· Recherche du code postal…';
+    codePostal.textContent = t('meteo.cp-recherche');
     codePostal.hidden = false;
     const params = new URLSearchParams({
       lat: String(position.latitude),
@@ -565,7 +537,7 @@ export function creerConditionsLocales(map) {
     try {
       const reponse = await fetch(`${API_GEOCODAGE}?${params}`, { signal: requete.signal });
       if (!reponse.ok) {
-        throw new Error(`Le service de géocodage répond avec le statut ${reponse.status}.`);
+        throw new Error(t('meteo.geocodage-http', { statut: reponse.status }));
       }
 
       const donnees = await reponse.json();
@@ -597,9 +569,7 @@ export function creerConditionsLocales(map) {
           { signal: requete.signal }
         );
         if (!reponseRecherche.ok) {
-          throw new Error(
-            `Le service de géocodage répond avec le statut ${reponseRecherche.status}.`
-          );
+          throw new Error(t('meteo.geocodage-http', { statut: reponseRecherche.status }));
         }
         const resultats = await reponseRecherche.json();
         if (requete.signal.aborted || controleur !== requete || !actif) return;
@@ -607,14 +577,14 @@ export function creerConditionsLocales(map) {
         code = codePostalDepuisGeocodage(resultatsVille, nomVilleProche, pays);
       }
       if (!code) {
-        codePostal.textContent = '· Code postal indisponible';
+        codePostal.textContent = t('meteo.cp-indisponible');
         return;
       }
 
       codePostal.textContent = `· ${String(code).trim()}`;
     } catch (erreur) {
       if (requete.signal.aborted || controleur !== requete || !actif) return;
-      codePostal.textContent = '· Code postal indisponible';
+      codePostal.textContent = t('meteo.cp-indisponible');
       console.warn('Recherche du code postal impossible :', erreur);
     }
   }
@@ -631,7 +601,7 @@ export function creerConditionsLocales(map) {
     map.getCanvas().removeEventListener('click', capterClicCarte, true);
     map.getCanvas().style.cursor = '';
     boutonChoisir.setAttribute('aria-pressed', 'false');
-    texteBoutonChoisir.textContent = 'Déplacer le point sur la carte';
+    texteBoutonChoisir.textContent = t('meteo.deplacer');
   }
 
   function capterClicCarte(event) {
@@ -655,15 +625,15 @@ export function creerConditionsLocales(map) {
     if (!actif) return;
     if (selectionEnCours) {
       annulerSelection();
-      statut.textContent = 'Sélection annulée.';
+      statut.textContent = t('meteo.selection-annulee');
       return;
     }
     selectionEnCours = true;
     majPin();
     boutonChoisir.setAttribute('aria-pressed', 'true');
-    texteBoutonChoisir.textContent = 'Annuler';
+    texteBoutonChoisir.textContent = t('meteo.annuler');
     statut.classList.remove('erreur');
-    statut.textContent = 'Mode sélection : clique à l’emplacement voulu sur la carte. Le point précédent sera remplacé.';
+    statut.textContent = t('meteo.mode-selection');
     map.getCanvas().style.cursor = 'crosshair';
     map.getCanvas().addEventListener('click', capterClicCarte, true);
 
@@ -681,7 +651,7 @@ export function creerConditionsLocales(map) {
         .map((valeur, index) => ({ valeur, index }))
         .filter(({ valeur }) => valeur.startsWith(`${date}T`) && valeur >= debut)
         .map(({ index }) => index);
-      titreHoraire.textContent = `Prévisions · ${formaterJour(date)}`;
+      titreHoraire.textContent = t('meteo.previsions-jour', { jour: formaterJour(date) });
     } else {
       const debutIndex = donnees.time.findIndex((valeur) => valeur >= debut);
       const premierIndex = debutIndex < 0 ? donnees.time.length : debutIndex;
@@ -689,7 +659,7 @@ export function creerConditionsLocales(map) {
         { length: Math.min(24, donnees.time.length - premierIndex) },
         (_, offset) => premierIndex + offset
       );
-      titreHoraire.textContent = 'Prochaines 24 heures';
+      titreHoraire.textContent = t('meteo.24h');
     }
 
     heures.replaceChildren();
@@ -702,27 +672,27 @@ export function creerConditionsLocales(map) {
       const symbole = creerIconeMeteo(donnees.weather_code[index]);
       const temperature = document.createElement('strong');
       temperature.textContent = Number.isFinite(donnees.temperature_2m[index])
-        ? `${Math.round(donnees.temperature_2m[index])}°`
+        ? formatTemp(donnees.temperature_2m[index], { court: true })
         : '—';
       const probabilite = document.createElement('span');
       probabilite.textContent = Number.isFinite(donnees.precipitation_probability[index])
         ? `${Math.round(donnees.precipitation_probability[index])} %`
         : '— %';
-      probabilite.title = `Probabilité de précipitation : ${probabilite.textContent}`;
+      probabilite.title = t('meteo.proba', { valeur: probabilite.textContent });
       const pluie = document.createElement('span');
       pluie.textContent = Number.isFinite(donnees.rain?.[index])
-        ? `${donnees.rain[index].toFixed(1)} mm pluie`
-        : '— mm pluie';
+        ? t('meteo.pluie', { valeur: formatPluie(donnees.rain[index]) })
+        : t('meteo.pluie-vide');
       const neige = document.createElement('span');
       neige.textContent = Number.isFinite(donnees.snowfall?.[index])
-        ? `${donnees.snowfall[index].toFixed(1)} cm neige`
-        : '— cm neige';
+        ? t('meteo.neige', { valeur: formatNeige(donnees.snowfall[index]) })
+        : t('meteo.neige-vide');
       const vent = document.createElement('span');
       vent.textContent = Number.isFinite(donnees.wind_gusts_10m?.[index])
-        ? `Raf. ${Math.round(donnees.wind_gusts_10m[index])} km/h`
+        ? t('meteo.rafales-court', { valeur: formatVent(donnees.wind_gusts_10m[index]) })
         : Number.isFinite(donnees.wind_speed_10m?.[index])
-          ? `Vent ${Math.round(donnees.wind_speed_10m[index])} km/h`
-          : 'Vent —';
+          ? t('meteo.vent', { valeur: formatVent(donnees.wind_speed_10m[index]) })
+          : t('meteo.vent-vide');
       carte.append(heureLocale, symbole, temperature, probabilite, pluie, neige, vent);
       heures.appendChild(carte);
     }
@@ -732,8 +702,7 @@ export function creerConditionsLocales(map) {
 
   function formaterJour(date) {
     const valeur = new Date(`${date}T12:00:00`);
-    return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-      .format(valeur);
+    return formatDate(valeur, { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
   function afficherJours(donnees) {
@@ -751,10 +720,10 @@ export function creerConditionsLocales(map) {
         Array.isArray(daily?.[champ]) && daily[champ].length >= 5
       )
     ) {
-      throw new Error('Le service météo a renvoyé des prévisions journalières incomplètes.');
+      throw new Error(t('meteo.jours-incomplets'));
     }
     if (!champsJournaliers.every((champ) => daily[champ].length === daily.time.length)) {
-      throw new Error('Le service météo a renvoyé des prévisions journalières incohérentes.');
+      throw new Error(t('meteo.jours-incoherents'));
     }
 
     previsionsJournalieres = daily;
@@ -767,28 +736,28 @@ export function creerConditionsLocales(map) {
       bouton.dataset.date = date;
       bouton.setAttribute('aria-pressed', String(date === dateSelectionnee));
       const minimum = Number.isFinite(daily.temperature_2m_min[index])
-        ? `${Math.round(daily.temperature_2m_min[index])}°`
+        ? formatTemp(daily.temperature_2m_min[index], { court: true })
         : '—';
       const maximum = Number.isFinite(daily.temperature_2m_max[index])
-        ? `${Math.round(daily.temperature_2m_max[index])}°`
+        ? formatTemp(daily.temperature_2m_max[index], { court: true })
         : '—';
       const probabilitePluie = Number.isFinite(daily.precipitation_probability_max[index])
         ? Math.round(daily.precipitation_probability_max[index])
         : null;
       bouton.setAttribute(
         'aria-label',
-        `${formaterJour(date)} : ${descriptionMeteo(daily.weather_code[index])}, ` +
-          `${minimum} à ${maximum}, ` +
-          `pluie ${probabilitePluie === null ? 'indisponible' : `${probabilitePluie} pour cent`}`
+        t('meteo.jour-aria', {
+          jour: formaterJour(date),
+          description: descriptionMeteo(daily.weather_code[index]),
+          min: minimum,
+          max: maximum,
+          pluie: probabilitePluie === null ? t('meteo.indisponible') : t('meteo.pour-cent', { n: probabilitePluie }),
+        })
       );
 
       const nom = document.createElement('span');
       nom.className = 'meteo-jour-nom';
-      nom.textContent = index === 0
-        ? 'Aujourd’hui'
-        : new Intl.DateTimeFormat('fr-FR', { weekday: 'short' })
-          .format(new Date(`${date}T12:00:00`))
-          .replace('.', '');
+      nom.textContent = index === 0 ? t('meteo.aujourdhui') : nomJour(new Date(`${date}T12:00:00`), 'short');
       const icone = creerIconeMeteo(daily.weather_code[index]);
       icone.classList.add('meteo-jour-icone');
       const temperature = document.createElement('strong');
@@ -796,12 +765,12 @@ export function creerConditionsLocales(map) {
       temperature.textContent = `${minimum} / ${maximum}`;
       const pluie = document.createElement('span');
       pluie.className = 'meteo-jour-pluie';
-      pluie.textContent = probabilitePluie === null ? 'Pluie —' : `${probabilitePluie} % pluie`;
+      pluie.textContent = probabilitePluie === null ? t('meteo.pluie-vide') : t('meteo.pluie-pourcent', { n: probabilitePluie });
       const vent = document.createElement('span');
       vent.className = 'meteo-jour-vent';
       vent.textContent = Number.isFinite(daily.wind_speed_10m_max[index])
-        ? `Vent ${Math.round(daily.wind_speed_10m_max[index])} km/h`
-        : 'Vent —';
+        ? t('meteo.vent', { valeur: formatVent(daily.wind_speed_10m_max[index]) })
+        : t('meteo.vent-vide');
       bouton.append(nom, icone, temperature, pluie, vent);
       jours.appendChild(bouton);
     }
@@ -842,11 +811,11 @@ export function creerConditionsLocales(map) {
         Array.isArray(hourly?.[champ]) && hourly[champ].length > 0
       )
     ) {
-      throw new Error('Le service météo a renvoyé des données incomplètes.');
+      throw new Error(t('meteo.incompletes'));
     }
     const longueurHoraire = hourly.time.length;
     if (!champsHoraires.every((champ) => hourly[champ].length === longueurHoraire)) {
-      throw new Error('Le service météo a renvoyé des prévisions incohérentes.');
+      throw new Error(t('meteo.incoherentes'));
     }
 
     const actuel = donnees.current;
@@ -860,18 +829,18 @@ export function creerConditionsLocales(map) {
     condition.textContent = descriptionMeteo(actuel.weather_code);
     const temperature = document.createElement('p');
     temperature.className = 'meteo-temperature';
-    temperature.textContent = `${Math.round(actuel.temperature_2m)}°`;
+    temperature.textContent = formatTemp(actuel.temperature_2m, { court: true });
     const details = document.createElement('div');
     details.className = 'meteo-details';
 
     const indexHeureActuelle = hourly.time.findIndex((heure) => heure >= actuel.time);
     const valeurs = [
-      ['Altitude estimée', Number.isFinite(donnees.elevation) ? `${Math.round(donnees.elevation)} m` : '—'],
-      ['Ressenti', Number.isFinite(actuel.apparent_temperature) ? `${Math.round(actuel.apparent_temperature)}°` : '—'],
-      ['Vent', Number.isFinite(actuel.wind_speed_10m) ? `${Math.round(actuel.wind_speed_10m)} km/h ${formaterDirection(actuel.wind_direction_10m)}` : '—'],
-      ['Rafales', Number.isFinite(actuel.wind_gusts_10m) ? `${Math.round(actuel.wind_gusts_10m)} km/h` : '—'],
-      ['Précipitations', Number.isFinite(actuel.precipitation) ? `${actuel.precipitation.toFixed(1)} mm` : '—'],
-      ['Niveau de congélation', Number.isFinite(hourly.freezing_level_height?.[indexHeureActuelle]) ? `${Math.round(hourly.freezing_level_height[indexHeureActuelle])} m` : '—'],
+      [t('meteo.altitude'), Number.isFinite(donnees.elevation) ? formatAltitude(donnees.elevation) : '—'],
+      [t('meteo.ressenti'), Number.isFinite(actuel.apparent_temperature) ? formatTemp(actuel.apparent_temperature) : '—'],
+      [t('meteo.vent-label'), Number.isFinite(actuel.wind_speed_10m) ? `${formatVent(actuel.wind_speed_10m)} ${formaterDirection(actuel.wind_direction_10m)}` : '—'],
+      [t('meteo.rafales'), Number.isFinite(actuel.wind_gusts_10m) ? formatVent(actuel.wind_gusts_10m) : '—'],
+      [t('meteo.precipitations'), Number.isFinite(actuel.precipitation) ? formatPluie(actuel.precipitation) : '—'],
+      [t('meteo.congelation'), Number.isFinite(hourly.freezing_level_height?.[indexHeureActuelle]) ? formatAltitude(hourly.freezing_level_height[indexHeureActuelle]) : '—'],
     ];
 
     for (const [label, valeur] of valeurs) {
@@ -890,7 +859,7 @@ export function creerConditionsLocales(map) {
     afficherJours(donnees);
     afficherHeures(hourly, actuel.time);
     statut.classList.remove('erreur');
-    statut.textContent = `Actualisé à ${actuel.time.slice(11, 16)} · prévision indicative en altitude.`;
+    statut.textContent = t('meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
   }
 
   async function chargerPrevisions() {
@@ -904,7 +873,7 @@ export function creerConditionsLocales(map) {
       requete.abort();
     }, DELAI_PREVISIONS);
     statut.classList.remove('erreur');
-    statut.textContent = 'Chargement des conditions et prévisions…';
+    statut.textContent = t('meteo.chargement');
     boutonReessayer.hidden = true;
     panneau.setAttribute('aria-busy', 'true');
     actuelle.hidden = true;
@@ -938,27 +907,28 @@ export function creerConditionsLocales(map) {
       const reponse = await fetch(`${API_PREVISIONS}?${params}`, { signal: requete.signal });
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       if (reponse.status === 429) {
-        throw new Error('limite de requêtes Open-Meteo atteinte. Réessayez plus tard.');
+        throw new Error(t('meteo.limite'));
       }
       if (!reponse.ok) {
-        throw new Error(`Le service météo répond avec le statut ${reponse.status}.`);
+        throw new Error(t('meteo.statut-http', { statut: reponse.status }));
       }
       const donnees = await reponse.json();
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       afficherPrevisions(donnees);
+      dernieresDonnees = donnees;
       const dateEnregistree = dateHorsLigne(reponse);
-      if (dateEnregistree) statut.textContent = `${texteDonneesDu(dateEnregistree)}, consultées sans réseau.`;
+      if (dateEnregistree) statut.textContent = t('meteo.sans-reseau', { date: texteDonneesDu(dateEnregistree) });
     } catch (erreur) {
       if (controleur !== requete || !actif || (requete.signal.aborted && !delaiDepasse)) return;
       statut.classList.add('erreur');
       const message = delaiDepasse
-        ? 'le service met trop de temps à répondre. Vérifie ta connexion puis réessaie.'
+        ? t('meteo.trop-long')
         : erreur instanceof Error
           ? erreur.message
-          : 'erreur inconnue';
+          : t('meteo.erreur-inconnue');
       statut.textContent = estHorsLigne()
-        ? 'Hors ligne : aucune prévision enregistrée pour ce lieu.'
-        : `Prévisions indisponibles : ${message}`;
+        ? t('meteo.hors-ligne')
+        : t('meteo.erreur', { message });
       boutonReessayer.hidden = false;
       console.error('Chargement des prévisions météo impossible :', erreur);
     } finally {
@@ -982,9 +952,25 @@ export function creerConditionsLocales(map) {
     if (bouton) selectionnerJour(bouton.dataset.date);
   });
 
+  // Unités ou langue : on réaffiche les dernières prévisions reçues, sans les redemander
+  let dernieresDonnees = null;
+  surPreferences((detail) => {
+    texteBoutonChoisir.textContent = t(selectionEnCours ? 'meteo.annuler' : 'meteo.deplacer');
+    majLieu();
+    if (!dernieresDonnees || actuelle.hidden) return;
+    const statutGarde = statut.textContent;
+    const jourGarde = dateSelectionnee;
+    afficherPrevisions(dernieresDonnees);
+    if (detail?.cle !== 'langue' && detail?.cle !== '*') statut.textContent = statutGarde;
+    if (jourGarde) {
+      dateSelectionnee = null;
+      selectionnerJour(jourGarde);
+    }
+  });
+
   return {
     id: 'meteo-locale',
-    label: 'Météo locale',
+    labelCle: 'meteo.titre',
     icone: 'meteo',
     panneau,
     activer() {

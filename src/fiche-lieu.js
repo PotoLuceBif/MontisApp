@@ -1,6 +1,9 @@
 // La fiche d'un lieu (station, bike park), en bas de la carte : infos, favori, recherche d'un autre
 // lieu, puis la visite 3D sur demande. Chaque activité n'apporte que ses textes et son contenu.
 import { lire, ecrire } from './reglages.js';
+import { formatDistance } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { t, ta } from './i18n.js';
 
 const ZOOM_POSITION = 14;
 const ZOOM_FICHE = 12.5;
@@ -9,11 +12,11 @@ const ICONE_LOCALISER = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M1
 const ICONE_VISITER = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 19.5 6.5-13 4 7.5 2-3 5.5 8.5H3Z"/><path d="m7.3 11 2.2 1.6 1.8-1.6"/></svg>';
 const ICONE_FAVORI = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="m12 3.6 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.6Z"/></svg>';
 const NIVEAUX = [
-  ['verte', 'Vertes'],
-  ['bleue', 'Bleues'],
-  ['rouge', 'Rouges'],
-  ['noire', 'Noires'],
-  ['inconnu', 'Non cotées'],
+  ['verte', 'pistes.verte'],
+  ['bleue', 'pistes.bleue'],
+  ['rouge', 'pistes.rouge'],
+  ['noire', 'pistes.noire'],
+  ['inconnu', 'pistes.inconnu'],
 ];
 
 export function el(balise, classe, texte) {
@@ -23,8 +26,8 @@ export function el(balise, classe, texte) {
   return e;
 }
 
-export const km = (valeur) =>
-  `${valeur.toLocaleString('fr-FR', { maximumFractionDigits: valeur < 10 ? 1 : 0 })} km`;
+// Longueurs de pistes, données en km
+export const km = (valeur) => formatDistance(valeur * 1000);
 const surTelephone = () => window.matchMedia('(max-width: 640px)').matches;
 const fermerMenu = () => document.getElementById('menu-fermer')?.click();
 
@@ -46,7 +49,7 @@ export function creerNiveaux(niveaux) {
     segment.style.flexGrow = String(niveaux[couleur] / total);
     barre.append(segment);
     const entree = el('span', 'ski-niveaux-entree');
-    entree.append(el('i', `ski-niveau-${couleur}`), `${libelle} ${km(niveaux[couleur])}`);
+    entree.append(el('i', `ski-niveau-${couleur}`), `${t(libelle)} ${km(niveaux[couleur])}`);
     legende.append(entree);
   }
   bloc.append(barre, legende);
@@ -59,18 +62,18 @@ export function creerPosition(map, [lng, lat]) {
   const icone = el('span', 'ski-position-icone');
   icone.innerHTML = ICONE_LOCALISER;
   const textes = el('div', 'ski-position-textes');
-  textes.append(el('span', null, 'Position GPS'), el('strong', null, texte));
-  const copier = el('button', 'fiche-copier', 'Copier');
+  textes.append(el('span', null, t('lieu.position')), el('strong', null, texte));
+  const copier = el('button', 'fiche-copier', t('lieu.copier'));
   copier.type = 'button';
   copier.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(texte);
-      copier.textContent = 'Copié ✓';
+      copier.textContent = t('lieu.copie');
     } catch {
-      copier.textContent = 'Indisponible';
+      copier.textContent = t('lieu.indisponible');
     }
   });
-  const zoomer = el('button', 'fiche-copier', 'Zoomer');
+  const zoomer = el('button', 'fiche-copier', t('lieu.zoomer'));
   zoomer.type = 'button';
   zoomer.addEventListener('click', () => {
     map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), ZOOM_POSITION), offset: [0, -70], duration: 900, essential: true });
@@ -100,12 +103,12 @@ export function creerItemLieu({ feature, identifiant, sous, peutVisiter, descrip
   infos.type = 'button';
   infos.append(el('span', 'rando-item-nom', nom));
   if (sous) infos.append(el('span', 'rando-item-sous', sous));
-  infos.setAttribute('aria-label', `Localiser ${nom}`);
+  infos.setAttribute('aria-label', t('lieu.localiser-nom', { nom }));
   infos.addEventListener('click', () => localiser(feature));
-  const boutonLocaliser = action('ski-item-localiser', ICONE_LOCALISER, 'Localiser', `Localiser ${nom} sur la carte`, () => localiser(feature));
+  const boutonLocaliser = action('ski-item-localiser', ICONE_LOCALISER, t('lieu.localiser'), t('lieu.localiser-carte', { nom }), () => localiser(feature));
   const boutonVisiter = action(
-    'ski-item-visiter', ICONE_VISITER, 'Visiter',
-    peutVisiter ? `Visiter ${nom}` : descriptionVisiteImpossible,
+    'ski-item-visiter', ICONE_VISITER, t('lieu.visiter'),
+    peutVisiter ? t('lieu.visiter-nom', { nom }) : descriptionVisiteImpossible,
     () => visiter(feature)
   );
   boutonVisiter.disabled = !peutVisiter;
@@ -150,7 +153,7 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
     <input type="text" placeholder="${textes.chercher}"
       autocomplete="off" spellcheck="false" inputmode="search" aria-label="${textes.chercher}"
       role="combobox" aria-autocomplete="list" aria-controls="${id}-liste" aria-expanded="false">
-    <div class="rando-liste" id="${id}-liste" role="listbox" aria-label="Résultats" hidden></div>
+    <div class="rando-liste" id="${id}-liste" role="listbox" ${ta('aria-label', 'lieu.resultats')} hidden></div>
   `;
   document.body.appendChild(zoneRecherche);
   const champRecherche = zoneRecherche.querySelector('input');
@@ -192,7 +195,7 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
     if (!bouton) return;
     bouton.classList.toggle('ouverte', !reduite);
     bouton.setAttribute('aria-expanded', String(!reduite));
-    bouton.setAttribute('aria-label', reduite ? textes.detail : 'Réduire la fiche');
+    bouton.setAttribute('aria-label', reduite ? textes.detail : t('lieu.reduire'));
     placerRecherche();
   }
 
@@ -220,8 +223,8 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
     badge.style.background = type.couleur;
     const titres = el('div', 'rando-titres');
     let titre = choisi.properties.nom;
-    if (enChargement && etatVisite === 'active') titre = `Préparation : ${enChargement.properties.nom}…`;
-    else if (erreurChangement) titre = 'Visite indisponible, réessayez';
+    if (enChargement && etatVisite === 'active') titre = t('lieu.preparation', { nom: enChargement.properties.nom });
+    else if (erreurChangement) titre = t('lieu.visite-indisponible');
     titres.append(el('div', 'rando-nom', titre));
     if (situation) titres.append(el('div', 'rando-sous', situation));
     const boutonReduire = el('button', 'rando-fiche-reduire');
@@ -245,7 +248,7 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
       etoile.type = 'button';
       etoile.innerHTML = ICONE_FAVORI;
       etoile.setAttribute('aria-pressed', String(favori));
-      etoile.setAttribute('aria-label', favori ? 'Retirer des favoris' : 'Ajouter aux favoris');
+      etoile.setAttribute('aria-label', t(favori ? 'lieu.retirer-favori' : 'lieu.ajouter-favori'));
       etoile.title = etoile.getAttribute('aria-label');
       etoile.addEventListener('click', () => {
         favoris.basculer(idLieu);
@@ -256,9 +259,9 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
     }
     entete.append(chercher, boutonReduire);
     if (etatVisite === 'active') {
-      const quitter = el('button', 'fiche-copier ski-visite-quitter', 'Quitter');
+      const quitter = el('button', 'fiche-copier ski-visite-quitter', t('lieu.quitter'));
       quitter.type = 'button';
-      quitter.setAttribute('aria-label', 'Quitter la visite');
+      quitter.setAttribute('aria-label', t('lieu.quitter-visite'));
       quitter.addEventListener('click', quitterVisite);
       entete.append(quitter);
     } else {
@@ -280,12 +283,12 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
       const visiterBouton = el('button', 'fiche-copier ski-visiter');
       visiterBouton.type = 'button';
       visiterBouton.innerHTML = ICONE_VISITER;
-      visiterBouton.append(etatVisite === 'chargement' ? 'Préparation de la visite…' : textes.visiter);
+      visiterBouton.append(etatVisite === 'chargement' ? t('lieu.preparation-visite') : textes.visiter);
       visiterBouton.disabled = etatVisite === 'chargement';
       visiterBouton.addEventListener('click', () => lancerVisite(choisi));
       actions.append(visiterBouton);
       if (etatVisite === 'erreur') {
-        actions.append(el('span', 'ski-visite-erreur', 'Visite indisponible. Vérifiez votre connexion et réessayez.'));
+        actions.append(el('span', 'ski-visite-erreur', t('lieu.visite-erreur')));
       }
     }
     rendreActions(actions, contenu, choisi);
@@ -368,6 +371,9 @@ export function creerFicheLieu(map, { id, visite, textes, decrire, peutVisiter, 
   }
 
   window.addEventListener('resize', placerRecherche);
+  surPreferences(() => {
+    if (choisi) rendre();
+  });
 
   return {
     rendre,

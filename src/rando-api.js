@@ -1,15 +1,18 @@
 // Accès à l'API de Waymarked Trails (itinéraires balisés d'OpenStreetMap)
+import { t } from './i18n.js';
 const RAYON = 6378137; // rayon de la projection Web Mercator utilisée par l'API
 
 // Niveaux d'itinéraires (champ « group » de l'API)
 export const NIVEAUX = {
-  INT: { court: 'Europe', couleur: '#7a4bb7', grand: true },
-  NAT: { court: 'National', couleur: '#c0392b', grand: true },
-  REG: { court: 'Régional', couleur: '#d9822b', grand: true },
-  LOC: { court: 'Local', couleur: '#5d7a68', grand: false },
+  INT: { couleur: '#7a4bb7', grand: true },
+  NAT: { couleur: '#c0392b', grand: true },
+  REG: { couleur: '#d9822b', grand: true },
+  LOC: { couleur: '#5d7a68', grand: false },
 };
 export const niveau = (groupe) =>
-  NIVEAUX[groupe] || { court: 'Autre', couleur: '#6b706c', grand: false };
+  NIVEAUX[groupe]
+    ? { ...NIVEAUX[groupe], court: t(`niveau.${groupe}`) }
+    : { court: t('niveau.autre'), couleur: '#6b706c', grand: false };
 
 // Échelle de difficulté SAC (marquage des chemins)
 export const ORDRE_SAC = [
@@ -20,20 +23,13 @@ export const ORDRE_SAC = [
   'demanding_alpine_hiking',
   'difficult_alpine_hiking',
 ];
-export const NOMS_SAC = [
-  'T1 · Randonnée',
-  'T2 · Randonnée de montagne',
-  'T3 · Randonnée de montagne exigeante',
-  'T4 · Randonnée alpine',
-  'T5 · Randonnée alpine exigeante',
-  'T6 · Randonnée alpine difficile',
-];
+export const nomSac = (rang) => t(`sac.${rang}`);
 
 export const titreDe = (r) => {
   const ref = r.ref || '';
   const nom = r.name || '';
   if (ref && nom && !nom.includes(ref)) return `${ref} · ${nom}`;
-  return nom || ref || 'Itinéraire sans nom';
+  return nom || ref || t('parcours.sans-nom');
 };
 
 // ---------- Conversions et distances ----------

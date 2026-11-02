@@ -1,6 +1,7 @@
 // Calcul du vent, commun à la carte et au volume 3D.
 // Convention : `u` vers l'est, `v` vers le nord (km/h), donc le sens où VA l'air.
 // Les API météo donnent au contraire la direction d'où VIENT le vent.
+import { t } from './i18n.js';
 
 export const HAUTEURS_VENT = [10, 100, 200, 500, 1000, 1500, 2000];
 
@@ -97,7 +98,10 @@ export function lireChamp(champ, lng, lat) {
   return { u: u / poids, v: v / poids };
 }
 
-export function pointCardinal(degres) {
+// Code du point (N, SO…) ; pointCardinal() le donne dans la langue choisie (SO → SW)
+export function codeCardinal(degres) {
   const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
   return directions[Math.round((((degres % 360) + 360) % 360) / 45) % 8];
 }
+
+export const pointCardinal = (degres) => t(`cardinal.${codeCardinal(degres)}`);

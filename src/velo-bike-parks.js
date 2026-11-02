@@ -4,21 +4,21 @@
 import { creerVisiteStation } from './visite-station.js';
 import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPosition, el, km, stat } from './fiche-lieu.js';
 import { creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
+import { surLangue, t, ta, ti, tt } from './i18n.js';
 
 const URL_LISTE = '/data/bike-parks.json';
 const RESULTATS_MAX = 12;
 const ICONE_RECHERCHE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>';
 const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.600"/></svg>';
-const LIBELLE_ZONE = 'Bike parks dans la zone visible';
 
-const pistesDe = (nombre) => `${nombre} piste${nombre > 1 ? 's' : ''}`;
+const pistesDe = (nombre) => t('bp.n-pistes', { n: nombre });
 const surTelephone = () => window.matchMedia('(max-width: 640px)').matches;
 
 export function creerBikeParks(map, { fermerMenu = () => {} }) {
   const visite = creerVisiteStation(map, {
     ete: true,
     dossier: '/data/bike-parks',
-    attribution: 'Pistes VTT et remontées : © contributeurs OpenStreetMap (ODbL), OpenSkiData',
+    attribution: t('bp.attribution'),
   });
   let actif = false;
   let chargement = null;
@@ -31,25 +31,25 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   const favoris = creerFavoris('bikepark-favoris');
 
   const section = el('section', 'pc-section');
-  section.setAttribute('aria-label', 'Bike parks');
+  section.setAttribute('aria-label', t('bp.titre'));
   section.innerHTML = `
-    <h3>Bike parks</h3>
+    <h3>${t('bp.titre')}</h3>
     <label class="ski-champ">
       ${ICONE_RECHERCHE}
-      <input type="text" class="rando-champ parcours-park-recherche" placeholder="Chercher un bike park…"
-        autocomplete="off" spellcheck="false" inputmode="search" aria-label="Chercher un bike park"
+      <input type="text" class="rando-champ parcours-park-recherche" ${ta('placeholder', 'bp.placeholder')}
+        autocomplete="off" spellcheck="false" inputmode="search" ${ta('aria-label', 'bp.chercher-aria')}
         role="combobox" aria-autocomplete="list" aria-controls="bikepark-resultats" aria-expanded="false">
     </label>
-    <div class="rando-liste" id="bikepark-resultats" role="listbox" aria-label="Bike parks trouvés" hidden></div>
-    <section class="ski-favoris parcours-park-favoris" aria-label="Mes bike parks favoris" hidden>
-      <h3 class="ski-favoris-titre">Mes favoris</h3>
-      <div class="rando-liste ski-favoris-liste" role="listbox" aria-label="Mes bike parks favoris"></div>
+    <div class="rando-liste" id="bikepark-resultats" role="listbox" ${ta('aria-label', 'bp.trouves')} hidden></div>
+    <section class="ski-favoris parcours-park-favoris" ${ta('aria-label', 'bp.favoris-aria')} hidden>
+      <h3 class="ski-favoris-titre" ${ti('ski.favoris')}>${t('ski.favoris')}</h3>
+      <div class="rando-liste ski-favoris-liste" role="listbox" ${ta('aria-label', 'bp.favoris-aria')}></div>
     </section>
     <div class="rando-actions-principales">
-      <button type="button" class="rando-action-principale parcours-park-zone">${ICONE_ZONE}<span>${LIBELLE_ZONE}</span></button>
+      <button type="button" class="rando-action-principale parcours-park-zone">${ICONE_ZONE}${tt('bp.dans-zone')}</button>
     </div>
     <p class="note parcours-park-message" role="status" aria-live="polite" hidden></p>
-    <div class="rando-liste parcours-park-liste" role="listbox" aria-label="Bike parks de la zone" hidden></div>
+    <div class="rando-liste parcours-park-liste" role="listbox" ${ta('aria-label', 'bp.de-la-zone')} hidden></div>
   `;
   const champ = section.querySelector('.parcours-park-recherche');
   const boutonZone = section.querySelector('.parcours-park-zone');
@@ -114,7 +114,7 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
     charger: chargerListe,
     chercherLocal,
     creerItem,
-    textes: { attente: 'Recherche des bike parks…', vide: (texte) => `Aucun bike park pour « ${texte} »` },
+    textes: { get attente() { return t('bp.recherche'); }, vide: (texte) => t('bp.aucun-pour', { texte }) },
     peutVisiter: () => true,
     visiter: (lieu) => fiche.visiter(lieu),
     localiser: (lieu) => fiche.localiser(lieu),
@@ -125,12 +125,12 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
     id: 'bikepark-fiche',
     visite,
     textes: {
-      visiter: 'Visiter le bike park',
-      fermer: 'Fermer la fiche du bike park',
-      chercher: 'Chercher un autre bike park…',
-      detail: 'Afficher le détail du bike park',
+      get visiter() { return t('bp.visiter'); },
+      get fermer() { return t('bp.fermer'); },
+      get chercher() { return t('bp.chercher'); },
+      get detail() { return t('bp.detail'); },
     },
-    decrire: ({ properties: park }) => ({ badge: { court: 'Bike park', couleur: '#d9702b' }, situation: park.lieu }),
+    decrire: ({ properties: park }) => ({ badge: { court: t('bp.badge'), couleur: '#d9702b' }, situation: park.lieu }),
     peutVisiter: () => true,
     favoris,
     creerRecherche: recherche,
@@ -140,9 +140,9 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
       const park = feature.properties;
       const contenu = el('div', 'ski-fiche-contenu');
       const stats = el('div', 'rando-stats');
-      stats.append(stat(km(park.km), 'Pistes VTT'), stat(String(park.pistes), 'Pistes nommées'), stat(String(park.remontees), 'Remontées'));
+      stats.append(stat(km(park.km), t('bp.pistes-vtt')), stat(String(park.pistes), t('bp.pistes-nommees')), stat(String(park.remontees), t('ski.remontees')));
       contenu.append(stats, creerNiveaux(park.niveaux), creerPosition(map, feature.geometry.coordinates));
-      contenu.append(el('p', 'ski-conditions-note', 'Secteur repéré dans OpenStreetMap, sans liste officielle : certaines pistes peuvent manquer ou être fermées, et rien n’indique quelles remontées tournent l’été. Vérifiez auprès de la station.'));
+      contenu.append(el('p', 'ski-conditions-note', t('bp.note')));
       carte.append(contenu);
       return contenu;
     },
@@ -150,9 +150,9 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
 
   const reperes = creerReperesZone(map, {
     pin: 'bikepark',
-    titreGroupe: (nombre) => `${nombre} bike parks à proximité`,
-    libelleGroupe: (nombre) => `${nombre} bike parks regroupés.`,
-    resume: ({ properties: park }) => [['Pistes', String(park.pistes)], ['Longueur', km(park.km)], ['Remontées', String(park.remontees)]],
+    titreGroupe: (nombre) => t('bp.proximite', { n: nombre }),
+    libelleGroupe: (nombre) => t('bp.regroupes', { n: nombre }),
+    resume: ({ properties: park }) => [[t('bp.pistes'), String(park.pistes)], [t('bp.longueur'), km(park.km)], [t('ski.remontees'), String(park.remontees)]],
     surChoix: (feature, deplacer) => fiche.ouvrir(feature, deplacer),
   });
 
@@ -173,12 +173,10 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   function rendreZone() {
     const nombre = dansZone.length;
     if (!nombre) {
-      afficherMessage('Aucun bike park dans la zone visible. Dézoomez ou cherchez par nom.');
+      afficherMessage(t('bp.aucun-zone'));
     } else {
-      const total = `${nombre} bike park${nombre > 1 ? 's' : ''} trouvé${nombre > 1 ? 's' : ''}`;
-      afficherMessage(zonePerimee
-        ? `${total} dans la zone précédente. Relancez la recherche après avoir déplacé la carte.`
-        : `${total} dans cette zone.`);
+      const total = t('bp.n-trouves', { n: nombre });
+      afficherMessage(t(zonePerimee ? 'ski.zone-precedente' : 'ski.cette-zone', { total }));
     }
     listeZone.hidden = !nombre;
     listeZone.replaceChildren(...dansZone.map((feature, i) => creerItem(feature, `bikepark-zone-${i}`)));
@@ -189,12 +187,12 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
     recherchePanneau.effacer();
     rendreFavoris();
     boutonZone.disabled = true;
-    afficherMessage('Recherche des bike parks dans la zone…');
+    afficherMessage(t('bp.recherche-zone'));
     try {
       await chargerListe();
     } catch (erreur) {
       console.warn('Liste des bike parks :', erreur);
-      afficherMessage('Liste indisponible. Vérifiez votre connexion et réessayez.');
+      afficherMessage(t('bp.liste-erreur'));
       return;
     } finally {
       boutonZone.disabled = false;
@@ -228,6 +226,11 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
     if (!actif) return;
     if (fiche.choisi && document.querySelector('.bf:not([hidden])')) fiche.fermer();
     actualiserReperes();
+  });
+
+  surLangue(() => {
+    if (!message.hidden && !boutonZone.disabled) rendreZone();
+    rendreFavoris();
   });
 
   return {

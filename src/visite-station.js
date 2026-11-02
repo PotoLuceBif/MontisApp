@@ -4,6 +4,8 @@ import { bloquerFiches } from './fiche.js';
 import { SOURCE_SATELLITE, SOURCE_TOPO, retablirFond } from './fond-de-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
+import { expressionAltitude, formatDenivele, formatLongueur, imperial } from './unites.js';
+import { poser, t } from './i18n.js';
 
 const SOURCE_PISTES = 'visite-pistes';
 const SOURCE_MASQUE = 'visite-masque';
@@ -39,15 +41,15 @@ const brouillard = (couleur) => ({
   'fog-ground-blend': 0.45,
   'atmosphere-blend': 0,
 });
-const SATELLITE = { id: 'satellite', libelle: 'Satellite', source: SOURCE_SATELLITE };
+const SATELLITE = { id: 'satellite', cle: 'visite.satellite', source: SOURCE_SATELLITE };
 // Le premier de chaque liste est le fond par défaut
-const FONDS_SKI = [{ id: 'defaut', libelle: 'Blanc' }, SATELLITE];
-const FONDS_BIKEPARK = [SATELLITE, { id: 'relief', libelle: 'Relief', source: SOURCE_TOPO }, { id: 'defaut', libelle: 'Clair' }];
+const FONDS_SKI = [{ id: 'defaut', cle: 'visite.blanc' }, SATELLITE];
+const FONDS_BIKEPARK = [SATELLITE, { id: 'relief', cle: 'visite.relief', source: SOURCE_TOPO }, { id: 'defaut', cle: 'visite.clair' }];
 const CLASSES_PENTES = [
   ['30-35°', '#f7e600'],
   ['35-40°', '#f5801f'],
   ['40-45°', '#e8005f'],
-  ['45° et +', '#c98abf'],
+  ['visite.45-plus', '#c98abf'],
 ];
 const ICONE_COURBES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18c3-1 4-5 9-5s6 4 9 5"/><path d="M6 13c2-.8 3-4 6-4s4 3.2 6 4"/><path d="M9.5 8c.9-.6 1.4-2 2.5-2s1.600 1.400 2.500 2"/></svg>';
 const ICONE_PENTES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18L6.500 6 3 20Z"/><path d="M11.500 20a7 7 0 0 0-1.400-4.200"/></svg>';
@@ -90,25 +92,25 @@ const COULEURS_NIVEAUX = [
   '#6f7884',
 ];
 const LIBELLES_NIVEAUX = {
-  verte: 'Piste verte',
-  bleue: 'Piste bleue',
-  rouge: 'Piste rouge',
-  noire: 'Piste noire',
-  freeride: 'Itinéraire freeride',
+  verte: 'visite.piste-verte',
+  bleue: 'visite.piste-bleue',
+  rouge: 'visite.piste-rouge',
+  noire: 'visite.piste-noire',
+  freeride: 'visite.freeride',
 };
 const LIBELLES_REMONTEES = {
-  chair_lift: 'Télésiège',
-  gondola: 'Télécabine',
-  mixed_lift: 'Remontée mixte',
-  cable_car: 'Téléphérique',
-  funicular: 'Funiculaire',
-  railway: 'Train',
-  't-bar': 'Téléski',
-  'j-bar': 'Téléski',
-  platter: 'Téléski',
-  drag_lift: 'Téléski',
-  rope_tow: 'Fil neige',
-  magic_carpet: 'Tapis roulant',
+  chair_lift: 'visite.telesiege',
+  gondola: 'visite.telecabine',
+  mixed_lift: 'visite.mixte',
+  cable_car: 'visite.telepherique',
+  funicular: 'visite.funiculaire',
+  railway: 'visite.train',
+  't-bar': 'visite.teleski',
+  'j-bar': 'visite.teleski',
+  platter: 'visite.teleski',
+  drag_lift: 'visite.teleski',
+  rope_tow: 'visite.fil-neige',
+  magic_carpet: 'visite.tapis',
 };
 
 const estLigne = ['==', ['geometry-type'], 'LineString'];
@@ -120,22 +122,22 @@ const largeur = (bas, haut) => ['interpolate', ['linear'], ['zoom'], 10, bas, 16
 
 // Petit triangle sombre posé sur chaque sommet
 function creerIconeSommet() {
-  const t = 18;
+  const taille = 18;
   const canvas = document.createElement('canvas');
-  canvas.width = t;
-  canvas.height = t;
+  canvas.width = taille;
+  canvas.height = taille;
   const g = canvas.getContext('2d');
   g.beginPath();
-  g.moveTo(t / 2, 2);
-  g.lineTo(t - 2, t - 3);
-  g.lineTo(2, t - 3);
+  g.moveTo(taille / 2, 2);
+  g.lineTo(taille - 2, taille - 3);
+  g.lineTo(2, taille - 3);
   g.closePath();
   g.fillStyle = '#3d4f66';
   g.fill();
   g.lineWidth = 2;
   g.strokeStyle = '#ffffff';
   g.stroke();
-  return g.getImageData(0, 0, t, t);
+  return g.getImageData(0, 0, taille, taille);
 }
 
 const filtreCommunes = (communes) => ['in', ['get', 'name'], ['literal', communes]];
@@ -268,7 +270,8 @@ function calquesPistes(communes, courbesVisibles) {
         visibility: courbesVisibles ? 'visible' : 'none',
         'symbol-placement': 'line',
         'symbol-spacing': 320,
-        'text-field': ['concat', ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }], ' m'],
+        // Les courbes sont déjà calculées dans l'unité affichée (voir main.js)
+        'text-field': ['concat', ['number-format', ['get', 'ele'], { 'max-fraction-digits': 0 }], imperial() ? ' ft' : ' m'],
         'text-font': POLICE,
         'text-size': 10,
       },
@@ -303,7 +306,7 @@ function calquesPistes(communes, courbesVisibles) {
         'text-field': [
           'case',
           ['has', 'ele'],
-          ['concat', ['coalesce', ['get', 'name:fr'], ['get', 'name']], '\n', ['get', 'ele'], ' m'],
+          ['concat', ['coalesce', ['get', 'name:fr'], ['get', 'name']], '\n', expressionAltitude(['get', 'ele'])],
           ['coalesce', ['get', 'name:fr'], ['get', 'name']],
         ],
         'text-font': POLICE,
@@ -372,10 +375,10 @@ function contenuInfos(p) {
   contenu.className = 'rando-resume-repere';
   const type =
     p.genre === 'remontee'
-      ? LIBELLES_REMONTEES[p.type] || 'Remontée'
+      ? t(LIBELLES_REMONTEES[p.type] || 'visite.remontee')
       : p.usage === 'fond'
-        ? 'Piste de ski de fond'
-        : LIBELLES_NIVEAUX[p.niveau] || 'Piste';
+        ? t('visite.piste-fond')
+        : t(LIBELLES_NIVEAUX[p.niveau] || 'visite.piste');
   const titre = document.createElement('strong');
   titre.className = 'rando-resume-titre';
   titre.textContent = p.nom || type;
@@ -392,9 +395,9 @@ function contenuInfos(p) {
     ligne.append(texte, fort);
     stats.append(ligne);
   };
-  if (p.nom) ajouter('Type', type);
-  if (p.longueur) ajouter('Longueur', `${Math.round(p.longueur).toLocaleString('fr-FR')} m`);
-  if (p.denivele) ajouter('Dénivelé', `${Math.round(p.denivele).toLocaleString('fr-FR')} m`);
+  if (p.nom) ajouter(t('visite.type'), type);
+  if (p.longueur) ajouter(t('visite.longueur'), formatLongueur(p.longueur));
+  if (p.denivele) ajouter(t('visite.denivele'), formatDenivele(p.denivele));
   if (stats.children.length) contenu.append(stats);
   return contenu;
 }
@@ -510,7 +513,7 @@ export function creerVisiteStation(map, {
   pastilleRetour.type = 'button';
   pastilleRetour.className = 'visite-retour';
   pastilleRetour.hidden = true;
-  pastilleRetour.textContent = ete ? 'Revenir au bike park' : 'Revenir à la station';
+  poser(pastilleRetour, ete ? 'visite.retour-bikepark' : 'visite.retour-station');
   pastilleRetour.addEventListener('click', () => recentrer());
   document.body.append(pastilleRetour);
 
@@ -591,7 +594,7 @@ export function creerVisiteStation(map, {
       tileSize: 256,
       maxzoom: 17,
       bounds: cadre,
-      attribution: 'Pentes : © IGN',
+      attribution: t('visite.pentes-attribution'),
     });
     map.addSource(SOURCE_PISTES, {
       type: 'geojson',
@@ -805,12 +808,12 @@ export function creerVisiteStation(map, {
     const choix = document.createElement('div');
     choix.className = 'parcours-pratiques visite-fonds';
     choix.setAttribute('role', 'group');
-    choix.setAttribute('aria-label', 'Fond de carte de la visite');
-    fonds.forEach(({ id, libelle }) => {
+    choix.setAttribute('aria-label', t('visite.fond-aria'));
+    fonds.forEach(({ id, cle }) => {
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.dataset.fond = id;
-      bouton.textContent = libelle;
+      bouton.textContent = t(cle);
       bouton.setAttribute('aria-pressed', String(id === idFond));
       bouton.addEventListener('click', () => {
         definirFond(id);
@@ -819,7 +822,7 @@ export function creerVisiteStation(map, {
       choix.append(bouton);
     });
 
-    const courbes = creerBoutonCalque(ICONE_COURBES, 'Courbes', 'Courbes de niveau et altitudes', courbesVisibles, (coche) => {
+    const courbes = creerBoutonCalque(ICONE_COURBES, t('visite.courbes'), t('visite.courbes-aide'), courbesVisibles, (coche) => {
       afficherCourbes(coche);
     });
     courbes.classList.add('visite-option-courbes');
@@ -833,10 +836,10 @@ export function creerVisiteStation(map, {
       entree.className = 'ski-niveaux-entree';
       const pastille = document.createElement('i');
       pastille.style.background = couleur;
-      entree.append(pastille, libelle);
+      entree.append(pastille, libelle.startsWith('visite.') ? t(libelle) : libelle);
       legende.append(entree);
     });
-    const pentes = creerBoutonCalque(ICONE_PENTES, 'Pentes 30°+', 'Pentes de plus de 30 degrés', pentesVisibles, (coche) => {
+    const pentes = creerBoutonCalque(ICONE_PENTES, t('visite.pentes'), t('visite.pentes-aide'), pentesVisibles, (coche) => {
       afficherPentes(coche);
       legende.hidden = !coche;
       surChangement();
@@ -846,8 +849,8 @@ export function creerVisiteStation(map, {
     recentrage.type = 'button';
     recentrage.className = 'ski-visite-calque visite-recentrer';
     recentrage.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>';
-    recentrage.title = 'Recentrer';
-    recentrage.setAttribute('aria-label', 'Recentrer');
+    recentrage.title = t('visite.recentrer');
+    recentrage.setAttribute('aria-label', t('visite.recentrer'));
     recentrage.addEventListener('click', () => recentrer());
 
     bloc.append(courbes, pentes, recentrage, legende, choix);

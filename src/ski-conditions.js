@@ -1,15 +1,10 @@
 // Enneigement (prévisions Open-Meteo) et risque d'avalanche (bulletins EAWS) d'une station
+import { formatAltitude, formatNeige, formatTemp, formatVent, nombre as formatNombre, uniteNeige, versNeige } from './unites.js';
+import { formatDate, t } from './i18n.js';
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const URL_RISQUES = 'https://static.avalanche.report/eaws_bulletins';
 const DUREE_CACHE_NEIGE_MS = 30 * 60 * 1000;
 
-const NIVEAUX_RISQUE = {
-  1: 'Faible',
-  2: 'Limité',
-  3: 'Marqué',
-  4: 'Fort',
-  5: 'Très fort',
-};
 
 const cacheNeige = new Map();
 const cacheRisques = new Map();
@@ -56,10 +51,14 @@ function lireJours(reponse) {
   const aujourdhui = new Date(Date.now() + reponse.utc_offset_seconds * 1000).toISOString().slice(0, 10);
   return reponse.daily.time.map((date, i) => {
     const ecart = Math.round((Date.parse(date) - Date.parse(aujourdhui)) / 86_400_000);
-    const libelles = { '-1': 'Hier', 0: 'Auj.', 1: 'Dem.' };
-    const libelle = libelles[ecart]
-      || new Date(`${date}T12:00:00Z`).toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' });
-    return { libelle, cm: Number(reponse.daily.snowfall_sum?.[i]) || 0 };
+    // Le libellé se calcule à l'affichage : il doit suivre la langue, même pour des données en cache
+    return {
+      get libelle() {
+        const proches = { '-1': 'jour.hier-court', 0: 'jour.auj-court', 1: 'jour.dem-court' };
+        return proches[ecart] ? t(proches[ecart]) : formatDate(`${date}T12:00:00Z`, { weekday: 'short', timeZone: 'UTC' });
+      },
+      cm: Number(reponse.daily.snowfall_sum?.[i]) || 0,
+    };
   });
 }
 
@@ -103,13 +102,13 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   const cartes = el('div', 'ski-neige-points');
   points.forEach((point, i) => {
     const carte = el('div', 'ski-neige-point');
-    const titre = points.length > 1 ? (i === 0 ? 'Haut du domaine' : 'Bas du domaine') : 'Station';
-    carte.append(el('span', 'ski-neige-lieu', point.altitude != null ? `${titre} · ${point.altitude.toLocaleString('fr-FR')} m` : titre));
-    const neige = el('strong', 'ski-neige-valeur', point.neigeCm != null ? `${point.neigeCm} cm` : '—');
-    carte.append(neige, el('span', 'ski-neige-legende', 'de neige au sol (estimation)'));
+    const titre = t(points.length > 1 ? (i === 0 ? 'neige.haut' : 'neige.bas') : 'neige.station');
+    carte.append(el('span', 'ski-neige-lieu', point.altitude != null ? `${titre} · ${formatAltitude(point.altitude)}` : titre));
+    const neige = el('strong', 'ski-neige-valeur', point.neigeCm != null ? formatNeige(point.neigeCm) : '—');
+    carte.append(neige, el('span', 'ski-neige-legende', t('neige.au-sol')));
     const details = [
-      point.temperature != null ? `${point.temperature} °C` : '',
-      point.rafales != null ? `rafales ${point.rafales} km/h` : '',
+      point.temperature != null ? formatTemp(point.temperature) : '',
+      point.rafales != null ? t('neige.rafales', { vent: formatVent(point.rafales) }) : '',
     ].filter(Boolean).join(' · ');
     if (details) carte.append(el('span', 'ski-neige-details', details));
     cartes.append(carte);
@@ -117,18 +116,18 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   bloc.append(cartes);
 
   const maximum = Math.max(1, ...jours.map((jour) => jour.cm));
-  const titreChutes = duHaut ? 'Chutes de neige, en haut du domaine' : 'Chutes de neige';
+  const titreChutes = t(duHaut ? 'neige.chutes-haut' : 'neige.chutes');
   bloc.append(el('div', 'ski-neige-titre', titreChutes));
   const graphique = el('div', 'ski-neige-jours');
   for (const jour of jours) {
     const colonne = el('div', 'ski-neige-jour');
-    colonne.setAttribute('aria-label', `${jour.libelle} : ${jour.cm.toFixed(1)} cm`);
+    colonne.setAttribute('aria-label', `${jour.libelle} : ${formatNeige(jour.cm)}`);
     colonne.setAttribute('role', 'img');
     const piste = el('div', 'ski-neige-piste');
     const barre = el('i');
     barre.style.height = `${(jour.cm / maximum) * 100}%`;
     piste.append(barre);
-    colonne.append(el('strong', null, `${jour.cm < 10 ? jour.cm.toFixed(1).replace('.', ',') : Math.round(jour.cm)}`), piste, el('span', null, jour.libelle));
+    colonne.append(el('strong', null, formatNombre(versNeige(jour.cm), versNeige(jour.cm) < 10 ? 1 : 0)), piste, el('span', null, jour.libelle));
     graphique.append(colonne);
   }
   bloc.append(graphique);
@@ -136,8 +135,8 @@ export function creerBlocNeige({ points, jours, duHaut }) {
   const isotherme = points[0]?.isotherme;
   const pied = el('p', 'ski-conditions-note');
   pied.append(
-    isotherme != null ? `Isotherme 0 °C vers ${isotherme.toLocaleString('fr-FR')} m. ` : '',
-    'Prévisions de modèle en cm, pas des relevés de la station. Source : ',
+    isotherme != null ? t('neige.isotherme', { temp: formatTemp(0), altitude: formatAltitude(isotherme) }) : '',
+    t('neige.source', { unite: uniteNeige() }),
     lienExterne('Open-Meteo', 'https://open-meteo.com/'),
     ' (CC BY 4.0).'
   );
@@ -177,8 +176,8 @@ export async function chargerRisque(massif) {
 
 function lienBulletin(pays) {
   return pays === 'FR'
-    ? lienExterne('Lire le bulletin Météo-France', 'https://meteofrance.com/meteo-montagne')
-    : lienExterne('Lire le bulletin officiel', 'https://www.avalanches.org/');
+    ? lienExterne(t('risque.bulletin-fr'), 'https://meteofrance.com/meteo-montagne')
+    : lienExterne(t('risque.bulletin'), 'https://www.avalanches.org/');
 }
 
 export function creerBlocRisque(risque, station) {
@@ -188,32 +187,30 @@ export function creerBlocRisque(risque, station) {
     const niveau = el('span', `ski-risque-niveau ski-risque-${risque.max}`, String(risque.max));
     niveau.setAttribute('aria-hidden', 'true');
     const textes = el('div', 'ski-risque-textes');
-    textes.append(el('strong', null, `Risque ${NIVEAUX_RISQUE[risque.max].toLowerCase()} (${risque.max}/5)`));
-    textes.append(el('span', null, `Massif : ${station.massifNom || station.massif}`));
+    textes.append(el('strong', null, t('risque.titre', { nom: t(`risque.${risque.max}`).toLowerCase(), n: risque.max }).replace(/^./, (c) => c.toUpperCase())));
+    textes.append(el('span', null, t('risque.massif', { nom: station.massifNom || station.massif })));
     const nuances = [];
     if (risque.matin && risque.apresMidi && risque.matin !== risque.apresMidi) {
-      nuances.push(`matin ${risque.matin}/5, après-midi ${risque.apresMidi}/5`);
+      nuances.push(t('risque.matin-aprem', { matin: risque.matin, aprem: risque.apresMidi }));
     }
     if (risque.haut && risque.bas && risque.haut !== risque.bas) {
-      nuances.push(`en altitude ${risque.haut}/5, plus bas ${risque.bas}/5`);
+      nuances.push(t('risque.haut-bas', { haut: risque.haut, bas: risque.bas }));
     }
     if (nuances.length) textes.append(el('span', null, nuances.join(' · ')));
     ligne.append(niveau, textes);
   } else {
     const textes = el('div', 'ski-risque-textes');
-    textes.append(el('strong', null, 'Aucun niveau de risque publié aujourd’hui'));
-    textes.append(el('span', null, station.massifNom ? `Massif : ${station.massifNom}` : 'Massif non identifié pour cette station'));
+    textes.append(el('strong', null, t('risque.aucun')));
+    textes.append(el('span', null, station.massifNom ? t('risque.massif', { nom: station.massifNom }) : t('risque.massif-inconnu')));
     ligne.append(textes);
   }
   bloc.append(ligne);
 
   const pied = el('p', 'ski-conditions-note');
   pied.append(
-    risque?.max
-      ? 'Niveau maximal du massif, pas de votre pente. '
-      : 'L’absence de bulletin ne veut pas dire absence de risque. ',
+    t(risque?.max ? 'risque.max-massif' : 'risque.absence'),
     lienBulletin(station.pays),
-    ' avant toute sortie hors-piste. Source : ',
+    t('risque.avant-sortie'),
     lienExterne('EAWS', 'https://www.avalanches.org/'),
     '.'
   );

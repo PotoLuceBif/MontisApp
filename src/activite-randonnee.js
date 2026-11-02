@@ -1,7 +1,8 @@
 // Activité randonnée : la configuration du menu commun, plus les refuges et l'aperçu des sentiers.
 import { lire, ecrire } from './reglages.js';
 import { afficherRefuges } from './lieux.js';
-import { NOMS_SAC } from './rando-api.js';
+import { nomSac } from './rando-api.js';
+import { t, tt } from './i18n.js';
 import { dureeEstimee } from './rando-profil.js';
 import { creerActiviteParcours } from './activite-parcours.js';
 import { ECHELLE_SAC } from './parcours-analyse.js';
@@ -21,11 +22,11 @@ function lienWikipedia(tag) {
 function infosRoute(details, trace) {
   const tags = details.tags ?? {};
   const infos = [];
-  if (trace.sac != null) infos.push({ texte: `Difficulté maximale (échelle SAC) : ${NOMS_SAC[trace.sac]}` });
+  if (trace.sac != null) infos.push({ texte: t('rando.difficulte-max', { nom: nomSac(trace.sac) }) });
   const wikipedia = lienWikipedia(tags.wikipedia);
-  if (wikipedia) infos.push({ texte: 'Wikipédia ↗', lien: wikipedia });
+  if (wikipedia) infos.push({ texte: t('lien.wikipedia'), lien: wikipedia });
   const site = tags.website || tags.url;
-  if (site && /^https?:\/\//i.test(site)) infos.push({ texte: 'Site web ↗', lien: site });
+  if (site && /^https?:\/\//i.test(site)) infos.push({ texte: t('lien.site'), lien: site });
   infos.push({ texte: 'OpenStreetMap ↗', lien: `https://www.openstreetmap.org/relation/${details.id}` });
   return infos;
 }
@@ -33,7 +34,7 @@ function infosRoute(details, trace) {
 function caseOption(classe, titre, detail, coche, surChange) {
   const option = document.createElement('label');
   option.className = 'option-case';
-  option.innerHTML = `<input type="checkbox" class="${classe}"> ${titre}<small>${detail}</small>`;
+  option.innerHTML = `<input type="checkbox" class="${classe}"> ${tt(titre)}<small>${tt(detail)}</small>`;
   const champ = option.querySelector('input');
   champ.checked = coche;
   champ.addEventListener('change', () => surChange(champ.checked));
@@ -43,31 +44,31 @@ function caseOption(classe, titre, detail, coche, surChange) {
 export function creerActiviteRandonnee(map, outils) {
   return creerActiviteParcours(map, {
     id: 'rando',
-    label: 'Randonnée',
+    labelCle: 'rando.titre',
     iconeMenu: 'rando',
     icone: '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4" r="1.700"/><path d="m9 21 3-7-2-3 1-4 3 3h3M7 12l2-4 2-1M14 14l2 7"/></svg>',
     couleurGroupe: '#7a86ff',
-    libelle: 'parcours de randonnée',
-    nomPluriel: 'randonnées',
-    placeholder: 'Rechercher un itinéraire (GR 20, Tour du Mont-Blanc…)',
+    libelle: 'rando.libelle',
+    nomPluriel: 'rando.pluriel',
+    placeholder: 'rando.placeholder',
     pratiques: {
-      rando: { id: 'rando', libelle: 'Randonnée', brouter: 'hiking-mountain', valhalla: { costing: 'pedestrian' }, echelle: 'sac', couleur: '#4debd4', duree: dureeEstimee, seuilRaide: 35 },
+      rando: { id: 'rando', cle: 'rando.pratique', brouter: 'hiking-mountain', valhalla: { costing: 'pedestrian' }, echelle: 'sac', couleur: '#4debd4', duree: dureeEstimee, seuilRaide: 35 },
     },
     pratiqueDefaut: 'rando',
-    difficulte: { titre: 'Difficulté', note: '(échelle SAC)', ...ECHELLE_SAC, texteTechnique: 'Passage alpin très exigeant (T5 ou plus)' },
+    difficulte: { titre: 'rando.difficulte', note: 'rando.echelle', ...ECHELLE_SAC, texteTechnique: 'rando.technique' },
     portage: false,
     allure: true,
-    libelleVoies: { single: 'Sentier', chemin: 'Piste' },
-    filtres: [{ id: 'tous', libelle: 'Tous', cartes: ['hiking'] }],
+    libelleVoies: { single: 'voie.sentier', chemin: 'voie.piste' },
+    filtres: [{ id: 'tous', cle: 'rando.filtre-tous', cartes: ['hiking'] }],
     calques: () => ['hiking'],
-    typeDe: (route) => (estGR(route) ? 'GR' : estPR(route) ? 'PR' : 'Randonnée'),
+    typeDe: (route) => (estGR(route) ? 'GR' : estPR(route) ? 'PR' : t('rando.type')),
     infosRoute,
-    aPropos: '<p class="note">Tracés calculés par BRouter ou Valhalla (profil piéton), à partir des chemins OpenStreetMap. Vérifiez le terrain avant de partir.<br>Itinéraires : © contributeurs OpenStreetMap, Waymarked Trails (CC BY-SA).</p>',
+    aPropos: 'rando.a-propos',
     options(_, { appliquerCalque }) {
       const bloc = document.createElement('div');
       bloc.className = 'rando-options';
       // Même réglage que dans Éléments de la carte
-      const refuges = caseOption('parcours-refuges', 'Refuges', 'Même réglage que dans Éléments de la carte', !!lire('refuges', false), (actif) => {
+      const refuges = caseOption('parcours-refuges', 'rando.refuges', 'rando.refuges-detail', !!lire('refuges', false), (actif) => {
         afficherRefuges(map, actif);
         ecrire('refuges', actif);
         window.dispatchEvent(new CustomEvent('calque', { detail: { cle: 'refuges', actif } }));
@@ -75,7 +76,7 @@ export function creerActiviteRandonnee(map, outils) {
       window.addEventListener('calque', (event) => {
         if (event.detail.cle === 'refuges') refuges.querySelector('input').checked = event.detail.actif;
       });
-      const apercu = caseOption('parcours-calque', 'Aperçu des sentiers', 'Superpose tous les sentiers balisés (Waymarked Trails)', !!lire('rando-apercu', false), (actif) => {
+      const apercu = caseOption('parcours-calque', 'rando.apercu', 'rando.apercu-detail', !!lire('rando-apercu', false), (actif) => {
         ecrire('rando-apercu', actif);
         appliquerCalque();
       });

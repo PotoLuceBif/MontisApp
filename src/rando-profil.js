@@ -1,4 +1,5 @@
 // Profil d'altitude (lu dans les tuiles de relief), dénivelé, durée, export GPX
+import { t } from './i18n.js';
 
 // ---------- Lecture des altitudes dans les tuiles de relief ----------
 const tuiles = new Map();
@@ -130,7 +131,7 @@ export function formaterDuree(heures) {
   const minutes = Math.max(5, Math.round((heures * 60) / 5) * 5);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  return h ? `${h} h ${String(m).padStart(2, '0')}` : `${m} min`;
+  return h ? t('duree.heures', { h, m: String(m).padStart(2, '0') }) : t('duree.minutes', { m });
 }
 
 // ---------- Export GPX ----------

@@ -1,6 +1,6 @@
 // État du réseau : service worker, indicateur « hors ligne » et date des données enregistrées.
 import { basculerFondHorsLigne } from './fond-de-carte.js';
-import { heureCourte } from './vent-cadran.js';
+import { dateEtHeure, poser, t } from './i18n.js';
 
 const EN_TETE_DATE = 'x-montis-date';
 
@@ -12,8 +12,7 @@ const ecouteursInstallation = new Set();
 
 export const estHorsLigne = () => reseauCoupe || reseauDefaillant;
 
-export const dateLisible = (date) =>
-  `${new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à ${heureCourte(date)}`;
+export const dateLisible = dateEtHeure;
 
 // La date d'une réponse servie depuis les données enregistrées, sinon null
 export function dateHorsLigne(reponse) {
@@ -21,7 +20,7 @@ export function dateHorsLigne(reponse) {
   return Number.isFinite(date) && date > 0 ? date : null;
 }
 
-export const texteDonneesDu = (date) => `Données du ${dateLisible(date)}`;
+export const texteDonneesDu = (date) => t('hl.donnees-du', { date: dateLisible(date) });
 
 export const installationPossible = () => Boolean(demandeInstallation);
 
@@ -53,7 +52,8 @@ export function initHorsLigne(map) {
     const horsLigne = estHorsLigne();
     document.documentElement.dataset.reseau = horsLigne ? 'hors-ligne' : 'en-ligne';
     pastille.hidden = !horsLigne;
-    pastille.textContent = dateDonnees ? `Hors ligne · ${texteDonneesDu(dateDonnees).toLowerCase()}` : 'Hors ligne';
+    if (dateDonnees) poser(pastille, 'hl.hors-ligne-date', { date: dateLisible(dateDonnees) });
+    else poser(pastille, 'hl.hors-ligne');
     if (horsLigne === etaitHorsLigne) return;
     etaitHorsLigne = horsLigne;
     if (!horsLigne) dateDonnees = null;

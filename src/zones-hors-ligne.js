@@ -3,6 +3,9 @@
 // disent rien. OpenFreeMap fixe ses limites : 3 000 tuiles ou 50 Mo, 4 requêtes en parallèle.
 import { creerPanneauCarte } from './panneau-carte.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
+import { formatDate, surLangue, t, ta, ti, tt } from './i18n.js';
+import { formatTaille, nombre } from './unites.js';
+import { telechargementBloque } from './donnees-hors-ligne.js';
 
 const CACHE_ZONES = 'montis-zones';
 const CLE_ZONES = 'montis.zones';
@@ -25,11 +28,7 @@ const KO_RELIEF = { 6: 60, 7: 75, 8: 95, 9: 150, 10: 140, 11: 135, 12: 125, 13: 
 const MARGE_CADRE = 14;
 
 const Ko = 1024;
-const tailleLisible = (octets) => {
-  if (octets < Ko * Ko) return `${Math.max(1, Math.round(octets / Ko))} Ko`;
-  if (octets < Ko * Ko * Ko) return `${Math.round(octets / (Ko * Ko)).toLocaleString('fr-FR')} Mo`;
-  return `${(octets / (Ko * Ko * Ko)).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Go`;
-};
+const tailleLisible = formatTaille;
 
 // À garder identique à cleTuile() dans sw-modele.js
 function cleTuile(adresse) {
@@ -40,6 +39,9 @@ function cleTuile(adresse) {
   if (url.hostname === 'demotiles.maplibre.org') return decodeURIComponent(url.href);
   return url.href;
 }
+
+export const EVENEMENT_ZONES = 'zones-change';
+const annoncerZones = () => window.dispatchEvent(new Event(EVENEMENT_ZONES));
 
 function lireZones() {
   try {
@@ -183,6 +185,22 @@ async function supprimerTuiles(zone, autres) {
   await Promise.all(clesDeZone(zone).filter((cle) => !gardees.has(cle)).map((cle) => cache.delete(cle)));
 }
 
+// Pour les Paramètres : la même liste et la même suppression que dans le menu Carte
+export const listerZones = () => lireZones();
+
+export async function supprimerZone(id) {
+  const zones = lireZones();
+  const zone = zones.find((autre) => autre.id === id);
+  if (!zone) return;
+  const restantes = zones.filter((autre) => autre.id !== id);
+  await supprimerTuiles(zone, restantes);
+  ecrireZones(restantes);
+  annoncerZones();
+}
+
+// Le bouton des Paramètres ouvre le même panneau de téléchargement
+export const demanderTelechargementZone = () => window.dispatchEvent(new Event('telecharger-zone'));
+
 export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   let zones = lireZones();
   let controleur = null;
@@ -192,8 +210,8 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   const blocMenu = document.createElement('div');
   blocMenu.className = 'zh';
   blocMenu.innerHTML = `
-    <p class="note zh-intro">Enregistrez le fond Montis et le relief d’une zone pour les consulter sans réseau.</p>
-    <button type="button" class="para-bouton para-bouton-principal zh-nouvelle">Télécharger une zone</button>
+    <p class="note zh-intro" ${ti('zh.intro')}>${t('zh.intro')}</p>
+    <button type="button" class="para-bouton para-bouton-principal zh-nouvelle" ${ti('zh.telecharger-zone')}>${t('zh.telecharger-zone')}</button>
     <div class="zh-liste"></div>
     <p class="note zh-stockage"></p>
   `;
@@ -206,7 +224,9 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       return;
     }
     const { usage = 0, quota = 0 } = await navigator.storage.estimate();
-    stockage.textContent = `Espace utilisé par Montis : ${tailleLisible(usage)}${quota ? `, sur ${tailleLisible(quota)} disponibles` : ''}.`;
+    stockage.textContent = quota
+      ? t('zh.espace-quota', { usage: tailleLisible(usage), quota: tailleLisible(quota) })
+      : `${t('zh.espace', { usage: tailleLisible(usage) })}.`;
   }
 
   function rendreListe() {
@@ -218,18 +238,18 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       const nom = document.createElement('strong');
       nom.textContent = zone.nom;
       const detail = document.createElement('small');
-      detail.textContent = `${tailleLisible(zone.octets)} · zooms ${zone.zMin} à ${zone.zMax} · du ${dateLisible(zone.date)}`;
+      detail.textContent = t('zh.detail', { taille: tailleLisible(zone.octets), min: zone.zMin, max: zone.zMax, date: dateLisible(zone.date) });
       texte.append(nom, detail);
       if (zone.manquantes) {
         const alerte = document.createElement('small');
         alerte.className = 'zh-zone-alerte';
-        alerte.textContent = `Incomplète : ${zone.manquantes} tuiles manquantes`;
+        alerte.textContent = t('zh.incomplete', { n: zone.manquantes });
         texte.append(alerte);
       }
       const voir = document.createElement('button');
       voir.type = 'button';
       voir.className = 'zh-zone-bouton';
-      voir.textContent = 'Voir';
+      voir.textContent = t('zh.voir');
       voir.addEventListener('click', () => {
         fermerMenu();
         const { ouest, sud, est, nord } = zone.bornes;
@@ -238,16 +258,12 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       const supprimer = document.createElement('button');
       supprimer.type = 'button';
       supprimer.className = 'zh-zone-bouton zh-zone-supprimer';
-      supprimer.setAttribute('aria-label', `Supprimer ${zone.nom}`);
+      supprimer.setAttribute('aria-label', t('zh.supprimer', { nom: zone.nom }));
       supprimer.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg>';
       supprimer.addEventListener('click', async () => {
-        if (!confirm(`Supprimer « ${zone.nom} » ? Elle ne sera plus disponible sans réseau.`)) return;
+        if (!confirm(t('zh.supprimer-confirmer', { nom: zone.nom }))) return;
         supprimer.disabled = true;
-        const restantes = zones.filter((autre) => autre.id !== zone.id);
-        await supprimerTuiles(zone, restantes);
-        zones = restantes;
-        ecrireZones(zones);
-        rendreListe();
+        await supprimerZone(zone.id);
       });
       ligne.append(texte, voir, supprimer);
       return ligne;
@@ -258,37 +274,37 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   // ---------- Sur la carte ----------
   const panneau = creerPanneauCarte({
     cle: 'zones-panneau-reduit',
-    libelle: 'téléchargement de zone',
+    libelle: 'panneau.zone',
     classe: 'bf-outil',
     onFermer: () => quitter(),
     onAgrandi: () => majCadre(),
     onRetour: () => ouvrirMenu(),
   });
-  panneau.titre.textContent = 'Télécharger une zone';
+  panneau.titre.textContent = t('zh.telecharger-zone');
   panneau.corps.innerHTML = `
     <div class="zh-reglages">
-      <p class="note">Cadrez la carte : le rectangle pointillé sera téléchargé.</p>
-      <label class="zh-champ"><span>Nom</span><input class="zh-nom" type="text" maxlength="40" placeholder="Ma zone"></label>
+      <p class="note" ${ti('zh.cadrez')}>${t('zh.cadrez')}</p>
+      <label class="zh-champ">${tt('zh.nom')}<input class="zh-nom" type="text" maxlength="40" ${ta('placeholder', 'zh.nom-placeholder')}></label>
       <div class="zh-zooms">
-        <label class="zh-champ"><span>Vue d’ensemble</span><select class="zh-zmin">
-          ${ZOOMS_MIN.map((z) => `<option value="${z}">Zoom ${z}</option>`).join('')}
+        <label class="zh-champ">${tt('zh.vue-ensemble')}<select class="zh-zmin">
+          ${ZOOMS_MIN.map((z) => `<option value="${z}" ${ti('zh.zoom', { n: z })}>${t('zh.zoom', { n: z })}</option>`).join('')}
         </select></label>
-        <label class="zh-champ"><span>Détail maximal</span><select class="zh-zmax">
-          ${ZOOMS_MAX.map((z) => `<option value="${z}">Zoom ${z}</option>`).join('')}
+        <label class="zh-champ">${tt('zh.detail-max')}<select class="zh-zmax">
+          ${ZOOMS_MAX.map((z) => `<option value="${z}" ${ti('zh.zoom', { n: z })}>${t('zh.zoom', { n: z })}</option>`).join('')}
         </select></label>
       </div>
       <p class="zh-estimation" role="status" aria-live="polite"></p>
-      <button type="button" class="para-bouton para-bouton-principal zh-lancer">Télécharger</button>
+      <button type="button" class="para-bouton para-bouton-principal zh-lancer" ${ti('zh.telecharger')}>${t('zh.telecharger')}</button>
     </div>
     <div class="zh-progression" hidden>
       <div class="zh-barre"><i></i></div>
       <p class="zh-progres" role="status" aria-live="polite"></p>
-      <button type="button" class="para-bouton zh-annuler">Annuler</button>
+      <button type="button" class="para-bouton zh-annuler">${t('zh.annuler')}</button>
     </div>
   `;
   panneau.definirResume({
     rose: '<svg class="pt-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></svg>',
-    nom: 'Télécharger une zone',
+    nom: t('zh.telecharger-zone'),
     detail: '',
     valeur: '',
     unite: '',
@@ -319,9 +335,16 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
 
   function majEstimation() {
     if (!bornesCadre) return;
+    if (telechargementBloque()) {
+      estimation.textContent = t('zh.wifi-requis');
+      estimation.classList.add('zh-trop');
+      boutonLancer.disabled = true;
+      panneau.definirResume({ detail: estimation.textContent });
+      return;
+    }
     const zone = zoneDemandee();
     if (zone.zMin > zone.zMax) {
-      estimation.textContent = 'La vue d’ensemble doit être moins détaillée que le détail maximal.';
+      estimation.textContent = t('zh.ordre');
       estimation.classList.add('zh-trop');
       boutonLancer.disabled = true;
       return;
@@ -330,8 +353,8 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     const tropGrande = tuilesFond > MAX_TUILES_FOND || octetsFond > MAX_OCTETS_FOND;
     estimation.classList.toggle('zh-trop', tropGrande);
     estimation.textContent = tropGrande
-      ? `Zone trop grande (≈ ${tailleLisible(octets)}) : le fond de carte limite chaque téléchargement à 50 Mo. Zoomez sur la carte ou baissez le détail maximal.`
-      : `≈ ${tailleLisible(octets)} · ${tuiles.toLocaleString('fr-FR')} tuiles`;
+      ? t('zh.trop-grande', { taille: tailleLisible(octets) })
+      : t('zh.estimation', { taille: tailleLisible(octets), n: nombre(tuiles) });
     boutonLancer.disabled = tropGrande;
     panneau.definirResume({ detail: estimation.textContent });
   }
@@ -379,7 +402,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
 
   function quitter() {
     if (controleur) {
-      if (!confirm('Annuler le téléchargement en cours ?')) return;
+      if (!confirm(t('zh.annuler-confirmer'))) return;
       controleur.abort();
     }
     cadre.hidden = true;
@@ -388,10 +411,15 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
 
   async function lancer() {
     const demande = zoneDemandee();
+    if (telechargementBloque()) {
+      estimation.textContent = t('zh.wifi-requis');
+      estimation.classList.add('zh-trop');
+      return;
+    }
     if (navigator.storage?.estimate) {
       const { usage = 0, quota = 0 } = await navigator.storage.estimate();
       if (quota && estimer(demande).octets > quota - usage) {
-        estimation.textContent = 'Pas assez d’espace disponible sur cet appareil pour cette zone.';
+        estimation.textContent = t('zh.pas-espace');
         estimation.classList.add('zh-trop');
         return;
       }
@@ -401,7 +429,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     const zone = {
       ...demande,
       id: String(Date.now()),
-      nom: champNom.value.trim() || `Zone du ${dateLisible(Date.now()).split(' à ')[0]}`,
+      nom: champNom.value.trim() || t('zh.nom-defaut', { date: formatDate(Date.now(), { day: 'numeric', month: 'short' }) }),
       date: Date.now(),
       octets: 0,
       manquantes: 0,
@@ -411,15 +439,15 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     progression.hidden = false;
     cadre.hidden = true;
     barre.style.width = '0';
-    progres.textContent = 'Préparation…';
+    progres.textContent = t('zh.preparation');
     try {
       const resultat = await telecharger(zone, {
         signal: controleur.signal,
         onProgres({ faites, total, octets }) {
           const pourcentage = Math.round((faites / total) * 100);
           barre.style.width = `${pourcentage}%`;
-          progres.textContent = `${pourcentage} % · ${tailleLisible(octets)} · ${faites} / ${total} tuiles`;
-          panneau.definirResume({ detail: `${tailleLisible(octets)} téléchargés`, valeur: String(pourcentage), unite: '%' });
+          progres.textContent = t('zh.progres', { pourcent: pourcentage, taille: tailleLisible(octets), faites, total });
+          panneau.definirResume({ detail: t('zh.telecharges', { taille: tailleLisible(octets) }), valeur: String(pourcentage), unite: '%' });
         },
       });
       const annule = controleur.signal.aborted;
@@ -431,21 +459,19 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       }
       zones = [...zones, { ...zone, octets: resultat.octets, manquantes: resultat.manquantes }];
       ecrireZones(zones);
-      rendreListe();
-      panneau.definirResume({ detail: 'Terminé', valeur: '', unite: '' });
+      annoncerZones();
+      panneau.definirResume({ detail: t('zh.termine'), valeur: '', unite: '' });
       progres.textContent = resultat.manquantes
-        ? `Terminé avec ${resultat.manquantes} tuiles manquantes (${tailleLisible(resultat.octets)}). Relancez sur une meilleure connexion pour compléter.`
-        : `« ${zone.nom} » est disponible sans réseau (${tailleLisible(resultat.octets)}).`;
+        ? t('zh.termine-manquantes', { n: resultat.manquantes, taille: tailleLisible(resultat.octets) })
+        : t('zh.disponible', { nom: zone.nom, taille: tailleLisible(resultat.octets) });
       barre.style.width = '100%';
-      $('.zh-annuler').textContent = 'Fermer';
+      $('.zh-annuler').textContent = t('zh.fermer');
     } catch (erreur) {
       console.warn('Téléchargement de zone :', erreur);
       controleur = null;
       await supprimerTuiles(zone, zones).catch(() => {});
-      progres.textContent = erreur?.name === 'QuotaExceededError'
-        ? 'Espace de stockage plein : téléchargement interrompu.'
-        : 'Téléchargement impossible. Vérifiez la connexion puis réessayez.';
-      $('.zh-annuler').textContent = 'Fermer';
+      progres.textContent = t(erreur?.name === 'QuotaExceededError' ? 'zh.plein' : 'zh.impossible');
+      $('.zh-annuler').textContent = t('zh.fermer');
     }
   }
 
@@ -454,7 +480,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   $('.zh-annuler').addEventListener('click', () => {
     if (controleur) controleur.abort();
     else {
-      $('.zh-annuler').textContent = 'Annuler';
+      $('.zh-annuler').textContent = t('zh.annuler');
       cadre.hidden = true;
       panneau.masquer();
     }
@@ -465,11 +491,26 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   map.on('resize', majCadre);
   new ResizeObserver(majCadre).observe(panneau.element);
 
+  window.addEventListener(EVENEMENT_ZONES, () => {
+    zones = lireZones();
+    rendreListe();
+  });
+  window.addEventListener('telecharger-zone', ouvrirPanneau);
+  // Passage en Wi-Fi (ou l'inverse) pendant que le panneau est ouvert
+  navigator.connection?.addEventListener?.('change', majEstimation);
+  window.addEventListener('wifi-seul-change', majEstimation);
+
   rendreListe();
+  surLangue(() => {
+    rendreListe();
+    panneau.titre.textContent = t('zh.telecharger-zone');
+    panneau.definirResume({ nom: t('zh.telecharger-zone') });
+    if (!reglages.hidden) majEstimation();
+  });
 
   return {
     id: 'hors-ligne',
-    label: 'Cartes hors ligne',
+    labelCle: 'zh.titre',
     icone: 'hors-ligne',
     panneau: blocMenu,
     activer() {

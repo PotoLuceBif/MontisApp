@@ -4,6 +4,8 @@
 import { creerFicheBalise } from './balise-fiche.js';
 import { COULEUR_BALISE_INACTIVE, etatStation } from './balises-sources.js';
 import { PALETTE_CARTE, palierVent } from './vent-cadran.js';
+import { valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
 
 const SOURCE = 'balises-vent';
 const COUCHE_SELECTION = 'balises-vent-selection';
@@ -92,7 +94,22 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   let visible = false;
   let zoomCalcule = null;
 
-  const fiche = creerFicheBalise(map, { onFermer: () => marquerSelection(null), onRetour: onRetourFiche });
+  // Relevé passé lu sur le graphique de la fiche : sa manche le montre tant que le curseur y reste
+  let apercu = null;
+  let apercuPlanifie = false;
+  const fiche = creerFicheBalise(map, {
+    onFermer: () => marquerSelection(null),
+    onRetour: onRetourFiche,
+    onApercu(point) {
+      apercu = point;
+      if (apercuPlanifie) return;
+      apercuPlanifie = true;
+      requestAnimationFrame(() => {
+        apercuPlanifie = false;
+        publier();
+      });
+    },
+  });
 
   function imageManche(station, etat) {
     if (etat === 'hs') return '';
@@ -102,7 +119,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   function imagePastille(station, etat) {
     if (etat === 'hs') return 'balise-pastille|hs|×';
     const palier = etat === 'ancien' ? 'ancien' : palierVent(station.moyenne);
-    return `balise-pastille|${palier}|${Math.round(station.moyenne)}`;
+    return `balise-pastille|${palier}|${valeurVent(station.moyenne)}`;
   }
 
   // Les relevés les plus utiles d'abord, puis ceux qui ne chevauchent rien. Le calcul se fait
@@ -155,7 +172,10 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   function donnees() {
     return {
       type: 'FeatureCollection',
-      features: stationsRetenues().map(({ station, etat }) => {
+      features: stationsRetenues().map(({ station: reelle, etat: etatReel }) => {
+        const rejouee = apercu && apercu.id === reelle.id && Number.isFinite(apercu.moyenne);
+        const station = rejouee ? { ...reelle, moyenne: apercu.moyenne, direction: apercu.direction } : reelle;
+        const etat = rejouee ? 'actif' : etatReel;
         const manche = imageManche(station, etat);
         const pastille = imagePastille(station, etat);
         assurerImage(manche);
@@ -235,6 +255,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
     zoomCalcule = Math.round(map.getZoom() * 2);
     map.getSource(SOURCE)?.setData(donnees());
   }
+  surPreferences(publier, ['unites', 'unite-vent', '*']);
 
   function marquerSelection(id) {
     if (!map.getLayer(COUCHE_SELECTION)) return;

@@ -3,6 +3,8 @@ import { lire, ecrire } from './reglages.js';
 import { FFVL_ACTIVE, SOURCES_BALISES, chargerFFVL } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
+import { formatAltitude } from './unites.js';
+import { heureCourte, t } from './i18n.js';
 
 const URL_SITES = '/ffvl/json/sites.json';
 const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
@@ -103,15 +105,15 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
           const feature = event.features?.[0];
           if (!feature) return;
           const properties = feature.properties;
-          const titre = id === 'decollages' ? 'Décollage' : 'Atterrissage';
+          const titre = t(id === 'decollages' ? 'para.decollage' : 'para.atterrissage');
           new maplibregl.Popup({ offset: 10 })
             .setLngLat(feature.geometry.coordinates)
             .setHTML(
               `<strong>${esc(properties.nom)}</strong><br>${esc(titre)}` +
                 (properties.sous_nom ? ` – ${esc(properties.sous_nom)}` : '') +
-                `<br>Altitude : ${esc(properties.alt)} m` +
-                (properties.orientation ? `<br>Orientation : ${esc(properties.orientation)}` : '') +
-                (properties.vent_favo ? `<br>Vent favorable : ${esc(properties.vent_favo)}` : '')
+                `<br>${esc(t('para.altitude', { valeur: formatAltitude(Number(properties.alt)) }))}` +
+                (properties.orientation ? `<br>${esc(t('para.orientation', { valeur: properties.orientation }))}` : '') +
+                (properties.vent_favo ? `<br>${esc(t('para.vent-favorable', { valeur: properties.vent_favo }))}` : '')
             )
             .addTo(map);
         });
@@ -164,13 +166,13 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   }
 
   function messageReussite(heure) {
-    if (!balisesVisibles) return `Mis à jour à ${heure} · ${nombreSites} sites.`;
-    if (dateEnregistree) return `Hors ligne · relevés du ${dateLisible(dateEnregistree)}, à ne pas prendre pour du vent actuel.`;
+    if (!balisesVisibles) return t('para.maj-sites', { heure, n: nombreSites });
+    if (dateEnregistree) return t('para.hors-ligne-releves', { date: dateLisible(dateEnregistree) });
     const { recentes, anciennes, horsService } = statistiques;
-    return `Mis à jour à ${heure} · ${recentes} ${recentes > 1 ? 'balises récentes' : 'balise récente'}`
-      + (anciennes ? `, ${anciennes} ${anciennes > 1 ? 'anciennes' : 'ancienne'}` : '')
-      + (horsService ? `, ${horsService} hors service.` : '.')
-      + (FFVL_ACTIVE ? ` Sites : ${nombreSites}.` : '');
+    return t('para.maj', { heure, recentes: t('para.recentes', { n: recentes }) })
+      + (anciennes ? t('para.anciennes', { n: anciennes }) : '')
+      + (horsService ? t('para.hs', { n: horsService }) : '.')
+      + (FFVL_ACTIVE ? t('para.sites', { n: nombreSites }) : '');
   }
 
   async function actualiser() {
@@ -180,13 +182,13 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     if (balisesVisibles) taches.push(chargerBalises);
     if (FFVL_ACTIVE && sitesVisibles) taches.push(chargerSites);
     if (!taches.length) {
-      onEtat({ type: 'ok', message: 'Les balises sont masquées : aucune donnée à charger.' });
+      onEtat({ type: 'ok', message: t('para.masquees') });
       return undefined;
     }
 
     controleur = requete;
     const { signal } = requete;
-    onEtat({ type: 'chargement', message: `Lecture des relevés ${source.libelle}…` });
+    onEtat({ type: 'chargement', message: t('para.lecture', { source: source.libelle }) });
 
     const encours = (async () => {
       const resultats = await Promise.allSettled(taches.map((tache) => tache(signal)));
@@ -197,28 +199,28 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         .map((resultat) => resultat.reason);
       const reussites = resultats.length - erreurs.length;
       erreurs.forEach((erreur) => console.warn('Données parapente :', erreur));
-      const heure = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+      const heure = heureCourte(new Date());
       if (reussites > 0) derniereActualisation = Date.now();
 
       if (erreurs.length === 0) {
         onEtat({ type: 'ok', message: messageReussite(heure) });
       } else if (reussites > 0) {
-        onEtat({ type: 'partiel', message: `Mise à jour partielle à ${heure} : certaines données manquent.` });
+        onEtat({ type: 'partiel', message: t('para.partielle', { heure }) });
       } else if (erreurs.some((erreur) => erreur.code === 'acces')) {
         onEtat({
           type: 'acces',
           message: donneesDejaChargees
-            ? 'Accès FFVL refusé : les dernières données reçues restent affichées et peuvent être périmées.'
-            : 'Données FFVL indisponibles : la fédération exige une clé d’accès.',
+            ? t('para.ffvl-refuse')
+            : t('para.ffvl-cle'),
         });
       } else {
         onEtat({
           type: 'erreur',
           message: donneesDejaChargees
-            ? `Actualisation ${source.libelle} impossible : les derniers relevés restent affichés et peuvent être périmés.`
+            ? t('para.actualisation-impossible', { source: source.libelle })
             : estHorsLigne()
-              ? 'Hors ligne : aucun relevé enregistré. Ouvrez les balises une fois avec du réseau.'
-              : `Relevés ${source.libelle} indisponibles pour le moment. Réessayez plus tard.`,
+              ? t('para.hors-ligne-aucun')
+              : t('para.indisponibles', { source: source.libelle }),
         });
       }
     })();

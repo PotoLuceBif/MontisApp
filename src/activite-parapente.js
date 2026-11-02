@@ -2,10 +2,12 @@ import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 import { lire, ecrire } from './reglages.js';
 import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from './balises-sources.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, libellesPaliersVent, texteProvenance } from './vent-cadran.js';
+import { formatVent, libelleVent, valeurVent } from './unites.js';
+import { surPreferences } from './preferences.js';
+import { t, ta, ti, tt } from './i18n.js';
 
 const BALISES_LISTEES = 6;
-const PALIERS = ['0–9', '10–19', '20–29', '30–39', '40+'];
 
 const puceManche = (couleur) => `<svg class="para-manche" viewBox="0 0 22 12" aria-hidden="true" style="--vent-couleur: ${couleur}"><path class="cerne" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="plein" d="M1 1.5 21 3.8V8.2L1 10.5Z"/><path class="bande" d="M8 2.3 14 3V9L8 9.7Z"/></svg>`;
 
@@ -13,57 +15,57 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   const panneau = document.createElement('div');
   panneau.className = 'parapente';
   panneau.innerHTML = `
-    <div class="rando-actions-principales" role="group" aria-label="Outils parapente">
+    <div class="rando-actions-principales" role="group" ${ta('aria-label', 'para.outils')}>
       <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="portee" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01"/></svg>
-        <span>Portée de vol</span>
+        ${tt('para.portee')}
       </button>
       <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="vent" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/></svg>
-        <span>Analyse du vent</span>
+        ${tt('para.vent')}
       </button>
       <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="sites" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
-        <span>Sites et balises</span>
+        ${tt('para.sites-balises')}
       </button>
     </div>
 
-    <section class="para-vue" data-para-contenu="sites" aria-label="Sites et balises" hidden>
+    <section class="para-vue" data-para-contenu="sites" ${ta('aria-label', 'para.sites-balises')} hidden>
       <div class="para-source">
-        <span>Source des balises</span>
+        ${tt('para.source')}
         ${SOURCES_BALISES.length > 1
-    ? `<select class="para-source-choix" aria-label="Source des balises">${SOURCES_BALISES.map(({ id, libelle }) => `<option value="${id}">${libelle}</option>`).join('')}</select>`
+    ? `<select class="para-source-choix" ${ta('aria-label', 'para.source')}>${SOURCES_BALISES.map(({ id, libelle }) => `<option value="${id}">${libelle}</option>`).join('')}</select>`
     : `<a class="para-lien" href="${SOURCES_BALISES[0].lien}" target="_blank" rel="noopener noreferrer">${SOURCES_BALISES[0].libelle} ↗</a>`}
       </div>
       <p class="note para-etat" role="status" aria-live="polite"></p>
-      <label class="option-case"><input type="checkbox" data-para-layer-balises> Balises de vent
-        <small>Relevés en temps réel, touchez une balise pour ouvrir sa fiche</small></label>
-      <div class="para-legende" aria-label="Vent moyen en kilomètres par heure">
-        ${PALIERS.map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} ${palier}</span>`).join('')}
-        <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
-        <span><i class="para-hs">×</i> Hors service</span>
+      <label class="option-case"><input type="checkbox" data-para-layer-balises> ${tt('para.balises')}
+        <small ${ti('para.balises-detail')}>${t('para.balises-detail')}</small></label>
+      <div class="para-legende" ${ta('aria-label', 'para.legende-aria')}>
+        ${libellesPaliersVent().map((palier, index) => `<span>${puceManche(PALETTE_CARTE[index])} <b data-palier-libelle>${palier}</b></span>`).join('')}
+        <span>${puceManche(COULEUR_BALISE_INACTIVE)} ${tt('para.plus-2h')}</span>
+        <span><i class="para-hs">×</i> ${tt('para.hors-service')}</span>
       </div>
-      <p class="note para-legende-note">La manche pointe où va le vent, le chiffre donne le vent moyen en km/h.</p>
+      <p class="note para-legende-note">${t('para.legende-note', { unite: libelleVent() })}</p>
       <div class="para-balises" hidden>
-        <h3>Balises de la zone</h3>
+        <h3 ${ti('para.balises-zone')}>${t('para.balises-zone')}</h3>
         <div class="para-balises-liste"></div>
       </div>
       ${FFVL_ACTIVE
-    ? `<label class="option-case"><input type="checkbox" data-para-layer-sites> Décollages et atterrissages
-        <small>Sites FFVL et noms sur la carte</small></label>
+    ? `<label class="option-case"><input type="checkbox" data-para-layer-sites> ${tt('para.sites-ffvl')}
+        <small ${ti('para.sites-ffvl-detail')}>${t('para.sites-ffvl-detail')}</small></label>
       <div class="para-legende">
-        <span><i class="para-point para-point-vert"></i> Décollage</span>
-        <span><i class="para-point para-point-bleu"></i> Atterrissage</span>
+        <span><i class="para-point para-point-vert"></i> ${tt('para.decollage')}</span>
+        <span><i class="para-point para-point-bleu"></i> ${tt('para.atterrissage')}</span>
       </div>`
-    : '<p class="note">Décollages et atterrissages : aucune source ouverte n’est disponible pour le moment.</p>'}
-      <button type="button" class="para-bouton para-actualiser">Actualiser les relevés</button>
+    : `<p class="note" ${ti('para.aucune-source')}>${t('para.aucune-source')}</p>`}
+      <button type="button" class="para-bouton para-actualiser" ${ti('para.actualiser')}>${t('para.actualiser')}</button>
     </section>
 
     <details class="rando-outils">
-      <summary>À propos</summary>
+      <summary ${ti('commun.a-propos')}>${t('commun.a-propos')}</summary>
       <div class="rando-outils-contenu">
-        <p class="note">Les relevés et estimations sont indicatifs. Vérifiez les conditions auprès des sources officielles et des acteurs locaux : cette carte ne remplace ni votre jugement ni les consignes de sécurité.</p>
-        <p class="note">Vent © contributeurs du réseau <a class="para-lien" href="https://www.openwindmap.org" target="_blank" rel="noopener noreferrer">OpenWindMap ↗</a></p>
+        <p class="note" ${ti('para.a-propos-1')}>${t('para.a-propos-1')}</p>
+        <p class="note" data-i18n-html="para.a-propos-2">${t('para.a-propos-2')}</p>
       </div>
     </details>
   `;
@@ -92,7 +94,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     if (!stations.length) {
       const vide = document.createElement('p');
       vide.className = 'note';
-      vide.textContent = 'Aucun relevé récent dans cette zone. Déplacez ou dézoomez la carte.';
+      vide.textContent = t('para.aucun-releve');
       listeBalises.replaceChildren(vide);
       return;
     }
@@ -112,12 +114,12 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       const vitesse = document.createElement('span');
       vitesse.className = 'para-balise-vitesse';
       const moyenne = document.createElement('strong');
-      moyenne.textContent = `${Math.round(station.moyenne)} km/h`;
+      moyenne.textContent = formatVent(station.moyenne);
       vitesse.append(moyenne);
       if (Number.isFinite(station.rafale)) {
         const rafale = document.createElement('small');
         rafale.className = 'para-balise-rafale';
-        rafale.textContent = `raf. ${Math.round(station.rafale)}`;
+        rafale.textContent = t('para.raf', { valeur: valeurVent(station.rafale) });
         vitesse.append(rafale);
       }
       ligne.append(texte, vitesse);
@@ -164,6 +166,14 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     synchroniserCarte();
   });
   boutonActualiser.addEventListener('click', () => donnees.actualiser());
+  surPreferences(() => {
+    const paliers = libellesPaliersVent();
+    panneau.querySelectorAll('[data-palier-libelle]').forEach((libelle, index) => {
+      libelle.textContent = paliers[index];
+    });
+    panneau.querySelector('.para-legende-note').innerHTML = t('para.legende-note', { unite: libelleVent() });
+    rendreBalises();
+  });
   map.on('moveend', rendreBalises);
 
   function ouvrirOutil() {
@@ -211,7 +221,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
 
   return {
     id: 'parapente',
-    label: 'Parapente',
+    labelCle: 'para.titre',
     icone: 'parapente',
     panneau,
     activer() {

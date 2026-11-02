@@ -3,33 +3,34 @@ import { afficherSommets } from './sommets.js';
 import { afficherVilles, afficherRefuges } from './lieux.js';
 import { afficherBatiments } from './batiments.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
+import { poser, surLangue, t } from './i18n.js';
 
 // Pour ajouter un élément : une ligne dans le bon groupe (ou un nouveau groupe = un nouvel onglet)
 const GROUPES = [
   {
     id: 'lieux',
-    nom: 'Lieux',
+    nom: 'elements.lieux',
     calques: [
-      { cle: 'sommets', label: 'Sommets', aide: 'Noms et altitudes, dès le zoom 9', defaut: false, appliquer: afficherSommets },
-      { cle: 'villes', label: 'Villes et villages', aide: 'Noms des communes et des hameaux', defaut: false, appliquer: afficherVilles },
-      { cle: 'refuges', label: 'Refuges et cabanes', aide: 'Refuges, cabanes et abris, dès le zoom 7', defaut: false, appliquer: afficherRefuges },
+      { cle: 'sommets', label: 'elements.sommets', aide: 'elements.sommets-aide', defaut: false, appliquer: afficherSommets },
+      { cle: 'villes', label: 'elements.villes', aide: 'elements.villes-aide', defaut: false, appliquer: afficherVilles },
+      { cle: 'refuges', label: 'elements.refuges', aide: 'elements.refuges-aide', defaut: false, appliquer: afficherRefuges },
     ],
   },
    {
     id: 'nature',
-    nom: 'Nature',
+    nom: 'elements.nature',
     calques: [
-      { cle: 'forets', label: 'Forêts', aide: 'Motif d’arbres dès le zoom 11', defaut: false, appliquer: afficherForets },
-      { cle: 'eaux', label: 'Lacs et rivières', aide: 'Avec leurs noms', defaut: false, appliquer: afficherEaux },
-      { cle: 'glaciers', label: 'Glaciers', aide: 'Hachures dès le zoom 9', defaut: false, appliquer: afficherGlaciers },
-      { cle: 'parcs', label: 'Parcs et réserves', aide: 'Limites et noms, dès le zoom 5', defaut: false, appliquer: afficherParcs },
+      { cle: 'forets', label: 'elements.forets', aide: 'elements.forets-aide', defaut: false, appliquer: afficherForets },
+      { cle: 'eaux', label: 'elements.eaux', aide: 'elements.eaux-aide', defaut: false, appliquer: afficherEaux },
+      { cle: 'glaciers', label: 'elements.glaciers', aide: 'elements.glaciers-aide', defaut: false, appliquer: afficherGlaciers },
+      { cle: 'parcs', label: 'elements.parcs', aide: 'elements.parcs-aide', defaut: false, appliquer: afficherParcs },
     ],
   },
   {
     id: 'construit',
-    nom: 'Construit',
+    nom: 'elements.construit',
     calques: [
-      { cle: 'batiments', label: 'Bâtiments 3D', aide: 'Dès le zoom 14, plus lisibles en 3D', defaut: false, appliquer: afficherBatiments },
+      { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: false, appliquer: afficherBatiments },
     ],
   },
 ];
@@ -53,7 +54,7 @@ export function creerElementsCarte(map) {
     for (const g of GROUPES) {
       const nb = g.calques.filter((c) => lire(c.cle, c.defaut)).length;
       const bouton = boutons.get(g.id);
-      bouton.textContent = nb ? `${g.nom} · ${nb}` : g.nom;
+      bouton.textContent = nb ? `${t(g.nom)} · ${nb}` : t(g.nom);
       bouton.classList.toggle('actif', g.id === groupeCourant);
       blocs.get(g.id).hidden = g.id !== groupeCourant;
     }
@@ -83,10 +84,9 @@ export function creerElementsCarte(map) {
       input.type = 'checkbox';
       input.checked = actifAuDepart;
       const texte = document.createElement('span');
-      texte.textContent = ' ' + c.label;
-      const aide = document.createElement('small');
-      aide.textContent = c.aide;
-      ligne.append(input, texte, aide);
+      poser(texte, c.label);
+      const aide = poser(document.createElement('small'), c.aide);
+      ligne.append(input, ' ', texte, aide);
       bloc.appendChild(ligne);
 
       // Rétablit l'état précédent dès que la carte est prête
@@ -110,10 +110,11 @@ export function creerElementsCarte(map) {
   }
 
   majOnglets();
+  surLangue(majOnglets);
 
   return {
     id: 'elements',
-    label: 'Éléments de la carte',
+    labelCle: 'elements.titre',
     icone: 'elements',
     panneau,
     activer() {},

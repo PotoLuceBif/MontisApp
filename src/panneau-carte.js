@@ -1,6 +1,8 @@
 // Panneau posé sur la carte : à gauche sur ordinateur, en bas sur téléphone, où il se réduit
 // en bandeau pour laisser voir la carte. Un seul à la fois, ils occupent la même place.
+// `libelle` : clé de traduction du nom du panneau (pour les lecteurs d'écran).
 import { lire, ecrire } from './reglages.js';
+import { surLangue, t, ta } from './i18n.js';
 
 const SEUIL_GESTE = 28; // px
 const CROIX = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
@@ -12,28 +14,29 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
   const element = document.createElement('aside');
   element.className = `bf ${classe}`.trim();
   element.hidden = true;
-  element.setAttribute('aria-label', libelle);
+  const nom = () => t(libelle);
+  element.setAttribute('aria-label', nom());
   element.innerHTML = `
     <button type="button" class="bf-poignee" aria-hidden="true" tabindex="-1"></button>
     <div class="bf-barre">
-      <button type="button" class="bf-retour" aria-label="Retour" title="Retour" hidden>${FLECHE}</button>
-      <button type="button" class="bf-resume" aria-label="Agrandir : ${libelle}">
+      <button type="button" class="bf-retour" ${ta('aria-label', 'panneau.retour')} ${ta('title', 'panneau.retour')} hidden>${FLECHE}</button>
+      <button type="button" class="bf-resume" data-libelle="panneau.agrandir">
         <span class="bf-resume-rose"></span>
         <span class="bf-resume-texte"><strong></strong><small></small></span>
         <span class="bf-resume-vent"><b></b> <i></i></span>
         <svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
       </button>
-      <button type="button" class="bf-fermer" aria-label="Fermer : ${libelle}">${CROIX}</button>
+      <button type="button" class="bf-fermer" data-libelle="panneau.fermer">${CROIX}</button>
     </div>
     <header class="bf-entete">
-      <button type="button" class="bf-retour" aria-label="Retour" title="Retour" hidden>${FLECHE}</button>
+      <button type="button" class="bf-retour" ${ta('aria-label', 'panneau.retour')} ${ta('title', 'panneau.retour')} hidden>${FLECHE}</button>
       <div class="bf-titres">
         <h3 class="bf-nom"></h3>
         <p class="bf-meta"></p>
       </div>
       <div class="bf-actions">
-        <button type="button" class="bf-reduire" aria-label="Réduire : ${libelle}"><svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
-        <button type="button" class="bf-fermer" aria-label="Fermer : ${libelle}">${CROIX}</button>
+        <button type="button" class="bf-reduire" data-libelle="panneau.reduire"><svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button type="button" class="bf-fermer" data-libelle="panneau.fermer">${CROIX}</button>
       </div>
     </header>
     <div class="bf-corps"></div>
@@ -41,6 +44,14 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
   document.body.append(element); // hors de la carte : ses commandes ne doivent pas passer devant
 
   const $ = (selecteur) => element.querySelector(selecteur);
+  const nommer = () => {
+    element.setAttribute('aria-label', nom());
+    element.querySelectorAll('[data-libelle]').forEach((bouton) => {
+      bouton.setAttribute('aria-label', t(bouton.dataset.libelle, { nom: nom() }));
+    });
+  };
+  nommer();
+  surLangue(nommer);
   let reduit = lire(cle, false) === true;
   let departGeste = null;
   let gesteFait = false;
