@@ -58,12 +58,7 @@ export function creerActiviteRandonnee(map, outils) {
     portage: false,
     allure: true,
     libelleVoies: { single: 'Sentier', chemin: 'Piste' },
-    filtres: [
-      { id: 'tous', libelle: 'Tous', cartes: ['hiking'] },
-      { id: 'gr', libelle: 'GR', cartes: ['hiking'], garde: estGR },
-      { id: 'pr', libelle: 'PR', cartes: ['hiking'], garde: estPR },
-      { id: 'autres', libelle: 'Autres', cartes: ['hiking'], garde: (route) => !estGR(route) && !estPR(route) },
-    ],
+    filtres: [{ id: 'tous', libelle: 'Tous', cartes: ['hiking'] }],
     calques: () => ['hiking'],
     typeDe: (route) => (estGR(route) ? 'GR' : estPR(route) ? 'PR' : 'Randonnée'),
     infosRoute,

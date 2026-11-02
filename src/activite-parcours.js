@@ -19,6 +19,12 @@ const ICONES = {
   importer: '<path d="M12 15V3m0 0L7.500 7.500M12 3l4.500 4.500"/><path d="M5 13v6h14v-6"/>',
   chevron: '<path d="m9 6 6 6-6 6"/>',
 };
+// « GR5 » et « GR 5 » ne donnent pas les mêmes résultats : l'API ne connaît que l'écriture exacte
+function ecritures(texte) {
+  const [, prefixe, reste] = /^([a-z]{1,4})\s*(\d.*)$/i.exec(texte) ?? [];
+  if (!prefixe) return [texte];
+  return [...new Set([texte, `${prefixe.toUpperCase()} ${reste}`, `${prefixe.toUpperCase()}${reste}`])];
+}
 const icone = (dessin) => `<svg aria-hidden="true" viewBox="0 0 24 24">${dessin}</svg>`;
 
 export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
@@ -33,9 +39,9 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       </label>
     </div>
     <input type="text" class="rando-champ parcours-recherche" placeholder="${activite.placeholder}" autocomplete="off" spellcheck="false" inputmode="search" aria-label="${activite.placeholder}">
-    <div class="pc-puces" role="group" aria-label="Filtrer les itinéraires">
+    ${activite.filtres.length > 1 ? `<div class="pc-puces" role="group" aria-label="Filtrer les itinéraires">
       ${activite.filtres.map(({ id, libelle }) => `<button type="button" data-filtre="${id}" aria-pressed="false">${libelle}</button>`).join('')}
-    </div>
+    </div>` : ''}
     <p class="note parcours-message" role="status" aria-live="polite" hidden></p>
     <div class="rando-liste parcours-liste" hidden></div>
     <div class="pc-entrees"></div>
@@ -212,14 +218,17 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     }
     const limites = map.getBounds();
     derniereDemande = chercherDansLaZone;
-    void chargerListe((client, signal) => client.dansLaZone(limites, signal), 'Recherche dans la zone visible…', 'Aucun itinéraire dans cette zone pour ce filtre.');
+    void chargerListe((client, signal) => client.dansLaZone(limites, signal), 'Recherche dans la zone visible…', 'Aucun itinéraire dans cette zone.');
   }
 
   function chercherTexte() {
     const texte = champRecherche.value.trim();
     if (texte.length < 2) return;
     derniereDemande = chercherTexte;
-    void chargerListe((client, signal) => client.chercher(texte, signal), 'Recherche…', 'Aucun itinéraire trouvé pour ce filtre.');
+    void chargerListe(async (client, signal) => {
+      const listes = await Promise.all(ecritures(texte).map((ecriture) => client.chercher(ecriture, signal)));
+      return [...new Map(listes.flat().map((route) => [route.id, route])).values()];
+    }, 'Recherche…', 'Aucun itinéraire trouvé.');
   }
 
   // ---------- Réseau sur la carte ----------
