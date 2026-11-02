@@ -41,6 +41,8 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
       <h3>Mes parcours</h3>
       <div class="velo-mes-liste"></div>
     </section>
+    <label class="option-case"><input type="checkbox" class="velo-calque"> Itinéraires balisés sur la carte
+      <small>Superpose le réseau de la pratique choisie (Waymarked Trails)</small></label>
     <details class="rando-outils">
       <summary>À propos</summary>
       <div class="rando-outils-contenu">
@@ -57,6 +59,9 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
   const blocMes = panneau.querySelector('.velo-mes');
   const listeMes = panneau.querySelector('.velo-mes-liste');
   const champFichier = panneau.querySelector('.velo-fichier');
+  const caseCalque = panneau.querySelector('.velo-calque');
+  let actif = false;
+  caseCalque.checked = lire('velo-calque', true) !== false;
   let controleurListe = null;
   let minuteurRecherche = null;
   let derniereDemande = null;
@@ -238,6 +243,28 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     }
   }
 
+  // Le réseau de la pratique, sous le tracé du parcours
+  function appliquerCalque() {
+    const voulu = actif && caseCalque.checked ? pratique.calque : null;
+    ['mtb', 'cycling'].forEach((carte) => {
+      const id = `velo-calque-${carte}`;
+      if (carte === voulu && !map.getSource(id)) {
+        map.addSource(id, {
+          type: 'raster',
+          tiles: [`https://tile.waymarkedtrails.org/${carte}/{z}/{x}/{y}.png`],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: 'Itinéraires : © Waymarked Trails (CC BY-SA), © contributeurs OpenStreetMap',
+        });
+        map.addLayer(
+          { id, type: 'raster', source: id, paint: { 'raster-opacity': 0.8 } },
+          map.getLayer('velo-trace-contour') ? 'velo-trace-contour' : undefined
+        );
+      }
+      if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', carte === voulu ? 'visible' : 'none');
+    });
+  }
+
   function rendrePratique() {
     boutonsPratique.forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.pratique === pratique.id)));
   }
@@ -248,6 +275,7 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     ecrire('velo-pratique', id);
     rendrePratique();
     editeur.definirPratique(id);
+    appliquerCalque();
     derniereDemande?.();
   }
 
@@ -264,6 +292,10 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     minuteurRecherche = setTimeout(chercherTexte, 350);
   });
   champFichier.addEventListener('change', () => void importerGpx());
+  caseCalque.addEventListener('change', () => {
+    ecrire('velo-calque', caseCalque.checked);
+    appliquerCalque();
+  });
   rendrePratique();
   rendreMesParcours();
 
@@ -272,8 +304,13 @@ export function creerActiviteVelo(map, { fermerMenu = () => {} } = {}) {
     label: 'Vélo',
     icone: 'velo',
     panneau,
-    activer() {},
+    activer() {
+      actif = true;
+      appliquerCalque();
+    },
     desactiver() {
+      actif = false;
+      appliquerCalque();
       controleurListe?.abort();
       editeur.fermer();
     },

@@ -40,6 +40,29 @@ export function repartir(troncons) {
   return { voies, difficultes, total, marches };
 }
 
+// Portions continues au-delà du seuil de la pratique, les plus raides d'abord
+export function passagesRaides({ points, pentes }, seuil, longueurMin = 80) {
+  const passages = [];
+  let debut = null;
+  const clore = (fin) => {
+    if (debut === null) return;
+    const longueur = points[fin].d - points[debut].d;
+    if (longueur >= longueurMin) {
+      const portion = pentes.slice(debut, fin + 1);
+      const montee = pentes[debut] > 0;
+      const extreme = montee ? Math.max(...portion) : Math.min(...portion);
+      passages.push({ indice: debut + portion.indexOf(extreme), d: points[debut].d, longueur, pente: extreme });
+    }
+    debut = null;
+  };
+  pentes.forEach((pente, i) => {
+    if (Math.abs(pente) < seuil || (debut !== null && Math.sign(pentes[debut]) !== Math.sign(pente))) clore(i - 1);
+    if (Math.abs(pente) >= seuil && debut === null) debut = i;
+  });
+  clore(pentes.length - 1);
+  return passages.sort((a, b) => Math.abs(b.pente) - Math.abs(a.pente));
+}
+
 export function dureeVelo(distance, plus, pratique) {
   return distance / 1000 / pratique.vitesse + plus / pratique.montee;
 }

@@ -24,6 +24,12 @@ Dans **Randonnée > Outils complémentaires > Créer un parcours**, cliquez sur 
 
 La distance provient de l’itinéraire calculé. Le profil, les altitudes et les dénivelés sont estimés depuis les tuiles de relief existantes. Vérifiez la praticabilité du parcours avant de partir : un itinéraire calculé n’est pas une garantie de sécurité. Le tracé peut être téléchargé au format GPX depuis sa fiche.
 
+## Activité vélo
+
+Dans **Activités > Vélo**, choisissez VTT, gravel ou route. Ce choix pilote le routage, les itinéraires proposés et le réseau affiché. **Créer un parcours** s’utilise depuis un panneau posé sur la carte : toucher la carte ajoute un point, toucher le tracé y insère un passage, et chaque point se déplace ou se supprime. L’annulation, le tracé libre, la boucle et l’aller-retour sont dans le même panneau.
+
+Le routage passe par le serveur public de BRouter, seul à indiquer surfaces et difficulté, avec Valhalla en secours. Ces serveurs n’offrent aucune garantie : un tronçon non calculé apparaît en ligne droite tiretée. Les altitudes viennent des tuiles de relief, et la durée reste une estimation selon la pratique. Les parcours enregistrés gardent leur tracé dans le navigateur et se rouvrent sans réseau ; le profil a besoin du relief de la zone (voir Mode hors ligne).
+
 ## Stations de ski
 
 Dans **Activités > Ski**, lancez **Rechercher dans cette zone** après avoir cadré un massif. Les stations cartographiées dans OpenStreetMap apparaissent dans une liste et sur la carte ; les groupes se déplient en zoomant. La barre de recherche générale peut aussi trouver une station par son nom. La couverture et les détails (altitude, exploitant, site web) dépendent des contributions OpenStreetMap ; vérifiez les conditions d’ouverture auprès de la station.

@@ -8,9 +8,9 @@ const URL_VALHALLA = 'https://valhalla1.openstreetmap.de/route';
 const ATTENTE_REPRISE = 1500; // ms : BRouter répond « réessayez plus tard » quand on insiste
 
 export const PRATIQUES = {
-  vtt: { id: 'vtt', libelle: 'VTT', brouter: 'mtb', valhalla: 'Mountain', couleur: '#ff8a3d', vitesse: 14, montee: 500, itineraires: ['mtb'], calque: 'mtb' },
-  gravel: { id: 'gravel', libelle: 'Gravel', brouter: 'gravel', valhalla: 'Cross', couleur: '#e3b341', vitesse: 19, montee: 600, itineraires: ['cycling', 'mtb'], calque: 'cycling' },
-  route: { id: 'route', libelle: 'Route', brouter: 'fastbike', valhalla: 'Road', couleur: '#4aa8ff', vitesse: 25, montee: 800, itineraires: ['cycling'], calque: 'cycling' },
+  vtt: { id: 'vtt', libelle: 'VTT', brouter: 'mtb', valhalla: 'Mountain', couleur: '#ff8a3d', vitesse: 14, montee: 500, seuilRaide: 20, itineraires: ['mtb'], calque: 'mtb' },
+  gravel: { id: 'gravel', libelle: 'Gravel', brouter: 'gravel', valhalla: 'Cross', couleur: '#e3b341', vitesse: 19, montee: 600, seuilRaide: 14, itineraires: ['cycling', 'mtb'], calque: 'cycling' },
+  route: { id: 'route', libelle: 'Route', brouter: 'fastbike', valhalla: 'Road', couleur: '#4aa8ff', vitesse: 25, montee: 800, seuilRaide: 12, itineraires: ['cycling'], calque: 'cycling' },
 };
 
 const REVETUS = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'cobblestone', 'chipseal']);

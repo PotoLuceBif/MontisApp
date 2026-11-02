@@ -2259,6 +2259,16 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 .velo-parcours-texte strong { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .velo-parcours-texte small { overflow: hidden; color: var(--texte-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .velo-parcours .zh-zone-bouton svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.velo-alertes { display: grid; gap: 4px; }
+.velo-alertes[hidden] { display: none; }
+.velo-alerte {
+  display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 6px 9px; border: 0; border-left: 3px solid #d99522; border-radius: 5px;
+  background: color-mix(in srgb, #d99522 12%, transparent); color: var(--texte); font: 500 12px/1.35 var(--police); text-align: left; font-variant-numeric: tabular-nums;
+}
+button.velo-alerte { cursor: pointer; }
+.velo-alerte-forte { border-left-color: #e05b67; background: color-mix(in srgb, #e05b67 13%, transparent); }
+.velo-alerte-suite { margin: 0; color: var(--texte-2); font-size: 11.5px; }
+.velo .option-case { margin: 0; }
 .velo-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .bf-velo-lecture .velo-commandes, .bf-velo-lecture .velo-pratiques-panneau, .bf-velo-lecture .velo-etat { display: none; }
 .velo-etape {
@@ -2409,7 +2419,7 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-detail { display: none; }
   .bf-resume .bf-chevron { color: var(--texte-2); }
   /* Pendant l'édition, la carte passe d'abord : le détail vient avec « Terminer » */
-  .bf-velo:not(.bf-velo-lecture) :is(.velo-profil, .velo-repartition, .velo-couleur, .velo-nom) { display: none; }
+  .bf-velo:not(.bf-velo-lecture) :is(.velo-profil, .velo-repartition, .velo-couleur, .velo-nom, .velo-alertes) { display: none; }
   .bf-rose-dessin { width: 92px; height: 92px; }
   .bf-valeur-principale strong { font-size: 30px; }
   .bf-graphique { height: 176px; }

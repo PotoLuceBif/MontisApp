@@ -9,7 +9,7 @@ import { telechargerGpx } from './rando-profil.js';
 import { formaterDuree } from './rando-profil.js';
 import { paletteInterface } from './vent-cadran.js';
 import { PRATIQUES, calculerTroncon, tronconLibre } from './velo-routage.js';
-import { DIFFICULTES, PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, repartir } from './velo-analyse.js';
+import { DIFFICULTES, PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './velo-analyse.js';
 import { creerProfilVelo } from './velo-profil.js';
 import { compacter, ecrireBrouillon, effacerBrouillon, enregistrerParcours, lireBrouillon } from './velo-parcours.js';
 
@@ -26,6 +26,8 @@ const MODES_COULEUR = [['pratique', 'Pratique'], ['pente', 'Pente'], ['surface',
 const COULEUR_CERNE = '#0b111b';
 const TOLERANCE_LIGNE = 16; // px pour insérer un point sur le tracé
 const MAX_HISTORIQUE = 60;
+const PASSAGES_AFFICHES = 3;
+const PENTE_PORTAGE = 25; // % au-delà desquels on pousse ou on porte le plus souvent
 const COMMANDES = [
   ['annuler', 'Annuler', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'],
   ['retablir', 'Rétablir', '<path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>'],
@@ -101,6 +103,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         <canvas class="velo-graphique" tabindex="0" role="img" aria-label="Profil du parcours coloré selon la pente. Glisser ou utiliser les flèches du clavier pour lire un point."></canvas>
         <div class="velo-legende-pente" aria-hidden="true"></div>
       </div>
+      <div class="velo-alertes" hidden></div>
       <div class="velo-repartition" data-bloc="surfaces" hidden><h4>Surfaces</h4><div class="velo-barre"></div><div class="velo-legende"></div></div>
       <div class="velo-repartition" data-bloc="difficulte" hidden><h4>Difficulté VTT <small>(échelle OpenStreetMap)</small></h4><div class="velo-barre"></div><div class="velo-legende"></div></div>
       <label class="velo-couleur"><span>Colorer le tracé selon</span><select>
@@ -479,6 +482,7 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
         profil.definir(analyse);
         afficherCurseur(null);
         rendreStats();
+        rendreAlertes();
         dessinerTrace();
         boutonGpx.disabled = false;
       } catch (erreur) {
@@ -578,6 +582,44 @@ export function creerEditeurVelo(map, { pratique: pratiqueInitiale, onPratique =
     valeur('min').textContent = metres(altitudeMin);
     valeur('pente').textContent = `${Math.round(penteMax)} %`;
     panneau.definirResume({ detail: `${km(total)} · D+ ${metres(plus)} · ${formaterDuree(duree)}` });
+  }
+
+  // Ce qui peut surprendre sur le terrain : pentes, marches, sentiers très techniques
+  function rendreAlertes() {
+    const bloc = $('.velo-alertes');
+    const elements = [];
+    const passages = analyse ? passagesRaides(analyse, pratique.seuilRaide) : [];
+    passages.slice(0, PASSAGES_AFFICHES).forEach(({ indice, d, longueur, pente }) => {
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      const portage = pente >= PENTE_PORTAGE;
+      bouton.className = `velo-alerte${portage ? ' velo-alerte-forte' : ''}`;
+      bouton.textContent = `${portage ? 'Portage probable' : pente > 0 ? 'Montée raide' : 'Descente raide'} · ${pente > 0 ? '+' : ''}${Math.round(pente)} % sur ${metres(longueur)} · km ${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}`;
+      bouton.addEventListener('click', () => {
+        profil.placerDepuisCarte(indice);
+        afficherCurseur(indice);
+        const { lng, lat } = analyse.points[indice];
+        map.easeTo({ center: [lng, lat], duration: estHorsLigne() ? 0 : 500 });
+      });
+      elements.push(bouton);
+    });
+    const ajouterTexte = (texte) => {
+      const ligne = document.createElement('p');
+      ligne.className = 'velo-alerte velo-alerte-forte';
+      ligne.textContent = texte;
+      elements.push(ligne);
+    };
+    if (passages.length > PASSAGES_AFFICHES) {
+      const ligne = document.createElement('p');
+      ligne.className = 'velo-alerte-suite';
+      ligne.textContent = `Et ${passages.length - PASSAGES_AFFICHES} autre${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} passage${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''} raide${passages.length - PASSAGES_AFFICHES > 1 ? 's' : ''}.`;
+      elements.push(ligne);
+    }
+    if (repartition?.marches) ajouterTexte(`Marches sur le tracé : ${metres(repartition.marches)}`);
+    const techniques = repartition?.difficultes.at(-1) ?? 0;
+    if (techniques) ajouterTexte(`Sentier très technique (S4 ou plus) : ${metres(techniques)}`);
+    bloc.replaceChildren(...elements);
+    bloc.hidden = !elements.length;
   }
 
   function rendreRepartition() {
