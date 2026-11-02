@@ -152,6 +152,10 @@ export function creerCarteVent(map) {
   panneau.className = 'vent-carte';
   panneauCarte.corps.append(panneau);
   panneau.innerHTML = `
+    <div class="vent-vues" role="tablist" aria-label="Vues de l’analyse du vent">
+      <button type="button" role="tab" id="vent-vue-carte-onglet" aria-selected="true" aria-controls="vent-vue-carte">Carte</button>
+      <button type="button" role="tab" id="vent-vue-volume-onglet" aria-selected="false" aria-controls="vent-vue-volume" tabindex="-1">Volume 3D</button>
+    </div>
     <div class="vent-temps">
       <div class="vent-temps-heure"><strong data-temps-heure>—</strong><span data-temps-ecart></span></div>
       <input class="vent-temps-curseur" type="range" min="0" max="${ECHEANCE_MAX}" step="1" value="0" aria-label="Échéance des prévisions">
@@ -161,7 +165,7 @@ export function creerCarteVent(map) {
       <p data-zone-message></p>
       <button type="button" class="vent-zone-actualiser">Actualiser</button>
     </div>
-    <section class="vent-vue-contenu" id="vent-vue-carte">
+    <section class="vent-vue-contenu" id="vent-vue-carte" role="tabpanel" aria-labelledby="vent-vue-carte-onglet">
       <div class="vent-resume" aria-label="Résumé du vent">
         <div class="vent-resume-direction">
           ${cadranVent(null, 0, 'vent-cadran-grand')}
@@ -170,18 +174,15 @@ export function creerCarteVent(map) {
         <div class="vent-resume-valeur"><span>Vent moyen</span><strong data-vent-moyen>—</strong></div>
         <div class="vent-resume-valeur"><span>Rafales au sol, max.</span><strong data-vent-rafales>—</strong></div>
       </div>
-      <div class="vent-carte-commandes">
-        <label class="vent-carte-niveau-ligne"><span>Hauteur sol</span><select class="vent-carte-niveau">
-          ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
-        </select></label>
-        <button type="button" class="vent-ouvrir-volume"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.500 8 4.500 8-4.500M12 12v9"/></svg>Volume 3D</button>
-      </div>
+      <label class="vent-carte-niveau-ligne"><span>Hauteur au-dessus du sol</span><select class="vent-carte-niveau">
+        ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
+      </select></label>
       <div class="vent-carte-legende" aria-label="Intensité du vent en kilomètres par heure">
         ${PALIERS_LEGENDE.map((libelle, index) => `<span>${iconeLegende(index)} ${libelle}</span>`).join('')}<span>km/h</span>
       </div>
       <p class="vent-carte-statut" role="status" aria-live="polite"></p>
     </section>
-    <section class="vent-vue-contenu" id="vent-vue-volume" hidden>
+    <section class="vent-vue-contenu" id="vent-vue-volume" role="tabpanel" aria-labelledby="vent-vue-volume-onglet" hidden>
       <section class="vent-volume" aria-labelledby="vent-volume-titre">
         <div class="vent-volume-entete">
           <button type="button" class="vent-volume-retour" aria-label="Quitter le plein écran" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
@@ -202,12 +203,12 @@ export function creerCarteVent(map) {
           <canvas class="vent-volume-canvas" role="img" tabindex="0" aria-label="Volume 3D du vent au-dessus du relief. Glisser pour tourner et incliner, pincer pour zoomer."></canvas>
           <div class="vent-volume-boutons">
             <button type="button" class="vent-volume-recentrer" aria-label="Recentrer la vue" title="Recentrer la vue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+            <button type="button" class="vent-volume-agrandir" aria-label="Afficher en plein écran" title="Plein écran"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           </div>
         </div>
         <p class="vent-volume-detail" data-volume-detail>1 doigt : tourner, incliner · 2 doigts : zoomer · double toucher : recentrer · toucher une flèche : lire sa valeur.</p>
         <div class="vent-volume-legende" aria-label="Intensité du vent">
-          <span><i data-volume-vitesse="0"></i> 0–9 km/h</span><span><i data-volume-vitesse="1"></i> 10–19 km/h</span>
-          <span><i data-volume-vitesse="2"></i> 20–29 km/h</span><span><i data-volume-vitesse="3"></i> 30–39 km/h</span><span><i data-volume-vitesse="4"></i> 40+ km/h</span>
+          ${PALIERS_LEGENDE.map((libelle, index) => `<span><i data-volume-vitesse="${index}"></i> ${libelle}</span>`).join('')}<span>km/h</span>
         </div>
         <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
@@ -232,6 +233,8 @@ export function creerCarteVent(map) {
   const resumeRafales = panneau.querySelector('[data-vent-rafales]');
   const resumeProvenance = panneau.querySelector('[data-vent-provenance]');
   const cadranResume = panneau.querySelector('.vent-resume .vent-cadran');
+  const ongletsVue = [...panneau.querySelectorAll('.vent-vues [role="tab"]')];
+  const contenusVue = [...panneau.querySelectorAll('.vent-vue-contenu')];
   const blocVolume = panneau.querySelector('.vent-volume');
   const canvasVolume = panneau.querySelector('.vent-volume-canvas');
   const statutVolume = panneau.querySelector('.vent-volume-statut');
@@ -239,7 +242,7 @@ export function creerCarteVent(map) {
   const detailVolume = panneau.querySelector('[data-volume-detail]');
   const plafondsVolume = [...panneau.querySelectorAll('input[name="vent-volume-plafond"]')];
   const selecteurCouche = panneau.querySelector('.vent-volume-couche select');
-  const boutonOuvrirVolume = panneau.querySelector('.vent-ouvrir-volume');
+  const boutonAgrandir = panneau.querySelector('.vent-volume-agrandir');
   const boutonRetour = panneau.querySelector('.vent-volume-retour');
   const alerteZone = panneau.querySelector('.vent-zone-alerte');
   const messageZone = panneau.querySelector('[data-zone-message]');
@@ -263,7 +266,7 @@ export function creerCarteVent(map) {
   let resumeVentCourant = [];
   let zoneVolumeCapturee = null;
   let zoneCarteCapturee = null;
-  let vueActive = 'carte';
+  let vueActive = lire('vent-vue', 'carte') === 'volume' ? 'volume' : 'carte';
   let emplacementVolume = null;
   let emplacementTemps = null;
   let emplacementAlerte = null;
@@ -674,19 +677,27 @@ export function creerCarteVent(map) {
     }
     blocVolume.classList.toggle('vent-volume-plein', plein);
     boutonRetour.hidden = !plein;
-    (plein ? boutonRetour : boutonOuvrirVolume).focus({ preventScroll: true });
+    boutonAgrandir.hidden = plein;
+    (plein ? boutonRetour : boutonAgrandir).focus({ preventScroll: true });
   }
 
-  function selectionnerVue(nom) {
+  function selectionnerVue(nom, focus = false) {
     vueActive = nom;
+    ecrire('vent-vue', nom);
+    ongletsVue.forEach((onglet, index) => {
+      const actifOnglet = onglet.id === `vent-vue-${nom}-onglet`;
+      onglet.setAttribute('aria-selected', String(actifOnglet));
+      onglet.tabIndex = actifOnglet ? 0 : -1;
+      if (focus && actifOnglet) onglet.focus();
+      contenusVue[index].hidden = !actifOnglet;
+    });
     coucheVent.definirAnimation(nom !== 'volume');
     if (nom === 'volume') {
       if (controleur) {
         controleur.abort();
         controleur = null;
       }
-      // On ouvre le volume pour voir la zone visée, pas celle d'un chargement précédent
-      if (actif && (!zoneVolumeCapturee || raisonActualiser())) void chargerProfilVolume();
+      if (actif && !zoneVolumeCapturee) void chargerProfilVolume();
     } else {
       if (controleurProfil) {
         controleurProfil.abort();
@@ -698,17 +709,6 @@ export function creerCarteVent(map) {
     if (reponsesVue()) appliquerEcheance();
     else afficherEcheance();
     mettreAJourAlerte();
-  }
-
-  function ouvrirVolume() {
-    basculerPleinEcran(true);
-    selectionnerVue('volume');
-  }
-
-  function fermerVolume() {
-    if (!blocVolume.classList.contains('vent-volume-plein')) return;
-    basculerPleinEcran(false);
-    selectionnerVue('carte');
   }
 
   function appliquerPalette() {
@@ -872,6 +872,20 @@ export function creerCarteVent(map) {
     afficherEcheance();
     planifierEcheance();
   });
+  ongletsVue.forEach((onglet, index) => {
+    onglet.addEventListener('click', () => {
+      selectionnerVue(['carte', 'volume'][index]);
+    });
+  });
+  panneau.querySelector('.vent-vues').addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = ongletsVue.findIndex((onglet) => onglet.getAttribute('aria-selected') === 'true');
+    const prochain = event.key === 'Home' ? 0
+      : event.key === 'End' ? ongletsVue.length - 1
+        : (index + (event.key === 'ArrowRight' ? 1 : -1) + ongletsVue.length) % ongletsVue.length;
+    selectionnerVue(['carte', 'volume'][prochain], true);
+  });
   selecteurCouche.addEventListener('change', () => {
     ecrire('vent-volume-couche', selecteurCouche.value);
     construireCouches();
@@ -889,10 +903,10 @@ export function creerCarteVent(map) {
     });
   });
   panneau.querySelector('.vent-volume-recentrer').addEventListener('click', () => volume.recentrer());
-  boutonOuvrirVolume.addEventListener('click', ouvrirVolume);
-  boutonRetour.addEventListener('click', fermerVolume);
+  boutonAgrandir.addEventListener('click', () => basculerPleinEcran(true));
+  boutonRetour.addEventListener('click', () => basculerPleinEcran(false));
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') fermerVolume();
+    if (event.key === 'Escape') basculerPleinEcran(false);
   });
   actualiserZone.addEventListener('click', () => {
     if (vueActive === 'volume') void chargerProfilVolume();
@@ -908,6 +922,7 @@ export function creerCarteVent(map) {
   observateurTheme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   appliquerPalette();
   afficherEcheance();
+  selectionnerVue(vueActive);
 
   return {
     id: 'vent',
@@ -921,8 +936,12 @@ export function creerCarteVent(map) {
       actif = true;
       assurerCouche();
       coucheVent.definirVisible(true);
-      coucheVent.definirAnimation(true);
-      if (!donneesVentCourantes) void chargerVent();
+      coucheVent.definirAnimation(vueActive !== 'volume');
+      if (vueActive === 'volume') {
+        if (!zoneVolumeCapturee) void chargerProfilVolume();
+      } else if (!donneesVentCourantes) {
+        void chargerVent();
+      }
       afficherEcheance();
       mettreAJourAlerte();
       clearInterval(minuteurValidite);
@@ -933,7 +952,6 @@ export function creerCarteVent(map) {
       clearInterval(minuteurValidite);
       alerteZone.hidden = true;
       basculerPleinEcran(false);
-      vueActive = 'carte';
       panneauCarte.masquer();
       controleur?.abort();
       controleurProfil?.abort();
