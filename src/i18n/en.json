@@ -923,5 +923,49 @@
   "hl.vider-aide": "Deletes recently viewed maps and saved weather data. Downloaded areas, your routes and your settings are kept.",
   "hl.vider-confirmer": "Clear the cache? Recently viewed maps and saved weather data will be deleted. Downloaded areas and your routes are kept.",
   "hl.vide": "Cache cleared.",
-  "hl.vider-erreur": "The cache could not be cleared."
+  "hl.vider-erreur": "The cache could not be cleared.",
+  "params.sauvegarde": "Backup",
+  "sauv.aide": "Export your settings (theme, units, language, panels) and your Hiking and Cycling routes to a .json file, then import it on this phone or another to get everything back.",
+  "sauv.exclusion": "Offline map areas are not included: they are too heavy and can be downloaded again from Offline data.",
+  "sauv.exporter": "Export",
+  "sauv.importer": "Import",
+  "sauv.exportee": "Backup file created.",
+  "sauv.fusionner": "Merge",
+  "sauv.remplacer": "Replace",
+  "sauv.annuler": "Cancel",
+  "sauv.confirmer": "Import the backup",
+  "sauv.remplacer-confirmer": "Replace all your current settings and routes with those in the file? This cannot be undone.",
+  "sauv.importee": "Backup imported. Montis is restarting to apply it…",
+  "sauv.vide": "Import cancelled.",
+  "sauv.du": "Backup from {date}",
+  "sauv.sans-date": "Undated backup",
+  "sauv.reglages": "Settings",
+  "sauv.reglages-detail": "{theme} theme · {unites} · {langue}",
+  "sauv.parcours-rando": "Hiking routes",
+  "sauv.parcours-velo": "Cycling routes",
+  "sauv.nouveaux": {
+    "un": "{n} new, the others are updated",
+    "autre": "{n} new, the others are updated"
+  },
+  "sauv.remplacent": {
+    "un": "replace the current route ({n})",
+    "autre": "replace the {n} current routes"
+  },
+  "sauv.fusion-aide": "Merge: the file’s settings replace yours one by one, and its routes are added to yours. Nothing is deleted.",
+  "sauv.remplacement-aide": "Replace: your current settings and routes are deleted, then replaced by those in the file.",
+  "sauv.lecture": "Checking the file…",
+  "sauv.verifiee": "Valid file. Check what will be imported:",
+  "sauv.erreur-taille": "File too large for a Montis backup (over 20 MB).",
+  "sauv.erreur-json": "This file is not readable JSON. Choose a file exported from Montis.",
+  "sauv.erreur-format": "This file is not a Montis backup.",
+  "sauv.erreur-version-invalide": "Missing or invalid backup version: the file seems damaged.",
+  "sauv.erreur-version-recente": "This backup comes from a newer version of Montis (format {version}). Update the app, then try again.",
+  "sauv.erreur-reglages": "The settings in the file are unreadable: nothing was imported.",
+  "sauv.erreur-parcours": "The routes in the file are incomplete or damaged: nothing was imported.",
+  "sauv.erreur-ecriture": "Import failed: browser storage is full. Delete some routes or clear the cache, then try again.",
+  "sauv.tous-nouveaux": {
+    "un": "{n} new",
+    "autre": "{n} new"
+  },
+  "sauv.aucun-nouveau": "already here, they are updated"
 }

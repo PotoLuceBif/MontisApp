@@ -4,6 +4,7 @@ import { applicationInstallee, installationPossible, installerApplication, surIn
 import { choixUniteVent, definirLangue, definirSysteme, definirUniteVent, langue, surPreferences, systemeUnites } from './preferences.js';
 import { poser, poserAttribut, t, ta, ti } from './i18n.js';
 import { creerSectionHorsLigne } from './parametres-hors-ligne.js';
+import { creerSectionSauvegarde } from './parametres-sauvegarde.js';
 
 function groupe(cle, id) {
   const section = document.createElement('section');
@@ -157,6 +158,11 @@ export function creerPageParametres({ retour }) {
   const sectionHorsLigne = groupe('params.hors-ligne', 'hors-ligne');
   const horsLigne = creerSectionHorsLigne(sectionHorsLigne);
   corps.appendChild(sectionHorsLigne);
+
+  // ---------- Sauvegarde ----------
+  const sectionSauvegarde = groupe('params.sauvegarde', 'sauvegarde');
+  creerSectionSauvegarde(sectionSauvegarde);
+  corps.appendChild(sectionSauvegarde);
 
   // Une restauration de sauvegarde peut tout changer d'un coup
   surPreferences(() => {

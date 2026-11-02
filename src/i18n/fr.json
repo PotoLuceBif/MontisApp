@@ -923,5 +923,49 @@
   "hl.vider-aide": "Supprime les cartes vues récemment et les données météo enregistrées. Les zones téléchargées, vos parcours et vos réglages sont conservés.",
   "hl.vider-confirmer": "Vider le cache ? Les cartes vues récemment et les données météo enregistrées seront supprimées. Les zones téléchargées et vos parcours sont conservés.",
   "hl.vide": "Cache vidé.",
-  "hl.vider-erreur": "Le cache n’a pas pu être vidé."
+  "hl.vider-erreur": "Le cache n’a pas pu être vidé.",
+  "params.sauvegarde": "Sauvegarde",
+  "sauv.aide": "Exportez dans un fichier .json vos réglages (thème, unités, langue, panneaux) et Mes parcours Rando et Vélo, puis importez-le sur ce téléphone ou un autre pour tout retrouver.",
+  "sauv.exclusion": "Les zones de carte hors ligne ne sont pas incluses : trop lourdes, elles se retéléchargent depuis Données hors ligne.",
+  "sauv.exporter": "Exporter",
+  "sauv.importer": "Importer",
+  "sauv.exportee": "Fichier de sauvegarde créé.",
+  "sauv.fusionner": "Fusionner",
+  "sauv.remplacer": "Remplacer",
+  "sauv.annuler": "Annuler",
+  "sauv.confirmer": "Importer la sauvegarde",
+  "sauv.remplacer-confirmer": "Remplacer tous vos réglages et parcours actuels par ceux du fichier ? Cette action ne peut pas être annulée.",
+  "sauv.importee": "Sauvegarde importée. Montis redémarre pour l’appliquer…",
+  "sauv.vide": "Import annulé.",
+  "sauv.du": "Sauvegarde du {date}",
+  "sauv.sans-date": "Sauvegarde sans date",
+  "sauv.reglages": "Réglages",
+  "sauv.reglages-detail": "Thème {theme} · {unites} · {langue}",
+  "sauv.parcours-rando": "Parcours Rando",
+  "sauv.parcours-velo": "Parcours Vélo",
+  "sauv.nouveaux": {
+    "un": "{n} nouveau, les autres sont mis à jour",
+    "autre": "{n} nouveaux, les autres sont mis à jour"
+  },
+  "sauv.remplacent": {
+    "un": "remplacent le parcours actuel ({n})",
+    "autre": "remplacent les {n} parcours actuels"
+  },
+  "sauv.fusion-aide": "Fusionner : les réglages du fichier remplacent les vôtres un par un, et ses parcours s’ajoutent aux vôtres. Rien n’est supprimé.",
+  "sauv.remplacement-aide": "Remplacer : vos réglages et parcours actuels sont effacés, puis remplacés par ceux du fichier.",
+  "sauv.lecture": "Vérification du fichier…",
+  "sauv.verifiee": "Fichier valide. Vérifiez ce qui va être importé :",
+  "sauv.erreur-taille": "Fichier trop lourd pour une sauvegarde Montis (plus de 20 Mo).",
+  "sauv.erreur-json": "Ce fichier n’est pas un JSON lisible. Choisissez un fichier exporté depuis Montis.",
+  "sauv.erreur-format": "Ce fichier n’est pas une sauvegarde Montis.",
+  "sauv.erreur-version-invalide": "Version de sauvegarde absente ou invalide : le fichier semble abîmé.",
+  "sauv.erreur-version-recente": "Cette sauvegarde vient d’une version plus récente de Montis (format {version}). Mettez l’application à jour, puis réessayez.",
+  "sauv.erreur-reglages": "Les réglages du fichier sont illisibles : rien n’a été importé.",
+  "sauv.erreur-parcours": "Les parcours du fichier sont incomplets ou abîmés : rien n’a été importé.",
+  "sauv.erreur-ecriture": "Import impossible : l’espace du navigateur est plein. Supprimez des parcours ou videz le cache, puis réessayez.",
+  "sauv.tous-nouveaux": {
+    "un": "{n} nouveau",
+    "autre": "{n} nouveaux"
+  },
+  "sauv.aucun-nouveau": "déjà présents, ils sont mis à jour"
 }

@@ -73,3 +73,15 @@ export function retourAZero() {
     { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
   );
 }
+// Sauvegarde : tous les réglages d'un coup (copie, pour ne pas toucher à la mémoire)
+export const toutLire = () => JSON.parse(JSON.stringify(donnees));
+
+export function toutRemplacer(valeurs) {
+  donnees = { ...valeurs };
+  try {
+    localStorage.setItem(CLE, JSON.stringify(donnees));
+    return true;
+  } catch {
+    return false;
+  }
+}
