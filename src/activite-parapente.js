@@ -51,7 +51,7 @@ export function creerActiviteParapente(map, { onChoisirPoint, analyseVent } = {}
         <span>${puceManche(COULEUR_BALISE_INACTIVE)} Plus de 2 h</span>
         <span><i class="para-hs">×</i> Hors service</span>
       </div>
-      <p class="note para-legende-note">La manche pointe où va le vent. Vent moyen en km/h, rafale en orange si l’écart est marqué.</p>
+      <p class="note para-legende-note">La manche pointe où va le vent, le chiffre donne le vent moyen en km/h.</p>
       <div class="para-balises" hidden>
         <h3>Balises de la zone</h3>
         <div class="para-balises-liste"></div>

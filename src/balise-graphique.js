@@ -1,11 +1,12 @@
 // Graphique de l'évolution d'une balise : vent moyen, rafales, minimum et cap sous l'axe du temps.
 import { PALIERS_BALISE, heureCourte, paletteBalise, palierBalise } from './balises-sources.js';
+import { pointCardinal } from './vent-calcul.js';
 
 const MARGE_GAUCHE = 30;
 const MARGE_DROITE = 8;
 const MARGE_HAUT = 8;
 const HAUTEUR_AXE = 18;
-const HAUTEUR_CAP = 24;
+const HAUTEUR_CAP = 38; // flèche et lettre sous l'axe
 const ESPACE_FLECHES = 34;
 const PAS_HEURES = { 3: 1, 6: 1, 12: 2, 24: 4 };
 const HEURE = 60 * 60 * 1000;
@@ -86,6 +87,8 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     const texte = style.getPropertyValue('--texte').trim();
     const bord = style.getPropertyValue('--bord').trim();
     const surface = style.getPropertyValue('--surface').trim();
+    const couleurRafale = style.getPropertyValue('--vent-rafale').trim();
+    const couleurMinimum = style.getPropertyValue('--vent-min').trim();
     const police = style.fontFamily;
     const couleurs = paletteBalise();
     const maximum = plafond();
@@ -165,18 +168,15 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
       // Minimum
       const avecMin = serie.filter(({ minimum }) => Number.isFinite(minimum));
       tracer(avecMin, ({ minimum }) => minimum, yDe);
-      ctx.strokeStyle = texte2;
-      ctx.globalAlpha = 0.75;
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = couleurMinimum;
+      ctx.lineWidth = 1.2;
       ctx.stroke();
       // Rafales
       const avecRafale = serie.filter(({ rafale }) => Number.isFinite(rafale));
       tracer(avecRafale, ({ rafale }) => rafale, yDe);
-      ctx.strokeStyle = gradient;
-      ctx.globalAlpha = 0.95;
-      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = couleurRafale;
+      ctx.lineWidth = 1.3;
       ctx.stroke();
-      ctx.globalAlpha = 1;
       // Moyen
       tracer(serie, ({ moyenne }) => moyenne, yDe);
       ctx.strokeStyle = gradient;
@@ -187,7 +187,13 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
     // Cap le long de l'axe du temps, moyenné par intervalle pour rester lisible
     const nombre = Math.max(2, Math.floor(largeurTrace() / ESPACE_FLECHES));
     const duree = (fin - debut) / nombre;
-    const yFleche = hauteur - HAUTEUR_CAP / 2;
+    const yFleche = hauteur - HAUTEUR_CAP + 11;
+    const yLettre = hauteur - 2;
+    ctx.font = `10px ${police}`;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = texte2;
+    ctx.fillText('de', MARGE_GAUCHE - 6, yLettre); // la lettre dit d'où vient le vent, la flèche où il va
+    ctx.textAlign = 'center';
     for (let index = 0; index < nombre; index += 1) {
       const a = debut + index * duree;
       const groupe = points.filter(({ date }) => date >= a && date < a + duree);
@@ -209,6 +215,8 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
       ctx.closePath();
       ctx.fill();
       ctx.restore();
+      ctx.fillStyle = texte2;
+      ctx.fillText(pointCardinal(cap), xDe(a + duree / 2), yLettre);
     }
 
     if (curseur !== null && points[curseur]) {
@@ -226,7 +234,7 @@ export function creerGraphiqueBalise(canvas, { onCurseur = () => {} } = {}) {
         if (!Number.isFinite(valeur)) return;
         ctx.beginPath();
         ctx.arc(x, yDe(valeur), index === 2 ? 5 : 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = index === 1 ? texte2 : couleurs[palierBalise(valeur)];
+        ctx.fillStyle = [couleurRafale, couleurMinimum, couleurs[palierBalise(valeur)]][index];
         ctx.strokeStyle = surface;
         ctx.lineWidth = 2;
         ctx.fill();

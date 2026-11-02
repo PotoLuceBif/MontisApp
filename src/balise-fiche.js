@@ -3,12 +3,13 @@ import { lire, ecrire } from './reglages.js';
 import { altitude as altitudeRelief, preparerTuiles } from './portee.js';
 import { creerGraphiqueBalise } from './balise-graphique.js';
 import { couleurBalise, dateComplete, etatStation, heureCourte, roseVent, texteAge } from './balises-sources.js';
-import { texteProvenance } from './vent-cadran.js';
+import { cadranVent, texteProvenance } from './vent-cadran.js';
 
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
 const COUVERTURE_TOLEREE = 15 * 60 * 1000; // en dessous, on ne signale pas de manque
 const ZOOM_RELIEF = 12;
+const SEUIL_GESTE = 28; // px
 const LIBELLES_ETAT = { actif: 'En direct', ancien: 'Relevé ancien', hs: 'Hors service' };
 
 const kmh = (valeur) => (Number.isFinite(valeur) ? String(Math.round(valeur)) : '—');
@@ -19,12 +20,25 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
   fiche.hidden = true;
   fiche.setAttribute('aria-label', 'Fiche de la balise');
   fiche.innerHTML = `
+    <button type="button" class="bf-poignee" aria-hidden="true" tabindex="-1"></button>
+    <div class="bf-barre">
+      <button type="button" class="bf-resume" aria-label="Agrandir la fiche">
+        <span class="bf-resume-rose"></span>
+        <span class="bf-resume-texte"><strong></strong><small></small></span>
+        <span class="bf-resume-vent"><b></b> <i>km/h</i></span>
+        <svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+      </button>
+      <button type="button" class="bf-fermer" aria-label="Fermer la fiche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
     <header class="bf-entete">
       <div class="bf-titres">
         <h3 class="bf-nom"></h3>
         <p class="bf-meta"><span class="bf-etat"></span><span class="bf-altitude"></span><span class="bf-age"></span></p>
       </div>
-      <button type="button" class="bf-fermer" aria-label="Fermer la fiche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="bf-actions">
+        <button type="button" class="bf-reduire" aria-label="Réduire la fiche"><svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button type="button" class="bf-fermer" aria-label="Fermer la fiche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
     </header>
     <section class="bf-maintenant" aria-label="Vent actuel">
       <div class="bf-rose">
@@ -33,8 +47,8 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       </div>
       <div class="bf-valeurs">
         <div class="bf-valeur bf-valeur-principale"><span>Vent moyen</span><strong><b data-bf-moyen></b> <i>km/h</i></strong></div>
-        <div class="bf-valeur"><span>Rafale</span><strong><b data-bf-rafale></b> <i>km/h</i></strong></div>
-        <div class="bf-valeur"><span>Minimum</span><strong><b data-bf-minimum></b> <i>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-rafale"><span>Rafale</span><strong><b data-bf-rafale></b> <i>km/h</i></strong></div>
+        <div class="bf-valeur bf-valeur-minimum"><span>Minimum</span><strong><b data-bf-minimum></b> <i>km/h</i></strong></div>
       </div>
       <p class="bf-absence" hidden></p>
     </section>
@@ -51,8 +65,8 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
         <div class="bf-curseur" hidden>
           <strong data-bf-c-heure></strong>
           <span>Moy. <b data-bf-c-moyen></b></span>
-          <span>Raf. <b data-bf-c-rafale></b></span>
-          <span>Min. <b data-bf-c-minimum></b></span>
+          <span>Raf. <b class="bf-c-rafale" data-bf-c-rafale></b></span>
+          <span>Min. <b class="bf-c-minimum" data-bf-c-minimum></b></span>
           <span class="bf-c-direction"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 15 13.5 13V21H10.5V13L5 15Z"/></svg><b data-bf-c-direction></b></span>
         </div>
       </div>
@@ -79,6 +93,9 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
   let controleur = null;
   let minuteurAge = null;
   let jetonAltitude = 0;
+  let reduite = lire('balise-fiche-reduite', false) === true;
+  let departGeste = null;
+  let gesteFait = false;
   const cacheHistorique = new Map();
   const cacheAltitude = new Map();
   let periode = PERIODES.includes(Number(lire('balise-periode', 6))) ? Number(lire('balise-periode', 6)) : 6;
@@ -90,6 +107,7 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       if (!point) return;
       $('[data-bf-c-heure]').textContent = heureCourte(point.date);
       $('[data-bf-c-moyen]').textContent = kmh(point.moyenne);
+      $('[data-bf-c-moyen]').style.color = couleurBalise(point.moyenne);
       $('[data-bf-c-rafale]').textContent = kmh(point.rafale);
       $('[data-bf-c-minimum]').textContent = kmh(point.minimum);
       const avecCap = Number.isFinite(point.direction);
@@ -119,6 +137,12 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
     $('[data-bf-moyen]').textContent = kmh(station.moyenne);
     $('[data-bf-rafale]').textContent = kmh(station.rafale);
     $('[data-bf-minimum]').textContent = kmh(station.minimum);
+    $('.bf-resume-rose').innerHTML = cadranVent(avecCap && etat !== 'hs' ? (station.direction + 180) % 360 : null, 0, 'vent-cadran-petit');
+    $('.bf-resume-texte strong').textContent = station.nom;
+    $('.bf-resume-texte small').textContent = etat === 'hs'
+      ? LIBELLES_ETAT.hs
+      : `${etat === 'ancien' ? `${LIBELLES_ETAT.ancien} · ` : ''}${texteProvenance(station.direction)}`;
+    $('.bf-resume-vent b').textContent = etat === 'hs' ? '—' : kmh(station.moyenne);
     const absence = $('.bf-absence');
     absence.hidden = etat === 'actif';
     absence.textContent = etat === 'ancien'
@@ -241,6 +265,18 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
     }
   }
 
+  // Réduite sur téléphone : un bandeau suffit à lire le vent sans cacher la carte
+  function appliquerReduction() {
+    fiche.classList.toggle('bf-reduite', reduite);
+    if (station && !reduite) garderBaliseVisible();
+  }
+
+  function basculerReduction(valeur) {
+    reduite = valeur;
+    ecrire('balise-fiche-reduite', reduite);
+    appliquerReduction();
+  }
+
   function fermer() {
     if (fiche.hidden) return;
     fiche.hidden = true;
@@ -258,7 +294,33 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       rendreGraphique();
     });
   });
-  $('.bf-fermer').addEventListener('click', fermer);
+  fiche.querySelectorAll('.bf-fermer').forEach((bouton) => bouton.addEventListener('click', fermer));
+  $('.bf-reduire').addEventListener('click', () => basculerReduction(true));
+  $('.bf-poignee').addEventListener('click', () => {
+    if (!gesteFait) basculerReduction(!reduite);
+    gesteFait = false;
+  });
+  $('.bf-resume').addEventListener('click', () => {
+    if (!gesteFait) basculerReduction(false);
+    gesteFait = false;
+  });
+  // Glisser le haut de la fiche vers le bas la réduit, vers le haut l'agrandit
+  fiche.addEventListener('pointerdown', (event) => {
+    const prise = event.target.closest('.bf-poignee, .bf-barre, .bf-entete');
+    departGeste = prise && !event.target.closest('.bf-fermer, .bf-reduire') ? event.clientY : null;
+    gesteFait = false;
+  });
+  fiche.addEventListener('pointerup', (event) => {
+    if (departGeste === null) return;
+    const ecart = event.clientY - departGeste;
+    departGeste = null;
+    if (Math.abs(ecart) < SEUIL_GESTE || !window.matchMedia('(max-width: 640px)').matches) return;
+    gesteFait = true;
+    basculerReduction(ecart > 0);
+  });
+  fiche.addEventListener('pointercancel', () => {
+    departGeste = null;
+  });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') fermer();
   });
@@ -272,6 +334,7 @@ export function creerFicheBalise(map, { onFermer = () => {} } = {}) {
       source = nouvelleSource;
       fiche.hidden = false;
       fiche.scrollTop = 0;
+      fiche.classList.toggle('bf-reduite', reduite);
       rendreMaintenant();
       void afficherAltitude();
       void chargerHistorique();

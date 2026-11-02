@@ -7,7 +7,6 @@ import {
   PALETTE_BALISES,
   etatStation,
   palierBalise,
-  rafaleMarquee,
 } from './balises-sources.js';
 
 const SOURCE = 'balises-vent';
@@ -21,7 +20,6 @@ const RANG_ETAT = { actif: 0, ancien: 1, hs: 2 };
 const LONGUEURS_MANCHE = [23, 27, 30, 33, 35]; // px depuis le mât : la manche se gonfle avec le vent
 const TAILLE_MANCHE = 72;
 const COULEUR_CERNE = 'rgba(8, 12, 24, .88)';
-const COULEUR_RAFALE = '#ffb155';
 const FOND_PASTILLE = '#111728';
 const FOND_PASTILLE_INACTIVE = '#2b303d';
 
@@ -61,19 +59,15 @@ function dessinerManche(couleur, longueur) {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-// id : balise-pastille|couleur (palier ou état)|moyenne|rafale
-function dessinerPastille(palier, moyenne, rafale) {
+// id : balise-pastille|couleur (palier ou état)|moyenne
+function dessinerPastille(palier, moyenne) {
   const inactive = palier === 'ancien' || palier === 'hs';
   const bordure = inactive ? COULEUR_BALISE_INACTIVE : PALETTE_BALISES[Number(palier)];
   const mesure = document.createElement('canvas').getContext('2d');
   const principal = `700 12.5px ${police()}`;
-  const secondaire = `700 10.5px ${police()}`;
   mesure.font = principal;
-  const largeurMoyenne = mesure.measureText(moyenne).width;
-  mesure.font = secondaire;
-  const largeurRafale = rafale ? mesure.measureText(rafale).width + 4 : 0;
   const hauteur = 21;
-  const largeur = Math.max(hauteur, Math.ceil(largeurMoyenne + largeurRafale + 11));
+  const largeur = Math.max(hauteur, Math.ceil(mesure.measureText(moyenne).width + 11));
   const marge = 2;
   const canvas = document.createElement('canvas');
   canvas.width = (largeur + marge * 2) * 2;
@@ -88,17 +82,10 @@ function dessinerPastille(palier, moyenne, rafale) {
   ctx.strokeStyle = bordure;
   ctx.stroke();
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  const x = marge + (largeur - largeurMoyenne - largeurRafale) / 2;
-  const y = marge + hauteur / 2 + 0.5;
+  ctx.textAlign = 'center';
   ctx.font = principal;
   ctx.fillStyle = inactive ? '#c6ccd7' : '#ffffff';
-  ctx.fillText(moyenne, x, y);
-  if (rafale) {
-    ctx.font = secondaire;
-    ctx.fillStyle = COULEUR_RAFALE;
-    ctx.fillText(rafale, x + largeurMoyenne + 4, y);
-  }
+  ctx.fillText(moyenne, marge + largeur / 2, marge + hauteur / 2 + 0.5);
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
@@ -116,10 +103,9 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
   }
 
   function imagePastille(station, etat) {
-    if (etat === 'hs') return 'balise-pastille|hs|×|';
+    if (etat === 'hs') return 'balise-pastille|hs|×';
     const palier = etat === 'ancien' ? 'ancien' : palierBalise(station.moyenne);
-    const rafale = etat === 'actif' && rafaleMarquee(station) ? Math.round(station.rafale) : '';
-    return `balise-pastille|${palier}|${Math.round(station.moyenne)}|${rafale}`;
+    return `balise-pastille|${palier}|${Math.round(station.moyenne)}`;
   }
 
   // Une balise par case de la grille du monde : déplacer la carte ne change pas celles retenues
@@ -143,7 +129,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
 
   function assurerImage(id) {
     if (!id || map.hasImage(id)) return;
-    const [genre, valeur, moyenne, rafale] = id.split('|');
+    const [genre, valeur, moyenne] = id.split('|');
     if (genre === 'balise-manche') {
       const inactive = valeur === 'ancien';
       const image = dessinerManche(
@@ -152,7 +138,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true } = {}) {
       );
       map.addImage(id, image, { pixelRatio: 2 });
     } else {
-      map.addImage(id, dessinerPastille(valeur, moyenne, rafale), { pixelRatio: 2 });
+      map.addImage(id, dessinerPastille(valeur, moyenne), { pixelRatio: 2 });
     }
   }
 

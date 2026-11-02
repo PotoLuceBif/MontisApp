@@ -43,10 +43,6 @@ export function etatStation(station) {
   return age > AGE_ANCIEN ? 'ancien' : 'actif';
 }
 
-// Seul un écart franc mérite d'être signalé sur la carte
-export const rafaleMarquee = ({ moyenne, rafale }) =>
-  Number.isFinite(rafale) && rafale - moyenne >= 10 && rafale >= moyenne * 1.5;
-
 export function texteAge(date) {
   const minutes = Math.max(0, Math.round((Date.now() - date) / 60000));
   if (minutes < 1) return 'à l’instant';
