@@ -2,6 +2,7 @@ import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { estHorsLigne } from './hors-ligne.js';
+import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -305,6 +306,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
 
   let point = null;
   let marqueur = null;
+  const pin = creerPinSeul('parapente', 'selected');
   let actif = false;
   let compteur = 0;
   let grille = null;
@@ -392,13 +394,15 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     if (!actif || document.querySelector('#menu-tiroir.ouvert')) return;
     const depart = [e.lngLat.lng, e.lngLat.lat];
     point = depart;
-    if (!marqueur) marqueur = new maplibregl.Marker({ color: '#5a1fc0' });
+    if (!marqueur) marqueur = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN });
+    pin.changerEtat('selected');
     marqueur.setLngLat(point).addTo(map);
     afficherResultat('Lecture du relief…');
     try {
       await preparerTuiles(depart[0], depart[1], 200, 12);
     } catch (err) {
       if (point !== depart) return;
+      pin.changerEtat('disabled'); // pas de relief ici
       inSol.value = '';
       retirerZone();
       afficherResultat(err.message);
@@ -436,6 +440,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
       return;
     }
     const mon = ++compteur;
+    pin.changerEtat('selected');
     afficherResultat('Calcul en cours…');
     try {
       const res = await calculerPortee(point[0], point[1], finesse, sol + haut);
@@ -456,6 +461,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
     } catch (err) {
       if (mon !== compteur) return;
       console.warn('Portée :', err);
+      pin.changerEtat('disabled');
       retirerZone();
       afficherResultat(err.code === 'relief' ? err.message : 'Calcul impossible pour ce point.');
     }

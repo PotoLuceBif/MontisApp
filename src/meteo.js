@@ -1,6 +1,7 @@
 import { lire, ecrire } from './reglages.js';
 import { Marker } from 'maplibre-gl';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
+import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -485,6 +486,7 @@ export function creerConditionsLocales(map) {
   let tiroirFermePourSelection = false;
   let controleur = null;
   let marqueur = null;
+  let pin = null;
   let position = lirePositionMeteo();
   let positionChoisie = Boolean(position);
   let previsionsHoraires = null;
@@ -617,9 +619,15 @@ export function creerConditionsLocales(map) {
     }
   }
 
+  // Normal quand la météo suit le centre de la carte, sélectionné quand le point est posé ou en cours de choix
+  function majPin() {
+    pin?.changerEtat(positionChoisie || selectionEnCours ? 'selected' : '');
+  }
+
   function annulerSelection() {
     if (!selectionEnCours) return;
     selectionEnCours = false;
+    majPin();
     map.getCanvas().removeEventListener('click', capterClicCarte, true);
     map.getCanvas().style.cursor = '';
     boutonChoisir.setAttribute('aria-pressed', 'false');
@@ -651,6 +659,7 @@ export function creerConditionsLocales(map) {
       return;
     }
     selectionEnCours = true;
+    majPin();
     boutonChoisir.setAttribute('aria-pressed', 'true');
     texteBoutonChoisir.textContent = 'Annuler';
     statut.classList.remove('erreur');
@@ -909,8 +918,10 @@ export function creerConditionsLocales(map) {
     void chargerCodePostal(position, requete);
     const marqueurPosition = [position.longitude, position.latitude];
     if (!marqueur) {
-      marqueur = new Marker({ color: '#4debd4' });
+      pin = creerPinSeul('meteo');
+      marqueur = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN });
     }
+    majPin();
     marqueur.setLngLat(marqueurPosition).addTo(map);
 
     const params = new URLSearchParams({

@@ -1,6 +1,7 @@
 import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
   import { obtenirBarre } from './barre-haut.js';
+import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
@@ -11,9 +12,6 @@ const CLE_RECENTS = 'recherches-recentes';
 
 const ICONE_LOUPE =
   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
-
-const ICONE_REPERE =
-  '<svg viewBox="0 0 24 34" width="28" height="40"><path d="M12 0C5.4 0 0 5.2 0 11.7 0 20.6 12 34 12 34s12-13.4 12-22.3C24 5.2 18.6 0 12 0z" fill="#ff59d6" stroke="#0b111b" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="#4debd4"/></svg>';
 
 // ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
 const CATEGORIES = [
@@ -309,13 +307,6 @@ export function initRecherche(map) {
   }
 
   // ---------- Repère sur la carte ----------
-  function creerRepere() {
-    const el = document.createElement('div');
-    el.className = 'rech-repere';
-    el.innerHTML = ICONE_REPERE;
-    return el;
-  }
-
   function creerContenuPopup(r) {
     const boite = document.createElement('div');
     boite.className = 'rech-popup';
@@ -363,13 +354,17 @@ export function initRecherche(map) {
 
   function poserRepere(r) {
     retirerRepere();
-    repere = new maplibregl.Marker({ element: creerRepere(), anchor: 'bottom' })
+    const pin = creerPinSeul('recherche');
+    pin.element.classList.add('rech-repere');
+    const popup = new maplibregl.Popup({ offset: 34, closeButton: false, maxWidth: '260px' }).setDOMContent(
+      creerContenuPopup(r)
+    );
+    // Sélectionné tant que sa fiche est ouverte
+    popup.on('open', () => pin.changerEtat('selected'));
+    popup.on('close', () => pin.changerEtat());
+    repere = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN })
       .setLngLat([r.lng, r.lat])
-      .setPopup(
-        new maplibregl.Popup({ offset: 34, closeButton: false, maxWidth: '260px' }).setDOMContent(
-          creerContenuPopup(r)
-        )
-      )
+      .setPopup(popup)
       .addTo(map);
     repere.togglePopup();
   }

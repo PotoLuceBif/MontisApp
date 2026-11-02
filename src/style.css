@@ -290,8 +290,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .rech-message { padding: 14px; color: var(--texte-2); }
 .rech-credit { padding: 6px 14px 8px; font-size: 11px; color: var(--texte-2); border-top: 1px solid var(--bord); }
 
-.rech-repere { cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
-.rech-repere path:first-child { fill: var(--accent); }
+.repere-seul.rech-repere { z-index: 1; cursor: pointer; pointer-events: auto; } /* au-dessus de l'ombre de sa fiche */
 .rech-popup strong { display: block; font-size: 15px; margin-bottom: 2px; }
 .rech-popup-sous { color: var(--texte-2); font-size: 12px; margin-bottom: 6px; }
 .rech-popup-coord { font: 12px ui-monospace, Consolas, monospace; margin-bottom: 8px; }
@@ -674,6 +673,8 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   -webkit-user-drag: none;
 }
 .rando-repere:hover .repere-pin { transform: scale(1.08); }
+/* Sans fiche à ouvrir : le clic va à la carte, même dans le vide autour du pin (choix d'un point) */
+.repere-seul { width: 48px; height: 48px; pointer-events: none; }
 .rando-repere-nom {
   position: absolute;
   top: 46px;
