@@ -190,6 +190,9 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Vélo : calque vélo, alertes de passages raides, EuroVelo, bike parks.
 - Ski : stations, pistes, enneigement, avalanches, visite 3D (aussi pour les bike parks).
 - Pins en goutte : station, bike park, rando, route, mes parcours, départ, recherche, météo, parapente.
+- Paramètres en sections : Thème, Unités (métrique ou impérial, unité du vent à part), Langue (FR/EN, `src/i18n/`, `t('clé')`), Données hors ligne (espace par type, zones, vider le cache, Wi-Fi uniquement sur Chrome Android), Sauvegarde (export et import `.json` des réglages et de Mes parcours).
+- Portée de vol par chemin le plus court (Dijkstra), qui contourne le relief.
+- La manche à air de la carte suit le curseur du graphique d'une balise.
 
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
@@ -197,5 +200,6 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
 - Aucun test automatique.
+- Quelques messages de statut ne changent de langue qu'à la prochaine actualisation.
 
-Aucune feuille de route n'est écrite dans le dépôt : demander la priorité au propriétaire plutôt que la supposer.
+**Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.
