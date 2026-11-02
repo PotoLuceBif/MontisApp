@@ -3,6 +3,7 @@ import { retourAZero } from './reglages.js';
 import { applicationInstallee, installationPossible, installerApplication, surInstallationChangee } from './hors-ligne.js';
 import { choixUniteVent, definirLangue, definirSysteme, definirUniteVent, langue, surPreferences, systemeUnites } from './preferences.js';
 import { poser, poserAttribut, t, ta, ti } from './i18n.js';
+import { creerSectionHorsLigne } from './parametres-hors-ligne.js';
 
 function groupe(cle, id) {
   const section = document.createElement('section');
@@ -152,6 +153,11 @@ export function creerPageParametres({ retour }) {
   sectionLangue.appendChild(ligneLangue);
   corps.appendChild(sectionLangue);
 
+  // ---------- Données hors ligne ----------
+  const sectionHorsLigne = groupe('params.hors-ligne', 'hors-ligne');
+  const horsLigne = creerSectionHorsLigne(sectionHorsLigne);
+  corps.appendChild(sectionHorsLigne);
+
   // Une restauration de sauvegarde peut tout changer d'un coup
   surPreferences(() => {
     choixSysteme.maj();
@@ -192,5 +198,7 @@ export function creerPageParametres({ retour }) {
   application.append(aideReset, reset);
   corps.appendChild(application);
 
+  // Appelé à chaque ouverture : l'espace utilisé change en se promenant sur la carte
+  page.surOuverture = () => void horsLigne.actualiser();
   return page;
 }

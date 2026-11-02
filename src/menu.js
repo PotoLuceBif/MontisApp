@@ -215,7 +215,10 @@ export function initMenu(map) {
   ];
 
   bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
-  boutonParametres.addEventListener('click', () => ouvrir(true, true));
+  boutonParametres.addEventListener('click', () => {
+    ouvrir(true, true);
+    pageParametres.surOuverture?.();
+  });
   boutonFermer.addEventListener('click', () => ouvrir(false));
 
   map.on('click', () => {
@@ -231,16 +234,13 @@ export function initMenu(map) {
   });
 
   // ---------- Page Paramètres ----------
-  tiroir
-    .querySelector('.menu-parametres')
-    .appendChild(
-      creerPageParametres({
-        retour: () => {
-          montrerParametres(false);
-          boutonParametres.setAttribute('aria-expanded', 'false');
-        },
-      })
-    );
+  const pageParametres = creerPageParametres({
+    retour: () => {
+      montrerParametres(false);
+      boutonParametres.setAttribute('aria-expanded', 'false');
+    },
+  });
+  tiroir.querySelector('.menu-parametres').appendChild(pageParametres);
 
   // ---------- Rubriques et modules ----------
   function demarrer(e) {

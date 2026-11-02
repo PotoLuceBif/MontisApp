@@ -5,6 +5,7 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { formatDate, surLangue, t, ta, ti, tt } from './i18n.js';
 import { formatTaille, nombre } from './unites.js';
+import { telechargementBloque } from './donnees-hors-ligne.js';
 
 const CACHE_ZONES = 'montis-zones';
 const CLE_ZONES = 'montis.zones';
@@ -38,6 +39,9 @@ function cleTuile(adresse) {
   if (url.hostname === 'demotiles.maplibre.org') return decodeURIComponent(url.href);
   return url.href;
 }
+
+export const EVENEMENT_ZONES = 'zones-change';
+const annoncerZones = () => window.dispatchEvent(new Event(EVENEMENT_ZONES));
 
 function lireZones() {
   try {
@@ -181,6 +185,22 @@ async function supprimerTuiles(zone, autres) {
   await Promise.all(clesDeZone(zone).filter((cle) => !gardees.has(cle)).map((cle) => cache.delete(cle)));
 }
 
+// Pour les Paramètres : la même liste et la même suppression que dans le menu Carte
+export const listerZones = () => lireZones();
+
+export async function supprimerZone(id) {
+  const zones = lireZones();
+  const zone = zones.find((autre) => autre.id === id);
+  if (!zone) return;
+  const restantes = zones.filter((autre) => autre.id !== id);
+  await supprimerTuiles(zone, restantes);
+  ecrireZones(restantes);
+  annoncerZones();
+}
+
+// Le bouton des Paramètres ouvre le même panneau de téléchargement
+export const demanderTelechargementZone = () => window.dispatchEvent(new Event('telecharger-zone'));
+
 export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   let zones = lireZones();
   let controleur = null;
@@ -243,11 +263,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       supprimer.addEventListener('click', async () => {
         if (!confirm(t('zh.supprimer-confirmer', { nom: zone.nom }))) return;
         supprimer.disabled = true;
-        const restantes = zones.filter((autre) => autre.id !== zone.id);
-        await supprimerTuiles(zone, restantes);
-        zones = restantes;
-        ecrireZones(zones);
-        rendreListe();
+        await supprimerZone(zone.id);
       });
       ligne.append(texte, voir, supprimer);
       return ligne;
@@ -319,6 +335,13 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
 
   function majEstimation() {
     if (!bornesCadre) return;
+    if (telechargementBloque()) {
+      estimation.textContent = t('zh.wifi-requis');
+      estimation.classList.add('zh-trop');
+      boutonLancer.disabled = true;
+      panneau.definirResume({ detail: estimation.textContent });
+      return;
+    }
     const zone = zoneDemandee();
     if (zone.zMin > zone.zMax) {
       estimation.textContent = t('zh.ordre');
@@ -388,6 +411,11 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
 
   async function lancer() {
     const demande = zoneDemandee();
+    if (telechargementBloque()) {
+      estimation.textContent = t('zh.wifi-requis');
+      estimation.classList.add('zh-trop');
+      return;
+    }
     if (navigator.storage?.estimate) {
       const { usage = 0, quota = 0 } = await navigator.storage.estimate();
       if (quota && estimer(demande).octets > quota - usage) {
@@ -431,7 +459,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       }
       zones = [...zones, { ...zone, octets: resultat.octets, manquantes: resultat.manquantes }];
       ecrireZones(zones);
-      rendreListe();
+      annoncerZones();
       panneau.definirResume({ detail: t('zh.termine'), valeur: '', unite: '' });
       progres.textContent = resultat.manquantes
         ? t('zh.termine-manquantes', { n: resultat.manquantes, taille: tailleLisible(resultat.octets) })
@@ -462,6 +490,15 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   map.on('moveend', majCadre);
   map.on('resize', majCadre);
   new ResizeObserver(majCadre).observe(panneau.element);
+
+  window.addEventListener(EVENEMENT_ZONES, () => {
+    zones = lireZones();
+    rendreListe();
+  });
+  window.addEventListener('telecharger-zone', ouvrirPanneau);
+  // Passage en Wi-Fi (ou l'inverse) pendant que le panneau est ouvert
+  navigator.connection?.addEventListener?.('change', majEstimation);
+  window.addEventListener('wifi-seul-change', majEstimation);
 
   rendreListe();
   surLangue(() => {

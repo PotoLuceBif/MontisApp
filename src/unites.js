@@ -91,6 +91,7 @@ export const PIEDS = PIEDS_PAR_METRE;
 const KO = 1024;
 export function formatTaille(octets) {
   const [ko, mo, go] = langue() === 'en' ? ['KB', 'MB', 'GB'] : ['Ko', 'Mo', 'Go'];
+  if (!octets) return `0 ${ko}`;
   if (octets < KO * KO) return `${nombre(Math.max(1, Math.round(octets / KO)))} ${ko}`;
   if (octets < KO * KO * KO) return `${nombre(Math.round(octets / (KO * KO)))} ${mo}`;
   return `${nombre(octets / (KO * KO * KO), 1)} ${go}`;

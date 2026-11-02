@@ -237,6 +237,22 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .params-ligne .params-aide { margin: 8px 0 0; }
 .params-aide-espace { margin-top: 18px; }
 .params-avance { margin: 4px 0 6px; }
+.params-stockage-total { margin: 0 0 8px; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.params-jauge { height: 6px; margin-bottom: 10px; overflow: hidden; border-radius: 3px; background: var(--surface-2); }
+.params-jauge i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.params-stockage {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; margin: 0;
+  padding: 10px 12px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface);
+}
+.params-stockage:empty { display: none; }
+.params-stockage dt { display: grid; min-width: 0; gap: 1px; font-size: 13px; }
+.params-stockage dt small { color: var(--texte-2); font-size: 11px; }
+.params-stockage dd { margin: 0; align-self: center; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.params-ligne > .zh-liste { margin-bottom: 8px; }
+.params-option { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 8px; min-height: 40px; padding: 4px 0; }
+.params-option input { width: 20px; height: 20px; margin: 0; }
+.params-option small { grid-column: 2; margin-left: 0; }
+.params-ligne > .btn-secondaire { min-height: 44px; }
 .params-avance > summary {
   display: flex; align-items: center; min-height: 40px; cursor: pointer;
   font-size: 13px; font-weight: 600; color: var(--texte-2); list-style: none;
