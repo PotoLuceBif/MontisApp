@@ -402,6 +402,16 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   to { opacity: 1; translate: 0 0; scale: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .point-pin .repere-pin { animation: none; } }
+.point-cible {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0; border: 0;
+  background: none; color: var(--texte); font: 600 14px var(--police); text-align: left; cursor: pointer;
+}
+.point-cible-nom { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.point-cible-icone { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: var(--surface-2); color: var(--accent); }
+.point-cible-icone svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.point-cible:hover .point-cible-icone { background: var(--survol); }
+.point-aller { color: var(--surface); background: var(--accent); border-color: var(--accent); }
+.point-aller:hover { background: var(--accent); filter: brightness(1.08); }
 .point-prudence { padding: 9px 0 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 12px; font-style: italic; }
 .fiche-point {
   width: 18px; height: 18px; border-radius: 50%;

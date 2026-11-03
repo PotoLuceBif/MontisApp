@@ -95,3 +95,77 @@ export function pointsEau(elements = []) {
     })
     .filter(Boolean);
 }
+
+// ---------- Distance à une géométrie GeoJSON (eau des tuiles du fond) ----------
+
+// Projection locale en mètres autour d'un point : assez juste sur quelques kilomètres
+function projecteur([lng0, lat0]) {
+  const kx = (Math.PI / 180) * RAYON_TERRE * Math.cos(rad(lat0));
+  const ky = (Math.PI / 180) * RAYON_TERRE;
+  return {
+    vers: ([lng, lat]) => [(lng - lng0) * kx, (lat - lat0) * ky],
+    depuis: ([x, y]) => [lng0 + x / kx, lat0 + y / ky],
+  };
+}
+
+// Point d'un segment [a, b] le plus proche de l'origine, en coordonnées projetées
+function plusProcheSurSegment(a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const longueur2 = dx * dx + dy * dy;
+  const k = longueur2 ? Math.max(0, Math.min(1, -(a[0] * dx + a[1] * dy) / longueur2)) : 0;
+  return [a[0] + k * dx, a[1] + k * dy];
+}
+
+// L'origine est-elle dans l'anneau (projeté) ? Lancer de rayon
+function origineDansAnneau(anneau) {
+  let dedans = false;
+  for (let i = 0, j = anneau.length - 1; i < anneau.length; j = i, i += 1) {
+    const [xi, yi] = anneau[i];
+    const [xj, yj] = anneau[j];
+    if (yi > 0 !== yj > 0 && 0 < ((xj - xi) * (0 - yi)) / (yj - yi) + xi) dedans = !dedans;
+  }
+  return dedans;
+}
+
+// Distance en mètres d'un point à une géométrie, et point de la géométrie le plus proche.
+// Dans un polygone, la distance est nulle.
+export function distanceGeometrie(point, geometrie) {
+  if (!geometrie) return null;
+  const { vers, depuis } = projecteur(point);
+  let meilleur = null;
+  const retenir = (p) => {
+    const d = Math.hypot(p[0], p[1]);
+    if (!meilleur || d < meilleur.d) meilleur = { d, p };
+  };
+  const lignes = (ligne) => {
+    const pts = ligne.map(vers);
+    if (pts.length === 1) retenir(pts[0]);
+    for (let i = 1; i < pts.length; i += 1) retenir(plusProcheSurSegment(pts[i - 1], pts[i]));
+  };
+  const polygone = (anneaux) => {
+    const projetes = anneaux.map((anneau) => anneau.map(vers));
+    if (projetes.length && origineDansAnneau(projetes[0]) && !projetes.slice(1).some(origineDansAnneau)) {
+      meilleur = { d: 0, p: [0, 0] };
+      return true;
+    }
+    anneaux.forEach(lignes);
+    return false;
+  };
+  const { type, coordinates: c } = geometrie;
+  if (type === 'Point') retenir(vers(c));
+  else if (type === 'MultiPoint') c.forEach((p) => retenir(vers(p)));
+  else if (type === 'LineString') lignes(c);
+  else if (type === 'MultiLineString') c.forEach(lignes);
+  else if (type === 'Polygon') polygone(c);
+  else if (type === 'MultiPolygon') c.some(polygone);
+  else return null;
+  if (!meilleur) return null;
+  return { distance: meilleur.d, coordonnees: meilleur.d === 0 ? [...point] : depuis(meilleur.p) };
+}
+
+// Un point est-il dans un polygone ou un multipolygone GeoJSON ?
+export function dansPolygone(point, geometrie) {
+  if (!geometrie || !/Polygon$/.test(geometrie.type)) return false;
+  return distanceGeometrie(point, geometrie)?.distance === 0;
+}

@@ -1035,5 +1035,13 @@
   "point.previsions": "Prévisions détaillées",
   "point.reessayer": "Réessayer",
   "point.isotherme": "Isotherme 0 °C à {altitude}",
-  "point.uv": "UV {valeur}"
+  "point.uv": "UV {valeur}",
+  "point.eau-lac": "Lac ou plan d’eau",
+  "point.eau-cours": "Cours d’eau",
+  "point.ici": "Ici même",
+  "point.eau-recherche": "recherche des sources…",
+  "point.eau-hors-ligne": "Aucune eau sur la carte affichée. Fontaines et sources : nécessite Internet.",
+  "point.localiser": "Localiser {nom} sur la carte",
+  "point.y-aller": "Y aller depuis ce point",
+  "point.vers": "Vers {nom}"
 }

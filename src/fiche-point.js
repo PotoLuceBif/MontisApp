@@ -1,7 +1,11 @@
 // Fiche d'un point quelconque de la carte (appui long, ou clic droit) : terrain, soleil, météo,
 // refuge et point d'eau les plus proches. Chargée au premier appui long.
 import { terrainAuPoint } from './relief-donnees.js';
-import { classePente, plusProche, pointsEau } from './point-calcul.js';
+import { classePente, dansPolygone, distanceGeometrie, plusProche, pointsEau, cap } from './point-calcul.js';
+import { SOURCE_VECTEUR } from './source-vecteur.js';
+import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { deposer } from './demandes.js';
+import { Marker } from 'maplibre-gl';
 import { interroger } from './overpass.js';
 import { codeCardinal } from './vent-calcul.js';
 import { creerIconeMeteo, descriptionMeteo } from './meteo-icone.js';
@@ -9,7 +13,7 @@ import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, nomDecalage, positionSoleil } from './soleil.js';
 import { formatAltitude, formatLongueur, formatTemp, formatVent } from './unites.js';
 import { t } from './i18n.js';
-import { ecrire } from './reglages.js';
+import { ecrire, lire } from './reglages.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const RAYON_REFUGE = 30000;
@@ -65,6 +69,41 @@ function enAttente() {
   return s;
 }
 
+// Eau visible dans les tuiles du fond Montis (OpenMapTiles) : lacs, cours d'eau, fontaines.
+// Ces tuiles sont déjà chargées, et gardées hors ligne : aucune requête de plus.
+const CLASSES_PLAN_EAU = ['lake', 'pond', 'river', 'reservoir', 'basin'];
+const CLASSES_COURS_EAU = ['stream', 'river', 'canal'];
+function eauDansLesTuiles(map, point) {
+  if (!map?.getSource(SOURCE_VECTEUR)) return [];
+  const lireCouche = (couche, filtre) => {
+    try {
+      return map.querySourceFeatures(SOURCE_VECTEUR, { sourceLayer: couche }).filter(filtre);
+    } catch {
+      return [];
+    }
+  };
+  const resultats = [];
+  const retenir = (feature, genre, nom = '') => {
+    const r = distanceGeometrie(point, feature.geometry);
+    if (r && r.distance <= RAYON_EAU) resultats.push({ ...r, genre, nom });
+  };
+  // Le nom d'un lac est à part : un point, ou une ligne pour un grand lac, posé dans le lac
+  const repere = (g) => (g.type === 'Point' ? g.coordinates : g.type === 'LineString' ? g.coordinates[Math.floor(g.coordinates.length / 2)] : null);
+  const noms = lireCouche('water_name', (f) => f.properties?.name && repere(f.geometry))
+    .map((f) => ({ nom: f.properties.name, coordonnees: repere(f.geometry) }));
+  for (const f of lireCouche('water', (f) => CLASSES_PLAN_EAU.includes(f.properties?.class))) {
+    const nom = noms.find((n) => dansPolygone(n.coordonnees, f.geometry))?.nom;
+    retenir(f, 'lac', nom);
+  }
+  for (const f of lireCouche('waterway', (f) => CLASSES_COURS_EAU.includes(f.properties?.class))) {
+    retenir(f, 'cours', f.properties.name);
+  }
+  for (const f of lireCouche('poi', (f) => f.properties?.class === 'drinking_water' || f.properties?.subclass === 'drinking_water')) {
+    retenir(f, 'potable', f.properties.name);
+  }
+  return resultats;
+}
+
 function indisponible(texte) {
   const s = document.createElement('span');
   s.className = 'point-indisponible';
@@ -72,16 +111,19 @@ function indisponible(texte) {
   return s;
 }
 
-export function creerFichePoint({ lng, lat, maj, fermer = () => {} }) {
+export function creerFichePoint({ map, lng, lat, maj, fermer = () => {} }) {
   const point = [lng, lat];
   const controleur = new AbortController();
   const etat = {
     terrain: 'chargement',
     meteo: estHorsLigne() ? 'hors-ligne' : 'chargement',
     refuge: 'chargement',
-    eau: estHorsLigne() ? 'hors-ligne' : 'chargement',
+    eauTuiles: eauDansLesTuiles(map, point),
+    eau: estHorsLigne() ? 'hors-ligne' : 'chargement', // fontaines et sources d'OpenStreetMap (Overpass)
     decalage: null, // fuseau du lieu, donné par Open-Meteo
+    cible: null, // 'refuge' ou 'eau' quand l'utilisateur l'a localisé
   };
+  let marqueurCible = null;
   // Chaque requête a son délai ; fermer la fiche les annule toutes
   function signalAvecDelai(delai = DELAI) {
     const local = new AbortController();
@@ -149,7 +191,7 @@ export function creerFichePoint({ lng, lat, maj, fermer = () => {} }) {
       `node(${p})["amenity"~"^(drinking_water|water_point)$"];` +
       `node(${p})["natural"="spring"];` +
       `node(${p})["man_made"="water_tap"];` +
-      `);out tags;`;
+      `);out;`;
     const envoi = signalAvecDelai(DELAI_EAU);
     try {
       const json = await interroger(requete, envoi.signal, { delaiParServeur: DELAI_EAU_SERVEUR });
@@ -285,40 +327,110 @@ export function creerFichePoint({ lng, lat, maj, fermer = () => {} }) {
     if (refuge === 'chargement') return enAttente();
     if (refuge === 'aucun') return indisponible(t('point.aucun-refuge', { distance: formatLongueur(RAYON_REFUGE) }));
     if (typeof refuge === 'string') return indisponible(t('point.refuges-erreur'));
-    const bloc = document.createElement('div');
     const nom = refuge.nom || t(refuge.genre === 'libre' ? 'fiche.cabane' : 'fiche.refuge');
-    bloc.append(principal(document.createTextNode(nom)));
     const details = [loin(refuge)];
     if (Number.isFinite(refuge.ele)) details.push(formatAltitude(refuge.ele));
     if (refuge.nom) details.push(t(refuge.genre === 'libre' ? 'point.type-cabane' : 'point.type-refuge'));
-    bloc.append(texteSecondaire(details.join(' · ')));
-    return bloc;
+    return cibleTouchable('refuge', { ...refuge, nom }, nom, details);
+  }
+
+  // L'eau la plus proche : tuiles du fond et OpenStreetMap réunis
+  function eauLaPlusProche() {
+    const candidats = [...etat.eauTuiles];
+    if (etat.eau && typeof etat.eau === 'object') {
+      candidats.push(etat.eau);
+    }
+    if (!candidats.length) return null;
+    const meilleur = candidats.reduce((a, b) => (b.distance < a.distance ? b : a));
+    return { ...meilleur, cap: cap(point, meilleur.coordonnees) };
+  }
+
+  function boutonReessayer() {
+    const reessayer = document.createElement('button');
+    reessayer.type = 'button';
+    reessayer.className = 'point-raccourci';
+    reessayer.textContent = t('point.reessayer');
+    reessayer.addEventListener('click', () => {
+      poser('eau', 'chargement');
+      chargerEau();
+    });
+    return reessayer;
   }
 
   function valeurEau() {
-    const eau = etat.eau;
-    if (eau === 'chargement') return enAttente();
-    if (eau === 'hors-ligne') return indisponible(t('point.internet-requis'));
-    if (eau === 'aucun') return indisponible(t('point.aucune-eau', { distance: formatLongueur(RAYON_EAU) }));
-    if (typeof eau === 'string') {
-      const bloc = document.createElement('div');
-      const reessayer = document.createElement('button');
-      reessayer.type = 'button';
-      reessayer.className = 'point-raccourci';
-      reessayer.textContent = t('point.reessayer');
-      reessayer.addEventListener('click', () => {
-        poser('eau', 'chargement');
-        chargerEau();
-      });
-      bloc.append(indisponible(t('point.eau-erreur')), reessayer);
-      return bloc;
+    const eau = eauLaPlusProche();
+    if (!eau) {
+      if (etat.eau === 'chargement') return enAttente();
+      if (etat.eau === 'hors-ligne') return indisponible(t('point.eau-hors-ligne'));
+      if (etat.eau === 'erreur') {
+        const bloc = document.createElement('div');
+        bloc.append(indisponible(t('point.eau-erreur')), boutonReessayer());
+        return bloc;
+      }
+      return indisponible(t('point.aucune-eau', { distance: formatLongueur(RAYON_EAU) }));
     }
+    const nomGenre = t(`point.eau-${eau.genre}`);
+    const details = [eau.distance < 20 ? t('point.ici') : loin(eau)];
+    if (eau.nom) details.push(nomGenre);
+    if (eau.genre !== 'potable' && eau.genre !== 'non-potable') details.push(t('point.eau-a-traiter'));
+    if (etat.eau === 'chargement') details.push(t('point.eau-recherche'));
+    return cibleTouchable('eau', { ...eau, nom: eau.nom || nomGenre }, eau.nom || nomGenre, details);
+  }
+
+  // ---------- Localiser un refuge ou un point d'eau, puis y aller ----------
+  function localiser(cle, objet) {
+    etat.cible = cle;
+    marqueurCible?.remove();
+    const pin = creerPinSeul('rando', 'selected');
+    pin.element.classList.add('point-pin');
+    marqueurCible = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN }).setLngLat(objet.coordonnees).addTo(map);
+    const fiche = document.getElementById('fiche');
+    const telephone = window.matchMedia('(max-width: 640px)').matches;
+    const hauteurFiche = fiche && !fiche.hidden ? fiche.getBoundingClientRect().height : 0;
+    map.fitBounds([point, objet.coordonnees], {
+      padding: { top: 160, left: 60, right: telephone ? 80 : 440, bottom: telephone ? hauteurFiche + 50 : 60 },
+      maxZoom: 15.5,
+      duration: 800,
+    });
+    maj();
+  }
+
+  function allerVers(objet) {
+    const activite = lire('menu-activite', null) === 'velo' ? 'velo' : 'rando';
+    deposer(`itineraire-${activite}`, {
+      depart: point,
+      arrivee: objet.coordonnees,
+      nom: t('point.vers', { nom: objet.nom }),
+    });
+    fermer();
+    window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
+  }
+
+  // Le nom se touche pour localiser la cible ; « Y aller » apparaît ensuite
+  function cibleTouchable(cle, objet, titre, details) {
     const bloc = document.createElement('div');
-    bloc.append(principal(document.createTextNode(eau.nom || t(`point.eau-${eau.genre}`))));
-    const details = [loin(eau)];
-    if (eau.nom) details.push(t(`point.eau-${eau.genre}`));
-    if (eau.genre === 'source' || eau.genre === 'inconnue') details.push(t('point.eau-a-traiter'));
-    bloc.append(texteSecondaire(details.join(' · ')));
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'point-cible';
+    bouton.setAttribute('aria-label', t('point.localiser', { nom: titre }));
+    const nom = document.createElement('span');
+    nom.className = 'point-cible-nom';
+    nom.textContent = titre;
+    const icone = document.createElement('span');
+    icone.className = 'point-cible-icone';
+    icone.setAttribute('aria-hidden', 'true');
+    icone.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>';
+    bouton.append(nom, icone);
+    bouton.addEventListener('click', () => localiser(cle, objet));
+    bloc.append(bouton, texteSecondaire(details.join(' · ')));
+    if (etat.cible === cle) {
+      const aller = document.createElement('button');
+      aller.type = 'button';
+      aller.className = 'point-raccourci point-aller';
+      aller.textContent = t('point.y-aller');
+      aller.addEventListener('click', () => allerVers(objet));
+      bloc.append(aller);
+    }
     return bloc;
   }
 
@@ -344,6 +456,10 @@ export function creerFichePoint({ lng, lat, maj, fermer = () => {} }) {
       prudence.textContent = t('prudence.courte');
       corps.append(prudence);
     },
-    arreter: () => controleur.abort(),
+    arreter() {
+      controleur.abort();
+      marqueurCible?.remove();
+      marqueurCible = null;
+    },
   };
 }

@@ -404,6 +404,7 @@ export function initFiches(map) {
     if (numero !== numeroPoint) return; // un autre appui long entre-temps
     const fiche = { lng: lngLat.lng, lat: lngLat.lat };
     fiche.point = creerFichePoint({
+      map,
       lng: fiche.lng,
       lat: fiche.lat,
       maj: () => courant === fiche && rendre(),

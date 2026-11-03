@@ -1035,5 +1035,13 @@
   "point.previsions": "Detailed forecast",
   "point.reessayer": "Try again",
   "point.isotherme": "Freezing level {altitude}",
-  "point.uv": "UV {valeur}"
+  "point.uv": "UV {valeur}",
+  "point.eau-lac": "Lake or pond",
+  "point.eau-cours": "Stream or river",
+  "point.ici": "Right here",
+  "point.eau-recherche": "looking for springs…",
+  "point.eau-hors-ligne": "No water on the displayed map. Fountains and springs: requires Internet.",
+  "point.localiser": "Show {nom} on the map",
+  "point.y-aller": "Go there from this point",
+  "point.vers": "To {nom}"
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   cap,
   classePente,
+  dansPolygone,
   distance,
+  distanceGeometrie,
   genreEau,
   penteOrientation,
   pixelMonde,
@@ -136,5 +138,40 @@ describe('points d’eau', () => {
       { coordonnees: [6.1, 45.1], genre: 'source', nom: 'Source du Loup' },
       { coordonnees: [6.2, 45.2], genre: 'potable', nom: '' },
     ]);
+  });
+});
+
+describe('distance à une géométrie', () => {
+  const carre = { type: 'Polygon', coordinates: [[[0, 0], [0.01, 0], [0.01, 0.01], [0, 0.01], [0, 0]]] };
+
+  it('nulle dans un polygone, sauf dans un trou', () => {
+    expect(distanceGeometrie([0.005, 0.005], carre).distance).toBe(0);
+    expect(dansPolygone([0.005, 0.005], carre)).toBe(true);
+    const troue = { type: 'Polygon', coordinates: [carre.coordinates[0], [[0.004, 0.004], [0.006, 0.004], [0.006, 0.006], [0.004, 0.006], [0.004, 0.004]]] };
+    const r = distanceGeometrie([0.005, 0.005], troue);
+    expect(r.distance).toBeGreaterThan(100);
+    expect(r.distance).toBeLessThan(115);
+  });
+
+  it('jusqu’au bord le plus proche, hors du polygone', () => {
+    const r = distanceGeometrie([0.005, -0.001], carre);
+    expect(r.distance).toBeCloseTo(111.2, 0);
+    expect(r.coordonnees[0]).toBeCloseTo(0.005, 6);
+    expect(r.coordonnees[1]).toBeCloseTo(0, 6);
+  });
+
+  it('jusqu’à une ligne, au milieu d’un segment', () => {
+    const riviere = { type: 'LineString', coordinates: [[-0.01, 0.001], [0.01, 0.001]] };
+    const r = distanceGeometrie([0, 0], riviere);
+    expect(r.distance).toBeCloseTo(111.2, 0);
+    expect(r.coordonnees[0]).toBeCloseTo(0, 6);
+  });
+
+  it('multigéométries et types inconnus', () => {
+    const multi = { type: 'MultiPoint', coordinates: [[0, 0.02], [0, 0.002]] };
+    expect(distanceGeometrie([0, 0], multi).distance).toBeCloseTo(222.4, 0);
+    expect(distanceGeometrie([0, 0], { type: 'GeometryCollection', geometries: [] })).toBeNull();
+    expect(distanceGeometrie([0, 0], null)).toBeNull();
+    expect(dansPolygone([0, 0], multi)).toBe(false);
   });
 });
