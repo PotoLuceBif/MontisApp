@@ -96,3 +96,8 @@ export function formatTaille(octets) {
   if (octets < KO * KO * KO) return `${nombre(Math.round(octets / (KO * KO)))} ${mo}`;
   return `${nombre(octets / (KO * KO * KO), 1)} ${go}`;
 }
+
+// ---------- Pentes : toujours en degrés et en pourcentage, « 35° · 70 % » ----------
+export const pourcent = (valeur) => `${nombre(Math.round(valeur))}${langue() === 'en' ? '%' : ' %'}`;
+export const formatPente = (degres) =>
+  `${nombre(Math.round(degres))}° · ${pourcent(Math.tan((degres * Math.PI) / 180) * 100)}`;

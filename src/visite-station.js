@@ -684,12 +684,15 @@ export function creerVisiteStation(map, {
       .filter(({ id, layout }) => !id.startsWith('visite-') && layout?.visibility !== 'none')
       .map(({ id }) => id);
     enCours.calquesMasques.forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
+    document.body.classList.add('en-visite'); // les pastilles des couches de la carte se retirent
   }
 
   function reafficherCarte(calquesMasques) {
+    document.body.classList.remove('en-visite');
     calquesMasques.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible'); });
     retablirFond(map); // le fond a pu changer pendant la visite : seul le choix actuel doit rester visible
     majCourbes(map);
+    etat.majPentes?.(); // la couche de pentes a pu changer pendant la visite
   }
 
   // Charge les pistes avant de toucher à la carte : en cas d'échec, rien n'a changé

@@ -57,6 +57,10 @@ const appuiLong = (x, y) => async (page) => {
   await page.waitForTimeout(2500);
 };
 
+// Place la carte (en développement, elle est accessible par window.map)
+const vue = (options) => (page) => page.evaluate((o) => window.map.jumpTo(o), options);
+const AIGUILLES = { center: [6.93, 45.9], zoom: 13.4, bearing: 0, pitch: 0 };
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
@@ -70,6 +74,48 @@ const ECRANS = [
   { nom: 'meteo-vent', actions: [module('vent')] },
   { nom: 'carte-fond', actions: [module('fond')] },
   { nom: 'carte-relief', actions: [module('relief')] },
+  { nom: 'carte-pentes', actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'carte-orientation', actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), (p) => p.waitForTimeout(3000)] },
+  {
+    nom: 'carte-pentes-3d',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('.relief-bascule [data-mode="3d"]'),
+      (p) => p.waitForTimeout(1200), vue({ ...AIGUILLES, pitch: 60, bearing: 30 }), (p) => p.waitForTimeout(4000)],
+  },
+  { nom: 'carte-pentes-loin', actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]')] },
+  // Panneau fermé : la pastille de la carte dit pourquoi rien n'apparaît
+  {
+    nom: 'carte-pentes-loin-ferme',
+    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
+  },
+  // La pastille ramène au zoom où la couche apparaît
+  {
+    nom: 'carte-pentes-rapprocher',
+    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.couche-pastille:not([hidden]) .couche-pastille-action'), (p) => p.waitForTimeout(4000)],
+  },
+  // Pastilles des couches allumées depuis Carte, panneau fermé
+  {
+    nom: 'carte-pastilles',
+    actions: [
+      vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), module('elements'),
+      (p) => p.evaluate(() => document.querySelectorAll('#outil-rapide-panneau-carte .option-case input').forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
+      clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+    ],
+  },
+  // Appui sur une pastille : le panneau Carte s'ouvre sur son réglage
+  {
+    nom: 'carte-pastille-ouvre',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.couche-pastille:not([hidden]) .couche-pastille-corps')],
+  },
+  // Panneau réduit en barre pour voir la carte, puis rouvert là où on l'avait laissé
+  {
+    nom: 'carte-reduit',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), (p) => p.waitForTimeout(2500)],
+  },
+  {
+    nom: 'carte-rouvert',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
+  },
+  { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long

@@ -17,7 +17,7 @@ npm test          # tests automatiques (Vitest, dans tests/)
 npm run captures  # captures téléphone et ordinateur dans captures/, avec rapport (voir ci-dessous)
 ```
 
-`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX, soleil, pente et distances de la fiche du point), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
+`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX, soleil, pente et distances de la fiche du point, couches de pente et d'orientation), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
 
 Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VITE_FFVL=1` active le code FFVL, qui suppose un relais serveur inexistant à ce jour.
 
@@ -36,6 +36,8 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 **Mobile**
 - Sur téléphone, les outils sont de petits panneaux flottants réductibles, avec flèche retour (`panneau-carte.js`).
+- **Tout panneau qui cache la carte se réduit** (flèche vers le bas), sur téléphone comme sur ordinateur, dès que c'est utile : réduit, il ne garde que sa barre de titre avec ce qui est ouvert dedans (« Carte · Relief »), en bas de l'écran sur téléphone ; un appui sur la barre le rouvre exactement où on l'avait laissé (sous-menu, réglages, défilement). Le but : voir l'effet d'un réglage sur la carte, puis en changer sans tout rouvrir. Un clic sur la carte ne ferme pas un panneau réduit. En place : panneaux Carte et Météo (`reduirePanneau` dans `menu.js`), panneaux posés sur la carte (`panneau-carte.js`). Un nouveau panneau se pose la question.
+- **Une couche qui reste sur la carte panneau fermé a sa pastille** (`creerPastilleCouche` de `couches-actives.js`) : rangée en haut à gauche sur téléphone (elle défile), à gauche des boutons sur ordinateur. La pastille dit ce qui est affiché (avec une mini-légende si utile), sa ✕ l'éteint, un appui ouvre son réglage dans le panneau (même réduit). Fermer un panneau n'éteint jamais ses couches. En place : Pentes ou Orientation, chaque élément de la carte. Pas de pastille pour le fond ni pour les courbes (toujours là, ou allumées par défaut). Météo (radar, vent) : lot à part.
 - Tout doit fonctionner aussi bien sur téléphone que sur ordinateur : prévoir le tactile, l'appui long à la place du survol, et des zones de toucher suffisantes.
 
 **Direction artistique**
@@ -93,6 +95,7 @@ Jamais pour un simple avancement.
 
 ## Pièges connus
 
+- **Couches de pente :** `pente-calcul.js` est chargé au démarrage : ne pas lui faire importer un module chargé à la demande (`point-calcul.js`, `vent-calcul.js`…), sinon celui-ci rejoint le code de démarrage. C'est `point-calcul.js` qui importe ses seuils.
 - **Marqueurs MapLibre :** MapLibre place l'élément d'un `Marker` avec `transform` et `position: absolute`. Ne pas lui mettre de `transform` ni de `position: relative` : l'image va dans un parent (`creerPinSeul`, `.maplibregl-marker.rando-repere`).
 - **Pins :** image 96×96, pointe à (48 ; 87,5), affichée en 48 px. Toujours `anchor: 'bottom'` et `offset: DECALAGE_PIN` (`pins.js`). Chaque pin a trois états : `<nom>.svg`, `-selected`, `-disabled`.
 - **Service worker :** `src/sw-modele.js` n'est pas importé. `vite.config.js` y inscrit la version et la liste des fichiers, puis publie `/sw.js`. Il est inactif en développement. Tout `public/` est préchargé, sauf `/data/pistes/` et `/data/bike-parks/` : un nouveau gros fichier public alourdit le cache de chaque utilisateur.
@@ -150,7 +153,10 @@ src/                    Tout le code (détail ci-dessous)
 | `style-montis.js`, `source-vecteur.js` | Style du fond Montis ; source OpenFreeMap déclarée par adresses de tuiles, TileJSON suivi à côté |
 | `fond-de-carte.js` | Choix du fond ; en ajouter un = une entrée dans `FONDS` |
 | `relief.js` | Options de relief selon le mode |
-| `elements-carte.js` | Éléments à afficher ; en ajouter un = une ligne |
+| `pentes-panneau.js`, `pentes-couche.js` | Bloc Pentes et orientation du panneau Relief ; couches et protocole `montis-pente://` |
+| `pentes-travail.js`, `pentes-tuile.js`, `pente-calcul.js` | Travailleur qui calcule une tuile ; lecture du relief et repli ; calculs purs, couleurs, pourcentage (testés) |
+| `elements-carte.js` | Éléments à afficher ; en ajouter un = une ligne (et son nom court `elements.court-<clé>` pour sa pastille) |
+| `couches-actives.js` | Pastilles des couches allumées depuis Carte : nom, mini-légende, ✕, ouverture du réglage |
 | `nature.js`, `lieux.js`, `sommets.js`, `batiments.js` | Forêts, eaux, glaciers, parcs ; villes, refuges ; sommets ; bâtiments |
 | `zones-hors-ligne.js` | Cartes hors ligne : cadrage, estimation, téléchargement |
 | `hors-ligne.js`, `sw-modele.js` | État du réseau et indicateur ; service worker |
@@ -242,11 +248,12 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Portée de vol par chemin le plus court (Dijkstra), qui contourne le relief.
 - La manche à air de la carte suit le curseur du graphique d'une balise.
 - Fiche du point (lot 1.2) : appui long ou clic droit n'importe où, marqué par le pin de recherche ; coordonnées, altitude, pente et orientation, soleil, météo résumée avec isotherme 0 °C et UV, raccourci « Prévisions sur 5 jours » vers Météo › Conditions locales (sa croix ramène à la fiche), refuge et point d'eau les plus proches (lacs et cours d'eau des tuiles du fond, fontaines et sources d'OSM), à toucher pour les localiser puis « Y aller » (parcours Randonnée, ou Vélo si c'est l'activité en cours), rappel de prudence. Écran `point` dans les captures.
+- Pentes et orientation (lot 1.3) dans Carte › Relief, en 2D et en 3D : classes 30°, 35°, 40°, 45°, rose des orientations, opacité. Pentes toujours en degrés et en pourcentage (« 35° · 70 % », `formatPente` de `unites.js`), aussi dans la fiche du point. Calculées dans un travailleur depuis le relief au zoom 13 (zones hors ligne comprises), visibles à partir du zoom 12 ; plus loin, leur pastille passe à « Trop loin · Rapprocher » et un encadré du panneau l'explique. Pentes et Orientation sont deux interrupteurs exclusifs (plus de bouton Aucune). Écrans `carte-pentes`, `carte-orientation`, `carte-pentes-3d`, `carte-pentes-loin`, `carte-pentes-loin-ferme`, `carte-pentes-rapprocher`, `carte-pastilles`, `carte-pastille-ouvre`, `carte-reduit`, `carte-rouvert` et `meteo-reduit` dans les captures.
 - Soleil (lot 1.1) dans Météo › Conditions locales : lever, coucher, durée du jour, midi solaire, heures dorées, aube et crépuscule, position actuelle et course du jour. Calculé sur l'appareil, donc hors ligne aussi. Heures au fuseau du lieu (`utc_offset_seconds` d'Open-Meteo), sinon à celui de l'appareil, indiqué. Horizon supposé dégagé, le relief n'est pas pris en compte (lot 1.4).
 
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
-- Au démarrage : 233 Ko de code Montis (76 Ko compressé), en deux fichiers : le code (135 Ko) et les deux fichiers de langue (98 Ko) ; MapLibre (1,1 Mo) à part.
+- Au démarrage : 249 Ko de code Montis (81 Ko compressé), en deux fichiers : le code (144 Ko) et les deux fichiers de langue (105 Ko) ; MapLibre (1,1 Mo) à part.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
 **Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.

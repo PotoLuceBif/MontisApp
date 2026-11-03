@@ -33,6 +33,8 @@ const ICONES_ACTIVITES = {
   ski: 'ski',
 };
 
+const CHEVRON_BAS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
 function creerIconeMenu(nom) {
   if (ICONES_ACTIVITES[nom]) {
     return `<img class="icone-activite" src="/icons/activites/${ICONES_ACTIVITES[nom]}.svg" alt="" width="40" height="40" />`;
@@ -137,12 +139,29 @@ export function initMenu(map) {
 
   // Panneau ouvert depuis une fiche : sa croix y ramène (Météo depuis la fiche d'un point)
   let retourFlottant = null;
-  function fermerPanneauxFlottants() {
+  // `garderReduits` : un panneau réduit reste en bas de l'écran pendant qu'on manipule la carte
+  function fermerPanneauxFlottants({ garderReduits = false } = {}) {
     retourFlottant = null;
     for (const [id, panneau] of panneauxFlottants) {
+      if (garderReduits && panneau.classList.contains('reduit')) continue;
       panneau.hidden = true;
+      reduirePanneau(panneau, false);
       boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
     }
+  }
+
+  // Réduit : seule la barre de titre reste, avec ce qui est ouvert dedans ; tout le reste est gardé tel quel
+  function reduirePanneau(panneau, reduit) {
+    panneau.classList.toggle('reduit', reduit);
+    const bouton = panneau.querySelector('.outil-rapide-reduire');
+    if (!bouton) return;
+    poserAttribut(bouton, 'aria-label', reduit ? 'menu.agrandir-panneau' : 'menu.reduire-panneau');
+    bouton.title = bouton.getAttribute('aria-label');
+    bouton.setAttribute('aria-expanded', String(!reduit));
+    const ouverts = [...panneau.querySelectorAll('.menu-ligne[aria-pressed="true"] span')].map((el) => el.textContent);
+    const resume = panneau.querySelector('.outil-rapide-resume');
+    resume.textContent = reduit ? ouverts.join(' · ') : '';
+    resume.hidden = !resume.textContent;
   }
 
   window.addEventListener('fiche-ouverte', fermerPanneauxFlottants);
@@ -240,7 +259,7 @@ export function initMenu(map) {
   boutonFermer.addEventListener('click', () => ouvrir(false));
 
   map.on('click', () => {
-    fermerPanneauxFlottants();
+    fermerPanneauxFlottants({ garderReduits: true });
     ouvrir(false);
   });
 
@@ -347,7 +366,10 @@ export function initMenu(map) {
       return;
     }
     if (panneau.hidden) boutonsFlottants.get(categorie).click();
+    reduirePanneau(panneau, false);
     if (!etat.actif) demarrer(etat);
+    // Le réglage demandé en haut du panneau (appui sur une pastille de couche)
+    requestAnimationFrame(() => etat.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     retourFlottant = typeof retour === 'function' ? { categorie, etat, retour } : null;
   });
 
@@ -385,8 +407,12 @@ export function initMenu(map) {
         <header class="outil-rapide-entete">
           <div class="outil-rapide-titre">
             ${creerIconeMenu(categorie.icone)}
-            <strong ${ti(categorie.titre)}>${t(categorie.titre)}</strong>
+            <span class="outil-rapide-noms">
+              <strong ${ti(categorie.titre)}>${t(categorie.titre)}</strong>
+              <small class="outil-rapide-resume" hidden></small>
+            </span>
           </div>
+          <button type="button" class="outil-rapide-reduire" aria-expanded="true">${CHEVRON_BAS}</button>
           <button type="button" class="outil-rapide-fermer" ${ta('aria-label', `menu.fermer-${categorie.id}`)}>${creerIconeMenu('close')}</button>
         </header>
         <div class="outil-rapide-corps"></div>
@@ -397,7 +423,25 @@ export function initMenu(map) {
       boutonsFlottants.set(categorie.id, boutonOutil);
       panneauxFlottants.set(categorie.id, panneauOutil);
 
+      reduirePanneau(panneauOutil, false);
+      const reduire = panneauOutil.querySelector('.outil-rapide-reduire');
+      reduire.addEventListener('click', (event) => {
+        event.stopPropagation();
+        reduirePanneau(panneauOutil, !panneauOutil.classList.contains('reduit'));
+      });
+      // Réduit, toute la barre se touche pour rouvrir le panneau là où on l'avait laissé
+      panneauOutil.querySelector('.outil-rapide-entete').addEventListener('click', (event) => {
+        if (panneauOutil.classList.contains('reduit') && !event.target.closest('.outil-rapide-fermer')) {
+          reduirePanneau(panneauOutil, false);
+        }
+      });
+
       boutonOutil.addEventListener('click', () => {
+        // Le bouton d'un panneau réduit le rouvre, sans rien arrêter
+        if (!panneauOutil.hidden && panneauOutil.classList.contains('reduit')) {
+          reduirePanneau(panneauOutil, false);
+          return;
+        }
         const ouvrirPanneau = panneauOutil.hidden;
         fermerPanneauxFlottants();
         ouvrir(false);

@@ -195,6 +195,80 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .relief-reglage input[type='range'] { width: 100%; }
 .relief-reglage small { display: block; color: var(--texte-2); margin-top: 2px; }
 .relief-reglage.inactif { opacity: 0.5; }
+/* Pentes et orientation */
+.relief-pentes .pentes-choix { margin-bottom: 10px; }
+.relief-pentes .pentes-choix button { min-height: 44px; font-size: 13px; }
+.pentes-details { display: grid; gap: 10px; }
+.pentes-details[hidden], .pentes-legende[hidden], .pentes-etat[hidden] { display: none; }
+.pentes-classes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.pentes-classe { display: grid; gap: 2px; font-variant-numeric: tabular-nums; text-align: center; }
+.pentes-classe i { height: 10px; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
+.pentes-degres { color: var(--texte); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pentes-pourcent { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
+.relief-pentes .pentes-legende .note { margin: 6px 0 0; }
+.pentes-legende-rose { display: flex; align-items: center; gap: 12px; }
+.relief-pentes .pentes-legende-rose .note { margin: 0; }
+.pentes-rose { width: 92px; height: 92px; flex: none; overflow: visible; }
+.pentes-rose path { stroke: var(--surface); stroke-width: 1; }
+.pentes-rose-centre { fill: var(--surface); }
+.pentes-rose text { fill: var(--texte-2); font: 700 9px var(--police); text-anchor: middle; dominant-baseline: central; }
+.pentes-loin {
+  display: grid; gap: 8px; margin: -2px 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--accent-doux); color: var(--texte);
+}
+.pentes-loin[hidden] { display: none; }
+.relief-pentes .pentes-loin-texte { margin: 0; color: var(--texte); font-size: 12.5px; line-height: 1.4; }
+.pentes-zoomer {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-texte); font: 700 13px var(--police); cursor: pointer;
+}
+.pentes-zoomer svg { width: 18px; height: 18px; flex: none; }
+/* Pastilles des couches allumées depuis le menu Carte : une rangée qui défile au doigt */
+.couches-actives {
+  position: fixed; top: 74px; left: 12px; right: 84px; z-index: 13;
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px 4px 16px; margin: -4px;
+  pointer-events: none;
+  /* Fondu à droite : la rangée défile quand les pastilles dépassent */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+}
+.couches-actives::-webkit-scrollbar { display: none; }
+.couches-actives[hidden], .couche-pastille[hidden] { display: none; }
+.couche-pastille {
+  display: flex; flex: none; align-items: center; height: 40px; padding-left: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--bord)); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre); pointer-events: auto;
+}
+.couche-pastille button { border: 0; background: transparent; color: inherit; font: 650 12.5px var(--police); cursor: pointer; }
+.couche-pastille-corps { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 4px 0 10px; white-space: nowrap; }
+.couche-pastille-legende { display: flex; align-items: center; }
+.couche-pastille-legende[hidden] { display: none; }
+.mini-pentes { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
+.mini-pentes i { flex: 1; }
+.mini-rose { width: 18px; height: 18px; }
+.couche-pastille-action {
+  height: 30px; margin-left: 2px; padding: 0 11px !important; border-radius: 999px;
+  background: var(--accent) !important; color: var(--accent-texte) !important; font-weight: 700 !important; white-space: nowrap;
+}
+.couche-pastille-action[hidden] { display: none; }
+.couche-pastille-retirer { display: grid; place-items: center; width: 36px; height: 38px; color: var(--texte-2) !important; }
+.couche-pastille-retirer:hover { color: var(--texte) !important; }
+.couche-pastille-retirer svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.couche-pastille button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 999px; }
+/* Sous une pastille d'état (hors ligne, fond indisponible) */
+body:has(.hl-pastille:not([hidden])) .couches-actives { top: 108px; }
+body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives { visibility: hidden; }
+@media (min-width: 641px) {
+  /* Sur ordinateur, à gauche des boutons de la carte, alignées à droite */
+  /* La place ne manque pas : les pastilles passent à la ligne au lieu de défiler */
+  .couches-actives {
+    top: 24px; left: auto; right: 72px; width: min(520px, calc(100vw - 760px)); min-width: 260px;
+    flex-wrap: wrap; justify-content: flex-end; overflow: visible; -webkit-mask-image: none; mask-image: none;
+  }
+  body:has(.hl-pastille:not([hidden])) .couches-actives { top: 62px; }
+}
+.relief-pentes .pentes-etat { margin: -2px 0 10px; color: var(--texte); }
+.relief-pentes .pentes-prudence { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }
 .altitude-reglages div[style*='#666'] { color: var(--texte-2) !important; }
 
@@ -2249,6 +2323,22 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   stroke-width: 1.8;
   stroke-linecap: round;
 }
+.outil-rapide-noms { display: grid; min-width: 0; }
+.outil-rapide-resume { overflow: hidden; color: var(--accent); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.outil-rapide-resume[hidden] { display: none; }
+.outil-rapide-titre { min-width: 0; flex: 1; }
+.outil-rapide-reduire {
+  display: grid; width: 40px; height: 40px; flex: none; place-items: center; margin-right: -8px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.outil-rapide-reduire:hover { background: var(--survol); color: var(--texte); }
+.outil-rapide-reduire:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.outil-rapide-reduire svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.16s; }
+/* Réduit : seule la barre de titre reste ; la flèche pointe vers le haut pour rouvrir */
+.outil-rapide-panneau.reduit .outil-rapide-corps { display: none; }
+.outil-rapide-panneau.reduit .outil-rapide-entete { border-bottom: 0; cursor: pointer; }
+.outil-rapide-panneau.reduit .outil-rapide-reduire { color: var(--accent); }
+.outil-rapide-panneau.reduit .outil-rapide-reduire svg { transform: rotate(180deg); }
 .outil-rapide-corps { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 14px; }
 .outil-rapide-corps .menu-vue-entete { display: none; }
 .outil-rapide-corps .menu-module:first-of-type { margin-top: 0; }
@@ -3041,6 +3131,13 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     border-radius: 15px;
   }
   .outil-rapide-entete { min-height: 48px; }
+}
+@media (max-width: 700px) {
+  .outil-rapide-panneau.reduit {
+    top: auto; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom)); left: 10px;
+    width: auto; max-height: none;
+  }
+  .outil-rapide-panneau.reduit .outil-rapide-entete { min-height: 56px; }
 }
 
 @media (max-height: 620px) and (min-width: 701px) {

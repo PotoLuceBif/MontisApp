@@ -2,6 +2,7 @@ import { etat, creerOptionCourbes } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { t, ta, ti, tt } from './i18n.js';
 import { nombre } from './unites.js';
+import { creerOptionPentes } from './pentes-panneau.js';
 
 const SOURCE_RELIEF = 'relief';
 
@@ -74,6 +75,9 @@ export function creerOptionRelief(map) {
   // ---------- Courbes de niveau (2D et 3D) ----------
   const courbes = creerOptionCourbes(map);
   panneau.querySelector('.relief-courbes').append(courbes.panneau);
+
+  // ---------- Pentes et orientation (2D et 3D : la couche se drape sur le relief) ----------
+  panneau.append(creerOptionPentes(map));
 
   return {
     id: 'relief',
