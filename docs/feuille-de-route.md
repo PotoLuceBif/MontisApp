@@ -164,6 +164,5 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 | Compte utilisateur ou appli 100 % locale | Avant la phase 2 | Rester local ; sauvegarde `.json` et partage par lien suffisent |
 | Ordre des nouvelles pratiques | Avant la phase 3 | Ski de rando et thermiques d'abord : ils réutilisent le plus |
 | Périmètre et nom de la cinquième activité | Après la 1.0 | Voir « Pistes pour la cinquième activité » |
-| Texte de la mention de prudence | Lot 1.2 | Court, visible une fois, rappelé sur les couches de sécurité |
 
-**Décidé :** structure en activités et pratiques (2 novembre 2026), Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026).
+**Décidé :** structure en activités et pratiques (2 novembre 2026), Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026), texte de la mention de prudence (3 novembre 2026) : en entier une fois, « Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles. », puis en rappel court sur les données de sécurité, « Estimations : à vérifier sur le terrain. ».
