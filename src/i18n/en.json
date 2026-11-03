@@ -535,13 +535,9 @@
   "meteo.choisir-jour": "Choose a day to see the hourly detail",
   "meteo.lieu": "Forecast location",
   "meteo.centre": "Map centre",
-  "meteo.ancien-centre": "Previous map centre",
-  "meteo.point-choisi": "Point chosen on the map",
-  "meteo.deplacer": "Move the point on the map",
   "meteo.annuler": "Cancel",
   "meteo.attente-coord": "Waiting for coordinates…",
-  "meteo.aide-lieu": "By default, the forecast is for the centre of the map. To move it, tap the button and then the place you want on the map. The marker shows the point used.",
-  "meteo.utiliser-centre": "Use the map centre",
+  "meteo.aide-lieu": "The forecast and sun times are for this place, shown by the marker on the map. With “Point on the map”, then tap the place you want.",
   "meteo.calculees-centre": "Forecast calculated at the map centre.",
   "meteo.reessayer": "Try loading again",
   "meteo.credit": "Forecast: <a href=\"https://open-meteo.com/\" target=\"_blank\" rel=\"noopener noreferrer\">Open-Meteo</a> · CC BY 4.0 · free non-commercial use",
@@ -993,5 +989,8 @@
   "soleil.relief": "Calculated for a clear horizon: in the mountains, terrain hides the sun later in the morning and earlier in the evening.",
   "soleil.fuseau-lieu": "Local time ({fuseau}).",
   "soleil.fuseau-appareil": "Device time ({fuseau}): the local time zone comes with the forecast.",
-  "soleil.duree-valeur": "{h}h {m}m"
+  "soleil.duree-valeur": "{h}h {m}m",
+  "meteo.point-carte": "Point on the map",
+  "meteo.deplacer-court": "Move the point",
+  "meteo.actualiser-centre": "Update for the new map centre"
 }
