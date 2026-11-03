@@ -1087,5 +1087,6 @@
   "ombres.pastille-nuit": "Nuit {heure}",
   "ombres.jour-precedent": "Jour précédent",
   "ombres.jour-suivant": "Jour suivant",
-  "ombres.prudence": "Calculée sur un relief d’environ 30 m, sans arbres ni bâtiments ; nuages non pris en compte. Estimations : à vérifier sur le terrain."
+  "ombres.prudence": "Calculée sur un relief d’environ 30 m, sans arbres ni bâtiments ; nuages non pris en compte. Estimations : à vérifier sur le terrain.",
+  "ombres.choisir-jour": "Choisir le jour"
 }

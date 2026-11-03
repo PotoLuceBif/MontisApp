@@ -135,6 +135,16 @@ const ECRANS = [
       (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'carte-ombres-ferme', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  // Un jour choisi au calendrier (appui sur le nom du jour)
+  {
+    nom: 'carte-ombres-jour',
+    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(12 * 60),
+      (p) => p.evaluate(() => {
+        const champ = document.querySelector('.ombres-calendrier');
+        champ.value = '2027-02-15';
+        champ.dispatchEvent(new Event('change', { bubbles: true }));
+      }), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')],
+  },
   { nom: 'carte-ombres-nuit', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },

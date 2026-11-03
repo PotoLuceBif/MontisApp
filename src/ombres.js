@@ -86,7 +86,12 @@ export function initOmbres(map, { details, eteindre }) {
   details.innerHTML = `
     <div class="ombres-jour">
       <button type="button" class="ombres-jour-bouton" data-pas="-1" ${ta('aria-label', 'ombres.jour-precedent')}>‹</button>
-      <strong class="ombres-jour-nom"></strong>
+      <label class="ombres-jour-nom">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        <strong></strong>
+        <!-- Champ transparent posé sur le libellé : un appui ouvre le calendrier du téléphone -->
+        <input type="date" class="ombres-calendrier" required ${ta('aria-label', 'ombres.choisir-jour')}>
+      </label>
       <button type="button" class="ombres-jour-bouton" data-pas="1" ${ta('aria-label', 'ombres.jour-suivant')}>›</button>
     </div>
     <div class="relief-reglage ombres-heure">
@@ -119,7 +124,8 @@ export function initOmbres(map, { details, eteindre }) {
     <p class="note pentes-prudence" data-i18n="ombres.prudence"></p>
   `;
   details.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
-  const nomJour = details.querySelector('.ombres-jour-nom');
+  const nomJour = details.querySelector('.ombres-jour-nom strong');
+  const calendrier = details.querySelector('.ombres-calendrier');
   const curseur = details.querySelector('.ombres-curseur');
   const valeurHeure = details.querySelector('.ombres-heure-valeur');
   const piste = details.querySelector('.ombres-piste i');
@@ -216,8 +222,12 @@ export function initOmbres(map, { details, eteindre }) {
   // ---------- Textes ----------
   function majTextes() {
     const aujourdhui = jourLocal(Date.now(), decalage);
-    const date = formatDate(`${jour}T12:00:00Z`, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    const autreAnnee = jour.slice(0, 4) !== aujourdhui.slice(0, 4);
+    const date = formatDate(`${jour}T12:00:00Z`, {
+      weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC', ...(autreAnnee && { year: 'numeric' }),
+    });
     nomJour.textContent = jour === aujourdhui ? t('ombres.aujourdhui', { date }) : date;
+    calendrier.value = jour;
     valeurHeure.textContent = heureDuLieu(instant(), decalage);
     curseur.value = minutesChoisies();
     details.querySelector('.ombres-maintenant').classList.toggle('actif', heure === 'maintenant' && jour === aujourdhui);
@@ -262,15 +272,24 @@ export function initOmbres(map, { details, eteindre }) {
   }
 
   // ---------- Réglages ----------
+  function changerJour(nouveau) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nouveau) || nouveau === jour) return;
+    jour = nouveau;
+    if (heure === 'maintenant') heure = minutesMaintenant(); // un autre jour : l'heure ne suit plus l'horloge
+    tout();
+  }
   details.querySelectorAll('.ombres-jour-bouton').forEach((b) => {
     b.addEventListener('click', () => {
       const d = new Date(`${jour}T12:00:00Z`);
       d.setUTCDate(d.getUTCDate() + Number(b.dataset.pas));
-      jour = d.toISOString().slice(0, 10);
-      if (heure === 'maintenant') heure = minutesMaintenant(); // un autre jour : l'heure ne suit plus l'horloge
-      tout();
+      changerJour(d.toISOString().slice(0, 10));
     });
   });
+  // Sur ordinateur, le champ n'ouvre son calendrier que par sa petite icône : on l'ouvre au clic
+  calendrier.addEventListener('click', () => {
+    try { calendrier.showPicker?.(); } catch { /* déjà ouvert, ou refusé par le navigateur */ }
+  });
+  calendrier.addEventListener('change', () => changerJour(calendrier.value));
   curseur.addEventListener('input', () => {
     heure = Number(curseur.value);
     ecrire('ombres-heure', heure);

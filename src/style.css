@@ -276,7 +276,18 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .ombres-details { display: grid; gap: 10px; }
 .ombres-details[hidden], .ombres-etat[hidden] { display: none; }
 .ombres-jour { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
-.ombres-jour-nom { text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ombres-jour-nom {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; height: 44px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.ombres-jour-nom:hover { background: var(--survol); }
+.ombres-jour-nom:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ombres-jour-nom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ombres-jour-nom svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.ombres-calendrier {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0;
+  opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none;
+}
 .ombres-jour-bouton {
   height: 44px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte);
   font: 600 22px/1 var(--police); cursor: pointer;

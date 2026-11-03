@@ -1087,5 +1087,6 @@
   "ombres.pastille-nuit": "Night {heure}",
   "ombres.jour-precedent": "Previous day",
   "ombres.jour-suivant": "Next day",
-  "ombres.prudence": "Computed on terrain of about 30 m, without trees or buildings; clouds are ignored. Estimates: check on the ground."
+  "ombres.prudence": "Computed on terrain of about 30 m, without trees or buildings; clouds are ignored. Estimates: check on the ground.",
+  "ombres.choisir-jour": "Choose the day"
 }
