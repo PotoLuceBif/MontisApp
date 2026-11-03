@@ -14,11 +14,11 @@ import {
 const SVG = 'http://www.w3.org/2000/svg';
 const LARGEUR = 300;
 const HORIZON = 60;
-const ECHELLE = 0.68; // pixels par degré : 75° tient au-dessus de l'horizon
+const ECHELLE = 0.68; // pixels par degré ; réduite quand le soleil monte au-delà de 78°
 const BAS = 86;
 
 const xMinutes = (minutes) => (minutes / (24 * 60)) * LARGEUR;
-const yHauteur = (hauteur) => Math.min(BAS, Math.max(4, HORIZON - hauteur * ECHELLE));
+const yHauteur = (hauteur, echelle = ECHELLE) => Math.min(BAS, Math.max(4, HORIZON - hauteur * echelle));
 const degres = (valeur) => `${Math.round(valeur)}°`;
 const direction = (azimut) => `${Math.round(azimut)}° ${t(`cardinal.${codeCardinal(azimut)}`)}`;
 
@@ -84,8 +84,10 @@ export function creerSectionSoleil() {
 
   function dessiner(journee, position, decalage, maintenant) {
     const course = courseSoleil(journee.jour, position.latitude, position.longitude, decalage);
+    const plusHaut = Math.max(...course.map((point) => point.hauteur));
+    const echelle = Math.min(ECHELLE, (HORIZON - 7) / Math.max(plusHaut, 1));
     const trace = course
-      .map((point, index) => `${index ? 'L' : 'M'}${xMinutes(point.minutes).toFixed(1)} ${yHauteur(point.hauteur).toFixed(1)}`)
+      .map((point, index) => `${index ? 'L' : 'M'}${xMinutes(point.minutes).toFixed(1)} ${yHauteur(point.hauteur, echelle).toFixed(1)}`)
       .join(' ');
     const idCoupe = 'soleil-jour';
     const enfants = [
@@ -110,7 +112,7 @@ export function creerSectionSoleil() {
       enfants.push(element('circle', {
         class: visible ? 'soleil-point' : 'soleil-point sous-horizon',
         cx: xMinutes(minutes).toFixed(1),
-        cy: yHauteur(hauteur).toFixed(1),
+        cy: yHauteur(hauteur, echelle).toFixed(1),
         r: 5,
       }));
     }
