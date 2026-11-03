@@ -7,6 +7,7 @@ import { depuisAltitude, formatAltitude, formatDistance, formatSurface, nombre, 
 import { surPreferences } from './preferences.js';
 import { t, ta, ti, tt, poser } from './i18n.js';
 import { cheminsPlanes } from './portee-calcul.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -473,6 +474,7 @@ export function initPortee(map, { onFermer = () => {}, onRetour = null } = {}) {
 
   return {
     ouvrir() {
+      annoncerOutilActivite();
       actif = true;
       panneau.afficher();
       map.getCanvas().style.cursor = 'crosshair';

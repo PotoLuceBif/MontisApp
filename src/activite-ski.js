@@ -7,6 +7,7 @@ import { chargerNeige, creerBlocNeige, chargerRisque, creerBlocRisque } from './
 import { formatAltitude, valeurAltitude } from './unites.js';
 import { locale, langue, surPreferences } from './preferences.js';
 import { t, ta, ti, poser } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -406,6 +407,7 @@ export function creerActiviteSki(map) {
 
   async function rechercherZone() {
     if (!actif) return;
+    annoncerOutilActivite();
     if (fiche.enVisite) fiche.quitterVisite();
     const numero = ++numeroZone;
     recherchePanneau.effacer();

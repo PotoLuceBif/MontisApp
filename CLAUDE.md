@@ -27,6 +27,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 **Comportement**
 - Activités exclusives : jamais deux activités actives en même temps (`exclusif: true` dans `menu.js`). Météo et Carte s'ouvrent par-dessus l'activité sans l'arrêter ; sur téléphone, le panneau de l'activité est masqué le temps qu'un panneau Météo ou Carte est ouvert, puis revient.
+- La météo affichée (radar, analyse du vent, météo locale) reste sur la carte quand on ouvre le menu, le panneau Carte ou une activité. Elle ne se retire que quand un outil d'activité prend la carte : Créer un parcours, Rechercher ici, recherche de stations ou de bike parks (zone ou nom), Portée de vol. Ces outils appellent `annoncerOutilActivite()` (`outil-activite.js`) ; un nouvel outil de ce genre doit faire de même.
 - Quatre activités, chacune avec ses pratiques : Randonnée (randonnée, puis trail, raquettes), Vélo (VTT, gravel, route), Ski (piste, puis ski de rando, hors-piste), Vol libre (parapente, puis deltaplane, paramoteur, speed riding). Une nouvelle pratique s'ajoute dans son activité, pas comme une nouvelle activité. Le choix de pratique n'apparaît qu'à partir de deux pratiques.
 - Tous les réglages sont sauvegardés dans le localStorage et conservés après rafraîchissement. Passer par `lire` et `ecrire` de `reglages.js`.
 - 2D : inclinaison bloquée, rotation et déplacement autorisés. 3D : inclinaison autorisée, sans angle imposé au passage en 3D (`appliquerMode` dans `main.js`).

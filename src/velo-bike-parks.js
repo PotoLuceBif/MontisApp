@@ -5,6 +5,7 @@ import { creerVisiteStation } from './visite-station.js';
 import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPosition, el, km, stat } from './fiche-lieu.js';
 import { creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const URL_LISTE = '/data/bike-parks.json';
 const RESULTATS_MAX = 12;
@@ -183,6 +184,7 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   }
 
   async function chercherZone() {
+    annoncerOutilActivite();
     if (fiche.enVisite) fiche.quitterVisite();
     recherchePanneau.effacer();
     rendreFavoris();

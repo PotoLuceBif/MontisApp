@@ -3,6 +3,7 @@
 import * as maplibregl from 'maplibre-gl';
 import { DECALAGE_PIN, imagePin } from './pins.js';
 import { t } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const DISTANCE_GROUPE_PX = 56;
 const ZOOM_LISTE_GROUPE = 13;
@@ -353,6 +354,7 @@ export function creerRechercheLieux({ champ, liste, prefixe, surEchap, charger, 
       rendre();
       return;
     }
+    annoncerOutilActivite();
     etatRech = 'attente';
     resultats = chercherLocal(recherche);
     rendre();

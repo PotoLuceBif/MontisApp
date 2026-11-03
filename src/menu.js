@@ -6,6 +6,7 @@ import { lire, ecrire } from './reglages.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
 import { creerCartesHorsLigne } from './zones-hors-ligne.js';
 import { differer, facade, immediat } from './module-differe.js';
+import { OUTIL_ACTIVITE } from './outil-activite.js';
 import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 
 const ICONES_MENU = {
@@ -150,9 +151,10 @@ export function initMenu(map) {
     bouton.setAttribute('aria-expanded', String(ouvert));
     poserAttribut(bouton, 'aria-label', ouvert ? 'menu.ouvert' : 'menu.ouvrir-activites');
     boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
+    // La météo affichée (radar, vent) reste sur la carte pendant qu'on parcourt le menu
     if (ouvert) {
       fermerPanneauxFlottants();
-      arreterCategoriesFlottantes();
+      arreterCategoriesFlottantes(['meteo']);
     }
   };
 
@@ -317,12 +319,18 @@ export function initMenu(map) {
   document.body.appendChild(actionsFlottantes);
   const etatsParCategorie = new Map();
 
-  function arreterCategoriesFlottantes(categorieConservee) {
+  function arreterCategoriesFlottantes(conservees = []) {
     for (const categorie of categories) {
-      if (categorie.emplacement !== 'flottant' || categorie.id === categorieConservee) continue;
+      if (categorie.emplacement !== 'flottant' || conservees.includes(categorie.id)) continue;
       etatsParCategorie.get(categorie.id)?.forEach((etat) => etat.actif && arreter(etat));
     }
   }
+
+  // Un outil d'activité prend la carte (outil-activite.js) : la météo se retire proprement
+  window.addEventListener(OUTIL_ACTIVITE, () => {
+    etatsParCategorie.get('meteo')?.forEach((etat) => etat.actif && arreter(etat));
+    if (panneauxFlottants.get('meteo')?.hidden === false) fermerPanneauxFlottants();
+  });
 
   for (const categorie of categories) {
     const vue = document.createElement('section');
@@ -374,7 +382,7 @@ export function initMenu(map) {
         const ouvrirPanneau = panneauOutil.hidden;
         fermerPanneauxFlottants();
         ouvrir(false);
-        arreterCategoriesFlottantes(categorie.id);
+        arreterCategoriesFlottantes([categorie.id, 'meteo']);
         // Météo et Carte s'ouvrent par-dessus l'activité : elle continue (sortie en cours, tracé…)
         if (ouvrirPanneau) {
           panneauOutil.hidden = false;
@@ -424,7 +432,8 @@ export function initMenu(map) {
           return;
         }
         if (categorie.exclusif) {
-          arreterCategoriesFlottantes();
+          // Changer d'activité garde la météo : seul un outil lancé la retire
+          arreterCategoriesFlottantes(['meteo']);
           etats.forEach((autre) => autre !== etat && autre.actif && arreter(autre));
           ecrire('menu-activite', def.id);
         }
