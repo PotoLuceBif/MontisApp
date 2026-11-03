@@ -9,6 +9,7 @@ import { pointCardinal } from './vent-calcul.js';
 import { creerSectionSoleil } from './meteo-soleil.js';
 import { creerIconeMeteo, descriptionMeteo } from './meteo-icone.js';
 import { decalageAppareil } from './soleil.js';
+import { MINI_PLUIE, creerPastilleCouche } from './couches-actives.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -116,6 +117,25 @@ export function creerRadarPluie(map) {
   let indexCourant = -1;
   let controleur = null;
   let minuteurLecture = null;
+  let fermeture = null;
+
+  // Pastille sur la carte : le radar reste affiché panneau Météo fermé
+  const pastille = creerPastilleCouche({
+    ordre: 3,
+    nom: () => {
+      if (statut.classList.contains('erreur')) return t('radar.court-erreur');
+      const image = images[indexCourant];
+      return image ? t('radar.court-heure', { heure: formaterHeure(image.time) }) : t('radar.court');
+    },
+    legende: () => MINI_PLUIE,
+    onOuvrir: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'meteo', module: 'radar' } })),
+    onRetirer: () => fermeture?.(),
+  });
+  // Rien sur la carte avec MétéoSuisse (lien vers son site) : pas de pastille
+  const majPastille = () => {
+    pastille.montrer(actif && sourceCourante === 'rainviewer');
+    if (pastille.visible) pastille.maj();
+  };
 
   function arreterLecture() {
     if (minuteurLecture !== null) clearInterval(minuteurLecture);
@@ -159,6 +179,7 @@ export function creerRadarPluie(map) {
     }
 
     map.setLayoutProperty(COUCHE_RADAR, 'visibility', actif ? 'visible' : 'none');
+    majPastille();
   }
 
   async function chargerImages() {
@@ -166,6 +187,7 @@ export function creerRadarPluie(map) {
     controleur = new AbortController();
     statut.classList.remove('erreur');
     poser(statut, 'radar.chargement');
+    majPastille();
     actuel.disabled = true;
 
     try {
@@ -189,6 +211,7 @@ export function creerRadarPluie(map) {
       statut.classList.add('erreur');
       poser(statut, 'radar.indisponible', { message: erreur.message });
       actuel.disabled = false;
+      majPastille();
       console.error('Chargement du radar météo impossible :', erreur);
     } finally {
       if (controleur?.signal.aborted === false) actuel.disabled = false;
@@ -214,6 +237,7 @@ export function creerRadarPluie(map) {
       if (images.length > 0) afficherImage(indexCourant < 0 ? images.length - 1 : indexCourant);
       void chargerImages();
     }
+    majPastille();
   }
 
   for (const [index, source] of SOURCES.entries()) {
@@ -266,8 +290,11 @@ export function creerRadarPluie(map) {
     labelCle: 'radar.titre',
     icone: 'radar',
     panneau,
-    activer() {
+    // `onFermer` : la ✕ de la pastille arrête le radar comme sa ligne du menu
+    activer({ onFermer } = {}) {
       actif = true;
+      fermeture = onFermer ?? null;
+      majPastille();
       if (sourceCourante === 'rainviewer') {
         if (map.getLayer(COUCHE_RADAR)) map.setLayoutProperty(COUCHE_RADAR, 'visibility', 'visible');
         void chargerImages();
@@ -277,6 +304,7 @@ export function creerRadarPluie(map) {
       actif = false;
       controleur?.abort();
       arreterLecture();
+      majPastille();
       if (map.getLayer(COUCHE_RADAR)) map.setLayoutProperty(COUCHE_RADAR, 'visibility', 'none');
     },
   };

@@ -84,6 +84,14 @@ const ECRANS = [
   { nom: 'meteo', actions: [module('meteo-locale')] },
   { nom: 'meteo-radar', actions: [module('radar')] },
   { nom: 'meteo-vent', actions: [module('vent')] },
+  // Pastilles météo : le radar reste panneau Météo fermé ; le vent, panneau Carte ouvert par-dessus (téléphone)
+  { nom: 'meteo-radar-pastille', actions: [module('radar'), (p) => p.waitForTimeout(1500), clic('#outil-rapide-panneau-meteo .outil-rapide-fermer')] },
+  { nom: 'meteo-vent-pastille', actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief')] },
+  // Appui sur la pastille du vent : le panneau Carte se ferme, celui du vent revient
+  {
+    nom: 'meteo-vent-pastille-ouvre',
+    actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief'), clic('.couche-pastille:not([hidden]) .couche-pastille-corps')],
+  },
   { nom: 'carte-fond', actions: [module('fond')] },
   { nom: 'carte-relief', actions: [module('relief')] },
   { nom: 'carte-pentes', actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), (p) => p.waitForTimeout(3000)] },

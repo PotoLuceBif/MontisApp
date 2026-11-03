@@ -1,6 +1,13 @@
-// Pastilles des couches allumées depuis le menu Carte (pentes, éléments de la carte) : elles restent
+// Pastilles des couches allumées depuis Carte ou Météo (pentes, éléments, radar, vent) : elles restent
 // sur la carte panneau fermé, disent ce qui est affiché, l'éteignent (✕) ou rouvrent son réglage.
 import { poserAttribut, surLangue, t } from './i18n.js';
+
+// Mini-légendes des couches météo (mêmes dessins que les lignes du menu)
+export const MINI_PLUIE = '<svg class="mini-icone" viewBox="0 0 24 24"><path d="M7 15a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 7.5a3.75 3.75 0 0 1 0 7.5"/><path d="M9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5"/></svg>';
+export const MINI_VENT = '<svg class="mini-icone" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/></svg>';
+
+// Ferme le menu et les panneaux Météo et Carte, pour montrer un panneau posé sur la carte (vent)
+export const montrerCarte = () => window.dispatchEvent(new CustomEvent('montis:montrer-carte'));
 
 const CROIX = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>';
 
