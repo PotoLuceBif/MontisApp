@@ -4,6 +4,7 @@ import { afficherVilles, afficherRefuges } from './lieux.js';
 import { afficherBatiments } from './batiments.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
 import { poser, surLangue, t } from './i18n.js';
+import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
 
 // Pour ajouter un élément : une ligne dans le bon groupe (ou un nouveau groupe = un nouvel onglet)
 const GROUPES = [
@@ -48,6 +49,7 @@ export function creerElementsCarte(map) {
 
   const boutons = new Map();
   const blocs = new Map();
+  let rang = 0;
 
   // Texte des onglets (avec le nombre d'éléments actifs) et onglet visible
   function majOnglets() {
@@ -89,12 +91,31 @@ export function creerElementsCarte(map) {
       ligne.append(input, ' ', texte, aide);
       bloc.appendChild(ligne);
 
+      // Pastille sur la carte tant que l'élément est affiché : ✕ l'enlève, un appui ouvre son onglet
+      const pastille = creerPastilleCouche({
+        ordre: 10 + rang,
+        nom: () => t(`elements.court-${c.cle}`),
+        onOuvrir: () => {
+          groupeCourant = g.id;
+          ecrire('elements-onglet', g.id);
+          majOnglets();
+          ouvrirReglage('elements');
+        },
+        onRetirer: () => {
+          input.checked = false;
+          input.dispatchEvent(new Event('change'));
+        },
+      });
+      rang += 1;
+
       // Rétablit l'état précédent dès que la carte est prête
       if (actifAuDepart) quandPret(map, () => c.appliquer(map, true));
+      pastille.montrer(actifAuDepart);
 
       input.addEventListener('change', () => {
         c.appliquer(map, input.checked);
         ecrire(c.cle, input.checked);
+        pastille.montrer(input.checked);
         majOnglets();
         window.dispatchEvent(new CustomEvent('calque', { detail: { cle: c.cle, actif: input.checked } }));
       });
@@ -103,6 +124,7 @@ export function creerElementsCarte(map) {
       window.addEventListener('calque', (e) => {
         if (e.detail.cle === c.cle && input.checked !== e.detail.actif) {
           input.checked = e.detail.actif;
+          pastille.montrer(e.detail.actif);
           majOnglets();
         }
       });

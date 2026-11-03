@@ -366,7 +366,10 @@ export function initMenu(map) {
       return;
     }
     if (panneau.hidden) boutonsFlottants.get(categorie).click();
+    reduirePanneau(panneau, false);
     if (!etat.actif) demarrer(etat);
+    // Le réglage demandé en haut du panneau (appui sur une pastille de couche)
+    requestAnimationFrame(() => etat.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     retourFlottant = typeof retour === 'function' ? { categorie, etat, retour } : null;
   });
 

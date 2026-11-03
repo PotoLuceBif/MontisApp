@@ -90,7 +90,21 @@ const ECRANS = [
   // La pastille ramène au zoom où la couche apparaît
   {
     nom: 'carte-pentes-rapprocher',
-    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.pentes-pastille'), (p) => p.waitForTimeout(4000)],
+    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.couche-pastille:not([hidden]) .couche-pastille-action'), (p) => p.waitForTimeout(4000)],
+  },
+  // Pastilles des couches allumées depuis Carte, panneau fermé
+  {
+    nom: 'carte-pastilles',
+    actions: [
+      vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), module('elements'),
+      (p) => p.evaluate(() => document.querySelectorAll('#outil-rapide-panneau-carte .option-case input').forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
+      clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+    ],
+  },
+  // Appui sur une pastille : le panneau Carte s'ouvre sur son réglage
+  {
+    nom: 'carte-pastille-ouvre',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.couche-pastille:not([hidden]) .couche-pastille-corps')],
   },
   // Panneau réduit en barre pour voir la carte, puis rouvert là où on l'avait laissé
   {
