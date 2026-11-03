@@ -7,6 +7,10 @@ import { lire } from './reglages.js';
 import { poser, surLangue, t, ta } from './i18n.js';
 import { formatPente, nombre, pourcent } from './unites.js';
 
+const ZOOM_CIBLE = ZOOM_MIN_PENTES + 0.5;
+const ICONE_LOUPE = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+  <circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6"/></svg>`;
+
 const rgb = ([r, g, b]) => `rgb(${r}, ${g}, ${b})`;
 
 // Rose des orientations : huit secteurs, lettres autour
@@ -41,6 +45,10 @@ export function creerOptionPentes(map) {
       <button type="button" data-genre="aucune" data-i18n="pentes.aucune"></button>
       <button type="button" data-genre="pentes" data-i18n="pentes.pentes"></button>
       <button type="button" data-genre="orientation" data-i18n="pentes.orientation"></button>
+    </div>
+    <div class="pentes-loin" role="status" hidden>
+      <p class="pentes-loin-texte"></p>
+      <button type="button" class="pentes-zoomer">${ICONE_LOUPE}<span data-i18n="pentes.zoomer"></span></button>
     </div>
     <p class="note pentes-etat" role="status"></p>
     <div class="pentes-details">
@@ -94,13 +102,38 @@ export function creerOptionPentes(map) {
     majEtat();
   }
 
-  // ---------- État : trop loin, hors ligne, relief manquant ----------
+  // ---------- Trop loin : encadré dans le panneau et pastille sur la carte, avec un bouton pour zoomer ----------
+  const loin = bloc.querySelector('.pentes-loin');
+  const pastille = document.createElement('button');
+  pastille.type = 'button';
+  pastille.className = 'pentes-pastille';
+  pastille.hidden = true;
+  pastille.innerHTML = `${ICONE_LOUPE}<span class="pentes-pastille-texte"></span><strong data-i18n="pentes.zoomer"></strong>`;
+  document.body.append(pastille);
+  bloc.querySelectorAll('.pentes-zoomer [data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
+  poser(pastille.querySelector('strong'), 'pentes.zoomer');
+  const zoomer = () => map.easeTo({ zoom: ZOOM_CIBLE, duration: 900 });
+  pastille.addEventListener('click', zoomer);
+  bloc.querySelector('.pentes-zoomer').addEventListener('click', zoomer);
+
+  function majTropLoin() {
+    const tropLoin = couche.choix !== 'aucune' && map.getZoom() < ZOOM_MIN_PENTES;
+    loin.hidden = !tropLoin;
+    pastille.hidden = !tropLoin || !!etat.enVisite;
+    if (!tropLoin) return;
+    const cle = couche.choix === 'orientation' ? 'pentes.loin-orientation' : 'pentes.loin-pentes';
+    poser(pastille.querySelector('.pentes-pastille-texte'), cle);
+    poser(loin.querySelector('.pentes-loin-texte'), 'pentes.zoom');
+  }
+  map.on('zoom', majTropLoin);
+
+  // ---------- Hors ligne, relief manquant ----------
   let erreurs = 0;
   function majEtat() {
+    majTropLoin();
     let texte = '';
-    if (couche.choix !== 'aucune') {
-      if (map.getZoom() < ZOOM_MIN_PENTES) texte = t('pentes.zoom');
-      else if (erreurs) texte = t(estHorsLigne() ? 'pentes.hors-ligne' : 'pentes.erreur');
+    if (couche.choix !== 'aucune' && map.getZoom() >= ZOOM_MIN_PENTES && erreurs) {
+      texte = t(estHorsLigne() ? 'pentes.hors-ligne' : 'pentes.erreur');
     }
     note.textContent = texte;
     note.hidden = !texte;

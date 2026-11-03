@@ -1055,8 +1055,11 @@
   "pentes.opacite": "Opacité",
   "pentes.sous": "Sous {valeur} : sans couleur.",
   "pentes.rose-aide": "Couleur selon la direction vers laquelle le versant descend. Sans couleur sous {valeur}.",
-  "pentes.zoom": "Rapprochez-vous pour afficher la couche : de plus loin, le relief est trop lissé pour mesurer les pentes.",
+  "pentes.zoom": "Trop loin pour afficher la couche : à cette distance, le relief est trop lissé pour mesurer les pentes.",
   "pentes.hors-ligne": "Hors ligne : la couche n’est calculée que dans les zones téléchargées.",
   "pentes.erreur": "Relief indisponible pour une partie de la carte : la couche est incomplète.",
-  "pentes.prudence": "Relief précis à environ 15 m : un passage court peut être plus raide qu’affiché. Estimations : à vérifier sur le terrain."
+  "pentes.prudence": "Relief précis à environ 15 m : un passage court peut être plus raide qu’affiché. Estimations : à vérifier sur le terrain.",
+  "pentes.zoomer": "Rapprocher",
+  "pentes.loin-pentes": "Pentes : trop loin",
+  "pentes.loin-orientation": "Orientation : trop loin"
 }

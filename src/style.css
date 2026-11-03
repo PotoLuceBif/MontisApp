@@ -212,6 +212,32 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .pentes-rose path { stroke: var(--surface); stroke-width: 1; }
 .pentes-rose-centre { fill: var(--surface); }
 .pentes-rose text { fill: var(--texte-2); font: 700 9px var(--police); text-anchor: middle; dominant-baseline: central; }
+.pentes-loin {
+  display: grid; gap: 8px; margin: -2px 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--accent-doux); color: var(--texte);
+}
+.pentes-loin[hidden] { display: none; }
+.relief-pentes .pentes-loin-texte { margin: 0; color: var(--texte); font-size: 12.5px; line-height: 1.4; }
+.pentes-zoomer, .pentes-pastille {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border: 0; cursor: pointer; font: 700 13px var(--police);
+}
+.pentes-zoomer { justify-content: center; padding: 0 14px; border-radius: 8px; background: var(--accent); color: var(--accent-texte); }
+.pentes-zoomer svg, .pentes-pastille svg { width: 18px; height: 18px; flex: none; }
+/* Sur la carte, même panneau fermé : la couche choisie n'apparaît pas à ce zoom */
+.pentes-pastille {
+  position: fixed; top: 74px; left: 12px; z-index: 13; max-width: calc(100vw - 100px); padding: 0 6px 0 12px;
+  border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--texte); box-shadow: var(--ombre);
+}
+.pentes-pastille[hidden] { display: none; }
+.pentes-pastille svg { color: var(--accent); }
+.pentes-pastille-texte { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; font-size: 12.5px; }
+.pentes-pastille strong { flex: none; padding: 7px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-texte); }
+body:has(.hl-pastille:not([hidden])) .pentes-pastille { top: 108px; }
+body:has(#menu-tiroir.ouvert) .pentes-pastille { visibility: hidden; }
+@media (min-width: 641px) {
+  .pentes-pastille { left: auto; right: 72px; top: 24px; }
+  body:has(.hl-pastille:not([hidden])) .pentes-pastille { top: 62px; }
+}
 .relief-pentes .pentes-etat { margin: -2px 0 10px; color: var(--texte); }
 .relief-pentes .pentes-prudence { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }

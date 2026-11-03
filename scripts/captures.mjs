@@ -82,6 +82,16 @@ const ECRANS = [
       (p) => p.waitForTimeout(1200), vue({ ...AIGUILLES, pitch: 60, bearing: 30 }), (p) => p.waitForTimeout(4000)],
   },
   { nom: 'carte-pentes-loin', actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]')] },
+  // Panneau fermé : la pastille de la carte dit pourquoi rien n'apparaît
+  {
+    nom: 'carte-pentes-loin-ferme',
+    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
+  },
+  // La pastille ramène au zoom où la couche apparaît
+  {
+    nom: 'carte-pentes-rapprocher',
+    actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.pentes-pastille'), (p) => p.waitForTimeout(4000)],
+  },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long
