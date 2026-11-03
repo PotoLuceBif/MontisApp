@@ -124,6 +124,9 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
       window.dispatchEvent(new Event('panneau-carte'));
     },
     demanderFermeture: () => onFermer(),
+    agrandir() {
+      if (reduit) basculer(false);
+    },
     definirRetour(nouveau) {
       retour = nouveau;
       majRetour();

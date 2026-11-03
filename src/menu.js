@@ -165,6 +165,11 @@ export function initMenu(map) {
   }
 
   window.addEventListener('fiche-ouverte', fermerPanneauxFlottants);
+  // Pastille du vent : son réglage est dans son panneau posé sur la carte, que Météo ou Carte cachent sur téléphone
+  window.addEventListener('montis:montrer-carte', () => {
+    fermerPanneauxFlottants();
+    if (tiroir.classList.contains('ouvert')) ouvrir(false);
+  });
 
   const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
   const ouvrir = (ouvert, pageParametres = false) => {

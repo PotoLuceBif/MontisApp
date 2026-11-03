@@ -13,6 +13,7 @@ import {
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
 import { creerPanneauCarte } from './panneau-carte.js';
+import { MINI_VENT, creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, nombre, valeurVent } from './unites.js';
@@ -118,6 +119,12 @@ function creerGrilleVolume(centre, demi) {
     ny: NOEUDS_VOLUME,
     positions,
   };
+}
+
+// Pour la pastille : l'heure seule aujourd'hui, précédée du jour court sinon (« sam. 18h00 »)
+function heurePourPastille(date) {
+  const heure = heureCourte(date);
+  return date.toDateString() === new Date().toDateString() ? heure : `${nomJour(date, 'short')} ${heure}`;
 }
 
 function formaterHeure(iso) {
@@ -265,6 +272,22 @@ export function creerCarteVent(map) {
   let minuteurValidite = null;
   let evenementsCoucheAjoutes = false;
   let fermeture = null;
+  let heurePastille = '';
+
+  // Pastille sur la carte : sur téléphone, le panneau du vent est caché quand Météo ou Carte est ouvert
+  const pastille = creerPastilleCouche({
+    ordre: 4,
+    nom: () => {
+      if (vueActive !== 'volume' && statut.classList.contains('erreur')) return t('vent.court-erreur');
+      return heurePastille ? t('vent.court-heure', { heure: heurePastille }) : t('vent.court');
+    },
+    legende: () => MINI_VENT,
+    onOuvrir: () => {
+      montrerCarte();
+      panneauCarte.agrandir();
+    },
+    onRetirer: () => fermeture?.(),
+  });
   let dateEnregistree = null; // date des données si elles viennent de la dernière consultation
   let donneesVentCourantes = null;
   let resumeVentCourant = [];
@@ -367,6 +390,8 @@ export function creerCarteVent(map) {
     const ecart = echeance() === 0 ? t('vent.prochaine-heure') : t('vent.dans-h', { n: echeance() });
     heureTemps.textContent = libelle;
     ecartTemps.textContent = ecart;
+    heurePastille = Number.isNaN(new Date(date).getTime()) ? '' : heurePourPastille(new Date(date));
+    if (pastille.visible) pastille.maj();
     curseurTemps.setAttribute('aria-valuetext', `${libelle}, ${ecart}`);
     majBandeau();
   }
@@ -656,6 +681,7 @@ export function creerCarteVent(map) {
       }
     } finally {
       clearTimeout(minuteurDelai);
+      if (pastille.visible) pastille.maj();
       if (controleurProfil === requete) {
         controleurProfil = null;
         mettreAJourAlerte();
@@ -862,6 +888,7 @@ export function creerCarteVent(map) {
       }
     } finally {
       clearTimeout(minuteurDelai);
+      if (pastille.visible) pastille.maj();
       if (controleur === requete) {
         controleur = null;
         mettreAJourAlerte();
@@ -976,6 +1003,7 @@ export function creerCarteVent(map) {
       panneauCarte.definirRetour(onRetour ?? null);
       panneauCarte.afficher();
       actif = true;
+      pastille.montrer(true);
       assurerCouche();
       coucheVent.definirVisible(true);
       coucheVent.definirAnimation(vueActive !== 'volume');
@@ -991,6 +1019,7 @@ export function creerCarteVent(map) {
     },
     desactiver() {
       actif = false;
+      pastille.montrer(false);
       clearInterval(minuteurValidite);
       alerteZone.hidden = true;
       basculerPleinEcran(false);
