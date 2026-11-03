@@ -3,6 +3,7 @@ import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
 import { interroger } from './overpass.js';
+import { DECALAGE_PIN, creerPinSeul, imagePin } from './pins.js';
 
 // Quelle couche de la carte correspond à quel genre d'élément
 const GENRE_PAR_COUCHE = {
@@ -172,7 +173,8 @@ export function initFiches(map) {
     entete.className = 'fiche-entete';
     const icone = document.createElement('div');
     icone.className = 'fiche-icone';
-    icone.textContent = f.icone;
+    if (f.point) icone.append(imagePin(f.point.pin));
+    else icone.textContent = f.icone;
     const titres = document.createElement('div');
     titres.className = 'fiche-titres';
     const titre = document.createElement('div');
@@ -321,7 +323,21 @@ export function initFiches(map) {
   }
 
   // ---------- Ouverture et fermeture ----------
+  // Un point quelconque reçoit le pin de la recherche, qui tombe en place ; un objet, un anneau
+  let repere = null;
+  function poserPin(lngLat, nom) {
+    if (anneau) anneau.remove();
+    if (repere) repere.remove();
+    const pin = creerPinSeul(nom);
+    pin.element.classList.add('point-pin');
+    repere = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN })
+      .setLngLat([lngLat.lng, lngLat.lat])
+      .addTo(map);
+  }
+
   function poserAnneau(lngLat) {
+    if (repere) repere.remove();
+    repere = null;
     if (!anneau) {
       const el = document.createElement('div');
       el.className = 'fiche-point';
@@ -340,6 +356,8 @@ export function initFiches(map) {
     courant = null;
     panneau.hidden = true;
     if (anneau) anneau.remove();
+    if (repere) repere.remove();
+    repere = null;
   }
 
   function ouvrir(feature, genre, lngLat) {
@@ -384,15 +402,15 @@ export function initFiches(map) {
     const numero = ++numeroPoint;
     const { creerFichePoint } = await import('./fiche-point.js');
     if (numero !== numeroPoint) return; // un autre appui long entre-temps
-    const fiche = { lng: lngLat.lng, lat: lngLat.lat, icone: '📍' };
+    const fiche = { lng: lngLat.lng, lat: lngLat.lat };
     fiche.point = creerFichePoint({
       lng: fiche.lng,
       lat: fiche.lat,
       maj: () => courant === fiche && rendre(),
+      fermer: () => courant === fiche && fermer(),
     });
-    fiche.icone = fiche.point.icone;
     courant = fiche;
-    poserAnneau(lngLat);
+    poserPin(lngLat, fiche.point.pin);
     panneau.hidden = false;
     panneau.scrollTop = 0;
     window.dispatchEvent(new Event('fiche-ouverte'));

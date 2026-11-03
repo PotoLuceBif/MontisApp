@@ -332,6 +332,16 @@ export function initMenu(map) {
     if (panneauxFlottants.get('meteo')?.hidden === false) fermerPanneauxFlottants();
   });
 
+  // Raccourci depuis une fiche : ouvre un panneau flottant sur l'un de ses modules (Météo › Conditions locales)
+  window.addEventListener('montis:ouvrir-module', (event) => {
+    const { categorie, module } = event.detail || {};
+    const panneau = panneauxFlottants.get(categorie);
+    const etat = etatsParCategorie.get(categorie)?.find((e) => e.def.id === module);
+    if (!panneau || !etat) return;
+    if (panneau.hidden) boutonsFlottants.get(categorie).click();
+    if (!etat.actif) demarrer(etat);
+  });
+
   for (const categorie of categories) {
     const vue = document.createElement('section');
     vue.className = 'menu-vue';

@@ -9,11 +9,16 @@ import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, nomDecalage, positionSoleil } from './soleil.js';
 import { formatAltitude, formatLongueur, formatTemp, formatVent } from './unites.js';
 import { t } from './i18n.js';
+import { ecrire } from './reglages.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const RAYON_REFUGE = 30000;
 const RAYON_EAU = 3000;
 const DELAI = 20000;
+const DELAI_EAU = 30000;
+const DELAI_EAU_SERVEUR = 10000;
+// Clé lue par Météo › Conditions locales (meteo.js) pour le lieu des prévisions
+const CLE_LIEU_METEO = 'meteo-position';
 
 const cardinal = (degres) => t(`cardinal.${codeCardinal(degres)}`);
 
@@ -67,7 +72,7 @@ function indisponible(texte) {
   return s;
 }
 
-export function creerFichePoint({ lng, lat, maj }) {
+export function creerFichePoint({ lng, lat, maj, fermer = () => {} }) {
   const point = [lng, lat];
   const controleur = new AbortController();
   const etat = {
@@ -78,11 +83,11 @@ export function creerFichePoint({ lng, lat, maj }) {
     decalage: null, // fuseau du lieu, donné par Open-Meteo
   };
   // Chaque requête a son délai ; fermer la fiche les annule toutes
-  function signalAvecDelai() {
+  function signalAvecDelai(delai = DELAI) {
     const local = new AbortController();
     const fin = () => local.abort();
     controleur.signal.addEventListener('abort', fin);
-    const minuteur = setTimeout(fin, DELAI);
+    const minuteur = setTimeout(fin, delai);
     return {
       signal: local.signal,
       liberer: () => {
@@ -115,7 +120,8 @@ export function creerFichePoint({ lng, lat, maj }) {
       latitude: lat.toFixed(4),
       longitude: lng.toFixed(4),
       current: 'temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+      hourly: 'freezing_level_height',
+      daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max',
       forecast_days: '1',
       timezone: 'auto',
     });
@@ -136,18 +142,20 @@ export function creerFichePoint({ lng, lat, maj }) {
   }
 
   async function chargerEau() {
+    // Des nœuds seulement : presque toutes les fontaines et sources en sont, et la requête reste légère
     const p = `around:${RAYON_EAU},${lat.toFixed(6)},${lng.toFixed(6)}`;
     const requete =
-      `[out:json][timeout:15];(` +
-      `nwr(${p})["amenity"~"^(drinking_water|water_point)$"];` +
-      `nwr(${p})["natural"="spring"];` +
-      `nwr(${p})["man_made"="water_tap"];` +
-      `);out center tags;`;
-    const envoi = signalAvecDelai();
+      `[out:json][timeout:10];(` +
+      `node(${p})["amenity"~"^(drinking_water|water_point)$"];` +
+      `node(${p})["natural"="spring"];` +
+      `node(${p})["man_made"="water_tap"];` +
+      `);out tags;`;
+    const envoi = signalAvecDelai(DELAI_EAU);
     try {
-      const json = await interroger(requete, envoi.signal);
+      const json = await interroger(requete, envoi.signal, { delaiParServeur: DELAI_EAU_SERVEUR });
       poser('eau', plusProche(pointsEau(json.elements), point) || 'aucun');
-    } catch {
+    } catch (e) {
+      console.warn('Points d’eau :', e);
       poser('eau', estHorsLigne() ? 'hors-ligne' : 'erreur');
     } finally {
       envoi.liberer();
@@ -228,7 +236,44 @@ export function creerFichePoint({ lng, lat, maj }) {
         rafales: Number.isFinite(actuel.wind_gusts_10m) ? formatVent(actuel.wind_gusts_10m) : '—',
       })));
     }
+    const montagne = [];
+    const iso = isotherme(meteo);
+    if (Number.isFinite(iso)) montagne.push(t('point.isotherme', { altitude: formatAltitude(iso, { pas: 50 }) }));
+    const uv = jour.uv_index_max?.[0];
+    if (Number.isFinite(uv)) montagne.push(t('point.uv', { valeur: Math.round(uv) }));
+    if (montagne.length) bloc.append(texteSecondaire(montagne.join(' · ')));
     if (meteo.enregistreeLe) bloc.append(texteSecondaire(texteDonneesDu(meteo.enregistreeLe)));
+    return bloc;
+  }
+
+  // Isotherme 0 °C de l'heure en cours
+  function isotherme(meteo) {
+    const heures = meteo.hourly?.time || [];
+    const valeurs = meteo.hourly?.freezing_level_height || [];
+    const heure = typeof meteo.current?.time === 'string' ? `${meteo.current.time.slice(0, 13)}:00` : null;
+    const index = heure ? heures.indexOf(heure) : -1;
+    return index >= 0 ? valeurs[index] : undefined;
+  }
+
+  // Raccourci vers Météo › Conditions locales, sur ce point
+  function boutonPrevisions() {
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'point-raccourci';
+    bouton.textContent = t('point.previsions');
+    bouton.addEventListener('click', () => {
+      const lieu = { longitude: lng, latitude: lat };
+      ecrire(CLE_LIEU_METEO, lieu);
+      window.dispatchEvent(new CustomEvent('montis:meteo-ici', { detail: lieu }));
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'meteo', module: 'meteo-locale' } }));
+      fermer();
+    });
+    return bouton;
+  }
+
+  function meteoAvecRaccourci() {
+    const bloc = document.createElement('div');
+    bloc.append(valeurMeteo(), boutonPrevisions());
     return bloc;
   }
 
@@ -255,7 +300,19 @@ export function creerFichePoint({ lng, lat, maj }) {
     if (eau === 'chargement') return enAttente();
     if (eau === 'hors-ligne') return indisponible(t('point.internet-requis'));
     if (eau === 'aucun') return indisponible(t('point.aucune-eau', { distance: formatLongueur(RAYON_EAU) }));
-    if (typeof eau === 'string') return indisponible(t('point.eau-erreur'));
+    if (typeof eau === 'string') {
+      const bloc = document.createElement('div');
+      const reessayer = document.createElement('button');
+      reessayer.type = 'button';
+      reessayer.className = 'point-raccourci';
+      reessayer.textContent = t('point.reessayer');
+      reessayer.addEventListener('click', () => {
+        poser('eau', 'chargement');
+        chargerEau();
+      });
+      bloc.append(indisponible(t('point.eau-erreur')), reessayer);
+      return bloc;
+    }
     const bloc = document.createElement('div');
     bloc.append(principal(document.createTextNode(eau.nom || t(`point.eau-${eau.genre}`))));
     const details = [loin(eau)];
@@ -266,7 +323,7 @@ export function creerFichePoint({ lng, lat, maj }) {
   }
 
   return {
-    icone: '📍',
+    pin: 'recherche',
     titre: () => t('point.titre'),
     // L'altitude, en tête : c'est la donnée qu'on cherche le plus souvent
     sousTitre: () => {
@@ -278,7 +335,7 @@ export function creerFichePoint({ lng, lat, maj }) {
       corps.append(
         ligne(t('point.pente'), valeurTerrain()),
         ligne(t('soleil.titre'), valeurSoleil()),
-        ligne(t('point.meteo'), valeurMeteo()),
+        ligne(t('point.meteo'), meteoAvecRaccourci()),
         ligne(t('point.refuge'), valeurRefuge()),
         ligne(t('point.eau'), valeurEau())
       );

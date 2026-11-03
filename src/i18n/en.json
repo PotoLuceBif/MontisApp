@@ -1031,5 +1031,9 @@
   "point.eau-source": "Spring",
   "point.eau-inconnue": "Water point",
   "point.eau-a-traiter": "not guaranteed drinkable",
-  "prudence.courte": "Estimates: check on the ground."
+  "prudence.courte": "Estimates: check on the ground.",
+  "point.previsions": "Detailed forecast",
+  "point.reessayer": "Try again",
+  "point.isotherme": "Freezing level {altitude}",
+  "point.uv": "UV {valeur}"
 }

@@ -946,6 +946,16 @@ export function creerConditionsLocales(map) {
     suivreCentre();
   });
   map.on('moveend', majLieu);
+  // Raccourci « Prévisions détaillées » de la fiche d'un point
+  window.addEventListener('montis:meteo-ici', (event) => {
+    const { longitude, latitude } = event.detail || {};
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
+    annulerSelection();
+    position = { longitude, latitude };
+    positionChoisie = true;
+    ecrire(METEO_LOCATION, position);
+    if (actif) chargerPrevisions();
+  });
   jours.addEventListener('click', (event) => {
     const bouton = event.target.closest('.meteo-jour');
     if (bouton) selectionnerJour(bouton.dataset.date);

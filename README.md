@@ -20,7 +20,7 @@ La navigation utilise un bouton logo pour les activités et une bulle Réglages 
 
 ## Fiche d’un point
 
-Un appui long n’importe où sur la carte (clic droit sur ordinateur) ouvre la fiche de ce point : coordonnées à copier, altitude, pente et orientation du versant, lever et coucher du soleil avec sa position actuelle, météo du moment et de la journée, refuge et point d’eau les plus proches à vol d’oiseau. La pente est une moyenne sur une trentaine de mètres, calculée depuis les tuiles de relief, avec les couleurs des seuils 30°, 35°, 40° et 45°.
+Un appui long n’importe où sur la carte (clic droit sur ordinateur) ouvre la fiche de ce point : coordonnées à copier, altitude, pente et orientation du versant, lever et coucher du soleil avec sa position actuelle, météo du moment et de la journée (avec l’isotherme 0 °C et l’indice UV), refuge et point d’eau les plus proches à vol d’oiseau. La pente est une moyenne sur une trentaine de mètres, calculée depuis les tuiles de relief, avec les couleurs des seuils 30°, 35°, 40° et 45°. Le bouton **Prévisions détaillées** ouvre Météo › Conditions locales sur ce point.
 
 Hors ligne, l’altitude et la pente restent disponibles dans les zones téléchargées, le soleil et le refuge le plus proche partout ; la météo et les points d’eau (OpenStreetMap, via Overpass) demandent Internet. La potabilité d’une source n’est jamais garantie. Toutes ces valeurs sont des estimations, à vérifier sur le terrain.
 

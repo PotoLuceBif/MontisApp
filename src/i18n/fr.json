@@ -1031,5 +1031,9 @@
   "point.eau-source": "Source",
   "point.eau-inconnue": "Point d’eau",
   "point.eau-a-traiter": "potabilité non garantie",
-  "prudence.courte": "Estimations : à vérifier sur le terrain."
+  "prudence.courte": "Estimations : à vérifier sur le terrain.",
+  "point.previsions": "Prévisions détaillées",
+  "point.reessayer": "Réessayer",
+  "point.isotherme": "Isotherme 0 °C à {altitude}",
+  "point.uv": "UV {valeur}"
 }
