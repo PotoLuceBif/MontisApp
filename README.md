@@ -18,6 +18,12 @@ Le service worker est écrit dans `src/sw-modele.js` et publié sous `/sw.js` pa
 
 La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique.
 
+## Fiche d’un point
+
+Un appui long n’importe où sur la carte (clic droit sur ordinateur) ouvre la fiche de ce point : coordonnées à copier, altitude, pente et orientation du versant, lever et coucher du soleil avec sa position actuelle, météo du moment et de la journée (avec l’isotherme 0 °C et l’indice UV), refuge et point d’eau (lac, cours d’eau, fontaine ou source) les plus proches à vol d’oiseau. Touchez le refuge ou l’eau pour le voir sur la carte, puis **Y aller depuis ce point** : Montis ouvre Créer un parcours du point jusqu’à la cible (en Randonnée, ou en Vélo si c’est l’activité en cours). La flèche retour de l’éditeur ramène à la fiche du point ; le tracé reste en brouillon, et **Créer un parcours** le reprend. La pente est une moyenne sur une trentaine de mètres, calculée depuis les tuiles de relief, avec les couleurs des seuils 30°, 35°, 40° et 45°. Le bouton **Prévisions sur 5 jours** ouvre Météo › Conditions locales sur ce point ; sa croix ramène à la fiche.
+
+Hors ligne, l’altitude et la pente restent disponibles dans les zones téléchargées, le soleil et le refuge le plus proche partout ; les lacs et cours d’eau de la carte aussi ; la météo, les fontaines et les sources (OpenStreetMap, via Overpass) demandent Internet. La potabilité d’une source n’est jamais garantie. Toutes ces valeurs sont des estimations, à vérifier sur le terrain.
+
 ## Soleil
 
 Dans **Météo > Conditions locales**, la section **Soleil** donne pour le lieu des prévisions : lever et coucher avec leur direction, durée du jour, midi solaire et hauteur maximale, heures dorées, aube et crépuscule, et la position actuelle du soleil sur sa course du jour. Elle suit le jour choisi dans les prévisions à 5 jours. Tout est calculé sur le téléphone, donc disponible hors ligne. Le calcul suppose un horizon dégagé : en montagne, le relief cache le soleil plus tard le matin et plus tôt le soir.

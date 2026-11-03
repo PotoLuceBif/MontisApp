@@ -911,6 +911,26 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       recalculer();
       cadrer(etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []));
     },
+    // Nouveau parcours de `depart` à `arrivee` ([lng, lat]), depuis la fiche d'un point (« Y aller »)
+    ouvrirVers({ depart, arrivee, nom, onRetour: retour = null }) {
+      lignesEnsemble = null;
+      panneau.element.classList.remove('bf-parcours-ensemble');
+      retourCourant = retour ?? onRetour;
+      onAnalyse = null;
+      panneau.meta.textContent = '';
+      rendreInfos([]);
+      etapes = [depart, arrivee].map(([lng, lat]) => ({ lng, lat, mode: modeLibre ? 'libre' : 'route', troncon: null }));
+      idParcours = null;
+      definirNom(nom || t('editeur.nouveau'));
+      passe = [];
+      futur = [];
+      source.hidden = true;
+      bloquerFiches(true);
+      panneau.afficher();
+      definirEdition(true);
+      recalculer();
+      cadrer([depart, arrivee]);
+    },
     // Reprend le parcours en cours s'il y en a un : le téléphone a pu fermer l'app entre-temps
     ouvrirCreation() {
       lignesEnsemble = null;

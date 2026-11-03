@@ -11,6 +11,7 @@ import { formatDenivele, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { formatDate, poser, t, ta, ti, tt } from './i18n.js';
 import { annoncerOutilActivite } from './outil-activite.js';
+import { reprendre } from './demandes.js';
 
 const ZOOM_MIN_ZONE = 7;
 const REPERES_MAX = 40;
@@ -443,6 +444,29 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (brutes.length) liste.replaceChildren(...regrouper(brutes.filter((route) => !filtre.garde || filtre.garde(route))).map(ligneResultat));
   });
 
+  // « Y aller » depuis la fiche d'un point : un parcours du point jusqu'au refuge ou à l'eau
+  const cleItineraire = `itineraire-${activite.id}`;
+  function reprendreItineraire() {
+    const demande = actif && reprendre(cleItineraire);
+    if (!demande) return;
+    annoncerOutilActivite();
+    fermerMenu();
+    itineraires.fermer();
+    decouverte.masquer();
+    const { retour, ...trajet } = demande;
+    editeur.ouvrirVers({
+      ...trajet,
+      // Le brouillon reste : « Créer un parcours » le reprend
+      onRetour: retour ? () => {
+        editeur.fermer();
+        retour();
+      } : null,
+    });
+  }
+  window.addEventListener('montis:demande', (event) => {
+    if (event.detail === cleItineraire) reprendreItineraire();
+  });
+
   return {
     id: activite.id,
     labelCle: activite.labelCle,
@@ -453,6 +477,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       appliquerCalque();
       decouverte.activer();
       crochets.activer?.();
+      reprendreItineraire();
     },
     desactiver() {
       actif = false;

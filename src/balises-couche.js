@@ -293,6 +293,8 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
     if (visible && Math.round(map.getZoom() * 2) !== zoomCalcule) publier();
   });
   map.on('style.load', assurerCouches);
+  // Une seule fiche à la fois : celle d'un point (appui long) ou d'un objet remplace celle de la balise
+  window.addEventListener('fiche-ouverte', () => fiche.fermer());
 
   return {
     // `nouvelleSource` : l'attribution de la carte suit la source affichée

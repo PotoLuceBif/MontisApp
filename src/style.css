@@ -373,6 +373,59 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .fiche-attente-ligne { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 13px; }
 .fiche-liens a { margin-right: 14px; color: var(--accent); font-weight: 600; text-decoration: none; }
 .fiche-liens a:hover { text-decoration: underline; }
+/* Fiche d'un point (appui long) */
+.point-principal { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.point-principal .meteo-icone { width: 24px; height: 24px; flex: none; }
+.point-principal .meteo-icone svg { width: 20px; height: 20px; }
+.point-detail { margin-top: 3px; color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
+.point-attente { color: var(--texte-2); font-size: 13px; }
+.point-indisponible { color: var(--texte-2); font-size: 13px; opacity: 0.8; }
+.point-pente {
+  flex: none; min-width: 40px; padding: 2px 8px; border-radius: 6px; text-align: center;
+  background: var(--surface-2); color: var(--texte); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* Mêmes seuils que les couches de pente : 30°, 35°, 40°, 45° */
+.point-pente-30 { background: #f2d23c; color: #1d1a10; }
+.point-pente-35 { background: #f08c28; color: #1d1408; }
+.point-pente-40 { background: #e0362c; color: #fff; }
+.point-pente-45 { background: #9b4fd0; color: #fff; }
+.point-raccourci {
+  display: flex; width: fit-content;
+  min-height: 36px; margin-top: 8px; padding: 6px 12px; border: 1px solid var(--bord); border-radius: 8px;
+  background: var(--surface-2); color: var(--accent); font: 600 12.5px var(--police); cursor: pointer;
+}
+.point-raccourci:hover { background: var(--survol); }
+.fiche-icone .repere-pin { width: 30px; height: 30px; }
+/* Le pin tombe en place ; l'image bouge, jamais le marqueur (MapLibre le place avec transform) */
+.point-pin .repere-pin { animation: point-pin-tombe 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 91%; }
+@keyframes point-pin-tombe {
+  from { opacity: 0; translate: 0 -18px; scale: 0.8; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .point-pin .repere-pin { animation: none; } }
+.point-lien {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 10px; padding: 0 10px 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2);
+  color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
+}
+.point-lien span { flex: 1; min-width: 0; }
+.point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.point-lien-icone { width: 18px; height: 18px; color: var(--accent); }
+.point-lien-chevron { width: 16px; height: 16px; color: var(--texte-2); }
+.point-lien:hover { background: var(--survol); }
+.point-surtitre { margin-bottom: 1px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.point-cible {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0; border: 0;
+  background: none; color: var(--texte); font: 600 14px var(--police); text-align: left; cursor: pointer;
+}
+.point-cible-nom { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.point-cible-icone { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: var(--surface-2); color: var(--accent); }
+.point-cible-icone svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.point-cible:hover .point-cible-icone { background: var(--survol); }
+.point-lien.point-aller, .point-lien.point-aller:hover { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.point-lien.point-aller:hover { filter: brightness(1.08); }
+.point-aller .point-lien-icone, .point-aller .point-lien-chevron { color: inherit; }
+.point-prudence { padding: 9px 0 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 12px; font-style: italic; }
 .fiche-point {
   width: 18px; height: 18px; border-radius: 50%;
   border: 3px solid #e8590c; background: rgba(255, 255, 255, 0.35);
@@ -1137,7 +1190,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   box-shadow: var(--ombre-forte);
   backdrop-filter: blur(16px);
 }
-#fiche { top: 88px; right: 16px; }
+#fiche { top: 88px; right: 70px; } /* à gauche des boutons de la carte */
 #rando-fiche, :is(#ski-fiche, #bikepark-fiche) { bottom: 22px; }
 .rando-fiche-profil { padding-bottom: 4px; }
 .rando-fiche-profil .rando-stats { padding: 8px 14px 10px; }

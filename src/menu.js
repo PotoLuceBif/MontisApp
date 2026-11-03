@@ -135,7 +135,10 @@ export function initMenu(map) {
   const panneauxFlottants = new Map();
   const boutonsFlottants = new Map();
 
+  // Panneau ouvert depuis une fiche : sa croix y ramène (Météo depuis la fiche d'un point)
+  let retourFlottant = null;
   function fermerPanneauxFlottants() {
+    retourFlottant = null;
     for (const [id, panneau] of panneauxFlottants) {
       panneau.hidden = true;
       boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
@@ -332,6 +335,22 @@ export function initMenu(map) {
     if (panneauxFlottants.get('meteo')?.hidden === false) fermerPanneauxFlottants();
   });
 
+  // Raccourci depuis une fiche : ouvre une activité, ou un panneau flottant sur l'un de ses modules (Météo › Conditions locales)
+  window.addEventListener('montis:ouvrir-module', (event) => {
+    const { categorie, module, retour } = event.detail || {};
+    const panneau = panneauxFlottants.get(categorie);
+    const etat = etatsParCategorie.get(categorie)?.find((e) => e.def.id === module);
+    if (!etat) return;
+    // Une activité : comme un appui sur sa ligne du menu (exclusivité comprise), sauf si elle tourne déjà
+    if (!panneau) {
+      if (!etat.actif) etat.ligne.click();
+      return;
+    }
+    if (panneau.hidden) boutonsFlottants.get(categorie).click();
+    if (!etat.actif) demarrer(etat);
+    retourFlottant = typeof retour === 'function' ? { categorie, etat, retour } : null;
+  });
+
   for (const categorie of categories) {
     const vue = document.createElement('section');
     vue.className = 'menu-vue';
@@ -389,7 +408,14 @@ export function initMenu(map) {
           boutonOutil.setAttribute('aria-expanded', 'true');
         }
       });
-      panneauOutil.querySelector('.outil-rapide-fermer').addEventListener('click', fermerPanneauxFlottants);
+      panneauOutil.querySelector('.outil-rapide-fermer').addEventListener('click', () => {
+        const retour = retourFlottant?.categorie === categorie.id ? retourFlottant : null;
+        fermerPanneauxFlottants();
+        if (!retour) return;
+        // Le module n'était ouvert que pour ce détour : il s'arrête, la fiche revient
+        if (retour.etat.actif) arreter(retour.etat);
+        retour.retour();
+      });
     }
 
     const etats = [];

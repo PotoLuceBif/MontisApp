@@ -2,12 +2,8 @@ import * as maplibregl from 'maplibre-gl';
 import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
-
-const URLS_OVERPASS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-];
+import { interroger } from './overpass.js';
+import { DECALAGE_PIN, creerPinSeul, imagePin } from './pins.js';
 
 // Quelle couche de la carte correspond à quel genre d'élément
 const GENRE_PAR_COUCHE = {
@@ -126,71 +122,6 @@ function lienWikipedia(tag) {
   return `https://${langue}.wikipedia.org/wiki/${encodeURIComponent(titre.replace(/ /g, '_'))}`;
 }
 
-// ---------- Altitude lue dans les tuiles de relief (même source que la 3D) ----------
-const ZOOM_DEM = 12;
-const tuilesDem = new Map();
-
-function chargerTuileDem(z, x, y) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const g = canvas.getContext('2d', { willReadFrequently: true });
-      g.drawImage(img, 0, 0);
-      resolve(g.getImageData(0, 0, 256, 256).data);
-    };
-    img.onerror = () => reject(new Error(tr('fiche.tuile')));
-    img.src = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
-  });
-}
-
-async function altitudeDem(lng, lat) {
-  const n = 2 ** ZOOM_DEM;
-  const xf = ((lng + 180) / 360) * n;
-  const latRad = (lat * Math.PI) / 180;
-  const yf = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
-  const x = Math.floor(xf);
-  const y = Math.floor(yf);
-  const cle = `${x}/${y}`;
-
-  let donnees = tuilesDem.get(cle);
-  if (!donnees) {
-    donnees = await chargerTuileDem(ZOOM_DEM, x, y);
-    tuilesDem.set(cle, donnees);
-  }
-  const px = Math.min(255, Math.floor((xf - x) * 256));
-  const py = Math.min(255, Math.floor((yf - y) * 256));
-  const i = (py * 256 + px) * 4;
-  // Encodage « terrarium » : altitude = R × 256 + G + B / 256 − 32768
-  return donnees[i] * 256 + donnees[i + 1] + donnees[i + 2] / 256 - 32768;
-}
-
-// Essaie chaque serveur Overpass à tour de rôle (le serveur principal est souvent saturé)
-async function interroger(requete, signal) {
-  let derniereErreur = null;
-  for (const url of URLS_OVERPASS) {
-    try {
-      const rep = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(requete),
-        signal,
-      });
-      if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
-      const json = await rep.json();
-      if (json.remark && /error|timeout/i.test(json.remark)) throw new Error(json.remark);
-      return json;
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      derniereErreur = e;
-    }
-  }
-  throw derniereErreur;
-}
-
 export function initFiches(map) {
   const panneau = document.createElement('aside');
   panneau.id = 'fiche';
@@ -233,8 +164,8 @@ export function initFiches(map) {
     if (!courant) return;
     const f = courant;
     const d = f.details && typeof f.details === 'object' ? f.details : null;
-    const nom = f.nom || (d && d.principal && d.principal.tags.name) || '';
-    f.type = decrire(f.source, f.genre).type; // suit la langue choisie
+    const nom = f.point ? f.point.titre() : f.nom || (d && d.principal && d.principal.tags.name) || '';
+    f.type = f.point ? f.point.sousTitre() : decrire(f.source, f.genre).type; // suit la langue choisie
     panneau.replaceChildren();
 
     // En-tête
@@ -242,7 +173,8 @@ export function initFiches(map) {
     entete.className = 'fiche-entete';
     const icone = document.createElement('div');
     icone.className = 'fiche-icone';
-    icone.textContent = f.icone;
+    if (f.point) icone.append(imagePin(f.point.pin));
+    else icone.textContent = f.icone;
     const titres = document.createElement('div');
     titres.className = 'fiche-titres';
     const titre = document.createElement('div');
@@ -286,6 +218,12 @@ export function initFiches(map) {
     });
     pos.append(code, copier);
     corps.appendChild(ligne(tr('fiche.position'), pos));
+
+    if (f.point) {
+      f.point.rendre(corps, ligne);
+      panneau.appendChild(corps);
+      return;
+    }
 
     const eleOsm = parseFloat(f.ele ?? (d && d.principal && d.principal.tags.ele));
     if (Number.isFinite(eleOsm)) {
@@ -385,7 +323,21 @@ export function initFiches(map) {
   }
 
   // ---------- Ouverture et fermeture ----------
+  // Un point quelconque reçoit le pin de la recherche, qui tombe en place ; un objet, un anneau
+  let repere = null;
+  function poserPin(lngLat, nom) {
+    if (anneau) anneau.remove();
+    if (repere) repere.remove();
+    const pin = creerPinSeul(nom);
+    pin.element.classList.add('point-pin');
+    repere = new maplibregl.Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN })
+      .setLngLat([lngLat.lng, lngLat.lat])
+      .addTo(map);
+  }
+
   function poserAnneau(lngLat) {
+    if (repere) repere.remove();
+    repere = null;
     if (!anneau) {
       const el = document.createElement('div');
       el.className = 'fiche-point';
@@ -400,12 +352,17 @@ export function initFiches(map) {
 
   function fermer() {
     if (controleur) controleur.abort();
+    courant?.point?.arreter();
     courant = null;
     panneau.hidden = true;
     if (anneau) anneau.remove();
+    if (repere) repere.remove();
+    repere = null;
   }
 
   function ouvrir(feature, genre, lngLat) {
+    if (controleur) controleur.abort();
+    courant?.point?.arreter();
     const d = decrire(feature, genre);
     courant = {
       source: feature,
@@ -426,7 +383,8 @@ export function initFiches(map) {
 
     // Altitude de repli, lue dans les données de relief
     const fiche = courant;
-    altitudeDem(lngLat.lng, lngLat.lat)
+    import('./relief-donnees.js')
+      .then(({ altitudeRelief }) => altitudeRelief(lngLat.lng, lngLat.lat))
       .then((v) => {
         if (courant === fiche && Number.isFinite(v)) {
           fiche.eleDem = v;
@@ -435,6 +393,119 @@ export function initFiches(map) {
       })
       .catch(() => {});
   }
+
+  // ---------- Fiche d'un point quelconque (appui long, clic droit) ----------
+  let numeroPoint = 0;
+  async function ouvrirPoint(lngLat, { cible = null } = {}) {
+    if (controleur) controleur.abort();
+    courant?.point?.arreter();
+    const numero = ++numeroPoint;
+    const { creerFichePoint } = await import('./fiche-point.js');
+    if (numero !== numeroPoint) return; // un autre appui long entre-temps
+    const fiche = { lng: lngLat.lng, lat: lngLat.lat };
+    fiche.point = creerFichePoint({
+      map,
+      cible,
+      lng: fiche.lng,
+      lat: fiche.lat,
+      maj: () => courant === fiche && rendre(),
+      fermer: () => courant === fiche && fermer(),
+    });
+    courant = fiche;
+    poserPin(lngLat, fiche.point.pin);
+    panneau.hidden = false;
+    panneau.scrollTop = 0;
+    window.dispatchEvent(new Event('fiche-ouverte'));
+    rendre();
+  }
+
+  // Retour à la fiche d'un point depuis un autre outil (flèche retour de l'éditeur de parcours)
+  window.addEventListener('montis:ouvrir-point', (event) => {
+    const { lng, lat, cible } = event.detail || {};
+    if (Number.isFinite(lng) && Number.isFinite(lat)) ouvrirPoint({ lng, lat }, { cible });
+  });
+
+  const DUREE_APPUI = 500;
+  const TOLERANCE_APPUI = 10;
+  const conteneur = map.getCanvasContainer();
+  let appui = null;
+  let derniereTouche = 0;
+  let absorberClicJusqua = 0;
+  let appuiDeclenche = false;
+  let clicDroit = null;
+
+  const annulerAppui = () => {
+    if (appui) clearTimeout(appui.minuteur);
+    appui = null;
+  };
+  const versCarte = (x, y) => {
+    const cadre = conteneur.getBoundingClientRect();
+    return map.unproject([x - cadre.left, y - cadre.top]);
+  };
+  const surLaCarte = (cible) => cible === map.getCanvas();
+
+  conteneur.addEventListener('touchstart', (e) => {
+    derniereTouche = Date.now();
+    annulerAppui();
+    if (e.touches.length !== 1 || bloque || !surLaCarte(e.target)) return;
+    const { clientX: x, clientY: y } = e.touches[0];
+    appui = {
+      x,
+      y,
+      minuteur: setTimeout(() => {
+        appui = null;
+        if (bloque) return;
+        // Le doigt se relève après l'appui : ce « clic » ne doit rien ouvrir d'autre
+        appuiDeclenche = true;
+        absorberClicJusqua = Infinity;
+        navigator.vibrate?.(15);
+        ouvrirPoint(versCarte(x, y));
+      }, DUREE_APPUI),
+    };
+  }, { passive: true });
+  conteneur.addEventListener('touchmove', (e) => {
+    if (!appui) return;
+    const { clientX, clientY } = e.touches[0];
+    if (e.touches.length > 1 || Math.hypot(clientX - appui.x, clientY - appui.y) > TOLERANCE_APPUI) annulerAppui();
+  }, { passive: true });
+  conteneur.addEventListener('touchend', () => {
+    derniereTouche = Date.now();
+    annulerAppui();
+    if (appuiDeclenche) absorberClicJusqua = Date.now() + 400;
+    appuiDeclenche = false;
+  }, { passive: true });
+  conteneur.addEventListener('touchcancel', () => {
+    annulerAppui();
+    if (appuiDeclenche) absorberClicJusqua = Date.now() + 400;
+    appuiDeclenche = false;
+  }, { passive: true });
+  map.on('movestart', (e) => {
+    // Un déplacement par le doigt annule l'appui ; un recentrage programmé, non
+    if (e.originalEvent) annulerAppui();
+  });
+
+  // Souris : clic droit sans déplacement (un clic droit glissé fait tourner la carte)
+  conteneur.addEventListener('mousedown', (e) => {
+    clicDroit = e.button === 2 && surLaCarte(e.target) ? { x: e.clientX, y: e.clientY } : null;
+  });
+  conteneur.addEventListener('mouseup', (e) => {
+    const depart = clicDroit;
+    clicDroit = null;
+    if (e.button !== 2 || !depart || bloque || Date.now() - derniereTouche < 1500) return;
+    if (Math.hypot(e.clientX - depart.x, e.clientY - depart.y) > 4) return;
+    ouvrirPoint(versCarte(e.clientX, e.clientY));
+  });
+  // Ni menu du navigateur, ni « enregistrer l'image » sur la carte
+  conteneur.addEventListener('contextmenu', (e) => {
+    if (surLaCarte(e.target)) e.preventDefault();
+  });
+  // Absorbe le clic qui suit un appui long, avant que MapLibre et les autres outils ne le voient
+  map.getContainer().addEventListener('click', (e) => {
+    if (Date.now() > absorberClicJusqua) return;
+    absorberClicJusqua = 0;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 
   // ---------- Interaction avec la carte ----------
   const couchesActives = () => Object.keys(GENRE_PAR_COUCHE).filter((id) => map.getLayer(id));
