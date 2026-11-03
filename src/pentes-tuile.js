@@ -20,7 +20,7 @@ function decoderImage(bitmap) {
   return altitudesTerrarium(g.getImageData(0, 0, 256, 256).data);
 }
 
-function altitudesTuile(z, x, y) {
+export function altitudesTuile(z, x, y) {
   const cle = `${z}/${x}/${y}`;
   if (cache.has(cle)) {
     const promesse = cache.get(cle);
