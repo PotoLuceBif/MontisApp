@@ -55,6 +55,13 @@ const ECRANS = [
   { nom: 'carte-relief', actions: [module('relief')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
+  // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
+  { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
+  { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
+  {
+    nom: 'combine-parcours-carte-fermee',
+    actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
+  },
 ];
 
 // Textes visibles à l'écran

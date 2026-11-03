@@ -330,8 +330,7 @@ export function initMenu(map) {
         fermerPanneauxFlottants();
         ouvrir(false);
         arreterCategoriesFlottantes(categorie.id);
-        etatsParCategorie.get('activites')?.forEach((etat) => etat.actif && arreter(etat));
-        ecrire('menu-activite', null);
+        // Météo et Carte s'ouvrent par-dessus l'activité : elle continue (sortie en cours, tracé…)
         if (ouvrirPanneau) {
           panneauOutil.hidden = false;
           boutonOutil.setAttribute('aria-expanded', 'true');

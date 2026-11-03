@@ -1,6 +1,6 @@
 # Montis
 
-Appli web de montagne : carte 2D/3D qui devient un globe au dézoom, quatre activités (Parapente, Randonnée, Vélo, Ski) et des outils Météo et Carte. Installable (PWA) et utilisable hors ligne. Interface, code et commits sont en français.
+Appli web de montagne : carte 2D/3D qui devient un globe au dézoom, quatre activités (Vol libre, Randonnée, Vélo, Ski) et des outils Météo et Carte. Installable (PWA) et utilisable hors ligne. Interface, code et commits sont en français.
 
 Stack : Vite 8 et JavaScript vanilla (pas de framework, pas de TypeScript), MapLibre GL 6, `maplibre-contour` pour les courbes de niveau. Hébergée sur Vercel, déployée depuis GitHub (`PotoLuceBif/MontisApp`). Pas de `vercel.json` : Vercel détecte Vite et publie `dist/`.
 
@@ -26,8 +26,8 @@ Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VIT
 Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les redemander.
 
 **Comportement**
-- Activités exclusives : jamais deux activités actives en même temps (`exclusif: true` dans `menu.js`). Ouvrir Météo ou Carte arrête aussi l'activité en cours.
-  Décidé pour le lot 0.5 de la feuille de route : Météo et Carte ne l'arrêteront plus, et chaque activité aura ses pratiques (Randonnée, Vélo, Ski, Vol libre).
+- Activités exclusives : jamais deux activités actives en même temps (`exclusif: true` dans `menu.js`). Météo et Carte s'ouvrent par-dessus l'activité sans l'arrêter ; sur téléphone, le panneau de l'activité est masqué le temps qu'un panneau Météo ou Carte est ouvert, puis revient.
+- Quatre activités, chacune avec ses pratiques : Randonnée (randonnée, puis trail, raquettes), Vélo (VTT, gravel, route), Ski (piste, puis ski de rando, hors-piste), Vol libre (parapente, puis deltaplane, paramoteur, speed riding). Une nouvelle pratique s'ajoute dans son activité, pas comme une nouvelle activité. Le choix de pratique n'apparaît qu'à partir de deux pratiques.
 - Tous les réglages sont sauvegardés dans le localStorage et conservés après rafraîchissement. Passer par `lire` et `ecrire` de `reglages.js`.
 - 2D : inclinaison bloquée, rotation et déplacement autorisés. 3D : inclinaison autorisée, sans angle imposé au passage en 3D (`appliquerMode` dans `main.js`).
 - Les panneaux n'affichent que les options utiles au mode actuel : pas d'options grisées, on les masque (`data-seulement="2d"` ou `"3d"`, voir `relief.js`). Seule exception, déjà en place : hors ligne, les fonctions qui exigent Internet sont grisées.
@@ -122,7 +122,7 @@ src/                    Tout le code (détail ci-dessous)
 | `vent-calcul.js`, `vent-cadran.js` | Calcul du vent ; échelle de couleurs et cadran communs |
 | `vent-couche-carte.js`, `vent-volume-3d.js` | Flèches et traînées sur la carte ; bloc 3D du vent |
 
-**Parapente**
+**Vol libre** (fichiers nommés `parapente`, identifiant de module `parapente`)
 | Fichier | Rôle |
 |---|---|
 | `activite-parapente.js`, `parapente.js` | Menu de l'activité ; balises et sites |
@@ -191,7 +191,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 
 **En place**
 - Carte 2D/3D et globe, fonds multiples, thèmes, PWA et mode hors ligne.
-- Parapente : balises OpenWindMap et leur fiche, analyse du vent et volume 3D, portée de vol.
+- Vol libre (ex-Parapente) : balises OpenWindMap et leur fiche, analyse du vent et volume 3D, portée de vol.
 - Randonnée et Vélo : menu commun, création de parcours, Mes parcours, import GPX, profil, itinéraires balisés.
 - Vélo : calque vélo, alertes de passages raides, EuroVelo, bike parks.
 - Ski : stations, pistes, enneigement, avalanches, visite 3D (aussi pour les bike parks).

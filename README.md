@@ -36,9 +36,9 @@ Le menu Vélo donne aussi accès aux 17 EuroVelo, dont les tracés et les tronç
 
 Dans **Activités > Ski**, lancez **Rechercher dans cette zone** après avoir cadré un massif. Les stations cartographiées dans OpenStreetMap apparaissent dans une liste et sur la carte ; les groupes se déplient en zoomant. La barre de recherche générale peut aussi trouver une station par son nom. La couverture et les détails (altitude, exploitant, site web) dépendent des contributions OpenStreetMap ; vérifiez les conditions d’ouverture auprès de la station.
 
-## Activité parapente
+## Activité vol libre
 
-Le panneau parapente affiche les relevés des balises de vent du réseau ouvert [OpenWindMap](https://www.openwindmap.org). Les relevés sont chargés à l’ouverture de l’activité, puis actualisés toutes les cinq minutes ; un bouton permet aussi de les recharger. Toucher une balise ouvre sa fiche : vent actuel, rose des vents et évolution sur 3 à 24 heures, avec un curseur pour lire une heure précise. La manche à air pointe où va le vent et sa couleur suit sa force. Un relevé de plus de deux heures est grisé ; une balise éteinte, sans mesure ou muette depuis plus de vingt-quatre heures est marquée hors service.
+L’activité Vol libre (parapente pour l’instant ; deltaplane, paramoteur et speed riding sont prévus) affiche les relevés des balises de vent du réseau ouvert [OpenWindMap](https://www.openwindmap.org). Les relevés sont chargés à l’ouverture de l’activité, puis actualisés toutes les cinq minutes ; un bouton permet aussi de les recharger. Toucher une balise ouvre sa fiche : vent actuel, rose des vents et évolution sur 3 à 24 heures, avec un curseur pour lire une heure précise. La manche à air pointe où va le vent et sa couleur suit sa force. Un relevé de plus de deux heures est grisé ; une balise éteinte, sans mesure ou muette depuis plus de vingt-quatre heures est marquée hors service.
 
 La licence d’OpenWindMap est gratuite, usage commercial compris, à condition de créditer le réseau et de garder un lien visible. Elle interdit de mêler ses mesures à celles de capteurs dont les données ne sont pas ouvertes, sans licence étendue.
 
