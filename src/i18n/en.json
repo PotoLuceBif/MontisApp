@@ -35,6 +35,7 @@
   "menu.maintenir": "{nom} — press and hold to show the label",
   "menu.ouvrir-activites": "Open activities",
   "menu.ouvert": "Menu open",
+  "menu.chargement-impossible": "Could not load. Check your connection, then try again.",
   "menu.activites": "Activities",
   "menu.ouvrir-parametres": "Open settings",
   "menu.parametres": "Settings",

@@ -54,6 +54,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 - Modules ES, noms en français (`creerPanneauCarte`, `chargerPrevisions`). Fabriques en `creerX` ou `initX`, qui reçoivent `map` et renvoient leur interface.
 - Un module de menu expose `{ id, label, icone, panneau, activer(), desactiver() }`, et `menu.js` l'orchestre. Pour ajouter une activité ou un outil, ajouter une entrée dans `categories`.
+- Activités, Météo et Analyse du vent se chargent à leur première ouverture : `differer({ id, labelCle, icone }, () => import('./x.js').then(…))` (`module-differe.js`). Ne jamais les importer statiquement depuis un module du démarrage, sinon leur code revient dans le fichier principal. Un module qui en pilote un autre passe par `facade()` (Vol libre → vent). Les rubriques de Carte restent `immediat()` : elles rétablissent le fond et les éléments au démarrage.
 - Texte d'interface : `poser(element, 'clé', variables)` plutôt que `textContent = t(…)`, pour qu'il suive un changement de langue (voir l'en-tête de `i18n.js`).
 - Version : `version` de `package.json`, affichée en bas des Paramètres. Chaque version publiée a son tag git (`v1.0.0-alpha.1`…).
 - Commentaires courts, seulement pour expliquer un pourquoi. Le DOM se construit à la main (`createElement` ou `innerHTML`).
@@ -90,7 +91,7 @@ src/                    Tout le code (détail ci-dessous)
 | Fichier | Rôle |
 |---|---|
 | `main.js` | Crée la carte, relief et courbes, globe, ciel, bascule 2D/3D, mémoire de la vue |
-| `menu.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules |
+| `menu.js`, `module-differe.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules ; chargement à la première ouverture |
 | `reglages.js` | `lire`, `ecrire`, `quandPret`, `retourAZero` (localStorage `montis.reglages`) |
 | `options-carte.js` | État partagé entre le bouton 3D et le menu (`etat`), courbes |
 | `style.css` | Tous les styles et les thèmes |
@@ -204,7 +205,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
-- MapLibre est dans un fichier à part (`vite.config.js`), mais les activités ne sont pas encore chargées à la demande.
+- Au démarrage : 229 Ko de code Montis (75 Ko compressé), dont les deux fichiers de langue ; MapLibre (1,1 Mo) à part.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
 **Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.

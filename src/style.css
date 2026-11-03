@@ -1083,6 +1083,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   color: var(--accent);
 }
 .menu-ligne.actif::after { color: var(--accent); opacity: 1; }
+/* Premier chargement d'un module : la flèche devient un cercle qui tourne */
+.menu-ligne.en-chargement::after {
+  width: 12px; height: 12px; right: 12px; border: 2px solid var(--bord); border-top-color: var(--accent); border-radius: 50%;
+  opacity: 1; animation: menu-chargement 0.7s linear infinite;
+}
+@keyframes menu-chargement { from { transform: translateY(-50%) rotate(0); } to { transform: translateY(-50%) rotate(360deg); } }
+.menu-erreur { margin: 8px 4px; color: var(--danger, #ff6b6b); font-size: 13px; }
+.menu-erreur[hidden] { display: none; }
 .menu-contenu { padding: 12px 6px 10px; }
 .menu-contenu h3 { margin-top: 18px; }
 .menu-pied { padding: 14px 16px max(14px, env(safe-area-inset-bottom)); }

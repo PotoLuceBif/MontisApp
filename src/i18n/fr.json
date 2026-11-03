@@ -35,6 +35,7 @@
   "menu.maintenir": "{nom} — maintenir appuyé pour afficher le libellé",
   "menu.ouvrir-activites": "Ouvrir les activités",
   "menu.ouvert": "Menu ouvert",
+  "menu.chargement-impossible": "Chargement impossible. Vérifiez la connexion, puis réessayez.",
   "menu.activites": "Activités",
   "menu.ouvrir-parametres": "Ouvrir les paramètres",
   "menu.parametres": "Paramètres",
