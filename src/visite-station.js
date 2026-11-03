@@ -746,13 +746,48 @@ export function creerVisiteStation(map, {
       bearing: donnees.cap,
       pitch: INCLINAISON,
     };
+    ajusterMarge({ animer: false }); // un panneau déjà ouvert (vent) : la station arrive au-dessus
     map.flyTo({ ...enCours.cadrage, duration: 2600, essential: true });
   }
+
+  // Sur téléphone, un panneau posé sur la carte (analyse du vent…) couvre le bas de l'écran :
+  // pendant la visite, la caméra garde une marge basse pour laisser la station visible au-dessus
+  let marge = 0;
+  function hauteurPanneau() {
+    const conteneur = map.getContainer();
+    if (!enCours || conteneur.clientWidth > 640) return 0;
+    const panneau = [...document.querySelectorAll('.bf:not([hidden])')].find((e) => getComputedStyle(e).display !== 'none');
+    if (!panneau) return 0;
+    return Math.max(0, conteneur.getBoundingClientRect().bottom - panneau.getBoundingClientRect().top);
+  }
+  function ajusterMarge({ animer = true } = {}) {
+    // Ne pas couper un vol de caméra en cours (arrivée sur la station, recentrage)
+    if (animer && map.isMoving()) {
+      map.once('moveend', programmerMarge);
+      return;
+    }
+    const voulue = Math.round(hauteurPanneau());
+    if (Math.abs(voulue - marge) < 8) return;
+    marge = voulue;
+    const padding = { ...map.getPadding(), bottom: marge };
+    if (animer) map.easeTo({ padding, duration: 500 });
+    else map.setPadding(padding);
+  }
+  let minuteurMarge = null;
+  // Le panneau s'anime à l'ouverture : on mesure une fois qu'il est en place
+  const programmerMarge = () => {
+    clearTimeout(minuteurMarge);
+    minuteurMarge = setTimeout(() => ajusterMarge(), 350);
+  };
+  window.addEventListener('panneau-carte', programmerMarge);
+  window.addEventListener('resize', programmerMarge);
 
   function quitter({ restaurer = true } = {}) {
     if (!enCours) return;
     const { vue, etaitEn3D, calquesMasques } = enCours;
     enCours = null;
+    clearTimeout(minuteurMarge);
+    ajusterMarge({ animer: false });
     fermerPopup();
     map.off('click', surClic);
     map.off('mousemove', surSurvol);
@@ -813,7 +848,7 @@ export function creerVisiteStation(map, {
       const bouton = document.createElement('button');
       bouton.type = 'button';
       bouton.dataset.fond = id;
-      bouton.textContent = t(cle);
+      poser(bouton, cle);
       bouton.setAttribute('aria-pressed', String(id === idFond));
       bouton.addEventListener('click', () => {
         definirFond(id);

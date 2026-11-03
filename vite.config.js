@@ -42,8 +42,25 @@ function serviceWorker() {
   };
 }
 
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+
 export default defineConfig({
   plugins: [serviceWorker()],
+  // Version affichée dans les Paramètres
+  define: { __VERSION_MONTIS__: JSON.stringify(version) },
+  build: {
+    // MapLibre (1,1 Mo) dans son propre fichier : il change rarement, le navigateur et le
+    // service worker le gardent d'un déploiement à l'autre, seul le code de Montis se recharge
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/ }],
+        },
+      },
+    },
+    // MapLibre seul dépasse les 500 Ko par défaut et ne se découpe pas
+    chunkSizeWarningLimit: 1200,
+  },
   server: {
     proxy: {
       '/ffvl': {

@@ -14,6 +14,8 @@ import { langue, locale, surPreferences } from './preferences.js';
 const TEXTES = { fr, en };
 const ATTRIBUTS = ['aria-label', 'title', 'placeholder', 'alt'];
 const racines = new Set();
+// Texte écrit par poser() : s'il a changé depuis, c'est qu'un autre texte a pris sa place
+const TEXTE_POSE = Symbol('texte-pose');
 
 const echapper = (texte) =>
   String(texte).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -50,6 +52,7 @@ export function poser(element, cle, variables) {
   if (variables) element.dataset.i18nVars = JSON.stringify(variables);
   else delete element.dataset.i18nVars;
   element.textContent = t(cle, variables);
+  element[TEXTE_POSE] = element.textContent;
   return element;
 }
 
@@ -74,7 +77,14 @@ export function traduire(racine = document.body) {
   for (const element of elements) {
     if (!element.dataset) continue;
     const variables = variablesDe(element);
-    if (element.dataset.i18n) element.textContent = t(element.dataset.i18n, variables);
+    if (element.dataset.i18n) {
+      if (element[TEXTE_POSE] !== undefined && element.textContent !== element[TEXTE_POSE]) {
+        delete element.dataset.i18n;
+      } else {
+        element.textContent = t(element.dataset.i18n, variables);
+        if (element[TEXTE_POSE] !== undefined) element[TEXTE_POSE] = element.textContent;
+      }
+    }
     if (element.dataset.i18nHtml) element.innerHTML = t(element.dataset.i18nHtml, variables);
     for (const attribut of ATTRIBUTS) {
       const cle = element.getAttribute(`data-i18n-${attribut}`);

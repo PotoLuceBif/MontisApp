@@ -10,6 +10,7 @@ import { creerDecouverte } from './parcours-decouverte.js';
 import { formatDenivele, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { formatDate, poser, t, ta, ti, tt } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const ZOOM_MIN_ZONE = 7;
 const REPERES_MAX = 40;
@@ -221,6 +222,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   }
 
   function chercherDansLaZone() {
+    annoncerOutilActivite();
     if (map.getZoom() < ZOOM_MIN_ZONE) {
       brutes = [];
       vide = t('parcours.zoomer');
@@ -276,7 +278,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     entonnoir.setAttribute('aria-label', filtrant ? t('parcours.filtres-actif', { nom: t(filtre.cle) }) : t('parcours.filtres'));
     filtreActif.hidden = !filtrant;
     filtreActif.setAttribute('aria-label', t('parcours.retirer-filtre', { nom: t(filtre.cle) }));
-    filtreActif.querySelector('span').textContent = t(filtre.cle);
+    poser(filtreActif.querySelector('span'), filtre.cle);
   }
 
   function choisirFiltre(id) {
@@ -402,6 +404,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     });
   }
   $('.parcours-creer').addEventListener('click', () => {
+    annoncerOutilActivite();
     fermerMenu();
     itineraires.fermer();
     decouverte.masquer();
@@ -421,7 +424,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ligne.type = 'button';
     ligne.className = 'pc-entree';
     ligne.innerHTML = `<span><strong></strong><small></small></span>${icone(ICONES.chevron)}`;
-    ligne.querySelector('strong').textContent = libelle;
+    poser(ligne.querySelector('strong'), libelle);
     poser(ligne.querySelector('small'), sous);
     ligne.addEventListener('click', ouvrir);
     $('.pc-entrees').append(ligne);

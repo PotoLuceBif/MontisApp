@@ -5,6 +5,7 @@ import { creerVisiteStation } from './visite-station.js';
 import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPosition, el, km, stat } from './fiche-lieu.js';
 import { creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
 
 const URL_LISTE = '/data/bike-parks.json';
 const RESULTATS_MAX = 12;
@@ -183,6 +184,7 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   }
 
   async function chercherZone() {
+    annoncerOutilActivite();
     if (fiche.enVisite) fiche.quitterVisite();
     recherchePanneau.effacer();
     rendreFavoris();
@@ -221,10 +223,11 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   const recherchePanneau = recherche({ champ, liste: section.querySelector('#bikepark-resultats'), prefixe: 'bikepark-suggestion' });
   champ.addEventListener('input', rendreFavoris);
   boutonZone.addEventListener('click', () => void chercherZone());
-  // Un autre panneau (Créer un parcours, itinéraire) prend la carte : la fiche lui laisse la place
+  // Un autre panneau (Créer un parcours, itinéraire) prend la carte : la fiche lui laisse la place.
+  // L'analyse du vent, elle, se pose par-dessus (une visite continue).
   window.addEventListener('panneau-carte', () => {
     if (!actif) return;
-    if (fiche.choisi && document.querySelector('.bf:not([hidden])')) fiche.fermer();
+    if (fiche.choisi && document.querySelector('.bf:not([hidden]):not(.bf-meteo)')) fiche.fermer();
     actualiserReperes();
   });
 

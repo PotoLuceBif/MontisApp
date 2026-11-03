@@ -202,6 +202,10 @@ export function creerPageParametres({ retour }) {
     if (confirm(t('params.reset-confirmer'))) retourAZero();
   });
   application.append(aideReset, reset);
+  const version = aide();
+  version.classList.add('params-aide-espace');
+  poser(version, 'params.version', { version: __VERSION_MONTIS__ });
+  application.append(version);
   corps.appendChild(application);
 
   // Appelé à chaque ouverture : l'espace utilisé change en se promenant sur la carte

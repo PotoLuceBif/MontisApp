@@ -1,16 +1,12 @@
-import { creerActiviteParapente } from './activite-parapente.js';
 import { creerFondDeCarte } from './fond-de-carte.js';
 import { creerOptionRelief } from './relief.js';
 import { creerElementsCarte } from './elements-carte.js';
 import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
-import { creerActiviteRandonnee } from './activite-randonnee.js';
-import { creerActiviteSki } from './activite-ski.js';
-import { creerActiviteVelo } from './activite-velo.js';
-import { creerConditionsLocales, creerRadarPluie } from './meteo.js';
-import { creerCarteVent } from './carte-vent.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
 import { creerCartesHorsLigne } from './zones-hors-ligne.js';
+import { differer, facade, immediat } from './module-differe.js';
+import { OUTIL_ACTIVITE } from './outil-activite.js';
 import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 
 const ICONES_MENU = {
@@ -90,7 +86,10 @@ function ajouterAideMaintien(bouton, cleLibelle) {
 }
 
 export function initMenu(map) {
-  const carteVent = creerCarteVent(map);
+  // Activités, météo et analyse du vent : chargées à leur première ouverture (module-differe.js)
+  const vent = differer({ id: 'vent', labelCle: 'vent.titre', icone: 'vent', surCarte: true }, () =>
+    import('./carte-vent.js').then((m) => m.creerCarteVent(map))
+  );
 
   // ---------- Bouton et tiroir ----------
   const bouton = document.createElement('button');
@@ -152,9 +151,10 @@ export function initMenu(map) {
     bouton.setAttribute('aria-expanded', String(ouvert));
     poserAttribut(bouton, 'aria-label', ouvert ? 'menu.ouvert' : 'menu.ouvrir-activites');
     boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
+    // La météo affichée (radar, vent) reste sur la carte pendant qu'on parcourt le menu
     if (ouvert) {
       fermerPanneauxFlottants();
-      arreterCategoriesFlottantes();
+      arreterCategoriesFlottantes(['meteo']);
     }
   };
 
@@ -178,10 +178,20 @@ export function initMenu(map) {
       aide: 'menu.aide-activites',
       exclusif: true,
       modules: [
-        creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent: carteVent }),
-        creerActiviteRandonnee(map, { fermerMenu, ouvrirMenu }),
-        creerActiviteVelo(map, { fermerMenu, ouvrirMenu }),
-        creerActiviteSki(map),
+        differer({ id: 'parapente', labelCle: 'para.titre', icone: 'parapente' }, () =>
+          import('./activite-parapente.js').then((m) =>
+            m.creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVent: facade(vent) })
+          )
+        ),
+        differer({ id: 'rando', labelCle: 'rando.titre', icone: 'rando' }, () =>
+          import('./activite-randonnee.js').then((m) => m.creerActiviteRandonnee(map, { fermerMenu, ouvrirMenu }))
+        ),
+        differer({ id: 'velo', labelCle: 'velo.titre', icone: 'velo' }, () =>
+          import('./activite-velo.js').then((m) => m.creerActiviteVelo(map, { fermerMenu, ouvrirMenu }))
+        ),
+        differer({ id: 'ski', labelCle: 'ski.titre', icone: 'ski' }, () =>
+          import('./activite-ski.js').then((m) => m.creerActiviteSki(map))
+        ),
       ],
       emplacement: 'menu',
     },
@@ -192,9 +202,13 @@ export function initMenu(map) {
       aide: 'menu.aide-meteo',
       exclusif: false,
       modules: [
-        creerConditionsLocales(map),
-        creerRadarPluie(map),
-        carteVent,
+        differer({ id: 'meteo-locale', labelCle: 'meteo.titre', icone: 'meteo' }, () =>
+          import('./meteo.js').then((m) => m.creerConditionsLocales(map))
+        ),
+        differer({ id: 'radar', labelCle: 'radar.titre', icone: 'radar', reseauRequis: true }, () =>
+          import('./meteo.js').then((m) => m.creerRadarPluie(map))
+        ),
+        vent,
       ],
       emplacement: 'flottant',
     },
@@ -204,11 +218,12 @@ export function initMenu(map) {
       icone: 'carte',
       aide: 'menu.aide-carte',
       exclusif: false,
+      // Nécessaires dès le démarrage : ils rétablissent le fond et les éléments choisis
       modules: [
-        creerFondDeCarte(map),
-        creerOptionRelief(map), // inclut les courbes de niveau
-        creerElementsCarte(map),
-        creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') }),
+        immediat(creerFondDeCarte(map)),
+        immediat(creerOptionRelief(map)), // inclut les courbes de niveau
+        immediat(creerElementsCarte(map)),
+        immediat(creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') })),
       ],
       emplacement: 'flottant',
     },
@@ -243,26 +258,58 @@ export function initMenu(map) {
   tiroir.querySelector('.menu-parametres').appendChild(pageParametres);
 
   // ---------- Rubriques et modules ----------
+  function finChargement(e) {
+    e.ligne.classList.remove('en-chargement');
+    e.ligne.removeAttribute('aria-busy');
+  }
+
   function demarrer(e) {
     e.actif = true;
     e.ligne.classList.add('actif');
     e.ligne.setAttribute('aria-pressed', 'true');
     e.contenu.style.display = 'block';
+    e.erreur.hidden = true;
     // Un outil posé sur la carte se ferme lui-même : le menu doit le savoir
-    e.module.activer({
-      onFermer: () => {
-        if (e.actif) arreter(e);
+    const lancer = (module) =>
+      module.activer({
+        onFermer: () => {
+          if (e.actif) arreter(e);
+        },
+        onRetour: () => ouvrirFlottant('meteo'),
+      });
+    if (e.def.instance) {
+      lancer(e.def.instance);
+      return;
+    }
+    // Premier lancement : le code se charge. Un nouvel appui pendant ce temps l'annule.
+    const demande = ++e.demande;
+    e.ligne.classList.add('en-chargement');
+    e.ligne.setAttribute('aria-busy', 'true');
+    e.def.obtenir().then(
+      (module) => {
+        if (demande !== e.demande) return;
+        finChargement(e);
+        if (e.actif) lancer(module);
       },
-      onRetour: () => ouvrirFlottant('meteo'),
-    });
+      (erreur) => {
+        console.error(`Chargement de « ${e.def.id} » impossible :`, erreur);
+        if (demande !== e.demande) return;
+        finChargement(e);
+        arreter(e);
+        e.contenu.style.display = 'block';
+        e.erreur.hidden = false;
+      }
+    );
   }
 
   function arreter(e) {
     e.actif = false;
+    e.demande += 1;
+    finChargement(e);
     e.ligne.classList.remove('actif');
     e.ligne.setAttribute('aria-pressed', 'false');
     e.contenu.style.display = 'none';
-    e.module.desactiver();
+    e.def.instance?.desactiver();
   }
 
   const activiteSauvee = lire('menu-activite', null);
@@ -272,12 +319,18 @@ export function initMenu(map) {
   document.body.appendChild(actionsFlottantes);
   const etatsParCategorie = new Map();
 
-  function arreterCategoriesFlottantes(categorieConservee) {
+  function arreterCategoriesFlottantes(conservees = []) {
     for (const categorie of categories) {
-      if (categorie.emplacement !== 'flottant' || categorie.id === categorieConservee) continue;
+      if (categorie.emplacement !== 'flottant' || conservees.includes(categorie.id)) continue;
       etatsParCategorie.get(categorie.id)?.forEach((etat) => etat.actif && arreter(etat));
     }
   }
+
+  // Un outil d'activité prend la carte (outil-activite.js) : la météo se retire proprement
+  window.addEventListener(OUTIL_ACTIVITE, () => {
+    etatsParCategorie.get('meteo')?.forEach((etat) => etat.actif && arreter(etat));
+    if (panneauxFlottants.get('meteo')?.hidden === false) fermerPanneauxFlottants();
+  });
 
   for (const categorie of categories) {
     const vue = document.createElement('section');
@@ -329,9 +382,8 @@ export function initMenu(map) {
         const ouvrirPanneau = panneauOutil.hidden;
         fermerPanneauxFlottants();
         ouvrir(false);
-        arreterCategoriesFlottantes(categorie.id);
-        etatsParCategorie.get('activites')?.forEach((etat) => etat.actif && arreter(etat));
-        ecrire('menu-activite', null);
+        arreterCategoriesFlottantes([categorie.id, 'meteo']);
+        // Météo et Carte s'ouvrent par-dessus l'activité : elle continue (sortie en cours, tracé…)
         if (ouvrirPanneau) {
           panneauOutil.hidden = false;
           boutonOutil.setAttribute('aria-expanded', 'true');
@@ -341,32 +393,36 @@ export function initMenu(map) {
     }
 
     const etats = [];
-    for (const module of categorie.modules) {
+    for (const def of categorie.modules) {
       const bloc = document.createElement('div');
       bloc.className = 'menu-module';
 
       const ligne = document.createElement('button');
       ligne.type = 'button';
       ligne.className = 'menu-ligne';
-      if (ICONES_ACTIVITES[module.icone]) {
+      if (ICONES_ACTIVITES[def.icone]) {
         ligne.classList.add('menu-ligne-activite');
       }
-      ligne.innerHTML = `${creerIconeMenu(module.icone || module.id)}<span></span>`;
-      if (module.labelCle) poser(ligne.querySelector('span'), module.labelCle);
-      else ligne.querySelector('span').textContent = module.label;
+      ligne.innerHTML = `${creerIconeMenu(def.icone || def.id)}<span></span>`;
+      if (def.labelCle) poser(ligne.querySelector('span'), def.labelCle);
+      else ligne.querySelector('span').textContent = def.label;
       ligne.setAttribute('aria-pressed', 'false');
-      if (module.reseauRequis) ligne.dataset.reseauRequis = '';
-      ligne.dataset.module = module.id;
+      if (def.reseauRequis) ligne.dataset.reseauRequis = '';
+      ligne.dataset.module = def.id;
 
       const contenu = document.createElement('div');
       contenu.className = 'menu-contenu';
       contenu.style.display = 'none';
-      contenu.appendChild(module.panneau);
+      const erreur = poser(document.createElement('p'), 'menu.chargement-impossible');
+      erreur.className = 'menu-erreur';
+      erreur.hidden = true;
+      contenu.appendChild(erreur);
+      def.quandCharge((module) => contenu.appendChild(module.panneau));
 
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);
 
-      const etat = { module, ligne, contenu, actif: false };
+      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0 };
       etats.push(etat);
 
       ligne.addEventListener('click', () => {
@@ -376,18 +432,19 @@ export function initMenu(map) {
           return;
         }
         if (categorie.exclusif) {
-          arreterCategoriesFlottantes();
+          // Changer d'activité garde la météo : seul un outil lancé la retire
+          arreterCategoriesFlottantes(['meteo']);
           etats.forEach((autre) => autre !== etat && autre.actif && arreter(autre));
-          ecrire('menu-activite', module.id);
+          ecrire('menu-activite', def.id);
         }
         demarrer(etat);
-        if (module.surCarte) fermerMenu();
+        if (def.surCarte) fermerMenu();
       });
     }
     etatsParCategorie.set(categorie.id, etats);
 
     if (categorie.emplacement === 'menu' && activiteSauvee) {
-      const etat = etats.find((element) => element.module.id === activiteSauvee);
+      const etat = etats.find((element) => element.def.id === activiteSauvee);
       if (etat) {
         try {
           demarrer(etat);

@@ -5,7 +5,7 @@ import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from 
 import { PALETTE_CARTE, cadranVent, couleurInterface, libellesPaliersVent, texteProvenance } from './vent-cadran.js';
 import { formatVent, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ta, ti, tt } from './i18n.js';
+import { t, ta, ti, tt, poser } from './i18n.js';
 
 const BALISES_LISTEES = 6;
 
@@ -94,7 +94,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     if (!stations.length) {
       const vide = document.createElement('p');
       vide.className = 'note';
-      vide.textContent = t('para.aucun-releve');
+      poser(vide, 'para.aucun-releve');
       listeBalises.replaceChildren(vide);
       return;
     }
@@ -119,7 +119,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       if (Number.isFinite(station.rafale)) {
         const rafale = document.createElement('small');
         rafale.className = 'para-balise-rafale';
-        rafale.textContent = t('para.raf', { valeur: valeurVent(station.rafale) });
+        poser(rafale, 'para.raf', { valeur: valeurVent(station.rafale) });
         vitesse.append(rafale);
       }
       ligne.append(texte, vitesse);

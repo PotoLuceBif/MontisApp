@@ -4,7 +4,7 @@ import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt } from './i18n.js';
+import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { pointCardinal } from './vent-calcul.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
@@ -117,7 +117,7 @@ export function creerRadarPluie(map) {
   function arreterLecture() {
     if (minuteurLecture !== null) clearInterval(minuteurLecture);
     minuteurLecture = null;
-    lecture.textContent = t('radar.lire');
+    poser(lecture, 'radar.lire');
   }
 
   function urlTuiles(image) {
@@ -129,7 +129,7 @@ export function creerRadarPluie(map) {
     indexCourant = Math.max(0, Math.min(index, images.length - 1));
     const image = images[indexCourant];
     curseur.value = String(indexCourant);
-    heure.textContent = t('radar.image-heure', { heure: formaterHeure(image.time) });
+    poser(heure, 'radar.image-heure', { heure: formaterHeure(image.time) });
 
     if (map.getSource(SOURCE_RADAR)) {
       map.getSource(SOURCE_RADAR).setTiles([urlTuiles(image)]);
@@ -162,7 +162,7 @@ export function creerRadarPluie(map) {
     controleur?.abort();
     controleur = new AbortController();
     statut.classList.remove('erreur');
-    statut.textContent = t('radar.chargement');
+    poser(statut, 'radar.chargement');
     actuel.disabled = true;
 
     try {
@@ -180,11 +180,11 @@ export function creerRadarPluie(map) {
       controles.hidden = false;
       arreterLecture();
       afficherImage(images.length - 1);
-      statut.textContent = t('radar.charge', { n: images.length });
+      poser(statut, 'radar.charge', { n: images.length });
     } catch (erreur) {
       if (erreur.name === 'AbortError') return;
       statut.classList.add('erreur');
-      statut.textContent = t('radar.indisponible', { message: erreur.message });
+      poser(statut, 'radar.indisponible', { message: erreur.message });
       actuel.disabled = false;
       console.error('Chargement du radar météo impossible :', erreur);
     } finally {
@@ -239,7 +239,7 @@ export function creerRadarPluie(map) {
     }
 
     if (indexCourant >= images.length - 1) afficherImage(0);
-    lecture.textContent = t('radar.pause');
+    poser(lecture, 'radar.pause');
     minuteurLecture = setInterval(() => {
       if (indexCourant >= images.length - 1) {
         arreterLecture();
@@ -251,10 +251,10 @@ export function creerRadarPluie(map) {
   actuel.addEventListener('click', chargerImages);
   choisirSource(sourceCourante);
   surLangue(() => {
-    lecture.textContent = t(minuteurLecture !== null ? 'radar.pause' : 'radar.lire');
+    poser(lecture, minuteurLecture !== null ? 'radar.pause' : 'radar.lire');
     if (indexCourant >= 0 && images[indexCourant]) afficherImage(indexCourant);
-    if (images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.charge', { n: images.length });
-    else if (!images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.activer');
+    if (images.length && !statut.classList.contains('erreur')) poser(statut, 'radar.charge', { n: images.length });
+    else if (!images.length && !statut.classList.contains('erreur')) poser(statut, 'radar.activer');
   });
 
   return {
@@ -479,7 +479,7 @@ export function creerConditionsLocales(map) {
     if (!actif || !position) return;
     const eloigne = distanceEntrePositions(position, centreCarte()) > ECART_CENTRE_KM;
     boutonCentre.hidden = !eloigne;
-    lieu.textContent = t(positionChoisie ? 'meteo.point-choisi' : eloigne ? 'meteo.ancien-centre' : 'meteo.centre');
+    poser(lieu, positionChoisie ? 'meteo.point-choisi' : eloigne ? 'meteo.ancien-centre' : 'meteo.centre');
   }
 
   function afficherCoordonnees(position) {
@@ -527,7 +527,7 @@ export function creerConditionsLocales(map) {
   }
 
   async function chargerCodePostal(position, requete) {
-    codePostal.textContent = t('meteo.cp-recherche');
+    poser(codePostal, 'meteo.cp-recherche');
     codePostal.hidden = false;
     const params = new URLSearchParams({
       lat: String(position.latitude),
@@ -577,14 +577,14 @@ export function creerConditionsLocales(map) {
         code = codePostalDepuisGeocodage(resultatsVille, nomVilleProche, pays);
       }
       if (!code) {
-        codePostal.textContent = t('meteo.cp-indisponible');
+        poser(codePostal, 'meteo.cp-indisponible');
         return;
       }
 
       codePostal.textContent = `· ${String(code).trim()}`;
     } catch (erreur) {
       if (requete.signal.aborted || controleur !== requete || !actif) return;
-      codePostal.textContent = t('meteo.cp-indisponible');
+      poser(codePostal, 'meteo.cp-indisponible');
       console.warn('Recherche du code postal impossible :', erreur);
     }
   }
@@ -601,7 +601,7 @@ export function creerConditionsLocales(map) {
     map.getCanvas().removeEventListener('click', capterClicCarte, true);
     map.getCanvas().style.cursor = '';
     boutonChoisir.setAttribute('aria-pressed', 'false');
-    texteBoutonChoisir.textContent = t('meteo.deplacer');
+    poser(texteBoutonChoisir, 'meteo.deplacer');
   }
 
   function capterClicCarte(event) {
@@ -625,15 +625,15 @@ export function creerConditionsLocales(map) {
     if (!actif) return;
     if (selectionEnCours) {
       annulerSelection();
-      statut.textContent = t('meteo.selection-annulee');
+      poser(statut, 'meteo.selection-annulee');
       return;
     }
     selectionEnCours = true;
     majPin();
     boutonChoisir.setAttribute('aria-pressed', 'true');
-    texteBoutonChoisir.textContent = t('meteo.annuler');
+    poser(texteBoutonChoisir, 'meteo.annuler');
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.mode-selection');
+    poser(statut, 'meteo.mode-selection');
     map.getCanvas().style.cursor = 'crosshair';
     map.getCanvas().addEventListener('click', capterClicCarte, true);
 
@@ -651,7 +651,7 @@ export function creerConditionsLocales(map) {
         .map((valeur, index) => ({ valeur, index }))
         .filter(({ valeur }) => valeur.startsWith(`${date}T`) && valeur >= debut)
         .map(({ index }) => index);
-      titreHoraire.textContent = t('meteo.previsions-jour', { jour: formaterJour(date) });
+      poser(titreHoraire, 'meteo.previsions-jour', { jour: formaterJour(date) });
     } else {
       const debutIndex = donnees.time.findIndex((valeur) => valeur >= debut);
       const premierIndex = debutIndex < 0 ? donnees.time.length : debutIndex;
@@ -659,7 +659,7 @@ export function creerConditionsLocales(map) {
         { length: Math.min(24, donnees.time.length - premierIndex) },
         (_, offset) => premierIndex + offset
       );
-      titreHoraire.textContent = t('meteo.24h');
+      poser(titreHoraire, 'meteo.24h');
     }
 
     heures.replaceChildren();
@@ -859,7 +859,7 @@ export function creerConditionsLocales(map) {
     afficherJours(donnees);
     afficherHeures(hourly, actuel.time);
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
+    poser(statut, 'meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
   }
 
   async function chargerPrevisions() {
@@ -873,7 +873,7 @@ export function creerConditionsLocales(map) {
       requete.abort();
     }, DELAI_PREVISIONS);
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.chargement');
+    poser(statut, 'meteo.chargement');
     boutonReessayer.hidden = true;
     panneau.setAttribute('aria-busy', 'true');
     actuelle.hidden = true;
@@ -917,7 +917,7 @@ export function creerConditionsLocales(map) {
       afficherPrevisions(donnees);
       dernieresDonnees = donnees;
       const dateEnregistree = dateHorsLigne(reponse);
-      if (dateEnregistree) statut.textContent = t('meteo.sans-reseau', { date: texteDonneesDu(dateEnregistree) });
+      if (dateEnregistree) poser(statut, 'meteo.sans-reseau', { date: texteDonneesDu(dateEnregistree) });
     } catch (erreur) {
       if (controleur !== requete || !actif || (requete.signal.aborted && !delaiDepasse)) return;
       statut.classList.add('erreur');
@@ -926,9 +926,8 @@ export function creerConditionsLocales(map) {
         : erreur instanceof Error
           ? erreur.message
           : t('meteo.erreur-inconnue');
-      statut.textContent = estHorsLigne()
-        ? t('meteo.hors-ligne')
-        : t('meteo.erreur', { message });
+      if (estHorsLigne()) poser(statut, 'meteo.hors-ligne');
+      else poser(statut, 'meteo.erreur', { message });
       boutonReessayer.hidden = false;
       console.error('Chargement des prévisions météo impossible :', erreur);
     } finally {
@@ -955,13 +954,15 @@ export function creerConditionsLocales(map) {
   // Unités ou langue : on réaffiche les dernières prévisions reçues, sans les redemander
   let dernieresDonnees = null;
   surPreferences((detail) => {
-    texteBoutonChoisir.textContent = t(selectionEnCours ? 'meteo.annuler' : 'meteo.deplacer');
+    poser(texteBoutonChoisir, selectionEnCours ? 'meteo.annuler' : 'meteo.deplacer');
     majLieu();
     if (!dernieresDonnees || actuelle.hidden) return;
-    const statutGarde = statut.textContent;
+    const cleStatut = statut.dataset.i18n;
+    const variablesStatut = statut.dataset.i18nVars;
     const jourGarde = dateSelectionnee;
     afficherPrevisions(dernieresDonnees);
-    if (detail?.cle !== 'langue' && detail?.cle !== '*') statut.textContent = statutGarde;
+    // Le statut garde son message (hors ligne, erreur…), dans la nouvelle langue
+    if (cleStatut) poser(statut, cleStatut, variablesStatut ? JSON.parse(variablesStatut) : undefined);
     if (jourGarde) {
       dateSelectionnee = null;
       selectionnerJour(jourGarde);

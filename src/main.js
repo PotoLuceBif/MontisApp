@@ -12,6 +12,7 @@ import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
 import { STYLE_MONTIS } from './style-montis.js';
+import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
 import { surPreferences } from './preferences.js';
@@ -112,6 +113,7 @@ map.once('load', () => {
 });
 
 if (import.meta.env.DEV) window.map = map;
+suivreDescriptionFond(map);
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 initBasculeMode();

@@ -1083,6 +1083,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   color: var(--accent);
 }
 .menu-ligne.actif::after { color: var(--accent); opacity: 1; }
+/* Premier chargement d'un module : la flèche devient un cercle qui tourne */
+.menu-ligne.en-chargement::after {
+  width: 12px; height: 12px; right: 12px; border: 2px solid var(--bord); border-top-color: var(--accent); border-radius: 50%;
+  opacity: 1; animation: menu-chargement 0.7s linear infinite;
+}
+@keyframes menu-chargement { from { transform: translateY(-50%) rotate(0); } to { transform: translateY(-50%) rotate(360deg); } }
+.menu-erreur { margin: 8px 4px; color: var(--danger, #ff6b6b); font-size: 13px; }
+.menu-erreur[hidden] { display: none; }
 .menu-contenu { padding: 12px 6px 10px; }
 .menu-contenu h3 { margin-top: 18px; }
 .menu-pied { padding: 14px 16px max(14px, env(safe-area-inset-bottom)); }
@@ -2454,6 +2462,10 @@ button.parcours-alerte { cursor: pointer; }
 }
 .hl-pastille::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #d99522; }
 .hl-pastille[hidden] { display: none; }
+.fond-pastille { max-width: calc(100vw - 100px); }
+[data-reseau="hors-ligne"] .fond-pastille { display: none; }
+/* Sur ordinateur, les panneaux occupent le haut à gauche : les pastilles passent à côté du zoom */
+@media (min-width: 641px) { .hl-pastille { left: auto; right: 72px; top: 30px; } }
 :root[data-reseau='hors-ligne'] .bf { top: 106px; max-height: calc(100dvh - 128px); }
 body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 :root[data-reseau='hors-ligne'] :is([data-reseau-requis], .rech-champ, .parcours-zone, .vent-zone-actualiser, .para-actualiser, .zh-nouvelle, .zh-lancer) {
