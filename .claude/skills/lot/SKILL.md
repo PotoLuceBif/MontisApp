@@ -10,6 +10,7 @@ Argument : le numéro du lot (`1.2`). « Lot suivant » : le premier lot non coc
 Suivre la section « Façon de travailler avec le propriétaire » de CLAUDE.md à chaque étape.
 
 ## 1. Comprendre
+- Partir de `developpement` à jour : `git fetch origin developpement`, puis créer ou repartir la branche de travail depuis `origin/developpement`. Si la branche imposée contient déjà des commits non fusionnés, les garder et les rebaser sur `origin/developpement`.
 - Lire le lot dans `docs/feuille-de-route.md`, avec son critère « Fini quand », la barre qualité et les décisions marquées **À décider** qui le concernent.
 - Lire le code concerné avant de proposer quoi que ce soit.
 - Une décision **À décider** bloque le lot : poser la question (et notifier avec `PushNotification` si le propriétaire peut être absent), puis avancer sur ce qui n'en dépend pas.
@@ -32,7 +33,7 @@ S'arrêter et demander pour un changement visible non prévu par le lot.
 
 ## 4. Pousser et vérifier
 - `npm test`, `npm run build` et `npm run captures` complet : aucune erreur dans le rapport.
-- Pousser sur la branche de la session.
+- Pousser sur la branche de la session. Si le propriétaire l'a demandé, ouvrir une PR **vers `developpement`**, jamais vers `main`.
 - Cocher le lot dans `docs/feuille-de-route.md` et noter ce qui a changé de plan.
 - Mettre à jour CLAUDE.md : « État actuel », arborescence, pièges découverts.
 - Committer ces mises à jour et pousser.

@@ -67,13 +67,14 @@ Jamais pour un simple avancement.
 - Lister les questions en suspens et les décisions prises seul.
 - Demander un retour, de préférence en captures d'écran.
 
-**Lien de preview :** `https://montisapp-git-<branche, « / » remplacé par « - »>-luce-team.vercel.app` (équipe Vercel `luce-team`, projet `montisapp`). Déduit, pas encore confirmé par le propriétaire.
+**Lien de preview :** `https://montisapp-git-<branche, « / » remplacé par « - »>-luce-team.vercel.app` (équipe Vercel `luce-team`, projet `montisapp`). Version en cours, toujours à jour : `https://montisapp-git-developpement-luce-team.vercel.app`. Format déduit, pas encore confirmé par le propriétaire.
 
 **Skills du dépôt** (`.claude/skills/`) : `/lot X` déroule un lot de la feuille de route de bout en bout ; `/retour` traite les remarques du propriétaire après un test de la preview.
 
 ## Workflow
 
-- Chaque tâche sur sa propre branche, créée depuis `main`.
+- **Branches :** `main` est la production (adresse principale de l'appli, chez tous les utilisateurs) ; `developpement` reçoit le travail en cours. Chaque tâche a sa propre branche, créée depuis `developpement`, et sa PR vise `developpement`, jamais `main`. `main` ne change qu'à une version (1.0 beta, 1.0, 1.1…), par une PR de `developpement` vers `main`, et seulement sur demande du propriétaire.
+- Si la session impose une branche de travail, la repartir de `origin/developpement` avant de commencer (`git fetch origin developpement && git checkout -B <branche> origin/developpement`).
 - `npm test` et `npm run build` doivent passer avant de pousser ; pour une modification d'interface, `npm run captures` aussi.
 - Commits clairs en français, au présent, sans préfixe : « Ajoute les EuroVelo et la visite des bike parks ».
 - Ne jamais commiter de secret. Toute variable `VITE_` finit lisible dans le JavaScript livré : une vraie clé d'API doit rester côté serveur, derrière un relais.

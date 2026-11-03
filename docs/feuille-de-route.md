@@ -10,7 +10,7 @@ Le principe : on ne multiplie pas les fonctions par activité. On construit **qu
 
 ## Comment on travaille
 
-**Un lot = une branche depuis `main` = une session = une PR.** Chaque lot doit pouvoir se terminer en une session et se vérifier sur la preview Vercel.
+**Un lot = une branche depuis `developpement` = une session = une PR vers `developpement`.** `main` (la production) ne reçoit que les versions, quand le propriétaire le décide. Chaque lot doit pouvoir se terminer en une session et se vérifier sur la preview Vercel.
 
 Pour lancer un lot, il suffit d'écrire dans une nouvelle session :
 
