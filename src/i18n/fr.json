@@ -992,6 +992,6 @@
   "soleil.nuit-polaire": "Nuit polaire : il ne se lève pas ce jour-là.",
   "soleil.relief": "Calculé pour un horizon dégagé : en montagne, le relief cache le soleil plus tard le matin et plus tôt le soir.",
   "soleil.fuseau-lieu": "Heures du lieu ({fuseau}).",
-  "soleil.fuseau-appareil": "Heures de l’appareil ({fuseau}), en attendant les prévisions.",
+  "soleil.fuseau-appareil": "Heures de l’appareil ({fuseau}) : le fuseau du lieu arrive avec les prévisions.",
   "soleil.duree-valeur": "{h} h {m}"
 }

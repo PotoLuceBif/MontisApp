@@ -6,6 +6,8 @@ import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from
 import { surPreferences } from './preferences.js';
 import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { pointCardinal } from './vent-calcul.js';
+import { creerSectionSoleil } from './meteo-soleil.js';
+import { decalageAppareil } from './soleil.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -454,6 +456,8 @@ export function creerConditionsLocales(map) {
   const titreHoraire = horaire.querySelector('h3');
   const heures = panneau.querySelector('.meteo-heures');
   const texteBoutonChoisir = boutonChoisir.querySelector('span');
+  const soleil = creerSectionSoleil();
+  panneau.querySelector('.meteo-emplacement').before(soleil.section);
 
   let actif = false;
   let selectionEnCours = false;
@@ -468,6 +472,18 @@ export function creerConditionsLocales(map) {
   let dateSelectionnee = null;
   let heureActuelle = null;
   let nomVilleProche = '';
+  let decalageLieu = null; // fuseau du lieu donné par Open-Meteo, en minutes
+  let minuteurSoleil = null;
+
+  // Le soleil se calcule sans réseau : affiché dès le choix du lieu, même si les prévisions échouent
+  function majSoleil() {
+    soleil.afficher({
+      position,
+      jour: dateSelectionnee,
+      decalage: decalageLieu ?? decalageAppareil(),
+      fuseauDuLieu: decalageLieu !== null,
+    });
+  }
 
   function centreCarte() {
     const centre = map.getCenter();
@@ -790,6 +806,7 @@ export function creerConditionsLocales(map) {
         : `${dateSelectionnee}T00:00`
       : heureActuelle;
     afficherHeures(previsionsHoraires, debut, dateSelectionnee);
+    majSoleil();
   }
 
   function afficherPrevisions(donnees) {
@@ -820,6 +837,7 @@ export function creerConditionsLocales(map) {
 
     const actuel = donnees.current;
     heureActuelle = actuel.time;
+    decalageLieu = Number.isFinite(donnees.utc_offset_seconds) ? donnees.utc_offset_seconds / 60 : null;
     previsionsHoraires = hourly;
     majLieu();
 
@@ -858,6 +876,7 @@ export function creerConditionsLocales(map) {
     actuelle.hidden = false;
     afficherJours(donnees);
     afficherHeures(hourly, actuel.time);
+    majSoleil();
     statut.classList.remove('erreur');
     poser(statut, 'meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
   }
@@ -882,6 +901,8 @@ export function creerConditionsLocales(map) {
     previsionsHoraires = null;
     previsionsJournalieres = null;
     dateSelectionnee = null;
+    decalageLieu = null;
+    majSoleil();
     majLieu();
     afficherCoordonnees(position);
     void chargerCodePostal(position, requete);
@@ -956,6 +977,7 @@ export function creerConditionsLocales(map) {
   surPreferences((detail) => {
     poser(texteBoutonChoisir, selectionEnCours ? 'meteo.annuler' : 'meteo.deplacer');
     majLieu();
+    soleil.rafraichir();
     if (!dernieresDonnees || actuelle.hidden) return;
     const cleStatut = statut.dataset.i18n;
     const variablesStatut = statut.dataset.i18nVars;
@@ -978,9 +1000,12 @@ export function creerConditionsLocales(map) {
       actif = true;
       if (!positionChoisie) position = centreCarte();
       chargerPrevisions();
+      clearInterval(minuteurSoleil);
+      minuteurSoleil = setInterval(() => soleil.rafraichir(), 60000);
     },
     desactiver() {
       actif = false;
+      clearInterval(minuteurSoleil);
       annulerSelection();
       controleur?.abort();
       marqueur?.remove();

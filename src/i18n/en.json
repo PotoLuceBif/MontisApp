@@ -992,6 +992,6 @@
   "soleil.nuit-polaire": "Polar night: it does not rise that day.",
   "soleil.relief": "Calculated for a clear horizon: in the mountains, terrain hides the sun later in the morning and earlier in the evening.",
   "soleil.fuseau-lieu": "Local time ({fuseau}).",
-  "soleil.fuseau-appareil": "Device time ({fuseau}) until the forecast arrives.",
+  "soleil.fuseau-appareil": "Device time ({fuseau}): the local time zone comes with the forecast.",
   "soleil.duree-valeur": "{h}h {m}m"
 }
