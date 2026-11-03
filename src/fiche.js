@@ -3,7 +3,6 @@ import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
 import { interroger } from './overpass.js';
-import { altitudeRelief } from './relief-donnees.js';
 
 // Quelle couche de la carte correspond à quel genre d'élément
 const GENRE_PAR_COUCHE = {
@@ -164,8 +163,8 @@ export function initFiches(map) {
     if (!courant) return;
     const f = courant;
     const d = f.details && typeof f.details === 'object' ? f.details : null;
-    const nom = f.nom || (d && d.principal && d.principal.tags.name) || '';
-    f.type = decrire(f.source, f.genre).type; // suit la langue choisie
+    const nom = f.point ? f.point.titre() : f.nom || (d && d.principal && d.principal.tags.name) || '';
+    f.type = f.point ? f.point.sousTitre() : decrire(f.source, f.genre).type; // suit la langue choisie
     panneau.replaceChildren();
 
     // En-tête
@@ -217,6 +216,12 @@ export function initFiches(map) {
     });
     pos.append(code, copier);
     corps.appendChild(ligne(tr('fiche.position'), pos));
+
+    if (f.point) {
+      f.point.rendre(corps, ligne);
+      panneau.appendChild(corps);
+      return;
+    }
 
     const eleOsm = parseFloat(f.ele ?? (d && d.principal && d.principal.tags.ele));
     if (Number.isFinite(eleOsm)) {
@@ -331,12 +336,15 @@ export function initFiches(map) {
 
   function fermer() {
     if (controleur) controleur.abort();
+    courant?.point?.arreter();
     courant = null;
     panneau.hidden = true;
     if (anneau) anneau.remove();
   }
 
   function ouvrir(feature, genre, lngLat) {
+    if (controleur) controleur.abort();
+    courant?.point?.arreter();
     const d = decrire(feature, genre);
     courant = {
       source: feature,
@@ -357,7 +365,8 @@ export function initFiches(map) {
 
     // Altitude de repli, lue dans les données de relief
     const fiche = courant;
-    altitudeRelief(lngLat.lng, lngLat.lat)
+    import('./relief-donnees.js')
+      .then(({ altitudeRelief }) => altitudeRelief(lngLat.lng, lngLat.lat))
       .then((v) => {
         if (courant === fiche && Number.isFinite(v)) {
           fiche.eleDem = v;
@@ -366,6 +375,111 @@ export function initFiches(map) {
       })
       .catch(() => {});
   }
+
+  // ---------- Fiche d'un point quelconque (appui long, clic droit) ----------
+  let numeroPoint = 0;
+  async function ouvrirPoint(lngLat) {
+    if (controleur) controleur.abort();
+    courant?.point?.arreter();
+    const numero = ++numeroPoint;
+    const { creerFichePoint } = await import('./fiche-point.js');
+    if (numero !== numeroPoint) return; // un autre appui long entre-temps
+    const fiche = { lng: lngLat.lng, lat: lngLat.lat, icone: '📍' };
+    fiche.point = creerFichePoint({
+      lng: fiche.lng,
+      lat: fiche.lat,
+      maj: () => courant === fiche && rendre(),
+    });
+    fiche.icone = fiche.point.icone;
+    courant = fiche;
+    poserAnneau(lngLat);
+    panneau.hidden = false;
+    panneau.scrollTop = 0;
+    window.dispatchEvent(new Event('fiche-ouverte'));
+    rendre();
+  }
+
+  const DUREE_APPUI = 500;
+  const TOLERANCE_APPUI = 10;
+  const conteneur = map.getCanvasContainer();
+  let appui = null;
+  let derniereTouche = 0;
+  let absorberClicJusqua = 0;
+  let appuiDeclenche = false;
+  let clicDroit = null;
+
+  const annulerAppui = () => {
+    if (appui) clearTimeout(appui.minuteur);
+    appui = null;
+  };
+  const versCarte = (x, y) => {
+    const cadre = conteneur.getBoundingClientRect();
+    return map.unproject([x - cadre.left, y - cadre.top]);
+  };
+  const surLaCarte = (cible) => cible === map.getCanvas();
+
+  conteneur.addEventListener('touchstart', (e) => {
+    derniereTouche = Date.now();
+    annulerAppui();
+    if (e.touches.length !== 1 || bloque || !surLaCarte(e.target)) return;
+    const { clientX: x, clientY: y } = e.touches[0];
+    appui = {
+      x,
+      y,
+      minuteur: setTimeout(() => {
+        appui = null;
+        if (bloque) return;
+        // Le doigt se relève après l'appui : ce « clic » ne doit rien ouvrir d'autre
+        appuiDeclenche = true;
+        absorberClicJusqua = Infinity;
+        navigator.vibrate?.(15);
+        ouvrirPoint(versCarte(x, y));
+      }, DUREE_APPUI),
+    };
+  }, { passive: true });
+  conteneur.addEventListener('touchmove', (e) => {
+    if (!appui) return;
+    const { clientX, clientY } = e.touches[0];
+    if (e.touches.length > 1 || Math.hypot(clientX - appui.x, clientY - appui.y) > TOLERANCE_APPUI) annulerAppui();
+  }, { passive: true });
+  conteneur.addEventListener('touchend', () => {
+    derniereTouche = Date.now();
+    annulerAppui();
+    if (appuiDeclenche) absorberClicJusqua = Date.now() + 400;
+    appuiDeclenche = false;
+  }, { passive: true });
+  conteneur.addEventListener('touchcancel', () => {
+    annulerAppui();
+    if (appuiDeclenche) absorberClicJusqua = Date.now() + 400;
+    appuiDeclenche = false;
+  }, { passive: true });
+  map.on('movestart', (e) => {
+    // Un déplacement par le doigt annule l'appui ; un recentrage programmé, non
+    if (e.originalEvent) annulerAppui();
+  });
+
+  // Souris : clic droit sans déplacement (un clic droit glissé fait tourner la carte)
+  conteneur.addEventListener('mousedown', (e) => {
+    clicDroit = e.button === 2 && surLaCarte(e.target) ? { x: e.clientX, y: e.clientY } : null;
+  });
+  conteneur.addEventListener('mouseup', (e) => {
+    const depart = clicDroit;
+    clicDroit = null;
+    if (e.button !== 2 || !depart || bloque || Date.now() - derniereTouche < 1500) return;
+    if (Math.hypot(e.clientX - depart.x, e.clientY - depart.y) > 4) return;
+    ouvrirPoint(versCarte(e.clientX, e.clientY));
+  });
+  // Ni menu du navigateur, ni « enregistrer l'image » sur la carte
+  conteneur.addEventListener('contextmenu', (e) => {
+    if (surLaCarte(e.target)) e.preventDefault();
+  });
+  // Absorbe le clic qui suit un appui long, avant que MapLibre et les autres outils ne le voient
+  map.getContainer().addEventListener('click', (e) => {
+    if (Date.now() > absorberClicJusqua) return;
+    absorberClicJusqua = 0;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
 
   // ---------- Interaction avec la carte ----------
   const couchesActives = () => Object.keys(GENRE_PAR_COUCHE).filter((id) => map.getLayer(id));

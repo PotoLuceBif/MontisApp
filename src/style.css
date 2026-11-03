@@ -373,6 +373,23 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .fiche-attente-ligne { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 13px; }
 .fiche-liens a { margin-right: 14px; color: var(--accent); font-weight: 600; text-decoration: none; }
 .fiche-liens a:hover { text-decoration: underline; }
+/* Fiche d'un point (appui long) */
+.point-principal { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.point-principal .meteo-icone { width: 24px; height: 24px; flex: none; }
+.point-principal .meteo-icone svg { width: 20px; height: 20px; }
+.point-detail { margin-top: 3px; color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
+.point-attente { color: var(--texte-2); font-size: 13px; }
+.point-indisponible { color: var(--texte-2); font-size: 13px; opacity: 0.8; }
+.point-pente {
+  flex: none; min-width: 40px; padding: 2px 8px; border-radius: 6px; text-align: center;
+  background: var(--surface-2); color: var(--texte); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* Mêmes seuils que les couches de pente : 30°, 35°, 40°, 45° */
+.point-pente-30 { background: #f2d23c; color: #1d1a10; }
+.point-pente-35 { background: #f08c28; color: #1d1408; }
+.point-pente-40 { background: #e0362c; color: #fff; }
+.point-pente-45 { background: #9b4fd0; color: #fff; }
+.point-prudence { padding: 9px 0 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 12px; font-style: italic; }
 .fiche-point {
   width: 18px; height: 18px; border-radius: 50%;
   border: 3px solid #e8590c; background: rgba(255, 255, 255, 0.35);
@@ -1137,7 +1154,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   box-shadow: var(--ombre-forte);
   backdrop-filter: blur(16px);
 }
-#fiche { top: 88px; right: 16px; }
+#fiche { top: 88px; right: 70px; } /* à gauche des boutons de la carte */
 #rando-fiche, :is(#ski-fiche, #bikepark-fiche) { bottom: 22px; }
 .rando-fiche-profil { padding-bottom: 4px; }
 .rando-fiche-profil .rando-stats { padding: 8px 14px 10px; }

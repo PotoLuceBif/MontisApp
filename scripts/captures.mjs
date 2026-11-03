@@ -40,6 +40,23 @@ const module = (id) => async (page) => {
   }, id);
 };
 
+// Appui long au doigt (téléphone) ou clic droit (ordinateur), au point donné de la fenêtre
+const appuiLong = (x, y) => async (page) => {
+  const { width, height } = page.viewportSize();
+  const px = Math.round(width * x);
+  const py = Math.round(height * y);
+  if (await page.evaluate(() => navigator.maxTouchPoints > 0)) {
+    const cdp = await page.context().newCDPSession(page);
+    const points = [{ x: px, y: py }];
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points });
+    await page.waitForTimeout(800);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  } else {
+    await page.mouse.click(px, py, { button: 'right' });
+  }
+  await page.waitForTimeout(2500);
+};
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
@@ -55,6 +72,8 @@ const ECRANS = [
   { nom: 'carte-relief', actions: [module('relief')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
+  // Fiche d'un point quelconque, ouverte par appui long
+  { nom: 'point', actions: [appuiLong(0.5, 0.42)] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
