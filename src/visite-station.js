@@ -693,6 +693,7 @@ export function creerVisiteStation(map, {
     retablirFond(map); // le fond a pu changer pendant la visite : seul le choix actuel doit rester visible
     majCourbes(map);
     etat.majPentes?.(); // la couche de pentes a pu changer pendant la visite
+    etat.majOmbres?.(); // l'ombre du soleil aussi
   }
 
   // Charge les pistes avant de toucher à la carte : en cas d'échec, rien n'a changé

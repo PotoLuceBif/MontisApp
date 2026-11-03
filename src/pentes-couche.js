@@ -15,7 +15,8 @@ let repli = typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefin
 let suivant = 0;
 const enAttente = new Map(); // id → { resolve, reject, demande }
 
-function calculerSurLaPage({ z, x, y, genre }, signal) {
+function calculerSurLaPage({ z, x, y, genre, soleil }, signal) {
+  if (genre === 'ombre') return import('./ombre-tuile.js').then((m) => m.tuileOmbre(z, x, y, soleil, () => signal.aborted));
   return import('./pentes-tuile.js').then((m) => m.tuile(z, x, y, genre, () => signal.aborted));
 }
 
@@ -30,7 +31,8 @@ function passerEnRepli(erreur) {
   enAttente.clear();
 }
 
-function calculer(demande, signal) {
+// Pixels RGBA 256 × 256 d'une tuile : { z, x, y, genre } ; pour l'ombre, genre 'ombre' et soleil { azimut, hauteurSoleil }
+export function calculer(demande, signal) {
   if (repli) return calculerSurLaPage(demande, signal);
   if (!travailleur) {
     try {

@@ -1072,5 +1072,21 @@
   "elements.court-glaciers": "Glaciers",
   "elements.court-parcs": "Parcs",
   "elements.court-batiments": "Bâtiments 3D",
-  "pentes.trop-loin": "Trop loin"
+  "pentes.trop-loin": "Trop loin",
+  "ombres.titre": "Ombre du soleil",
+  "ombres.afficher": "Soleil à l’heure choisie",
+  "ombres.heure": "Heure",
+  "ombres.aujourdhui": "Aujourd’hui · {date}",
+  "ombres.portees": "Ombre portée par les montagnes",
+  "ombres.intensite": "Intensité",
+  "ombres.soleil": "Soleil à {hauteur}, vers {direction}",
+  "ombres.soleil-nuit": "Soleil sous l’horizon ({hauteur})",
+  "ombres.nuit": "Le soleil est couché à cette heure : pas d’ombre à afficher.",
+  "ombres.zoom": "Ombre portée à partir d’une vue plus proche : rapproche la carte pour la voir.",
+  "ombres.pastille": "Soleil {heure}",
+  "ombres.pastille-nuit": "Nuit {heure}",
+  "ombres.jour-precedent": "Jour précédent",
+  "ombres.jour-suivant": "Jour suivant",
+  "ombres.prudence": "Calculée sur un relief d’environ 30 m, sans arbres ni bâtiments ; nuages non pris en compte. Estimations : à vérifier sur le terrain.",
+  "ombres.choisir-jour": "Choisir le jour"
 }

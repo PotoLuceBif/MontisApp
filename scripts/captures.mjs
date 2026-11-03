@@ -60,6 +60,18 @@ const appuiLong = (x, y) => async (page) => {
 // Place la carte (en développement, elle est accessible par window.map)
 const vue = (options) => (page) => page.evaluate((o) => window.map.jumpTo(o), options);
 const AIGUILLES = { center: [6.93, 45.9], zoom: 13.4, bearing: 0, pitch: 0 };
+const MATIN = { center: [6.9, 45.88], zoom: 12.3, bearing: 0, pitch: 0 }; // vallée de Chamonix
+// Place le curseur d'heure de l'ombre du soleil (minutes depuis minuit)
+const heureOmbres = (minutes) => async (page) => {
+  await page.waitForSelector('.ombres-curseur', { state: 'attached', timeout: 8000 });
+  await page.evaluate((m) => {
+    const curseur = document.querySelector('.ombres-curseur');
+    curseur.value = m;
+    curseur.dispatchEvent(new Event('input', { bubbles: true }));
+  }, minutes);
+};
+// Fait défiler le panneau jusqu'à un bloc
+const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
@@ -115,6 +127,25 @@ const ECRANS = [
     nom: 'carte-rouvert',
     actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
   },
+  // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
+  { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
+  {
+    nom: 'carte-ombres-3d',
+    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
+      (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
+  },
+  { nom: 'carte-ombres-ferme', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  // Un jour choisi au calendrier (appui sur le nom du jour)
+  {
+    nom: 'carte-ombres-jour',
+    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(12 * 60),
+      (p) => p.evaluate(() => {
+        const champ = document.querySelector('.ombres-calendrier');
+        champ.value = '2027-02-15';
+        champ.dispatchEvent(new Event('change', { bubbles: true }));
+      }), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')],
+  },
+  { nom: 'carte-ombres-nuit', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },

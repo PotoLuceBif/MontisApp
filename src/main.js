@@ -196,7 +196,8 @@ function appliquerMode(mode3D) {
     // 3D : relief + ombrage, inclinaison autorisée
     map.setMaxPitch(85);
     majTerrain();
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'visible');
+    // L'ombre du soleil (ombres.js), quand elle est allumée, remplace cet ombrage fixe
+    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil ? 'none' : 'visible');
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison
