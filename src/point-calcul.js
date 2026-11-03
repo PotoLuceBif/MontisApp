@@ -2,14 +2,12 @@
 // refuge et point d'eau les plus proches.
 
 const RAYON_TERRE = 6371008.8;
-const CIRCONFERENCE = 2 * Math.PI * 6378137;
 const rad = (degres) => (degres * Math.PI) / 180;
 const deg = (radians) => (radians * 180) / Math.PI;
 
-// Taille d'un pixel de tuile 256 px au zoom donné, en mètres sur le terrain
-export function taillePixel(latitude, zoom) {
-  return (CIRCONFERENCE * Math.cos(rad(latitude))) / (256 * 2 ** zoom);
-}
+import { SEUILS_PENTE, taillePixel } from './pente-calcul.js';
+
+export { taillePixel };
 
 // Position en pixels dans le monde (Web Mercator) au zoom donné
 export function pixelMonde(lng, lat, zoom) {
@@ -36,12 +34,7 @@ export function penteOrientation(grille, cellule) {
 }
 
 // Classes de pente utilisées par les couches de pente (lot 1.3) : seuils de déclenchement d'avalanche
-export const CLASSES_PENTE = [
-  { min: 45, cle: '45' },
-  { min: 40, cle: '40' },
-  { min: 35, cle: '35' },
-  { min: 30, cle: '30' },
-];
+export const CLASSES_PENTE = [...SEUILS_PENTE].reverse().map((min) => ({ min, cle: String(min) }));
 
 export function classePente(pente) {
   if (!Number.isFinite(pente)) return null;

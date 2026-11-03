@@ -1,7 +1,6 @@
 // Bloc « Pentes et orientation » du panneau Relief : choix de la couche, légende, opacité, état.
 import { initCouchePentes, ZOOM_MIN_PENTES } from './pentes-couche.js';
-import { COULEURS_ORIENTATION, COULEURS_PENTE, PENTE_MIN_ORIENTATION, SEUILS_PENTE, pourcentagePente } from './pente-calcul.js';
-import { codeCardinal } from './vent-calcul.js';
+import { CODES_SECTEURS, COULEURS_ORIENTATION, COULEURS_PENTE, PENTE_MIN_ORIENTATION, SEUILS_PENTE, pourcentagePente } from './pente-calcul.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { etat } from './options-carte.js';
 import { lire } from './reglages.js';
@@ -24,7 +23,7 @@ function roseOrientation() {
   }).join('');
   const lettres = COULEURS_ORIENTATION.map((_, i) => {
     const [x, y] = point(i * 45, rayon + 10).split(' ');
-    return `<text x="${x}" y="${y}" data-cardinal="${codeCardinal(i * 45)}"></text>`;
+    return `<text x="${x}" y="${y}" data-cardinal="${CODES_SECTEURS[i]}"></text>`;
   }).join('');
   return `<svg class="pentes-rose" viewBox="0 0 100 100" aria-hidden="true">${secteurs}
     <circle cx="${centre}" cy="${centre}" r="9" class="pentes-rose-centre"/>${lettres}</svg>`;

@@ -1,7 +1,13 @@
 // Calculs purs des couches de pente et d'orientation : grille d'altitudes → couleurs d'une tuile.
-import { CLASSES_PENTE, taillePixel } from './point-calcul.js';
+// Chargé au démarrage avec le panneau Relief : il ne doit dépendre d'aucun module chargé à la demande.
 
+const CIRCONFERENCE = 2 * Math.PI * 6378137;
 const deg = (radians) => (radians * 180) / Math.PI;
+
+// Taille d'un pixel de tuile 256 px au zoom donné, en mètres sur le terrain
+export function taillePixel(latitude, zoom) {
+  return (CIRCONFERENCE * Math.cos((latitude * Math.PI) / 180)) / (256 * 2 ** zoom);
+}
 
 // 45° = 100 % : tangente de l'angle × 100
 export const pourcentagePente = (degres) => Math.tan((degres * Math.PI) / 180) * 100;
@@ -59,7 +65,8 @@ export const celluleMercator = (y0, zoom) => (l) => taillePixel(latitudePixel(y0
 
 // Mêmes couleurs que la pastille de la fiche du point (style.css, .point-pente-*)
 export const COULEURS_PENTE = { 30: [242, 210, 60], 35: [240, 140, 40], 40: [224, 54, 44], 45: [155, 79, 208] };
-export const SEUILS_PENTE = CLASSES_PENTE.map((classe) => classe.min).sort((a, b) => a - b); // 30, 35, 40, 45
+// Seuils de déclenchement d'avalanche, aussi utilisés par la fiche du point
+export const SEUILS_PENTE = [30, 35, 40, 45];
 
 export function couleurPente(pente) {
   for (let i = SEUILS_PENTE.length - 1; i >= 0; i -= 1) {
@@ -69,6 +76,7 @@ export function couleurPente(pente) {
 }
 
 // Huit secteurs, du nord dans le sens des aiguilles d'une montre (comme codeCardinal). Le nord froid, le sud chaud.
+export const CODES_SECTEURS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']; // clés `cardinal.*`
 export const COULEURS_ORIENTATION = [
   [58, 111, 216], [54, 162, 201], [60, 184, 120], [166, 196, 58],
   [232, 197, 58], [232, 138, 46], [216, 71, 58], [154, 79, 201],
