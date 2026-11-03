@@ -453,7 +453,15 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     fermerMenu();
     itineraires.fermer();
     decouverte.masquer();
-    editeur.ouvrirVers(demande);
+    const { retour, ...trajet } = demande;
+    editeur.ouvrirVers({
+      ...trajet,
+      // Le brouillon reste : « Créer un parcours » le reprend
+      onRetour: retour ? () => {
+        editeur.fermer();
+        retour();
+      } : null,
+    });
   }
   window.addEventListener('montis:demande', (event) => {
     if (event.detail === cleItineraire) reprendreItineraire();

@@ -111,7 +111,7 @@ function indisponible(texte) {
   return s;
 }
 
-export function creerFichePoint({ map, lng, lat, maj, fermer = () => {} }) {
+export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible = null }) {
   const point = [lng, lat];
   const controleur = new AbortController();
   const etat = {
@@ -124,6 +124,13 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {} }) {
     cible: null, // 'refuge' ou 'eau' quand l'utilisateur l'a localisé
   };
   let marqueurCible = null;
+  // Retour depuis l'éditeur de parcours : la cible reste localisée, une fois la fiche affichée
+  if (cible) {
+    etat.cible = cible.cle;
+    const pin = creerPinSeul('rando', 'selected');
+    marqueurCible = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN }).setLngLat(cible.coordonnees).addTo(map);
+    requestAnimationFrame(() => !controleur.signal.aborted && cadrerAvec(cible.coordonnees));
+  }
   // Chaque requête a son délai ; fermer la fiche les annule toutes
   function signalAvecDelai(delai = DELAI) {
     const local = new AbortController();
@@ -384,23 +391,32 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {} }) {
     const pin = creerPinSeul('rando', 'selected');
     pin.element.classList.add('point-pin');
     marqueurCible = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN }).setLngLat(objet.coordonnees).addTo(map);
+    cadrerAvec(objet.coordonnees);
+    maj();
+  }
+
+  // Le point et la cible visibles ensemble, au-dessus de la fiche sur téléphone
+  function cadrerAvec(coordonnees) {
     const fiche = document.getElementById('fiche');
     const telephone = window.matchMedia('(max-width: 640px)').matches;
     const hauteurFiche = fiche && !fiche.hidden ? fiche.getBoundingClientRect().height : 0;
-    map.fitBounds([point, objet.coordonnees], {
+    map.fitBounds([point, coordonnees], {
       padding: { top: 160, left: 60, right: telephone ? 80 : 440, bottom: telephone ? hauteurFiche + 50 : 60 },
       maxZoom: 15.5,
       duration: 800,
     });
-    maj();
   }
 
-  function allerVers(objet) {
+  function allerVers(cle, objet) {
     const activite = lire('menu-activite', null) === 'velo' ? 'velo' : 'rando';
     deposer(`itineraire-${activite}`, {
       depart: point,
       arrivee: objet.coordonnees,
       nom: t('point.vers', { nom: objet.nom }),
+      // La flèche retour de l'éditeur ramène à cette fiche, cible toujours localisée
+      retour: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-point', {
+        detail: { lng, lat, cible: { cle, coordonnees: objet.coordonnees } },
+      })),
     });
     fermer();
     window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
@@ -428,7 +444,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {} }) {
       aller.type = 'button';
       aller.className = 'point-raccourci point-aller';
       aller.textContent = t('point.y-aller');
-      aller.addEventListener('click', () => allerVers(objet));
+      aller.addEventListener('click', () => allerVers(cle, objet));
       bloc.append(aller);
     }
     return bloc;

@@ -396,7 +396,7 @@ export function initFiches(map) {
 
   // ---------- Fiche d'un point quelconque (appui long, clic droit) ----------
   let numeroPoint = 0;
-  async function ouvrirPoint(lngLat) {
+  async function ouvrirPoint(lngLat, { cible = null } = {}) {
     if (controleur) controleur.abort();
     courant?.point?.arreter();
     const numero = ++numeroPoint;
@@ -405,6 +405,7 @@ export function initFiches(map) {
     const fiche = { lng: lngLat.lng, lat: lngLat.lat };
     fiche.point = creerFichePoint({
       map,
+      cible,
       lng: fiche.lng,
       lat: fiche.lat,
       maj: () => courant === fiche && rendre(),
@@ -417,6 +418,12 @@ export function initFiches(map) {
     window.dispatchEvent(new Event('fiche-ouverte'));
     rendre();
   }
+
+  // Retour à la fiche d'un point depuis un autre outil (flèche retour de l'éditeur de parcours)
+  window.addEventListener('montis:ouvrir-point', (event) => {
+    const { lng, lat, cible } = event.detail || {};
+    if (Number.isFinite(lng) && Number.isFinite(lat)) ouvrirPoint({ lng, lat }, { cible });
+  });
 
   const DUREE_APPUI = 500;
   const TOLERANCE_APPUI = 10;

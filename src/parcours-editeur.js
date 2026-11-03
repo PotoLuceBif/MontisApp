@@ -912,10 +912,10 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       cadrer(etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []));
     },
     // Nouveau parcours de `depart` à `arrivee` ([lng, lat]), depuis la fiche d'un point (« Y aller »)
-    ouvrirVers({ depart, arrivee, nom }) {
+    ouvrirVers({ depart, arrivee, nom, onRetour: retour = null }) {
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
-      retourCourant = onRetour;
+      retourCourant = retour ?? onRetour;
       onAnalyse = null;
       panneau.meta.textContent = '';
       rendreInfos([]);
