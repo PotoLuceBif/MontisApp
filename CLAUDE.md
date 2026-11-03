@@ -74,6 +74,7 @@ Jamais pour un simple avancement.
 ## Workflow
 
 - **Branches :** `main` est la production (adresse principale de l'appli, chez tous les utilisateurs) ; `developpement` reçoit le travail en cours. Chaque tâche a sa propre branche, créée depuis `developpement`, et sa PR vise `developpement`, jamais `main`. `main` ne change qu'à une version (1.0 beta, 1.0, 1.1…), par une PR de `developpement` vers `main`, et seulement sur demande du propriétaire.
+- **Fusion :** c'est Claude qui fusionne la PR d'une tâche dans `developpement`, mais toujours après avoir demandé et obtenu la validation explicite du propriétaire (« fusionne », « c'est bon »). Sans réponse claire, ne pas fusionner. Jamais de fusion vers `main` sans demande expresse.
 - Si la session impose une branche de travail, la repartir de `origin/developpement` avant de commencer (`git fetch origin developpement && git checkout -B <branche> origin/developpement`).
 - `npm test` et `npm run build` doivent passer avant de pousser ; pour une modification d'interface, `npm run captures` aussi.
 - Commits clairs en français, au présent, sans préfixe : « Ajoute les EuroVelo et la visite des bike parks ».

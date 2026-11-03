@@ -33,7 +33,7 @@ S'arrêter et demander pour un changement visible non prévu par le lot.
 
 ## 4. Pousser et vérifier
 - `npm test`, `npm run build` et `npm run captures` complet : aucune erreur dans le rapport.
-- Pousser sur la branche de la session. Si le propriétaire l'a demandé, ouvrir une PR **vers `developpement`**, jamais vers `main`.
+- Pousser sur la branche de la session et ouvrir la PR **vers `developpement`**, jamais vers `main`.
 - Cocher le lot dans `docs/feuille-de-route.md` et noter ce qui a changé de plan.
 - Mettre à jour CLAUDE.md : « État actuel », arborescence, pièges découverts.
 - Committer ces mises à jour et pousser.
@@ -46,4 +46,9 @@ Dans cet ordre, court :
 3. **Captures** téléphone des écrans modifiés (`SendUserFile`, une planche).
 4. **À tester sur ton téléphone** : ce que Claude n'a pas pu voir.
 5. **Décisions prises seul** et **questions en suspens**.
-6. Demander un retour, idéalement en captures d'écran, à traiter avec `/retour`.
+6. Demander un retour, idéalement en captures d'écran, à traiter avec `/retour`, puis demander la validation pour fusionner.
+
+## 6. Fusionner, après validation
+- Ne fusionner qu'après une validation explicite du propriétaire (« fusionne », « c'est bon, fusionne »). Une remarque ou une question n'est pas une validation : la traiter avec `/retour`, puis redemander.
+- Fusionner la PR dans `developpement` (jamais `main`), puis le confirmer avec le lien de la preview `developpement`.
+- Proposer le lot suivant, à lancer dans une nouvelle session.

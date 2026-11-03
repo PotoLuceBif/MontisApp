@@ -22,8 +22,9 @@ Pour lancer un lot, il suffit d'écrire dans une nouvelle session :
 |---|---|
 | Lit le code, code, lance `npm run build` et les tests | Choisit le lot suivant (ou dit « lot suivant ») |
 | Vérifie l'interface dans Chromium au format téléphone et envoie des captures | Teste sur un vrai téléphone ce qu'un navigateur simulé ne montre pas : GPS, boussole, soleil, gants, terrain |
-| Pousse, donne le lien de preview Vercel, ouvre la PR si demandé | Tranche les décisions marquées **À décider**, valide le design |
-| Coche le lot ici et met à jour CLAUDE.md | Fusionne la PR ; demande les clés d'API quand un lot en a besoin |
+| Pousse, donne le lien de preview Vercel, ouvre la PR vers `developpement` | Tranche les décisions marquées **À décider**, valide le design |
+| Coche le lot ici et met à jour CLAUDE.md | Valide la preview (« fusionne ») ; demande les clés d'API quand un lot en a besoin |
+| Fusionne la PR dans `developpement`, **seulement après la validation explicite du propriétaire** | Décide quand `developpement` part en production (`main`) |
 
 Ordre de grandeur : une trentaine de lots. À deux ou trois lots par semaine, il faut compter trois à quatre mois pour tout, mais chaque phase apporte déjà quelque chose d'utilisable.
 
