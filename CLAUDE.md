@@ -85,7 +85,7 @@ Jamais pour un simple avancement.
 - Un module de menu expose `{ id, label, icone, panneau, activer(), desactiver() }`, et `menu.js` l'orchestre. Pour ajouter une activité ou un outil, ajouter une entrée dans `categories`.
 - Activités, Météo et Analyse du vent se chargent à leur première ouverture : `differer({ id, labelCle, icone }, () => import('./x.js').then(…))` (`module-differe.js`). Ne jamais les importer statiquement depuis un module du démarrage, sinon leur code revient dans le fichier principal. Un module qui en pilote un autre passe par `facade()` (Vol libre → vent). Les rubriques de Carte restent `immediat()` : elles rétablissent le fond et les éléments au démarrage.
 - Texte d'interface : `poser(element, 'clé', variables)` plutôt que `textContent = t(…)`, pour qu'il suive un changement de langue (voir l'en-tête de `i18n.js`).
-- Version : `version` de `package.json`, affichée en bas des Paramètres. Chaque version publiée a son tag git (`v1.0.0-alpha.1`…).
+- Version : `version` de `package.json`, affichée en bas des Paramètres. Pas de tag git : le propriétaire n'en veut pas, ne pas le proposer.
 - Commentaires courts, seulement pour expliquer un pourquoi. Le DOM se construit à la main (`createElement` ou `innerHTML`).
 - Tout le CSS est dans `src/style.css`, avec les thèmes (`data-theme`) en variables. Thèmes : cyberpunk (par défaut), clair, sombre, auto.
 

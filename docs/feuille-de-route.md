@@ -151,7 +151,7 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 
 | Version | Contenu |
 |---|---|
-| 1.0.0-alpha.1 | L'état de `main` au 2 novembre 2026, après la PR #1 |
+| 1.0.0-alpha.1 | L'état de `main` au 2 novembre 2026, après la PR #1 (sans tag) |
 | 1.0 alpha suivantes | Phase 0 |
 | 1.0 beta | Phases 1 et 2 |
 | 1.0 | Stable, testée sur le terrain |
