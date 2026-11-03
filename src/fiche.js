@@ -2,12 +2,8 @@ import * as maplibregl from 'maplibre-gl';
 import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
-
-const URLS_OVERPASS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-];
+import { interroger } from './overpass.js';
+import { altitudeRelief } from './relief-donnees.js';
 
 // Quelle couche de la carte correspond à quel genre d'élément
 const GENRE_PAR_COUCHE = {
@@ -124,71 +120,6 @@ function lienWikipedia(tag) {
   const titre = i > 0 ? tag.slice(i + 1) : tag;
   if (!/^[a-z-]{2,10}$/i.test(langue)) return null;
   return `https://${langue}.wikipedia.org/wiki/${encodeURIComponent(titre.replace(/ /g, '_'))}`;
-}
-
-// ---------- Altitude lue dans les tuiles de relief (même source que la 3D) ----------
-const ZOOM_DEM = 12;
-const tuilesDem = new Map();
-
-function chargerTuileDem(z, x, y) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 256;
-      const g = canvas.getContext('2d', { willReadFrequently: true });
-      g.drawImage(img, 0, 0);
-      resolve(g.getImageData(0, 0, 256, 256).data);
-    };
-    img.onerror = () => reject(new Error(tr('fiche.tuile')));
-    img.src = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
-  });
-}
-
-async function altitudeDem(lng, lat) {
-  const n = 2 ** ZOOM_DEM;
-  const xf = ((lng + 180) / 360) * n;
-  const latRad = (lat * Math.PI) / 180;
-  const yf = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
-  const x = Math.floor(xf);
-  const y = Math.floor(yf);
-  const cle = `${x}/${y}`;
-
-  let donnees = tuilesDem.get(cle);
-  if (!donnees) {
-    donnees = await chargerTuileDem(ZOOM_DEM, x, y);
-    tuilesDem.set(cle, donnees);
-  }
-  const px = Math.min(255, Math.floor((xf - x) * 256));
-  const py = Math.min(255, Math.floor((yf - y) * 256));
-  const i = (py * 256 + px) * 4;
-  // Encodage « terrarium » : altitude = R × 256 + G + B / 256 − 32768
-  return donnees[i] * 256 + donnees[i + 1] + donnees[i + 2] / 256 - 32768;
-}
-
-// Essaie chaque serveur Overpass à tour de rôle (le serveur principal est souvent saturé)
-async function interroger(requete, signal) {
-  let derniereErreur = null;
-  for (const url of URLS_OVERPASS) {
-    try {
-      const rep = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(requete),
-        signal,
-      });
-      if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
-      const json = await rep.json();
-      if (json.remark && /error|timeout/i.test(json.remark)) throw new Error(json.remark);
-      return json;
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      derniereErreur = e;
-    }
-  }
-  throw derniereErreur;
 }
 
 export function initFiches(map) {
@@ -426,7 +357,7 @@ export function initFiches(map) {
 
     // Altitude de repli, lue dans les données de relief
     const fiche = courant;
-    altitudeDem(lngLat.lng, lngLat.lat)
+    altitudeRelief(lngLat.lng, lngLat.lat)
       .then((v) => {
         if (courant === fiche && Number.isFinite(v)) {
           fiche.eleDem = v;
