@@ -22,8 +22,9 @@ Pour lancer un lot, il suffit d'écrire dans une nouvelle session :
 |---|---|
 | Lit le code, code, lance `npm run build` et les tests | Choisit le lot suivant (ou dit « lot suivant ») |
 | Vérifie l'interface dans Chromium au format téléphone et envoie des captures | Teste sur un vrai téléphone ce qu'un navigateur simulé ne montre pas : GPS, boussole, soleil, gants, terrain |
-| Pousse, donne le lien de preview Vercel, ouvre la PR si demandé | Tranche les décisions marquées **À décider**, valide le design |
-| Coche le lot ici et met à jour CLAUDE.md | Fusionne la PR ; demande les clés d'API quand un lot en a besoin |
+| Pousse, donne le lien de preview Vercel, ouvre la PR vers `developpement` | Tranche les décisions marquées **À décider**, valide le design |
+| Coche le lot ici et met à jour CLAUDE.md | Valide la preview (« fusionne ») ; demande les clés d'API quand un lot en a besoin |
+| Fusionne la PR dans `developpement`, **seulement après la validation explicite du propriétaire** | Décide quand `developpement` part en production (`main`) |
 
 Ordre de grandeur : une trentaine de lots. À deux ou trois lots par semaine, il faut compter trois à quatre mois pour tout, mais chaque phase apporte déjà quelque chose d'utilisable.
 
@@ -69,7 +70,7 @@ Prérequis à tout le reste : sans eux, chaque ajout alourdit et fragilise l'app
 
 Ce que tout montagnard utilise, quelle que soit son activité.
 
-- [ ] **1.1 Soleil.** Utiliser `suncalc` : lever, coucher, heures dorées, position du soleil, durée du jour. Tests sur des valeurs connues.
+- [x] **1.1 Soleil.** Utiliser `suncalc` : lever, coucher, heures dorées, position du soleil, durée du jour. Tests sur des valeurs connues. *Fait :* `soleil.js` (calcul, réutilisable par les lots 1.2 et 1.4) et une section Soleil dans Météo › Conditions locales, qui suit le lieu et le jour choisis et marche hors ligne. Ajouts : aube et crépuscule civils (utiles pour la frontale), course du soleil en petit graphique. Pas de repère du soleil sur la carte : il viendra avec l'ombre du relief (1.4).
 - [ ] **1.2 Fiche universelle du point.** Appui long n'importe où (clic droit sur ordinateur) : coordonnées, altitude, pente, orientation, soleil, météo résumée, refuge et point d'eau les plus proches. Branchée sur `peutOuvrirBalise` et `bloquerFiches`.
 - [ ] **1.3 Pentes et orientation.** Couches calculées depuis le relief (Terrain Tiles), à la manière de `maplibre-contour` : classes 30°, 35°, 40°, 45° et plus ; orientation en rose de couleurs. Légende claire, réglage d'opacité.
 - [ ] **1.4 Ombre du relief.** Ombrage selon la position réelle du soleil à l'heure choisie (curseur), puis ombre portée par les montagnes voisines.
@@ -164,6 +165,5 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 | Compte utilisateur ou appli 100 % locale | Avant la phase 2 | Rester local ; sauvegarde `.json` et partage par lien suffisent |
 | Ordre des nouvelles pratiques | Avant la phase 3 | Ski de rando et thermiques d'abord : ils réutilisent le plus |
 | Périmètre et nom de la cinquième activité | Après la 1.0 | Voir « Pistes pour la cinquième activité » |
-| Texte de la mention de prudence | Lot 1.2 | Court, visible une fois, rappelé sur les couches de sécurité |
 
-**Décidé :** structure en activités et pratiques (2 novembre 2026), Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026).
+**Décidé :** structure en activités et pratiques (2 novembre 2026), Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026), texte de la mention de prudence (3 novembre 2026) : en entier une fois, « Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles. », puis en rappel court sur les données de sécurité, « Estimations : à vérifier sur le terrain. ».

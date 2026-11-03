@@ -17,7 +17,7 @@ npm test          # tests automatiques (Vitest, dans tests/)
 npm run captures  # captures téléphone et ordinateur dans captures/, avec rapport (voir ci-dessous)
 ```
 
-`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
+`npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX, soleil), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
 
 Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VITE_FFVL=1` active le code FFVL, qui suppose un relais serveur inexistant à ce jour.
 
@@ -74,6 +74,7 @@ Jamais pour un simple avancement.
 ## Workflow
 
 - **Branches :** `main` est la production (adresse principale de l'appli, chez tous les utilisateurs) ; `developpement` reçoit le travail en cours. Chaque tâche a sa propre branche, créée depuis `developpement`, et sa PR vise `developpement`, jamais `main`. `main` ne change qu'à une version (1.0 beta, 1.0, 1.1…), par une PR de `developpement` vers `main`, et seulement sur demande du propriétaire.
+- **Fusion :** c'est Claude qui fusionne la PR d'une tâche dans `developpement`, mais toujours après avoir demandé et obtenu la validation explicite du propriétaire (« fusionne », « c'est bon »). Sans réponse claire, ne pas fusionner. Jamais de fusion vers `main` sans demande expresse.
 - Si la session impose une branche de travail, la repartir de `origin/developpement` avant de commencer (`git fetch origin developpement && git checkout -B <branche> origin/developpement`).
 - `npm test` et `npm run build` doivent passer avant de pousser ; pour une modification d'interface, `npm run captures` aussi.
 - Commits clairs en français, au présent, sans préfixe : « Ajoute les EuroVelo et la visite des bike parks ».
@@ -152,6 +153,7 @@ src/                    Tout le code (détail ci-dessous)
 | Fichier | Rôle |
 |---|---|
 | `meteo.js` | Conditions locales et prévisions, radar de pluie |
+| `soleil.js`, `meteo-soleil.js` | Calcul du soleil (`suncalc`) : lever, coucher, heures dorées, position ; section Soleil des conditions locales |
 | `carte-vent.js` | Analyse du vent sur la carte (panneau, grille, niveaux, échéances) |
 | `vent-calcul.js`, `vent-cadran.js` | Calcul du vent ; échelle de couleurs et cadran communs |
 | `vent-couche-carte.js`, `vent-volume-3d.js` | Flèches et traînées sur la carte ; bloc 3D du vent |
@@ -221,7 +223,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 
 ## État actuel et prochaines étapes
 
-Établi d'après le code et l'historique git au 2 novembre 2026.
+Établi d'après le code et l'historique git au 3 novembre 2026.
 
 **En place**
 - Carte 2D/3D et globe, fonds multiples, thèmes, PWA et mode hors ligne.
@@ -233,10 +235,10 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Paramètres en sections : Thème, Unités (métrique ou impérial, unité du vent à part), Langue (FR/EN, `src/i18n/`, `t('clé')`), Données hors ligne (espace par type, zones, vider le cache, Wi-Fi uniquement sur Chrome Android), Sauvegarde (export et import `.json` des réglages et de Mes parcours).
 - Portée de vol par chemin le plus court (Dijkstra), qui contourne le relief.
 - La manche à air de la carte suit le curseur du graphique d'une balise.
+- Soleil (lot 1.1) dans Météo › Conditions locales : lever, coucher, durée du jour, midi solaire, heures dorées, aube et crépuscule, position actuelle et course du jour. Calculé sur l'appareil, donc hors ligne aussi. Heures au fuseau du lieu (`utc_offset_seconds` d'Open-Meteo), sinon à celui de l'appareil, indiqué. Horizon supposé dégagé, le relief n'est pas pris en compte (lot 1.4).
 
 **Points ouverts constatés**
 - FFVL : en attente d'une clé et d'un relais serveur.
-- La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Au démarrage : 229 Ko de code Montis (75 Ko compressé), dont les deux fichiers de langue ; MapLibre (1,1 Mo) à part.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
