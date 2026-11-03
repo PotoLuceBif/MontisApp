@@ -11,7 +11,7 @@ import { codeCardinal } from './vent-calcul.js';
 import { creerIconeMeteo, descriptionMeteo } from './meteo-icone.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, nomDecalage, positionSoleil } from './soleil.js';
-import { formatAltitude, formatLongueur, formatTemp, formatVent } from './unites.js';
+import { formatAltitude, formatLongueur, formatPente, formatTemp, formatVent } from './unites.js';
 import { t } from './i18n.js';
 import { ecrire, lire } from './reglages.js';
 
@@ -222,7 +222,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     const classe = classePente(terrain.pente);
     const pastille = document.createElement('span');
     pastille.className = `point-pente${classe ? ` point-pente-${classe}` : ''}`;
-    pastille.textContent = `${Math.round(terrain.pente)}°`;
+    pastille.textContent = formatPente(terrain.pente);
     const orientation = terrain.orientation === null
       ? t('point.plat')
       : t('point.versant', { direction: cardinal(terrain.orientation) });
