@@ -827,6 +827,7 @@
   "fond.zone-france": "France",
   "fond.zone-monde": "World",
   "fond.aide-france": "France only: outside France the map stays blank. Switch back to a “World” base map.",
+  "fond.indisponible": "Base map unavailable",
   "fond.actuel": "Current base map: {nom}",
   "fond.titre": "Base map",
   "elements.lieux": "Places",

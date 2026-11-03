@@ -12,7 +12,7 @@ import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 
 const require = createRequire(import.meta.url);
-const { chromium, request } = require('playwright');
+const { chromium } = require('playwright');
 
 const DOSSIER = 'captures';
 const FORMATS = {
@@ -80,37 +80,6 @@ const textesVisibles = (page) =>
 const changerLangue = (page, code) =>
   page.evaluate(async (code) => (await import('/src/preferences.js')).definirLangue(code), code);
 
-// Serveurs parfois bloqués par le réseau d'une session cloud. Sans le TileJSON d'OpenFreeMap,
-// la carte ne finit jamais de charger et le menu n'apparaît pas : on répond à leur place, vide.
-const SERVEURS_REMPLACABLES = {
-  'tiles.openfreemap.org': 'https://tiles.openfreemap.org/planet',
-  'demotiles.maplibre.org': 'https://demotiles.maplibre.org/font/Open%20Sans%20Regular/0-255.pbf',
-};
-
-async function serveursInjoignables(proxy) {
-  const api = await request.newContext({ proxy });
-  const injoignables = [];
-  for (const [hote, essai] of Object.entries(SERVEURS_REMPLACABLES)) {
-    const joignable = await api.get(essai, { timeout: 5000 }).then((r) => r.ok(), () => false);
-    if (!joignable) injoignables.push(hote);
-  }
-  await api.dispose();
-  return injoignables;
-}
-
-async function remplacer(contexte, hotes) {
-  for (const hote of hotes) {
-    await contexte.route(`https://${hote}/**`, (route) =>
-      route.request().url().endsWith('/planet')
-        ? route.fulfill({
-            contentType: 'application/json',
-            body: JSON.stringify({ tilejson: '3.0.0', tiles: [`https://${hote}/vide/{z}/{x}/{y}.pbf`], minzoom: 0, maxzoom: 14 }),
-          })
-        : route.fulfill({ status: 200, body: '' })
-    );
-  }
-}
-
 const RESSEMBLE_AU_FRANCAIS = /[éèêàùç]|\b(le|la|les|des|du|une|aucun|pour|sur|dans|avec)\b/i;
 
 async function main() {
@@ -130,12 +99,10 @@ async function main() {
 
   const rapport = [];
   const reseauEnEchec = new Set();
-  const remplaces = await serveursInjoignables(proxy);
   try {
     for (const [format, options] of Object.entries(FORMATS)) {
       for (const ecran of ecrans) {
         const contexte = await navigateur.newContext({ ...options, locale: 'fr-FR' });
-        await remplacer(contexte, remplaces);
         await contexte.addInitScript(() => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr' })));
         const page = await contexte.newPage();
         const erreurs = [];
@@ -171,7 +138,6 @@ async function main() {
     await serveur.close();
   }
 
-  if (remplaces.length) rapport.push('', `Serveurs injoignables, remplacés par une réponse vide (fond de carte ou textes de la carte absents) : ${remplaces.join(', ')}`);
   if (reseauEnEchec.size) rapport.push('', `Serveurs injoignables pendant les captures : ${[...reseauEnEchec].join(', ')}`);
   writeFileSync(`${DOSSIER}/rapport.txt`, `${rapport.join('\n')}\n`);
   console.log(`\nCaptures et rapport dans ${DOSSIER}/`);

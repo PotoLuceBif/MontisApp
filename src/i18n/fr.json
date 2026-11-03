@@ -827,6 +827,7 @@
   "fond.zone-france": "France",
   "fond.zone-monde": "Monde",
   "fond.aide-france": "Couverture France uniquement : hors de France, la carte reste vide. Repasse alors sur un fond « Monde ».",
+  "fond.indisponible": "Fond de carte indisponible",
   "fond.actuel": "Fond actuel : {nom}",
   "fond.titre": "Fond de carte",
   "elements.lieux": "Lieux",
