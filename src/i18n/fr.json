@@ -1032,7 +1032,7 @@
   "point.eau-inconnue": "Point d’eau",
   "point.eau-a-traiter": "potabilité non garantie",
   "prudence.courte": "Estimations : à vérifier sur le terrain.",
-  "point.previsions": "Prévisions détaillées",
+  "point.previsions": "Prévisions sur 5 jours",
   "point.reessayer": "Réessayer",
   "point.isotherme": "Isotherme 0 °C à {altitude}",
   "point.uv": "UV {valeur}",
@@ -1043,5 +1043,9 @@
   "point.eau-hors-ligne": "Aucune eau sur la carte affichée. Fontaines et sources : nécessite Internet.",
   "point.localiser": "Localiser {nom} sur la carte",
   "point.y-aller": "Y aller depuis ce point",
-  "point.vers": "Vers {nom}"
+  "point.vers": "Vers {nom}",
+  "point.refuge-plus-proche": "Le plus proche",
+  "point.eau-plus-proche": "La plus proche",
+  "point.cabane-sans-nom": "Cabane ou abri sans nom",
+  "point.refuge-sans-nom": "Refuge sans nom"
 }

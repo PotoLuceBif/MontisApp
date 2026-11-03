@@ -127,6 +127,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
   // Retour depuis l'éditeur de parcours : la cible reste localisée, une fois la fiche affichée
   if (cible) {
     etat.cible = cible.cle;
+    etat.cibleCoordonnees = cible.coordonnees;
     const pin = creerPinSeul('rando', 'selected');
     marqueurCible = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN }).setLngLat(cible.coordonnees).addTo(map);
     requestAnimationFrame(() => !controleur.signal.aborted && cadrerAvec(cible.coordonnees));
@@ -308,14 +309,21 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
   function boutonPrevisions() {
     const bouton = document.createElement('button');
     bouton.type = 'button';
-    bouton.className = 'point-raccourci';
-    bouton.textContent = t('point.previsions');
+    bouton.className = 'point-lien';
+    bouton.innerHTML = `
+      <svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+      <span></span>
+      <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+    bouton.querySelector('span').textContent = t('point.previsions');
     bouton.addEventListener('click', () => {
       const lieu = { longitude: lng, latitude: lat };
       ecrire(CLE_LIEU_METEO, lieu);
       window.dispatchEvent(new CustomEvent('montis:meteo-ici', { detail: lieu }));
-      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'meteo', module: 'meteo-locale' } }));
       fermer();
+      // La croix de Météo ramène à cette fiche
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', {
+        detail: { categorie: 'meteo', module: 'meteo-locale', retour: rouvrirIci },
+      }));
     });
     return bouton;
   }
@@ -334,7 +342,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     if (refuge === 'chargement') return enAttente();
     if (refuge === 'aucun') return indisponible(t('point.aucun-refuge', { distance: formatLongueur(RAYON_REFUGE) }));
     if (typeof refuge === 'string') return indisponible(t('point.refuges-erreur'));
-    const nom = refuge.nom || t(refuge.genre === 'libre' ? 'fiche.cabane' : 'fiche.refuge');
+    const nom = refuge.nom || t(refuge.genre === 'libre' ? 'point.cabane-sans-nom' : 'point.refuge-sans-nom');
     const details = [loin(refuge)];
     if (Number.isFinite(refuge.ele)) details.push(formatAltitude(refuge.ele));
     if (refuge.nom) details.push(t(refuge.genre === 'libre' ? 'point.type-cabane' : 'point.type-refuge'));
@@ -387,6 +395,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
   // ---------- Localiser un refuge ou un point d'eau, puis y aller ----------
   function localiser(cle, objet) {
     etat.cible = cle;
+    etat.cibleCoordonnees = objet.coordonnees;
     marqueurCible?.remove();
     const pin = creerPinSeul('rando', 'selected');
     pin.element.classList.add('point-pin');
@@ -407,6 +416,12 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     });
   }
 
+  // Rouvre cette fiche, avec la cible localisée s'il y en a une
+  function rouvrirIci() {
+    const cible = etat.cible && etat.cibleCoordonnees ? { cle: etat.cible, coordonnees: etat.cibleCoordonnees } : null;
+    window.dispatchEvent(new CustomEvent('montis:ouvrir-point', { detail: { lng, lat, cible } }));
+  }
+
   function allerVers(cle, objet) {
     const activite = lire('menu-activite', null) === 'velo' ? 'velo' : 'rando';
     deposer(`itineraire-${activite}`, {
@@ -414,9 +429,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
       arrivee: objet.coordonnees,
       nom: t('point.vers', { nom: objet.nom }),
       // La flèche retour de l'éditeur ramène à cette fiche, cible toujours localisée
-      retour: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-point', {
-        detail: { lng, lat, cible: { cle, coordonnees: objet.coordonnees } },
-      })),
+      retour: rouvrirIci,
     });
     fermer();
     window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
@@ -425,10 +438,14 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
   // Le nom se touche pour localiser la cible ; « Y aller » apparaît ensuite
   function cibleTouchable(cle, objet, titre, details) {
     const bloc = document.createElement('div');
+    const surtitre = document.createElement('div');
+    surtitre.className = 'point-surtitre';
+    surtitre.textContent = t(cle === 'eau' ? 'point.eau-plus-proche' : 'point.refuge-plus-proche');
+    bloc.append(surtitre);
     const bouton = document.createElement('button');
     bouton.type = 'button';
     bouton.className = 'point-cible';
-    bouton.setAttribute('aria-label', t('point.localiser', { nom: titre }));
+    bouton.setAttribute('aria-label', `${surtitre.textContent} : ${t('point.localiser', { nom: titre })}`);
     const nom = document.createElement('span');
     nom.className = 'point-cible-nom';
     nom.textContent = titre;
@@ -442,8 +459,12 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     if (etat.cible === cle) {
       const aller = document.createElement('button');
       aller.type = 'button';
-      aller.className = 'point-raccourci point-aller';
-      aller.textContent = t('point.y-aller');
+      aller.className = 'point-lien point-aller';
+      aller.innerHTML = `
+        <svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"/></svg>
+        <span></span>
+        <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+      aller.querySelector('span').textContent = t('point.y-aller');
       aller.addEventListener('click', () => allerVers(cle, objet));
       bloc.append(aller);
     }

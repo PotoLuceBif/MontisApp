@@ -403,6 +403,17 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   to { opacity: 1; translate: 0 0; scale: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .point-pin .repere-pin { animation: none; } }
+.point-lien {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 10px; padding: 0 10px 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2);
+  color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
+}
+.point-lien span { flex: 1; min-width: 0; }
+.point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.point-lien-icone { width: 18px; height: 18px; color: var(--accent); }
+.point-lien-chevron { width: 16px; height: 16px; color: var(--texte-2); }
+.point-lien:hover { background: var(--survol); }
+.point-surtitre { margin-bottom: 1px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .point-cible {
   display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0; border: 0;
   background: none; color: var(--texte); font: 600 14px var(--police); text-align: left; cursor: pointer;
@@ -411,8 +422,9 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .point-cible-icone { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: var(--surface-2); color: var(--accent); }
 .point-cible-icone svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .point-cible:hover .point-cible-icone { background: var(--survol); }
-.point-aller { color: var(--surface); background: var(--accent); border-color: var(--accent); }
-.point-aller:hover { background: var(--accent); filter: brightness(1.08); }
+.point-lien.point-aller, .point-lien.point-aller:hover { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.point-lien.point-aller:hover { filter: brightness(1.08); }
+.point-aller .point-lien-icone, .point-aller .point-lien-chevron { color: inherit; }
 .point-prudence { padding: 9px 0 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 12px; font-style: italic; }
 .fiche-point {
   width: 18px; height: 18px; border-radius: 50%;

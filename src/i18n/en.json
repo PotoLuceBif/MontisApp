@@ -1032,7 +1032,7 @@
   "point.eau-inconnue": "Water point",
   "point.eau-a-traiter": "not guaranteed drinkable",
   "prudence.courte": "Estimates: check on the ground.",
-  "point.previsions": "Detailed forecast",
+  "point.previsions": "5-day forecast",
   "point.reessayer": "Try again",
   "point.isotherme": "Freezing level {altitude}",
   "point.uv": "UV {valeur}",
@@ -1043,5 +1043,9 @@
   "point.eau-hors-ligne": "No water on the displayed map. Fountains and springs: requires Internet.",
   "point.localiser": "Show {nom} on the map",
   "point.y-aller": "Go there from this point",
-  "point.vers": "To {nom}"
+  "point.vers": "To {nom}",
+  "point.refuge-plus-proche": "Nearest",
+  "point.eau-plus-proche": "Nearest",
+  "point.cabane-sans-nom": "Unnamed cabin or shelter",
+  "point.refuge-sans-nom": "Unnamed hut"
 }
