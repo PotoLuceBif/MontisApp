@@ -14,7 +14,9 @@ Le principe : on ne multiplie pas les fonctions par activité. On construit **qu
 
 Pour lancer un lot, il suffit d'écrire dans une nouvelle session :
 
-> Lis `docs/feuille-de-route.md` et fais le lot 1.2.
+> /lot 1.2
+
+(ou « Lis `docs/feuille-de-route.md` et fais le lot 1.2 »). Après un test de la preview, `/retour` avec des captures d'écran.
 
 | Claude | Le propriétaire |
 |---|---|

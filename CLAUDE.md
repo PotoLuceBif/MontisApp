@@ -43,6 +43,34 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 - Icônes d'activités : carrés arrondis avec dégradé et personnage blanc, dans le style du logo parapente (`public/icons/activites/`).
 - Pins de carte en forme de goutte (`public/pins/`).
 
+## Façon de travailler avec le propriétaire
+
+Le propriétaire ne voit l'appli que sur la preview Vercel, depuis son téléphone. Claude, lui, ne voit ni le fond de carte, ni la météo, ni Vercel (réseau bloqué en session cloud). Le dialogue comble cet écart.
+
+**Avant de coder**
+- Proposer un plan court (une ligne par partie), puis enchaîner sauf si le propriétaire a demandé d'attendre.
+- Une demande qui peut se comprendre de deux façons : poser la question plutôt que choisir. Une décision technique sans effet visible : la prendre et l'expliquer.
+
+**Pendant**
+- S'arrêter et demander pour tout ce qui change l'apparence, un comportement visible ou une règle de conception non couverte par ce fichier.
+- En attendant une réponse, avancer sur ce qui n'en dépend pas.
+
+**Notifications** (outil `PushNotification`, message court sur une ligne, sans markdown), seulement dans trois cas :
+- bloqué par une décision du propriétaire : la question elle-même ;
+- preview prête : ce qu'il faut regarder ;
+- tâche longue terminée, avec le résultat (y compris un échec).
+Jamais pour un simple avancement.
+
+**Après**
+- Envoyer les captures téléphone des écrans modifiés (`SendUserFile`).
+- Donner le lien de preview et une liste « À tester sur ton téléphone » : ce que Claude n'a pas pu voir (fond de carte, données météo réelles, GPS, rendu sur l'appareil, gestes tactiles).
+- Lister les questions en suspens et les décisions prises seul.
+- Demander un retour, de préférence en captures d'écran.
+
+**Lien de preview :** `https://montisapp-git-<branche, « / » remplacé par « - »>-luce-team.vercel.app` (équipe Vercel `luce-team`, projet `montisapp`). Déduit, pas encore confirmé par le propriétaire.
+
+**Skills du dépôt** (`.claude/skills/`) : `/lot X` déroule un lot de la feuille de route de bout en bout ; `/retour` traite les remarques du propriétaire après un test de la preview.
+
 ## Workflow
 
 - Chaque tâche sur sa propre branche, créée depuis `main`.
@@ -80,6 +108,7 @@ vite.config.js          Génération de /sw.js, proxy /ffvl (développement seul
 .env.example            Variables possibles, sans valeur
 scripts/                Extraction des données (voir Données locales) ; captures.mjs : captures d'écran
 tests/                  Tests Vitest des calculs purs
+.claude/skills/          Skills du dépôt : lot (réaliser un lot), retour (traiter un retour de test)
 public/
   data/                 Données locales (voir Données locales)
   icons/                Icônes PWA ; activites/ : icônes des quatre activités
