@@ -3100,6 +3100,26 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     color-mix(in srgb, var(--surface) 97%, transparent);
 }
 .outil-rapide-bouton { border-radius: var(--rayon); }
+/* Actif ou survolé : teinte d'accent sur la même matière opaque. --accent-doux est transparent
+   dans les thèmes sombres : la carte remontait à travers et le bouton paraissait délavé. */
+#menu-parametres-bouton:hover,
+#menu-parametres-bouton[aria-expanded='true'],
+.outil-rapide-bouton[aria-expanded='true'],
+.outil-rapide-bouton.appui-long {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+@media (hover: hover) and (pointer: fine) {
+  .outil-rapide-bouton:hover,
+  .outil-rapide-bouton:focus-visible {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+      color-mix(in srgb, var(--accent) 16%, var(--surface));
+  }
+}
 .maplibregl-ctrl-scale { border-radius: 0 0 5px 5px; border-width: 0 1px 1px; background: color-mix(in srgb, var(--surface) 78%, transparent); }
 :root[data-theme='cyberpunk'] .menu-vue-entete h2 { text-shadow: none; }
 
