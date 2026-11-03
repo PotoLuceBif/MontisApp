@@ -65,6 +65,7 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
     reduit = valeur;
     ecrire(cle, reduit);
     appliquerReduction();
+    window.dispatchEvent(new Event('panneau-carte'));
   }
 
   element.querySelectorAll('.bf-fermer').forEach((bouton) => bouton.addEventListener('click', () => onFermer()));

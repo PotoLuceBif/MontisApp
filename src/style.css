@@ -2464,6 +2464,8 @@ button.parcours-alerte { cursor: pointer; }
 .hl-pastille[hidden] { display: none; }
 .fond-pastille { max-width: calc(100vw - 100px); }
 [data-reseau="hors-ligne"] .fond-pastille { display: none; }
+/* Sur ordinateur, les panneaux occupent le haut à gauche : les pastilles passent à côté du zoom */
+@media (min-width: 641px) { .hl-pastille { left: auto; right: 72px; top: 30px; } }
 :root[data-reseau='hors-ligne'] .bf { top: 106px; max-height: calc(100dvh - 128px); }
 body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 :root[data-reseau='hors-ligne'] :is([data-reseau-requis], .rech-champ, .parcours-zone, .vent-zone-actualiser, .para-actualiser, .zh-nouvelle, .zh-lancer) {

@@ -223,10 +223,11 @@ export function creerBikeParks(map, { fermerMenu = () => {} }) {
   const recherchePanneau = recherche({ champ, liste: section.querySelector('#bikepark-resultats'), prefixe: 'bikepark-suggestion' });
   champ.addEventListener('input', rendreFavoris);
   boutonZone.addEventListener('click', () => void chercherZone());
-  // Un autre panneau (Créer un parcours, itinéraire) prend la carte : la fiche lui laisse la place
+  // Un autre panneau (Créer un parcours, itinéraire) prend la carte : la fiche lui laisse la place.
+  // L'analyse du vent, elle, se pose par-dessus (une visite continue).
   window.addEventListener('panneau-carte', () => {
     if (!actif) return;
-    if (fiche.choisi && document.querySelector('.bf:not([hidden])')) fiche.fermer();
+    if (fiche.choisi && document.querySelector('.bf:not([hidden]):not(.bf-meteo)')) fiche.fermer();
     actualiserReperes();
   });
 

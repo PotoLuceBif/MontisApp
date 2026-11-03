@@ -143,7 +143,7 @@ export function creerCarteVent(map) {
   const panneauCarte = creerPanneauCarte({
     cle: 'vent-panneau-reduit',
     libelle: 'panneau.vent',
-    classe: 'bf-outil',
+    classe: 'bf-outil bf-meteo', // la météo se superpose à une visite sans la fermer
     onFermer: () => fermeture?.(),
   });
   poser(panneauCarte.titre, 'vent.titre');

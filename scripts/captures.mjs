@@ -58,6 +58,21 @@ const ECRANS = [
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
+  // L'analyse du vent par-dessus une visite de station : la visite continue, la station reste visible
+  {
+    nom: 'visite-vent',
+    actions: [
+      module('ski'),
+      async (page) => {
+        await page.fill('.ski .rando-champ', 'Chamonix');
+        await page.waitForTimeout(1500);
+        await page.press('.ski .rando-champ', 'Enter');
+        await page.waitForTimeout(6000);
+      },
+      module('vent'),
+      (page) => page.waitForTimeout(4000),
+    ],
+  },
   {
     nom: 'combine-parcours-carte-fermee',
     actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
@@ -72,7 +87,8 @@ const textesVisibles = (page) =>
     while (parcours.nextNode()) {
       const element = parcours.currentNode.parentElement;
       const texte = parcours.currentNode.textContent.trim();
-      if (texte && element && !element.closest('script, style, svg') && element.checkVisibility()) textes.add(texte);
+      // Les listes de lieux (stations, bike parks) contiennent des noms propres
+      if (texte && element && !element.closest('script, style, svg, .rando-liste') && element.checkVisibility()) textes.add(texte);
     }
     return [...textes];
   });
