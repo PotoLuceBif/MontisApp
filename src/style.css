@@ -195,6 +195,25 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .relief-reglage input[type='range'] { width: 100%; }
 .relief-reglage small { display: block; color: var(--texte-2); margin-top: 2px; }
 .relief-reglage.inactif { opacity: 0.5; }
+/* Pentes et orientation */
+.relief-pentes .pentes-choix { margin-bottom: 10px; }
+.relief-pentes .pentes-choix button { min-height: 44px; font-size: 13px; }
+.pentes-details { display: grid; gap: 10px; }
+.pentes-details[hidden], .pentes-legende[hidden], .pentes-etat[hidden] { display: none; }
+.pentes-classes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.pentes-classe { display: grid; gap: 2px; font-variant-numeric: tabular-nums; text-align: center; }
+.pentes-classe i { height: 10px; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
+.pentes-degres { color: var(--texte); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pentes-pourcent { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
+.relief-pentes .pentes-legende .note { margin: 6px 0 0; }
+.pentes-legende-rose { display: flex; align-items: center; gap: 12px; }
+.relief-pentes .pentes-legende-rose .note { margin: 0; }
+.pentes-rose { width: 92px; height: 92px; flex: none; overflow: visible; }
+.pentes-rose path { stroke: var(--surface); stroke-width: 1; }
+.pentes-rose-centre { fill: var(--surface); }
+.pentes-rose text { fill: var(--texte-2); font: 700 9px var(--police); text-anchor: middle; dominant-baseline: central; }
+.relief-pentes .pentes-etat { margin: -2px 0 10px; color: var(--texte); }
+.relief-pentes .pentes-prudence { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }
 .altitude-reglages div[style*='#666'] { color: var(--texte-2) !important; }
 

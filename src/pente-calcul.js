@@ -68,8 +68,7 @@ export function couleurPente(pente) {
   return null;
 }
 
-// Huit secteurs, du nord dans le sens des aiguilles d'une montre. Le nord froid, le sud chaud.
-export const SECTEURS = ['n', 'ne', 'e', 'se', 's', 'so', 'o', 'no'];
+// Huit secteurs, du nord dans le sens des aiguilles d'une montre (comme codeCardinal). Le nord froid, le sud chaud.
 export const COULEURS_ORIENTATION = [
   [58, 111, 216], [54, 162, 201], [60, 184, 120], [166, 196, 58],
   [232, 197, 58], [232, 138, 46], [216, 71, 58], [154, 79, 201],

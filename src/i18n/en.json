@@ -1047,5 +1047,16 @@
   "point.refuge-plus-proche": "Nearest",
   "point.eau-plus-proche": "Nearest",
   "point.cabane-sans-nom": "Unnamed cabin or shelter",
-  "point.refuge-sans-nom": "Unnamed hut"
+  "point.refuge-sans-nom": "Unnamed hut",
+  "pentes.titre": "Slope and aspect",
+  "pentes.aucune": "None",
+  "pentes.pentes": "Slope",
+  "pentes.orientation": "Aspect",
+  "pentes.opacite": "Opacity",
+  "pentes.sous": "Below {valeur}: no colour.",
+  "pentes.rose-aide": "Colour by the direction the slope faces. No colour below {valeur}.",
+  "pentes.zoom": "Zoom in to show the layer: from further away, the terrain is too smoothed to measure slopes.",
+  "pentes.hors-ligne": "Offline: the layer is only computed in downloaded areas.",
+  "pentes.erreur": "Terrain unavailable for part of the map: the layer is incomplete.",
+  "pentes.prudence": "Terrain accurate to about 15 m: a short pitch can be steeper than shown. Estimates: check on the ground."
 }
