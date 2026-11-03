@@ -1986,7 +1986,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .meteo-soleil h3 { margin: 0; color: var(--texte); font-size: 12px; }
 .meteo-soleil h3::first-letter { text-transform: uppercase; }
 .soleil-course { display: block; width: 100%; height: auto; overflow: visible; }
-.soleil-ciel { fill: color-mix(in srgb, var(--soleil) 7%, transparent); }
+.soleil-ciel { fill: color-mix(in srgb, var(--soleil) 5%, transparent); }
 .soleil-horizon { stroke: var(--texte-2); stroke-width: 1; opacity: 0.7; }
 .soleil-repere { stroke: var(--texte-2); stroke-width: 1; opacity: 0.6; }
 .soleil-heure { fill: var(--texte-2); font: 500 9px var(--police); }
@@ -1995,23 +1995,27 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .soleil-point { fill: var(--soleil); stroke: var(--surface); stroke-width: 2; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--soleil) 70%, transparent)); }
 .soleil-point.sous-horizon { fill: var(--texte-2); filter: none; }
 .soleil-regime { margin: 0; color: var(--soleil); font-size: 11.5px; font-weight: 600; }
-.soleil-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.soleil-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.soleil-plages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .soleil-case {
   display: grid;
   min-width: 0;
+  justify-items: center;
   align-content: start;
-  gap: 2px;
-  padding: 7px 9px;
+  gap: 3px;
+  padding: 8px 4px 7px;
   border: 1px solid var(--bord);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--surface-2);
+  text-align: center;
 }
-.soleil-case span { color: var(--texte-2); font-size: 10.5px; }
-.soleil-case strong { color: var(--texte); font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.soleil-case small { color: var(--texte-2); font-size: 10.5px; }
-.soleil-lever strong, .soleil-coucher strong { color: var(--soleil); }
-.soleil-lignes { display: grid; gap: 7px; }
-.soleil-lignes .meteo-detail strong { font-variant-numeric: tabular-nums; }
+.soleil-case[hidden] { display: none; }
+.soleil-case svg { width: 24px; height: 24px; fill: none; stroke: var(--soleil); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.soleil-case strong { max-width: 100%; color: var(--texte); font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.soleil-case span { color: var(--texte-2); font-size: 10px; line-height: 1.2; }
+.soleil-plages .soleil-case strong { font-size: 13px; line-height: 1.35; white-space: pre-line; }
+.soleil-duree svg, .soleil-aube svg { stroke: var(--texte-2); }
+.soleil-doree { border-color: color-mix(in srgb, var(--soleil) 35%, var(--bord)); background: color-mix(in srgb, var(--soleil) 9%, var(--surface-2)); }
 .soleil-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
 :root[data-theme='clair'] .meteo-soleil { --soleil: #b26d00; }
 .meteo-credit { margin: 0; padding-top: 8px; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 11px; }
