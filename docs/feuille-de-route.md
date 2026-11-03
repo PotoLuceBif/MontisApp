@@ -69,7 +69,7 @@ Prérequis à tout le reste : sans eux, chaque ajout alourdit et fragilise l'app
 
 Ce que tout montagnard utilise, quelle que soit son activité.
 
-- [ ] **1.1 Soleil.** Utiliser `suncalc` : lever, coucher, heures dorées, position du soleil, durée du jour. Tests sur des valeurs connues.
+- [x] **1.1 Soleil.** Utiliser `suncalc` : lever, coucher, heures dorées, position du soleil, durée du jour. Tests sur des valeurs connues. *Fait :* `soleil.js` (calcul, réutilisable par les lots 1.2 et 1.4) et une section Soleil dans Météo › Conditions locales, qui suit le lieu et le jour choisis et marche hors ligne. Ajouts : aube et crépuscule civils (utiles pour la frontale), course du soleil en petit graphique. Pas de repère du soleil sur la carte : il viendra avec l'ombre du relief (1.4).
 - [ ] **1.2 Fiche universelle du point.** Appui long n'importe où (clic droit sur ordinateur) : coordonnées, altitude, pente, orientation, soleil, météo résumée, refuge et point d'eau les plus proches. Branchée sur `peutOuvrirBalise` et `bloquerFiches`.
 - [ ] **1.3 Pentes et orientation.** Couches calculées depuis le relief (Terrain Tiles), à la manière de `maplibre-contour` : classes 30°, 35°, 40°, 45° et plus ; orientation en rose de couleurs. Légende claire, réglage d'opacité.
 - [ ] **1.4 Ombre du relief.** Ombrage selon la position réelle du soleil à l'heure choisie (curseur), puis ombre portée par les montagnes voisines.
