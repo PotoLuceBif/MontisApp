@@ -1061,5 +1061,7 @@
   "pentes.prudence": "Relief précis à environ 15 m : un passage court peut être plus raide qu’affiché. Estimations : à vérifier sur le terrain.",
   "pentes.zoomer": "Rapprocher",
   "pentes.loin-pentes": "Pentes : trop loin",
-  "pentes.loin-orientation": "Orientation : trop loin"
+  "pentes.loin-orientation": "Orientation : trop loin",
+  "menu.reduire-panneau": "Réduire le panneau pour voir la carte",
+  "menu.agrandir-panneau": "Rouvrir le panneau"
 }

@@ -36,6 +36,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 **Mobile**
 - Sur téléphone, les outils sont de petits panneaux flottants réductibles, avec flèche retour (`panneau-carte.js`).
+- **Tout panneau qui cache la carte se réduit** (flèche vers le bas), sur téléphone comme sur ordinateur, dès que c'est utile : réduit, il ne garde que sa barre de titre avec ce qui est ouvert dedans (« Carte · Relief »), en bas de l'écran sur téléphone ; un appui sur la barre le rouvre exactement où on l'avait laissé (sous-menu, réglages, défilement). Le but : voir l'effet d'un réglage sur la carte, puis en changer sans tout rouvrir. Un clic sur la carte ne ferme pas un panneau réduit. En place : panneaux Carte et Météo (`reduirePanneau` dans `menu.js`), panneaux posés sur la carte (`panneau-carte.js`). Un nouveau panneau se pose la question.
 - Tout doit fonctionner aussi bien sur téléphone que sur ordinateur : prévoir le tactile, l'appui long à la place du survol, et des zones de toucher suffisantes.
 
 **Direction artistique**

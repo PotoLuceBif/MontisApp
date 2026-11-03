@@ -1061,5 +1061,7 @@
   "pentes.prudence": "Terrain accurate to about 15 m: a short pitch can be steeper than shown. Estimates: check on the ground.",
   "pentes.zoomer": "Zoom in",
   "pentes.loin-pentes": "Slopes: too far out",
-  "pentes.loin-orientation": "Aspect: too far out"
+  "pentes.loin-orientation": "Aspect: too far out",
+  "menu.reduire-panneau": "Minimise the panel to see the map",
+  "menu.agrandir-panneau": "Reopen the panel"
 }

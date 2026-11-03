@@ -2294,6 +2294,22 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   stroke-width: 1.8;
   stroke-linecap: round;
 }
+.outil-rapide-noms { display: grid; min-width: 0; }
+.outil-rapide-resume { overflow: hidden; color: var(--accent); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.outil-rapide-resume[hidden] { display: none; }
+.outil-rapide-titre { min-width: 0; flex: 1; }
+.outil-rapide-reduire {
+  display: grid; width: 40px; height: 40px; flex: none; place-items: center; margin-right: -8px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.outil-rapide-reduire:hover { background: var(--survol); color: var(--texte); }
+.outil-rapide-reduire:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.outil-rapide-reduire svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.16s; }
+/* Réduit : seule la barre de titre reste ; la flèche pointe vers le haut pour rouvrir */
+.outil-rapide-panneau.reduit .outil-rapide-corps { display: none; }
+.outil-rapide-panneau.reduit .outil-rapide-entete { border-bottom: 0; cursor: pointer; }
+.outil-rapide-panneau.reduit .outil-rapide-reduire { color: var(--accent); }
+.outil-rapide-panneau.reduit .outil-rapide-reduire svg { transform: rotate(180deg); }
 .outil-rapide-corps { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 14px; }
 .outil-rapide-corps .menu-vue-entete { display: none; }
 .outil-rapide-corps .menu-module:first-of-type { margin-top: 0; }
@@ -3086,6 +3102,13 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     border-radius: 15px;
   }
   .outil-rapide-entete { min-height: 48px; }
+}
+@media (max-width: 700px) {
+  .outil-rapide-panneau.reduit {
+    top: auto; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom)); left: 10px;
+    width: auto; max-height: none;
+  }
+  .outil-rapide-panneau.reduit .outil-rapide-entete { min-height: 56px; }
 }
 
 @media (max-height: 620px) and (min-width: 701px) {

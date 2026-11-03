@@ -92,6 +92,16 @@ const ECRANS = [
     nom: 'carte-pentes-rapprocher',
     actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.pentes-pastille'), (p) => p.waitForTimeout(4000)],
   },
+  // Panneau réduit en barre pour voir la carte, puis rouvert là où on l'avait laissé
+  {
+    nom: 'carte-reduit',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), (p) => p.waitForTimeout(2500)],
+  },
+  {
+    nom: 'carte-rouvert',
+    actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
+  },
+  { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long

@@ -16,7 +16,7 @@ Les dernières données consultées (balises, prévisions, randonnées) restent 
 
 Le service worker est écrit dans `src/sw-modele.js` et publié sous `/sw.js` par `vite.config.js` avec la liste des fichiers du build. Il n’est actif qu’en production : pour le tester, utilisez `npm run build` puis `npm run preview`.
 
-La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique.
+La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique. La flèche vers le bas les réduit en une barre (en bas de l’écran sur téléphone) pour voir la carte ; un appui sur la barre les rouvre là où on les avait laissés.
 
 ## Fiche d’un point
 
