@@ -83,6 +83,12 @@ Ce que tout montagnard utilise, quelle que soit son activité.
 
 Faire de Montis un outil de terrain, pas seulement de préparation.
 
+- [ ] **2.0 Balises et sites FFVL ouverts.** **Décidé (4 novembre 2026) :** premier lot de la phase 2, une fois la phase 1 finie. La FFVL publie ses données sur data.gouv.fr sous Licence Ouverte Etalab, sans clé (page OpenData mise à jour le 2 novembre 2026) : le réseau de balises (API, toutes les 5 minutes, 72 h d'historique) et la liste des sites de pratique (environ 2 000 décollages et atterrissages). Le code FFVL existe déjà, désactivé (`VITE_FFVL`, `balises-sources.js`, proxy `/ffvl` de développement).
+  1. *Vérifier* : adresses de l'API sans clé, appel direct depuis le navigateur possible (CORS) ou relais nécessaire (lot 0.6), format, licence exacte des sites (la page dit « non spécifiée », ODbL en 2012), mention à afficher, règle d'OpenWindMap sur le mélange avec d'autres capteurs. Demande d'ouvrir `www.data.gouv.fr` et `data.ffvl.fr` dans le réseau de la session.
+  2. *Comparer avec OpenWindMap*, sur la même zone (France, puis Alpes) : nombre de balises, couverture, balises présentes dans les deux réseaux (même endroit à moins de 200 m, nom proche), fraîcheur des relevés, part de balises muettes, données fournies (rafales, direction, température, historique). Résultat présenté au propriétaire en tableau et sur carte, avant toute décision.
+  3. **À décider** après la comparaison : une source au choix (comme prévu dans le code), ou les deux réseaux réunis sans doublons si la licence d'OpenWindMap le permet.
+  4. *Réaliser* : balises FFVL et leur fiche (même graphique et même manche à air), décollages et atterrissages sur la carte avec leur fiche (orientation, altitude, conditions), crédit FFVL visible. Tests sur la lecture des données et le dédoublonnage.
+
 - [ ] **2.1 Suivi en direct.** Position et cap sur la carte, distance et dénivelé restants sur le parcours affiché, alerte de sortie de trace, écran gardé allumé si demandé. Rando, vélo et toutes les activités à trace.
 - [ ] **2.2 Enregistrement et carnet de sorties.** Enregistrer sa trace réelle, la ranger avec date, durée, dénivelé ; carnet consultable hors ligne, inclus dans la sauvegarde `.json`.
 - [ ] **2.3 Revoir une sortie.** Statistiques, profil, replay animé en 3D ; import IGC pour le parapente.
