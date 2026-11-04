@@ -231,7 +231,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 | Prévisions, vent, neige | Open-Meteo | Peut répondre 429 (limite de requêtes) ; un message est prévu |
 | Radar de pluie | RainViewer ; lien vers MétéoSuisse | Zoom 7 au plus |
 | Balises de vent | OpenWindMap (`api.pioupiou.fr`) | Créditer avec lien visible ; interdit de mêler ses mesures à des capteurs non ouverts sans licence étendue |
-| Balises et sites FFVL | `data.ffvl.fr` | Désactivé : clé requise, demandes suspendues par la FFVL. Le proxy `/ffvl` n'existe qu'en développement |
+| Balises et sites FFVL | `data.ffvl.fr`, data.gouv.fr | Désactivé dans le code (`VITE_FFVL`). Depuis le 2 novembre 2026, données ouvertes sous Licence Ouverte Etalab, sans clé : intégration prévue au lot 2.0 de la feuille de route. Le proxy `/ffvl` n'existe qu'en développement |
 | Itinéraires balisés, EuroVelo | Waymarked Trails | Écritures exactes (« GR5 » et « GR 5 » diffèrent) ; un itinéraire entier peut peser environ 10 Mo |
 | Routage | BRouter, puis Valhalla | BRouter abandonne au-delà de 3 s de calcul ; un tronçon non calculé apparaît en tireté |
 | Avalanches | Bulletins EAWS (`static.avalanche.report`) | Selon la couverture des bulletins |
@@ -257,7 +257,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Pastilles Météo (lot 1.3 bis) : radar de pluie (« Pluie 14h20 ») et analyse du vent (« Vent 18h00 »), ou « indisponible » en cas d'échec. Écrans `meteo-radar-pastille`, `meteo-vent-pastille`, `meteo-vent-pastille-ouvre` dans les captures.
 
 **Points ouverts constatés**
-- FFVL : en attente d'une clé et d'un relais serveur.
+- FFVL : données désormais ouvertes et sans clé (data.gouv.fr) ; à intégrer au lot 2.0, après vérification de l'API, des licences et comparaison avec OpenWindMap.
 - Au démarrage : 249 Ko de code Montis (81 Ko compressé), en deux fichiers : le code (144 Ko) et les deux fichiers de langue (105 Ko) ; MapLibre (1,1 Mo) à part.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
