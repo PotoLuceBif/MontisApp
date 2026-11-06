@@ -3,7 +3,7 @@
 // disent rien. OpenFreeMap fixe ses limites : 3 000 tuiles ou 50 Mo, 4 requêtes en parallèle.
 import { creerPanneauCarte } from './panneau-carte.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
-import { formatDate, surLangue, t, ta, ti, tt } from './i18n.js';
+import { formatDate, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { formatTaille, nombre } from './unites.js';
 import { telechargementBloque } from './donnees-hors-ligne.js';
 
@@ -238,18 +238,18 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
       const nom = document.createElement('strong');
       nom.textContent = zone.nom;
       const detail = document.createElement('small');
-      detail.textContent = t('zh.detail', { taille: tailleLisible(zone.octets), min: zone.zMin, max: zone.zMax, date: dateLisible(zone.date) });
+      poser(detail, 'zh.detail', { taille: tailleLisible(zone.octets), min: zone.zMin, max: zone.zMax, date: dateLisible(zone.date) });
       texte.append(nom, detail);
       if (zone.manquantes) {
         const alerte = document.createElement('small');
         alerte.className = 'zh-zone-alerte';
-        alerte.textContent = t('zh.incomplete', { n: zone.manquantes });
+        poser(alerte, 'zh.incomplete', { n: zone.manquantes });
         texte.append(alerte);
       }
       const voir = document.createElement('button');
       voir.type = 'button';
       voir.className = 'zh-zone-bouton';
-      voir.textContent = t('zh.voir');
+      poser(voir, 'zh.voir');
       voir.addEventListener('click', () => {
         fermerMenu();
         const { ouest, sud, est, nord } = zone.bornes;
@@ -280,7 +280,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     onAgrandi: () => majCadre(),
     onRetour: () => ouvrirMenu(),
   });
-  panneau.titre.textContent = t('zh.telecharger-zone');
+  poser(panneau.titre, 'zh.telecharger-zone');
   panneau.corps.innerHTML = `
     <div class="zh-reglages">
       <p class="note" ${ti('zh.cadrez')}>${t('zh.cadrez')}</p>
@@ -336,7 +336,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   function majEstimation() {
     if (!bornesCadre) return;
     if (telechargementBloque()) {
-      estimation.textContent = t('zh.wifi-requis');
+      poser(estimation, 'zh.wifi-requis');
       estimation.classList.add('zh-trop');
       boutonLancer.disabled = true;
       panneau.definirResume({ detail: estimation.textContent });
@@ -344,7 +344,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     }
     const zone = zoneDemandee();
     if (zone.zMin > zone.zMax) {
-      estimation.textContent = t('zh.ordre');
+      poser(estimation, 'zh.ordre');
       estimation.classList.add('zh-trop');
       boutonLancer.disabled = true;
       return;
@@ -412,14 +412,14 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   async function lancer() {
     const demande = zoneDemandee();
     if (telechargementBloque()) {
-      estimation.textContent = t('zh.wifi-requis');
+      poser(estimation, 'zh.wifi-requis');
       estimation.classList.add('zh-trop');
       return;
     }
     if (navigator.storage?.estimate) {
       const { usage = 0, quota = 0 } = await navigator.storage.estimate();
       if (quota && estimer(demande).octets > quota - usage) {
-        estimation.textContent = t('zh.pas-espace');
+        poser(estimation, 'zh.pas-espace');
         estimation.classList.add('zh-trop');
         return;
       }
@@ -439,14 +439,14 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
     progression.hidden = false;
     cadre.hidden = true;
     barre.style.width = '0';
-    progres.textContent = t('zh.preparation');
+    poser(progres, 'zh.preparation');
     try {
       const resultat = await telecharger(zone, {
         signal: controleur.signal,
         onProgres({ faites, total, octets }) {
           const pourcentage = Math.round((faites / total) * 100);
           barre.style.width = `${pourcentage}%`;
-          progres.textContent = t('zh.progres', { pourcent: pourcentage, taille: tailleLisible(octets), faites, total });
+          poser(progres, 'zh.progres', { pourcent: pourcentage, taille: tailleLisible(octets), faites, total });
           panneau.definirResume({ detail: t('zh.telecharges', { taille: tailleLisible(octets) }), valeur: String(pourcentage), unite: '%' });
         },
       });
@@ -465,13 +465,13 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
         ? t('zh.termine-manquantes', { n: resultat.manquantes, taille: tailleLisible(resultat.octets) })
         : t('zh.disponible', { nom: zone.nom, taille: tailleLisible(resultat.octets) });
       barre.style.width = '100%';
-      $('.zh-annuler').textContent = t('zh.fermer');
+      poser($('.zh-annuler'), 'zh.fermer');
     } catch (erreur) {
       console.warn('Téléchargement de zone :', erreur);
       controleur = null;
       await supprimerTuiles(zone, zones).catch(() => {});
-      progres.textContent = t(erreur?.name === 'QuotaExceededError' ? 'zh.plein' : 'zh.impossible');
-      $('.zh-annuler').textContent = t('zh.fermer');
+      poser(progres, erreur?.name === 'QuotaExceededError' ? 'zh.plein' : 'zh.impossible');
+      poser($('.zh-annuler'), 'zh.fermer');
     }
   }
 
@@ -480,7 +480,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   $('.zh-annuler').addEventListener('click', () => {
     if (controleur) controleur.abort();
     else {
-      $('.zh-annuler').textContent = t('zh.annuler');
+      poser($('.zh-annuler'), 'zh.annuler');
       cadre.hidden = true;
       panneau.masquer();
     }
@@ -503,7 +503,7 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
   rendreListe();
   surLangue(() => {
     rendreListe();
-    panneau.titre.textContent = t('zh.telecharger-zone');
+    poser(panneau.titre, 'zh.telecharger-zone');
     panneau.definirResume({ nom: t('zh.telecharger-zone') });
     if (!reglages.hidden) majEstimation();
   });

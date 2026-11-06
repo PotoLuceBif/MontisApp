@@ -4,7 +4,7 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { distance, extraireTrace, niveau, partDesSauts, titreDe } from './rando-api.js';
 import { formatAltitude, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ti, tt } from './i18n.js';
+import { t, ti, tt, poser } from './i18n.js';
 
 const PARALLELE = 3;
 const MEMOIRE_MAX = 80;
@@ -260,7 +260,7 @@ export function creerItineraires(map, { activite, editeur, clients, typeDe, onFe
       if (route.proche) {
         const pastille = document.createElement('span');
         pastille.className = 'pc-ligne-proche';
-        pastille.textContent = t('iti.ici');
+        poser(pastille, 'iti.ici');
         ligne.append(pastille);
       }
       ligne.addEventListener('click', () => {

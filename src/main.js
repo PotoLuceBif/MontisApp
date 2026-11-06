@@ -12,6 +12,7 @@ import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
 import { STYLE_MONTIS } from './style-montis.js';
+import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
 import { surPreferences } from './preferences.js';
@@ -112,6 +113,7 @@ map.once('load', () => {
 });
 
 if (import.meta.env.DEV) window.map = map;
+suivreDescriptionFond(map);
 
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 initBasculeMode();
@@ -194,7 +196,8 @@ function appliquerMode(mode3D) {
     // 3D : relief + ombrage, inclinaison autorisée
     map.setMaxPitch(85);
     majTerrain();
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'visible');
+    // L'ombre du soleil (ombres.js), quand elle est allumée, remplace cet ombrage fixe
+    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil ? 'none' : 'visible');
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison

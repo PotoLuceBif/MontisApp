@@ -195,6 +195,130 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .relief-reglage input[type='range'] { width: 100%; }
 .relief-reglage small { display: block; color: var(--texte-2); margin-top: 2px; }
 .relief-reglage.inactif { opacity: 0.5; }
+/* Pentes et orientation */
+.relief-pentes .pentes-choix { margin-bottom: 10px; }
+.relief-pentes .pentes-choix button { min-height: 44px; font-size: 13px; }
+.pentes-details { display: grid; gap: 10px; }
+.pentes-details[hidden], .pentes-legende[hidden], .pentes-etat[hidden] { display: none; }
+.pentes-classes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.pentes-classe { display: grid; gap: 2px; font-variant-numeric: tabular-nums; text-align: center; }
+.pentes-classe i { height: 10px; border-radius: 3px; box-shadow: 0 0 0 1px var(--bord); }
+.pentes-degres { color: var(--texte); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.pentes-pourcent { color: var(--texte-2); font-size: 11px; white-space: nowrap; }
+.relief-pentes .pentes-legende .note { margin: 6px 0 0; }
+.pentes-legende-rose { display: flex; align-items: center; gap: 12px; }
+.relief-pentes .pentes-legende-rose .note { margin: 0; }
+.pentes-rose { width: 92px; height: 92px; flex: none; overflow: visible; }
+.pentes-rose path { stroke: var(--surface); stroke-width: 1; }
+.pentes-rose-centre { fill: var(--surface); }
+.pentes-rose text { fill: var(--texte-2); font: 700 9px var(--police); text-anchor: middle; dominant-baseline: central; }
+.pentes-loin {
+  display: grid; gap: 8px; margin: -2px 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--accent-doux); color: var(--texte);
+}
+.pentes-loin[hidden] { display: none; }
+.relief-pentes .pentes-loin-texte { margin: 0; color: var(--texte); font-size: 12.5px; line-height: 1.4; }
+.pentes-zoomer {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-texte); font: 700 13px var(--police); cursor: pointer;
+}
+.pentes-zoomer svg { width: 18px; height: 18px; flex: none; }
+/* Pastilles des couches allumées depuis le menu Carte : une rangée qui défile au doigt */
+.couches-actives {
+  position: fixed; top: 74px; left: 12px; right: 84px; z-index: 13;
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 4px 4px 16px; margin: -4px;
+  pointer-events: none;
+  /* Fondu à droite : la rangée défile quand les pastilles dépassent */
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+}
+.couches-actives::-webkit-scrollbar { display: none; }
+.couches-actives[hidden], .couche-pastille[hidden] { display: none; }
+.couche-pastille {
+  display: flex; flex: none; align-items: center; height: 40px; padding-left: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--bord)); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre); pointer-events: auto;
+}
+.couche-pastille button { border: 0; background: transparent; color: inherit; font: 650 12.5px var(--police); cursor: pointer; }
+.couche-pastille-corps { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 4px 0 10px; white-space: nowrap; }
+.couche-pastille-legende { display: flex; align-items: center; }
+.couche-pastille-legende[hidden] { display: none; }
+.mini-pentes { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
+.mini-pentes i { flex: 1; }
+.mini-rose { width: 18px; height: 18px; }
+.mini-icone { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.couche-pastille-action {
+  height: 30px; margin-left: 2px; padding: 0 11px !important; border-radius: 999px;
+  background: var(--accent) !important; color: var(--accent-texte) !important; font-weight: 700 !important; white-space: nowrap;
+}
+.couche-pastille-action[hidden] { display: none; }
+.couche-pastille-retirer { display: grid; place-items: center; width: 36px; height: 38px; color: var(--texte-2) !important; }
+.couche-pastille-retirer:hover { color: var(--texte) !important; }
+.couche-pastille-retirer svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.couche-pastille button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 999px; }
+/* Sous une pastille d'état (hors ligne, fond indisponible) */
+body:has(.hl-pastille:not([hidden])) .couches-actives { top: 108px; }
+body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives { visibility: hidden; }
+@media (min-width: 641px) {
+  /* Sur ordinateur, à gauche des boutons de la carte, alignées à droite */
+  /* La place ne manque pas : les pastilles passent à la ligne au lieu de défiler */
+  .couches-actives {
+    top: 24px; left: auto; right: 72px; width: min(520px, calc(100vw - 760px)); min-width: 260px;
+    flex-wrap: wrap; justify-content: flex-end; overflow: visible; -webkit-mask-image: none; mask-image: none;
+  }
+  body:has(.hl-pastille:not([hidden])) .couches-actives { top: 62px; }
+}
+.relief-pentes .pentes-etat { margin: -2px 0 10px; color: var(--texte); }
+.relief-pentes .pentes-prudence { margin: 0; }
+/* Ombre du soleil */
+.relief-ombres { margin-top: 6px; }
+.relief-ombres .ombres-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.relief-ombres .ombres-choix svg { width: 18px; height: 18px; flex: none; }
+.ombres-details { display: grid; gap: 10px; }
+.ombres-details[hidden], .ombres-etat[hidden] { display: none; }
+.ombres-jour { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
+.ombres-jour-nom {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; height: 44px;
+  border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.ombres-jour-nom:hover { background: var(--survol); }
+.ombres-jour-nom:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ombres-jour-nom strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ombres-jour-nom svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.ombres-calendrier {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0;
+  opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none;
+}
+.ombres-jour-bouton {
+  height: 44px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte);
+  font: 600 22px/1 var(--police); cursor: pointer;
+}
+.ombres-jour-bouton:hover { background: var(--survol); }
+.ombres-heure .relief-entete strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.ombres-curseur { display: block; height: 32px; margin: 0; }
+/* Bande du jour sous le curseur : de la nuit au jour */
+.ombres-piste { position: relative; height: 4px; margin: 0 8px; border-radius: 2px; background: color-mix(in srgb, var(--texte-2) 30%, transparent); }
+.ombres-piste i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: #f2b33d; }
+.ombres-reperes { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-top: 6px; color: var(--texte-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ombres-coucher { text-align: right; }
+.ombres-maintenant {
+  min-height: 36px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 999px; background: var(--surface-2);
+  color: var(--texte); font: 650 12.5px var(--police); cursor: pointer;
+}
+.ombres-maintenant.actif { border-color: var(--accent); background: var(--accent-doux); }
+.ombres-soleil { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.ombres-cadran { width: 34px; height: 34px; flex: none; }
+.mini-cadran { width: 20px; height: 20px; }
+.ombres-cadran-cercle { fill: none; stroke: var(--bord); stroke-width: 1.5; }
+.ombres-cadran-nord { stroke: var(--texte-2); stroke-width: 1.6; stroke-linecap: round; }
+.ombres-cadran-ombre { stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; opacity: 0.7; }
+.ombres-cadran-soleil { fill: #f2b33d; }
+svg.nuit .ombres-cadran-soleil { fill: var(--texte-2); }
+svg.nuit .ombres-cadran-ombre { display: none; }
+.relief-ombres .ombres-portees-ligne { min-height: 40px; margin: 0; }
+.relief-ombres .ombres-portees-ligne input { width: 20px; height: 20px; margin: 0; }
+.relief-ombres .ombres-etat { margin: -4px 0 0; color: var(--texte); }
+.relief-ombres .note { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }
 .altitude-reglages div[style*='#666'] { color: var(--texte-2) !important; }
 
@@ -373,6 +497,62 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .fiche-attente-ligne { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 13px; }
 .fiche-liens a { margin-right: 14px; color: var(--accent); font-weight: 600; text-decoration: none; }
 .fiche-liens a:hover { text-decoration: underline; }
+/* Fiche d'un point (appui long) */
+.point-principal { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.point-principal .meteo-icone { width: 24px; height: 24px; flex: none; }
+.point-principal .meteo-icone svg { width: 20px; height: 20px; }
+.point-detail { margin-top: 3px; color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
+.point-attente { color: var(--texte-2); font-size: 13px; }
+.point-indisponible { color: var(--texte-2); font-size: 13px; opacity: 0.8; }
+.point-frise { padding: 9px 0 10px; border-top: 1px solid var(--bord); }
+.point-frise h4 { margin: 0 0 7px; color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.point-frise .frise { margin: 0; padding: 8px; }
+.point-pente {
+  flex: none; min-width: 40px; padding: 2px 8px; border-radius: 6px; text-align: center;
+  background: var(--surface-2); color: var(--texte); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+/* Mêmes seuils que les couches de pente : 30°, 35°, 40°, 45° */
+.point-pente-30 { background: #f2d23c; color: #1d1a10; }
+.point-pente-35 { background: #f08c28; color: #1d1408; }
+.point-pente-40 { background: #e0362c; color: #fff; }
+.point-pente-45 { background: #9b4fd0; color: #fff; }
+.point-raccourci {
+  display: flex; width: fit-content;
+  min-height: 36px; margin-top: 8px; padding: 6px 12px; border: 1px solid var(--bord); border-radius: 8px;
+  background: var(--surface-2); color: var(--accent); font: 600 12.5px var(--police); cursor: pointer;
+}
+.point-raccourci:hover { background: var(--survol); }
+.fiche-icone .repere-pin { width: 30px; height: 30px; }
+/* Le pin tombe en place ; l'image bouge, jamais le marqueur (MapLibre le place avec transform) */
+.point-pin .repere-pin { animation: point-pin-tombe 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 91%; }
+@keyframes point-pin-tombe {
+  from { opacity: 0; translate: 0 -18px; scale: 0.8; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .point-pin .repere-pin { animation: none; } }
+.point-lien {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 10px; padding: 0 10px 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2);
+  color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
+}
+.point-lien span { flex: 1; min-width: 0; }
+.point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.point-lien-icone { width: 18px; height: 18px; color: var(--accent); }
+.point-lien-chevron { width: 16px; height: 16px; color: var(--texte-2); }
+.point-lien:hover { background: var(--survol); }
+.point-surtitre { margin-bottom: 1px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.point-cible {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0; border: 0;
+  background: none; color: var(--texte); font: 600 14px var(--police); text-align: left; cursor: pointer;
+}
+.point-cible-nom { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.point-cible-icone { display: grid; flex: none; width: 30px; height: 30px; place-items: center; border-radius: 8px; background: var(--surface-2); color: var(--accent); }
+.point-cible-icone svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.point-cible:hover .point-cible-icone { background: var(--survol); }
+.point-lien.point-aller, .point-lien.point-aller:hover { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.point-lien.point-aller:hover { filter: brightness(1.08); }
+.point-aller .point-lien-icone, .point-aller .point-lien-chevron { color: inherit; }
+.point-prudence { padding: 9px 0 0; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 12px; font-style: italic; }
 .fiche-point {
   width: 18px; height: 18px; border-radius: 50%;
   border: 3px solid #e8590c; background: rgba(255, 255, 255, 0.35);
@@ -1083,6 +1263,14 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   color: var(--accent);
 }
 .menu-ligne.actif::after { color: var(--accent); opacity: 1; }
+/* Premier chargement d'un module : la flèche devient un cercle qui tourne */
+.menu-ligne.en-chargement::after {
+  width: 12px; height: 12px; right: 12px; border: 2px solid var(--bord); border-top-color: var(--accent); border-radius: 50%;
+  opacity: 1; animation: menu-chargement 0.7s linear infinite;
+}
+@keyframes menu-chargement { from { transform: translateY(-50%) rotate(0); } to { transform: translateY(-50%) rotate(360deg); } }
+.menu-erreur { margin: 8px 4px; color: var(--danger, #ff6b6b); font-size: 13px; }
+.menu-erreur[hidden] { display: none; }
 .menu-contenu { padding: 12px 6px 10px; }
 .menu-contenu h3 { margin-top: 18px; }
 .menu-pied { padding: 14px 16px max(14px, env(safe-area-inset-bottom)); }
@@ -1129,7 +1317,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
   box-shadow: var(--ombre-forte);
   backdrop-filter: blur(16px);
 }
-#fiche { top: 88px; right: 16px; }
+#fiche { top: 88px; right: 70px; } /* à gauche des boutons de la carte */
 #rando-fiche, :is(#ski-fiche, #bikepark-fiche) { bottom: 22px; }
 .rando-fiche-profil { padding-bottom: 4px; }
 .rando-fiche-profil .rando-stats { padding: 8px 14px 10px; }
@@ -1828,38 +2016,43 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   border-radius: 9px;
   background: var(--surface);
 }
-.meteo-emplacement-entete {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 9px;
-}
 .meteo-emplacement-titre { margin: 0 0 4px; color: var(--texte-2); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
-.meteo-locale-lieu { margin: 0; color: var(--texte); font-size: 13px; font-weight: 700; }
 .meteo-coordonnees { display: flex; flex-wrap: wrap; gap: 0 6px; margin: 0; color: var(--texte-2); font-size: 11px; }
 .meteo-lieu-proche { color: var(--accent); font-weight: 600; }
 .meteo-emplacement-aide { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.5; }
-.meteo-choisir {
+.meteo-mode-lieu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--bord);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+.meteo-mode-lieu button {
   display: flex;
-  width: 100%;
-  max-width: none;
-  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--bord));
-  border-radius: 9px;
-  background: var(--accent-doux);
-  color: var(--accent);
-  font: 650 12px/1.35 var(--police);
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--texte-2);
+  font: 650 12px/1.25 var(--police);
+  text-align: left;
   cursor: pointer;
 }
-.meteo-choisir svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.meteo-choisir:hover { border-color: var(--accent); }
-.meteo-choisir[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
+.meteo-mode-lieu svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.meteo-mode-lieu button:hover { color: var(--texte); }
+.meteo-mode-lieu button[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--bord));
+  background: var(--accent-doux);
+  color: var(--accent);
+}
+.meteo-mode-lieu .meteo-choisir.en-cours { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
 .meteo-locale-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.5; }
 .meteo-locale-statut.erreur { color: #e05b67; }
 .meteo-reessayer {
@@ -1946,6 +2139,104 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   font-size: 10.5px;
 }
 .meteo-heure strong { color: var(--texte); font-size: 13px; }
+.meteo-heure { cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
+.meteo-heure.lue { border-color: var(--accent); background: var(--accent-doux); }
+
+/* Frise météo heure par heure (meteo-frise.js) */
+:root {
+  --frise-chaud: #d9730d;
+  --frise-froid: #3f7fc4;
+  --frise-pluie: #2f86c9;
+  --frise-neige: #8eaed3;
+  --frise-iso: #2f7fbf;
+  --orage-1: #c99a00;
+  --orage-2: #df6718;
+  --orage-3: #c2338a;
+}
+:root[data-theme='sombre'], :root[data-theme='cyberpunk'] {
+  --frise-chaud: #ffb155;
+  --frise-froid: #7fb6ea;
+  --frise-pluie: #5daee6;
+  --frise-neige: #dce9ff;
+  --frise-iso: #8fd0ff;
+  --orage-1: #f2d14b;
+  --orage-2: #ff9b45;
+  --orage-3: #ff5da2;
+}
+.frise {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.frise[hidden] { display: none; }
+.frise-outils { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.frise-aide { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.35; }
+.frise-bouton-lignes {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte);
+  font: 600 11px var(--police);
+  cursor: pointer;
+}
+.frise-bouton-lignes svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.frise-bouton-lignes[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
+.frise-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.frise-choix[hidden] { display: none; }
+.frise-puce {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-2);
+  font: 600 11px var(--police);
+  cursor: pointer;
+}
+.frise-puce[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--texte); }
+.frise-bouton-lignes:focus-visible, .frise-puce:focus-visible, .frise-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.frise-graphique { display: block; width: 100%; touch-action: pan-y; cursor: crosshair; border-radius: 4px; }
+.frise-lecture { display: grid; gap: 6px; }
+.frise-heure { margin: 0; color: var(--texte); font-size: 11.5px; font-weight: 700; }
+.frise-heure::first-letter { text-transform: uppercase; }
+.frise-valeurs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 5px 12px; }
+.frise-valeur { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 6px; padding-left: 8px; border-left: 3px solid var(--bord); font-size: 11px; }
+.frise-valeur span { color: var(--texte-2); white-space: nowrap; }
+.frise-valeur strong { min-width: 0; color: var(--texte); font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.frise-valeur-temperature { border-left-color: var(--frise-chaud); }
+.frise-valeur-precipitations { border-left-color: var(--frise-pluie); }
+.frise-valeur-vent { border-left-color: var(--vent-rafale); }
+.frise-valeur-nuages { border-left-color: var(--texte-2); }
+.frise-valeur-isotherme { border-left-color: var(--frise-iso); }
+.frise-valeur-orage.niveau-1 { border-left-color: var(--orage-1); }
+.frise-valeur-orage.niveau-2 { border-left-color: var(--orage-2); }
+.frise-valeur-orage.niveau-3 { border-left-color: var(--orage-3); }
+.frise-valeur-orage.niveau-3 strong { color: var(--orage-3); }
+.frise-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; color: var(--texte-2); font-size: 10.5px; }
+.frise-legende[hidden], .frise-note[hidden] { display: none; }
+.frise-legende > span:first-child { color: var(--texte); font-weight: 600; }
+.frise-legende-niveau { display: inline-flex; align-items: center; gap: 5px; }
+.frise-legende-niveau::before { width: 10px; height: 10px; border-radius: 2px; content: ''; }
+.frise-legende-niveau.niveau-1::before { background: var(--orage-1); }
+.frise-legende-niveau.niveau-2::before { background: var(--orage-2); }
+.frise-legende-niveau.niveau-3::before { background: var(--orage-3); }
+.frise-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
+:root[data-theme='cyberpunk'] .frise {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
+  background: #09131d;
+}
+:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #09131d); }
 .meteo-icone {
   display: grid;
   width: 30px;
@@ -1960,6 +2251,51 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .meteo-icone-neige { color: #83bdec; }
 .meteo-icone-orage { color: #b38cf4; }
 .meteo-icone-nuage, .meteo-icone-inconnu { color: var(--texte-2); }
+.meteo-soleil {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  background: var(--surface);
+  --soleil: #e7a83e;
+}
+.meteo-soleil h3 { margin: 0; color: var(--texte); font-size: 12px; }
+.meteo-soleil h3::first-letter { text-transform: uppercase; }
+.soleil-course { display: block; width: 100%; height: auto; overflow: visible; }
+.soleil-ciel { fill: color-mix(in srgb, var(--soleil) 5%, transparent); }
+.soleil-horizon { stroke: var(--texte-2); stroke-width: 1; opacity: 0.7; }
+.soleil-repere { stroke: var(--texte-2); stroke-width: 1; opacity: 0.6; }
+.soleil-heure { fill: var(--texte-2); font: 500 9px var(--police); }
+.soleil-trace-nuit { fill: none; stroke: var(--texte-2); stroke-width: 1.4; stroke-dasharray: 3 3; opacity: 0.55; }
+.soleil-trace-jour { fill: none; stroke: var(--soleil); stroke-width: 2.2; stroke-linecap: round; }
+.soleil-point { fill: var(--soleil); stroke: var(--surface); stroke-width: 2; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--soleil) 70%, transparent)); }
+.soleil-point.sous-horizon { fill: var(--texte-2); filter: none; }
+.soleil-regime { margin: 0; color: var(--soleil); font-size: 11.5px; font-weight: 600; }
+.soleil-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.soleil-plages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.soleil-case {
+  display: grid;
+  min-width: 0;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  padding: 8px 4px 7px;
+  border: 1px solid var(--bord);
+  border-radius: 9px;
+  background: var(--surface-2);
+  text-align: center;
+}
+.soleil-case[hidden] { display: none; }
+.soleil-case svg { width: 24px; height: 24px; fill: none; stroke: var(--soleil); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.soleil-case strong { max-width: 100%; color: var(--texte); font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.soleil-case span { color: var(--texte-2); font-size: 10px; line-height: 1.2; }
+.soleil-plages .soleil-case strong { font-size: 13px; line-height: 1.35; white-space: pre-line; }
+.soleil-duree svg, .soleil-aube svg { stroke: var(--texte-2); }
+.soleil-doree { border-color: color-mix(in srgb, var(--soleil) 35%, var(--bord)); background: color-mix(in srgb, var(--soleil) 9%, var(--surface-2)); }
+.soleil-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
+:root[data-theme='clair'] .meteo-soleil { --soleil: #b26d00; }
 .meteo-credit { margin: 0; padding-top: 8px; border-top: 1px solid var(--bord); color: var(--texte-2); font-size: 11px; }
 .meteo-credit a { color: var(--accent); }
 :root[data-theme='cyberpunk'] .meteo-locale {
@@ -1976,6 +2312,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   background: #09131d;
 }
 :root[data-theme='cyberpunk'] .meteo-actuelle,
+:root[data-theme='cyberpunk'] .meteo-soleil,
 :root[data-theme='cyberpunk'] .meteo-heure,
 :root[data-theme='cyberpunk'] .meteo-jour {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
@@ -2137,6 +2474,22 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   stroke-width: 1.8;
   stroke-linecap: round;
 }
+.outil-rapide-noms { display: grid; min-width: 0; }
+.outil-rapide-resume { overflow: hidden; color: var(--accent); font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.outil-rapide-resume[hidden] { display: none; }
+.outil-rapide-titre { min-width: 0; flex: 1; }
+.outil-rapide-reduire {
+  display: grid; width: 40px; height: 40px; flex: none; place-items: center; margin-right: -8px;
+  border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.outil-rapide-reduire:hover { background: var(--survol); color: var(--texte); }
+.outil-rapide-reduire:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.outil-rapide-reduire svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.16s; }
+/* Réduit : seule la barre de titre reste ; la flèche pointe vers le haut pour rouvrir */
+.outil-rapide-panneau.reduit .outil-rapide-corps { display: none; }
+.outil-rapide-panneau.reduit .outil-rapide-entete { border-bottom: 0; cursor: pointer; }
+.outil-rapide-panneau.reduit .outil-rapide-reduire { color: var(--accent); }
+.outil-rapide-panneau.reduit .outil-rapide-reduire svg { transform: rotate(180deg); }
 .outil-rapide-corps { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 12px 14px; }
 .outil-rapide-corps .menu-vue-entete { display: none; }
 .outil-rapide-corps .menu-module:first-of-type { margin-top: 0; }
@@ -2454,6 +2807,10 @@ button.parcours-alerte { cursor: pointer; }
 }
 .hl-pastille::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #d99522; }
 .hl-pastille[hidden] { display: none; }
+.fond-pastille { max-width: calc(100vw - 100px); }
+[data-reseau="hors-ligne"] .fond-pastille { display: none; }
+/* Sur ordinateur, les panneaux occupent le haut à gauche : les pastilles passent à côté du zoom */
+@media (min-width: 641px) { .hl-pastille { left: auto; right: 72px; top: 30px; } }
 :root[data-reseau='hors-ligne'] .bf { top: 106px; max-height: calc(100dvh - 128px); }
 body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 :root[data-reseau='hors-ligne'] :is([data-reseau-requis], .rech-champ, .parcours-zone, .vent-zone-actualiser, .para-actualiser, .zh-nouvelle, .zh-lancer) {
@@ -2926,6 +3283,13 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
   }
   .outil-rapide-entete { min-height: 48px; }
 }
+@media (max-width: 700px) {
+  .outil-rapide-panneau.reduit {
+    top: auto; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom)); left: 10px;
+    width: auto; max-height: none;
+  }
+  .outil-rapide-panneau.reduit .outil-rapide-entete { min-height: 56px; }
+}
 
 @media (max-height: 620px) and (min-width: 701px) {
   .outils-rapides {
@@ -3037,6 +3401,26 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     color-mix(in srgb, var(--surface) 97%, transparent);
 }
 .outil-rapide-bouton { border-radius: var(--rayon); }
+/* Actif ou survolé : teinte d'accent sur la même matière opaque. --accent-doux est transparent
+   dans les thèmes sombres : la carte remontait à travers et le bouton paraissait délavé. */
+#menu-parametres-bouton:hover,
+#menu-parametres-bouton[aria-expanded='true'],
+.outil-rapide-bouton[aria-expanded='true'],
+.outil-rapide-bouton.appui-long {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+    color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+@media (hover: hover) and (pointer: fine) {
+  .outil-rapide-bouton:hover,
+  .outil-rapide-bouton:focus-visible {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--bord));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--texte) 5%, transparent), transparent 55%),
+      color-mix(in srgb, var(--accent) 16%, var(--surface));
+  }
+}
 .maplibregl-ctrl-scale { border-radius: 0 0 5px 5px; border-width: 0 1px 1px; background: color-mix(in srgb, var(--surface) 78%, transparent); }
 :root[data-theme='cyberpunk'] .menu-vue-entete h2 { text-shadow: none; }
 

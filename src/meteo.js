@@ -4,8 +4,14 @@ import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt } from './i18n.js';
+import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { pointCardinal } from './vent-calcul.js';
+import { creerSectionSoleil } from './meteo-soleil.js';
+import { creerIconeMeteo, descriptionMeteo } from './meteo-icone.js';
+import { decalageAppareil } from './soleil.js';
+import { MINI_PLUIE, creerPastilleCouche } from './couches-actives.js';
+import { creerFrise } from './meteo-frise.js';
+import { indicesHeures } from './frise-calcul.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -113,11 +119,30 @@ export function creerRadarPluie(map) {
   let indexCourant = -1;
   let controleur = null;
   let minuteurLecture = null;
+  let fermeture = null;
+
+  // Pastille sur la carte : le radar reste affiché panneau Météo fermé
+  const pastille = creerPastilleCouche({
+    ordre: 3,
+    nom: () => {
+      if (statut.classList.contains('erreur')) return t('radar.court-erreur');
+      const image = images[indexCourant];
+      return image ? t('radar.court-heure', { heure: formaterHeure(image.time) }) : t('radar.court');
+    },
+    legende: () => MINI_PLUIE,
+    onOuvrir: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'meteo', module: 'radar' } })),
+    onRetirer: () => fermeture?.(),
+  });
+  // Rien sur la carte avec MétéoSuisse (lien vers son site) : pas de pastille
+  const majPastille = () => {
+    pastille.montrer(actif && sourceCourante === 'rainviewer');
+    if (pastille.visible) pastille.maj();
+  };
 
   function arreterLecture() {
     if (minuteurLecture !== null) clearInterval(minuteurLecture);
     minuteurLecture = null;
-    lecture.textContent = t('radar.lire');
+    poser(lecture, 'radar.lire');
   }
 
   function urlTuiles(image) {
@@ -129,7 +154,7 @@ export function creerRadarPluie(map) {
     indexCourant = Math.max(0, Math.min(index, images.length - 1));
     const image = images[indexCourant];
     curseur.value = String(indexCourant);
-    heure.textContent = t('radar.image-heure', { heure: formaterHeure(image.time) });
+    poser(heure, 'radar.image-heure', { heure: formaterHeure(image.time) });
 
     if (map.getSource(SOURCE_RADAR)) {
       map.getSource(SOURCE_RADAR).setTiles([urlTuiles(image)]);
@@ -156,13 +181,15 @@ export function creerRadarPluie(map) {
     }
 
     map.setLayoutProperty(COUCHE_RADAR, 'visibility', actif ? 'visible' : 'none');
+    majPastille();
   }
 
   async function chargerImages() {
     controleur?.abort();
     controleur = new AbortController();
     statut.classList.remove('erreur');
-    statut.textContent = t('radar.chargement');
+    poser(statut, 'radar.chargement');
+    majPastille();
     actuel.disabled = true;
 
     try {
@@ -180,12 +207,13 @@ export function creerRadarPluie(map) {
       controles.hidden = false;
       arreterLecture();
       afficherImage(images.length - 1);
-      statut.textContent = t('radar.charge', { n: images.length });
+      poser(statut, 'radar.charge', { n: images.length });
     } catch (erreur) {
       if (erreur.name === 'AbortError') return;
       statut.classList.add('erreur');
-      statut.textContent = t('radar.indisponible', { message: erreur.message });
+      poser(statut, 'radar.indisponible', { message: erreur.message });
       actuel.disabled = false;
+      majPastille();
       console.error('Chargement du radar météo impossible :', erreur);
     } finally {
       if (controleur?.signal.aborted === false) actuel.disabled = false;
@@ -211,6 +239,7 @@ export function creerRadarPluie(map) {
       if (images.length > 0) afficherImage(indexCourant < 0 ? images.length - 1 : indexCourant);
       void chargerImages();
     }
+    majPastille();
   }
 
   for (const [index, source] of SOURCES.entries()) {
@@ -239,7 +268,7 @@ export function creerRadarPluie(map) {
     }
 
     if (indexCourant >= images.length - 1) afficherImage(0);
-    lecture.textContent = t('radar.pause');
+    poser(lecture, 'radar.pause');
     minuteurLecture = setInterval(() => {
       if (indexCourant >= images.length - 1) {
         arreterLecture();
@@ -251,10 +280,10 @@ export function creerRadarPluie(map) {
   actuel.addEventListener('click', chargerImages);
   choisirSource(sourceCourante);
   surLangue(() => {
-    lecture.textContent = t(minuteurLecture !== null ? 'radar.pause' : 'radar.lire');
+    poser(lecture, minuteurLecture !== null ? 'radar.pause' : 'radar.lire');
     if (indexCourant >= 0 && images[indexCourant]) afficherImage(indexCourant);
-    if (images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.charge', { n: images.length });
-    else if (!images.length && !statut.classList.contains('erreur')) statut.textContent = t('radar.activer');
+    if (images.length && !statut.classList.contains('erreur')) poser(statut, 'radar.charge', { n: images.length });
+    else if (!images.length && !statut.classList.contains('erreur')) poser(statut, 'radar.activer');
   });
 
   return {
@@ -263,8 +292,11 @@ export function creerRadarPluie(map) {
     labelCle: 'radar.titre',
     icone: 'radar',
     panneau,
-    activer() {
+    // `onFermer` : la ✕ de la pastille arrête le radar comme sa ligne du menu
+    activer({ onFermer } = {}) {
       actif = true;
+      fermeture = onFermer ?? null;
+      majPastille();
       if (sourceCourante === 'rainviewer') {
         if (map.getLayer(COUCHE_RADAR)) map.setLayoutProperty(COUCHE_RADAR, 'visibility', 'visible');
         void chargerImages();
@@ -274,47 +306,10 @@ export function creerRadarPluie(map) {
       actif = false;
       controleur?.abort();
       arreterLecture();
+      majPastille();
       if (map.getLayer(COUCHE_RADAR)) map.setLayoutProperty(COUCHE_RADAR, 'visibility', 'none');
     },
   };
-}
-
-const CODES_METEO = [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99];
-
-function descriptionMeteo(code) {
-  return t(CODES_METEO.includes(code) ? `meteo.code.${code}` : 'meteo.code.variable');
-}
-
-function typeMeteo(code) {
-  if (!Number.isFinite(code)) return 'inconnu';
-  if (code >= 95) return 'orage';
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return 'neige';
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'pluie';
-  if (code === 45 || code === 48) return 'brouillard';
-  if (code === 0) return 'soleil';
-  if (code === 1 || code === 2) return 'eclaircies';
-  return 'nuage';
-}
-
-function creerIconeMeteo(code) {
-  const type = typeMeteo(code);
-  const dessins = {
-    soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
-    eclaircies: '<circle cx="8" cy="8" r="3"/><path d="M8 1v2m0 10v2M1 8h2m10 0h2M3.05 3.05l1.42 1.42m7.06 7.06 1.42 1.42"/><path d="M7 19h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 11.5 4 4 0 0 0 7 19Z"/>',
-    nuage: '<path d="M7 19h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 11.5 4 4 0 0 0 7 19Z"/>',
-    brouillard: '<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 5.5 4 4 0 0 0 7 13Z"/><path d="M4 17h16m-13 4h10"/>',
-    pluie: '<path d="M7 14h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 6.5 4 4 0 0 0 7 14Z"/><path d="m8 17-1 3m6-3-1 3m6-3-1 3"/>',
-    neige: '<path d="M7 13h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 5.5 4 4 0 0 0 7 13Z"/><path d="M8 17v4m-2-2h4m5-2v4m-2-2h4"/>',
-    orage: '<path d="M7 14h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 6.5 4 4 0 0 0 7 14Z"/><path d="m13 15-3 4h3l-1 4 4-6h-3l1-2"/>',
-    inconnu: '<path d="M7 19h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 11.5 4 4 0 0 0 7 19Z"/><path d="M12 14v.01m-2-4a2 2 0 1 1 3.4 1.4c-.8.8-1.4 1-1.4 2"/>',
-  };
-  const icone = document.createElement('span');
-  icone.className = `meteo-icone meteo-icone-${type}`;
-  icone.setAttribute('role', 'img');
-  icone.setAttribute('aria-label', descriptionMeteo(code));
-  icone.title = descriptionMeteo(code);
-  icone.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${dessins[type]}</svg>`;
-  return icone;
 }
 
 function formaterDirection(degres) {
@@ -403,6 +398,33 @@ export function creerConditionsLocales(map) {
   const panneau = document.createElement('div');
   panneau.className = 'meteo-locale';
   panneau.innerHTML = `
+    <section class="meteo-emplacement" ${ta('aria-label', 'meteo.lieu')}>
+      <p class="meteo-emplacement-titre" ${ti('meteo.lieu')}>${t('meteo.lieu')}</p>
+      <div class="meteo-mode-lieu" role="group" ${ta('aria-label', 'meteo.lieu')}>
+        <button type="button" class="meteo-mode-centre" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6"/>
+            <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>
+          </svg>
+          <span ${ti('meteo.centre')}>${t('meteo.centre')}</span>
+        </button>
+        <button type="button" class="meteo-choisir" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/>
+          </svg>
+          <span>${t('meteo.point-carte')}</span>
+        </button>
+      </div>
+      <p class="meteo-coordonnees">
+        <span class="meteo-coordonnees-valeurs">${t('meteo.attente-coord')}</span>
+        <span class="meteo-lieu-proche" hidden></span>
+        <span class="meteo-code-postal" hidden></span>
+      </p>
+      <p class="meteo-emplacement-aide" ${ti('meteo.aide-lieu')}>${t('meteo.aide-lieu')}</p>
+      <button type="button" class="meteo-reessayer meteo-recentrer" hidden ${ti('meteo.actualiser-centre')}>${t('meteo.actualiser-centre')}</button>
+    </section>
+    <p class="meteo-locale-statut" role="status" aria-live="polite">${t('meteo.calculees-centre')}</p>
+    <button type="button" class="meteo-reessayer" hidden ${ti('meteo.reessayer')}>${t('meteo.reessayer')}</button>
     <section class="meteo-actuelle" hidden ${ta('aria-label', 'meteo.actuelles')}></section>
     <section class="meteo-horaire" hidden ${ta('aria-label', 'meteo.horaire')}>
       <h3>${t('meteo.24h')}</h3>
@@ -412,35 +434,11 @@ export function creerConditionsLocales(map) {
       <h3 ${ti('meteo.5-jours')}>${t('meteo.5-jours')}</h3>
       <div class="meteo-jours-liste" role="group" ${ta('aria-label', 'meteo.choisir-jour')}></div>
     </section>
-    <section class="meteo-emplacement" ${ta('aria-label', 'meteo.lieu')}>
-      <div class="meteo-emplacement-entete">
-        <div>
-          <p class="meteo-emplacement-titre" ${ti('meteo.lieu')}>${t('meteo.lieu')}</p>
-          <p class="meteo-locale-lieu">${t('meteo.centre')}</p>
-        </div>
-        <button type="button" class="meteo-choisir" aria-pressed="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M20 7v5h-5M4 17v-5h5"/>
-            <path d="M5.6 9a7 7 0 0 1 11.6-2L20 9M4 15l2.8 2a7 7 0 0 0 11.6-2"/>
-          </svg>
-          <span>${t('meteo.deplacer')}</span>
-        </button>
-      </div>
-      <p class="meteo-coordonnees">
-        <span class="meteo-coordonnees-valeurs">${t('meteo.attente-coord')}</span>
-        <span class="meteo-lieu-proche" hidden></span>
-        <span class="meteo-code-postal" hidden></span>
-      </p>
-      <p class="meteo-emplacement-aide" ${ti('meteo.aide-lieu')}>${t('meteo.aide-lieu')}</p>
-      <button type="button" class="meteo-reessayer meteo-recentrer" hidden ${ti('meteo.utiliser-centre')}>${t('meteo.utiliser-centre')}</button>
-    </section>
-    <p class="meteo-locale-statut" role="status" aria-live="polite">${t('meteo.calculees-centre')}</p>
-    <button type="button" class="meteo-reessayer" hidden ${ti('meteo.reessayer')}>${t('meteo.reessayer')}</button>
     <p class="meteo-credit" data-i18n-html="meteo.credit">${t('meteo.credit')}</p>
   `;
 
   const boutonChoisir = panneau.querySelector('.meteo-choisir');
-  const lieu = panneau.querySelector('.meteo-locale-lieu');
+  const boutonModeCentre = panneau.querySelector('.meteo-mode-centre');
   const valeursCoordonnees = panneau.querySelector('.meteo-coordonnees-valeurs');
   const lieuProche = panneau.querySelector('.meteo-lieu-proche');
   const codePostal = panneau.querySelector('.meteo-code-postal');
@@ -454,6 +452,11 @@ export function creerConditionsLocales(map) {
   const titreHoraire = horaire.querySelector('h3');
   const heures = panneau.querySelector('.meteo-heures');
   const texteBoutonChoisir = boutonChoisir.querySelector('span');
+  const soleil = creerSectionSoleil();
+  panneau.querySelector('.meteo-jours').after(soleil.section);
+  // La frise montre l'évolution ; les cartes en dessous gardent le détail de chaque heure
+  const frise = creerFrise({ onHeure: (index) => marquerCarte(index, true) });
+  heures.before(frise.element);
 
   let actif = false;
   let selectionEnCours = false;
@@ -468,18 +471,40 @@ export function creerConditionsLocales(map) {
   let dateSelectionnee = null;
   let heureActuelle = null;
   let nomVilleProche = '';
+  let decalageLieu = null; // fuseau du lieu donné par Open-Meteo, en minutes
+  let minuteurSoleil = null;
+  let altitudeLieu = null;
+
+  // Le soleil se calcule sans réseau : affiché dès le choix du lieu, même si les prévisions échouent
+  function majSoleil() {
+    soleil.afficher({
+      position,
+      jour: dateSelectionnee,
+      decalage: decalageLieu ?? decalageAppareil(),
+      fuseauDuLieu: decalageLieu !== null,
+    });
+  }
 
   function centreCarte() {
     const centre = map.getCenter();
     return { longitude: centre.lng, latitude: centre.lat };
   }
 
+  // Les deux boutons disent d'où viennent les prévisions : centre de la carte ou point posé
+  function majModeLieu() {
+    const surPoint = positionChoisie || selectionEnCours;
+    boutonModeCentre.setAttribute('aria-pressed', String(!surPoint));
+    boutonChoisir.setAttribute('aria-pressed', String(surPoint));
+    boutonChoisir.classList.toggle('en-cours', selectionEnCours);
+    poser(texteBoutonChoisir, selectionEnCours ? 'meteo.annuler' : positionChoisie ? 'meteo.deplacer-court' : 'meteo.point-carte');
+  }
+
   // Le libellé et le bouton disent si les prévisions correspondent encore au centre de la carte
   function majLieu() {
     if (!actif || !position) return;
     const eloigne = distanceEntrePositions(position, centreCarte()) > ECART_CENTRE_KM;
-    boutonCentre.hidden = !eloigne;
-    lieu.textContent = t(positionChoisie ? 'meteo.point-choisi' : eloigne ? 'meteo.ancien-centre' : 'meteo.centre');
+    boutonCentre.hidden = positionChoisie || !eloigne;
+    majModeLieu();
   }
 
   function afficherCoordonnees(position) {
@@ -527,7 +552,7 @@ export function creerConditionsLocales(map) {
   }
 
   async function chargerCodePostal(position, requete) {
-    codePostal.textContent = t('meteo.cp-recherche');
+    poser(codePostal, 'meteo.cp-recherche');
     codePostal.hidden = false;
     const params = new URLSearchParams({
       lat: String(position.latitude),
@@ -577,14 +602,14 @@ export function creerConditionsLocales(map) {
         code = codePostalDepuisGeocodage(resultatsVille, nomVilleProche, pays);
       }
       if (!code) {
-        codePostal.textContent = t('meteo.cp-indisponible');
+        poser(codePostal, 'meteo.cp-indisponible');
         return;
       }
 
       codePostal.textContent = `· ${String(code).trim()}`;
     } catch (erreur) {
       if (requete.signal.aborted || controleur !== requete || !actif) return;
-      codePostal.textContent = t('meteo.cp-indisponible');
+      poser(codePostal, 'meteo.cp-indisponible');
       console.warn('Recherche du code postal impossible :', erreur);
     }
   }
@@ -600,8 +625,7 @@ export function creerConditionsLocales(map) {
     majPin();
     map.getCanvas().removeEventListener('click', capterClicCarte, true);
     map.getCanvas().style.cursor = '';
-    boutonChoisir.setAttribute('aria-pressed', 'false');
-    texteBoutonChoisir.textContent = t('meteo.deplacer');
+    majModeLieu();
   }
 
   function capterClicCarte(event) {
@@ -625,15 +649,14 @@ export function creerConditionsLocales(map) {
     if (!actif) return;
     if (selectionEnCours) {
       annulerSelection();
-      statut.textContent = t('meteo.selection-annulee');
+      poser(statut, 'meteo.selection-annulee');
       return;
     }
     selectionEnCours = true;
     majPin();
-    boutonChoisir.setAttribute('aria-pressed', 'true');
-    texteBoutonChoisir.textContent = t('meteo.annuler');
+    majModeLieu();
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.mode-selection');
+    poser(statut, 'meteo.mode-selection');
     map.getCanvas().style.cursor = 'crosshair';
     map.getCanvas().addEventListener('click', capterClicCarte, true);
 
@@ -645,28 +668,16 @@ export function creerConditionsLocales(map) {
   }
 
   function afficherHeures(donnees, debut, date = null) {
-    let indices;
-    if (date) {
-      indices = donnees.time
-        .map((valeur, index) => ({ valeur, index }))
-        .filter(({ valeur }) => valeur.startsWith(`${date}T`) && valeur >= debut)
-        .map(({ index }) => index);
-      titreHoraire.textContent = t('meteo.previsions-jour', { jour: formaterJour(date) });
-    } else {
-      const debutIndex = donnees.time.findIndex((valeur) => valeur >= debut);
-      const premierIndex = debutIndex < 0 ? donnees.time.length : debutIndex;
-      indices = Array.from(
-        { length: Math.min(24, donnees.time.length - premierIndex) },
-        (_, offset) => premierIndex + offset
-      );
-      titreHoraire.textContent = t('meteo.24h');
-    }
+    const indices = indicesHeures(donnees.time, debut, date);
+    if (date) poser(titreHoraire, 'meteo.previsions-jour', { jour: formaterJour(date) });
+    else poser(titreHoraire, 'meteo.24h');
 
     heures.replaceChildren();
 
     for (const index of indices) {
       const carte = document.createElement('article');
       carte.className = 'meteo-heure';
+      carte.dataset.index = String(index);
       const heureLocale = document.createElement('time');
       heureLocale.textContent = donnees.time[index].slice(11, 16);
       const symbole = creerIconeMeteo(donnees.weather_code[index]);
@@ -698,6 +709,22 @@ export function creerConditionsLocales(map) {
     }
 
     horaire.hidden = heures.childElementCount === 0;
+    frise.definir({ hourly: donnees, rangs: indices, altitude: altitudeLieu, garderHeure: true });
+    marquerCarte(frise.heureLue(), false);
+  }
+
+  // Carte de l'heure lue sur la frise : soulignée, et amenée à l'écran si on lit la frise
+  function marquerCarte(index, amener) {
+    let cible = null;
+    for (const carte of heures.children) {
+      const lue = carte.dataset.index === String(index);
+      carte.classList.toggle('lue', lue);
+      if (lue) cible = carte;
+    }
+    if (!cible || !amener) return;
+    // Défilement horizontal seulement : le panneau ne doit pas sauter
+    const gauche = cible.offsetLeft - heures.offsetLeft - (heures.clientWidth - cible.offsetWidth) / 2;
+    heures.scrollTo({ left: Math.max(0, gauche), behavior: 'smooth' });
   }
 
   function formaterJour(date) {
@@ -790,6 +817,7 @@ export function creerConditionsLocales(map) {
         : `${dateSelectionnee}T00:00`
       : heureActuelle;
     afficherHeures(previsionsHoraires, debut, dateSelectionnee);
+    majSoleil();
   }
 
   function afficherPrevisions(donnees) {
@@ -820,7 +848,9 @@ export function creerConditionsLocales(map) {
 
     const actuel = donnees.current;
     heureActuelle = actuel.time;
+    decalageLieu = Number.isFinite(donnees.utc_offset_seconds) ? donnees.utc_offset_seconds / 60 : null;
     previsionsHoraires = hourly;
+    altitudeLieu = Number.isFinite(donnees.elevation) ? donnees.elevation : null;
     majLieu();
 
     actuelle.replaceChildren();
@@ -858,8 +888,9 @@ export function creerConditionsLocales(map) {
     actuelle.hidden = false;
     afficherJours(donnees);
     afficherHeures(hourly, actuel.time);
+    majSoleil();
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
+    poser(statut, 'meteo.actualise', { heure: heureCourte(new Date(actuel.time)) });
   }
 
   async function chargerPrevisions() {
@@ -873,7 +904,7 @@ export function creerConditionsLocales(map) {
       requete.abort();
     }, DELAI_PREVISIONS);
     statut.classList.remove('erreur');
-    statut.textContent = t('meteo.chargement');
+    poser(statut, 'meteo.chargement');
     boutonReessayer.hidden = true;
     panneau.setAttribute('aria-busy', 'true');
     actuelle.hidden = true;
@@ -882,6 +913,8 @@ export function creerConditionsLocales(map) {
     previsionsHoraires = null;
     previsionsJournalieres = null;
     dateSelectionnee = null;
+    decalageLieu = null;
+    majSoleil();
     majLieu();
     afficherCoordonnees(position);
     void chargerCodePostal(position, requete);
@@ -897,7 +930,7 @@ export function creerConditionsLocales(map) {
       latitude: String(position.latitude),
       longitude: String(position.longitude),
       current: 'temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      hourly: 'temperature_2m,precipitation_probability,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,freezing_level_height',
+      hourly: 'temperature_2m,precipitation_probability,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,cloud_cover_low,freezing_level_height',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max',
       forecast_days: '5',
       timezone: 'auto',
@@ -917,7 +950,7 @@ export function creerConditionsLocales(map) {
       afficherPrevisions(donnees);
       dernieresDonnees = donnees;
       const dateEnregistree = dateHorsLigne(reponse);
-      if (dateEnregistree) statut.textContent = t('meteo.sans-reseau', { date: texteDonneesDu(dateEnregistree) });
+      if (dateEnregistree) poser(statut, 'meteo.sans-reseau', { date: texteDonneesDu(dateEnregistree) });
     } catch (erreur) {
       if (controleur !== requete || !actif || (requete.signal.aborted && !delaiDepasse)) return;
       statut.classList.add('erreur');
@@ -926,9 +959,8 @@ export function creerConditionsLocales(map) {
         : erreur instanceof Error
           ? erreur.message
           : t('meteo.erreur-inconnue');
-      statut.textContent = estHorsLigne()
-        ? t('meteo.hors-ligne')
-        : t('meteo.erreur', { message });
+      if (estHorsLigne()) poser(statut, 'meteo.hors-ligne');
+      else poser(statut, 'meteo.erreur', { message });
       boutonReessayer.hidden = false;
       console.error('Chargement des prévisions météo impossible :', erreur);
     } finally {
@@ -939,14 +971,36 @@ export function creerConditionsLocales(map) {
 
   boutonChoisir.addEventListener('click', choisirSurCarte);
   boutonReessayer.addEventListener('click', () => void chargerPrevisions());
-  boutonCentre.addEventListener('click', () => {
+  const suivreCentre = () => {
     annulerSelection();
     positionChoisie = false;
     position = centreCarte();
     ecrire(METEO_LOCATION, null);
     chargerPrevisions();
+  };
+  boutonCentre.addEventListener('click', suivreCentre);
+  boutonModeCentre.addEventListener('click', () => {
+    // Déjà sur le centre, et la carte n'a pas bougé : rien à recharger
+    if (!positionChoisie && !selectionEnCours && boutonCentre.hidden) return;
+    suivreCentre();
   });
   map.on('moveend', majLieu);
+  // Raccourci « Prévisions détaillées » de la fiche d'un point
+  window.addEventListener('montis:meteo-ici', (event) => {
+    const { longitude, latitude } = event.detail || {};
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
+    annulerSelection();
+    position = { longitude, latitude };
+    positionChoisie = true;
+    ecrire(METEO_LOCATION, position);
+    if (actif) chargerPrevisions();
+  });
+  heures.addEventListener('click', (event) => {
+    const carte = event.target.closest('.meteo-heure');
+    if (!carte) return;
+    frise.placerHeure(Number(carte.dataset.index));
+    marquerCarte(Number(carte.dataset.index), false);
+  });
   jours.addEventListener('click', (event) => {
     const bouton = event.target.closest('.meteo-jour');
     if (bouton) selectionnerJour(bouton.dataset.date);
@@ -955,13 +1009,16 @@ export function creerConditionsLocales(map) {
   // Unités ou langue : on réaffiche les dernières prévisions reçues, sans les redemander
   let dernieresDonnees = null;
   surPreferences((detail) => {
-    texteBoutonChoisir.textContent = t(selectionEnCours ? 'meteo.annuler' : 'meteo.deplacer');
+    majModeLieu();
     majLieu();
+    soleil.rafraichir();
     if (!dernieresDonnees || actuelle.hidden) return;
-    const statutGarde = statut.textContent;
+    const cleStatut = statut.dataset.i18n;
+    const variablesStatut = statut.dataset.i18nVars;
     const jourGarde = dateSelectionnee;
     afficherPrevisions(dernieresDonnees);
-    if (detail?.cle !== 'langue' && detail?.cle !== '*') statut.textContent = statutGarde;
+    // Le statut garde son message (hors ligne, erreur…), dans la nouvelle langue
+    if (cleStatut) poser(statut, cleStatut, variablesStatut ? JSON.parse(variablesStatut) : undefined);
     if (jourGarde) {
       dateSelectionnee = null;
       selectionnerJour(jourGarde);
@@ -977,9 +1034,12 @@ export function creerConditionsLocales(map) {
       actif = true;
       if (!positionChoisie) position = centreCarte();
       chargerPrevisions();
+      clearInterval(minuteurSoleil);
+      minuteurSoleil = setInterval(() => soleil.rafraichir(), 60000);
     },
     desactiver() {
       actif = false;
+      clearInterval(minuteurSoleil);
       annulerSelection();
       controleur?.abort();
       marqueur?.remove();

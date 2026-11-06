@@ -32,3 +32,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Captures d'écran de scripts/captures.mjs
+captures/

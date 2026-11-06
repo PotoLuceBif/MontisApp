@@ -1,4 +1,4 @@
-import { SOURCE_VECTEUR } from './source-vecteur.js';
+import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
 import { expressionAltitude } from './unites.js';
 
 const classes = (valeurs) => ['in', ['get', 'class'], ['literal', valeurs]];
@@ -22,12 +22,7 @@ export const STYLE_MONTIS = {
   version: 8,
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
-    [SOURCE_VECTEUR]: {
-      type: 'vector',
-      url: 'https://tiles.openfreemap.org/planet',
-      attribution:
-        '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> · Données © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
-    },
+    [SOURCE_VECTEUR]: definitionSourceVecteur(),
   },
   layers: [
     { id: 'montis-background', type: 'background', paint: { 'background-color': '#f2efe6' } },

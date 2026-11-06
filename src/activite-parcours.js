@@ -10,6 +10,8 @@ import { creerDecouverte } from './parcours-decouverte.js';
 import { formatDenivele, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { formatDate, poser, t, ta, ti, tt } from './i18n.js';
+import { annoncerOutilActivite } from './outil-activite.js';
+import { reprendre } from './demandes.js';
 
 const ZOOM_MIN_ZONE = 7;
 const REPERES_MAX = 40;
@@ -221,6 +223,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   }
 
   function chercherDansLaZone() {
+    annoncerOutilActivite();
     if (map.getZoom() < ZOOM_MIN_ZONE) {
       brutes = [];
       vide = t('parcours.zoomer');
@@ -276,7 +279,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     entonnoir.setAttribute('aria-label', filtrant ? t('parcours.filtres-actif', { nom: t(filtre.cle) }) : t('parcours.filtres'));
     filtreActif.hidden = !filtrant;
     filtreActif.setAttribute('aria-label', t('parcours.retirer-filtre', { nom: t(filtre.cle) }));
-    filtreActif.querySelector('span').textContent = t(filtre.cle);
+    poser(filtreActif.querySelector('span'), filtre.cle);
   }
 
   function choisirFiltre(id) {
@@ -402,6 +405,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     });
   }
   $('.parcours-creer').addEventListener('click', () => {
+    annoncerOutilActivite();
     fermerMenu();
     itineraires.fermer();
     decouverte.masquer();
@@ -421,7 +425,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ligne.type = 'button';
     ligne.className = 'pc-entree';
     ligne.innerHTML = `<span><strong></strong><small></small></span>${icone(ICONES.chevron)}`;
-    ligne.querySelector('strong').textContent = libelle;
+    poser(ligne.querySelector('strong'), libelle);
     poser(ligne.querySelector('small'), sous);
     ligne.addEventListener('click', ouvrir);
     $('.pc-entrees').append(ligne);
@@ -440,6 +444,29 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (brutes.length) liste.replaceChildren(...regrouper(brutes.filter((route) => !filtre.garde || filtre.garde(route))).map(ligneResultat));
   });
 
+  // « Y aller » depuis la fiche d'un point : un parcours du point jusqu'au refuge ou à l'eau
+  const cleItineraire = `itineraire-${activite.id}`;
+  function reprendreItineraire() {
+    const demande = actif && reprendre(cleItineraire);
+    if (!demande) return;
+    annoncerOutilActivite();
+    fermerMenu();
+    itineraires.fermer();
+    decouverte.masquer();
+    const { retour, ...trajet } = demande;
+    editeur.ouvrirVers({
+      ...trajet,
+      // Le brouillon reste : « Créer un parcours » le reprend
+      onRetour: retour ? () => {
+        editeur.fermer();
+        retour();
+      } : null,
+    });
+  }
+  window.addEventListener('montis:demande', (event) => {
+    if (event.detail === cleItineraire) reprendreItineraire();
+  });
+
   return {
     id: activite.id,
     labelCle: activite.labelCle,
@@ -450,6 +477,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       appliquerCalque();
       decouverte.activer();
       crochets.activer?.();
+      reprendreItineraire();
     },
     desactiver() {
       actif = false;
