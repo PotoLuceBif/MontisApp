@@ -4,9 +4,9 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { altitude as altitudeRelief, preparerTuiles } from './portee.js';
 import { creerGraphiqueBalise } from './balise-graphique.js';
-import { dateComplete, etatStation, texteAge } from './balises-sources.js';
+import { dateComplete, etatStation, reseauDe, texteAge } from './balises-sources.js';
 import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './vent-cadran.js';
-import { formatAltitude, libelleVent, valeurVent } from './unites.js';
+import { formatAltitude, formatTemp, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { t, ta, ti, tt, poser } from './i18n.js';
 
@@ -29,7 +29,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     },
   });
   const fiche = panneau.element;
-  panneau.meta.innerHTML = '<span class="bf-etat"></span><span class="bf-altitude"></span><span class="bf-age"></span>';
+  panneau.meta.innerHTML = '<span class="bf-etat"></span><span class="bf-altitude"></span><span class="bf-temperature"></span><span class="bf-age"></span>';
   panneau.corps.innerHTML = `
     <section class="bf-maintenant" ${ta('aria-label', 'bf.actuel')}>
       <div class="bf-rose">
@@ -64,7 +64,9 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
       <canvas class="bf-graphique" tabindex="0" role="img" ${ta('aria-label', 'bf.graphique-aria')}></canvas>
       <p class="bf-note"></p>
     </section>
+    <p class="bf-note bf-sans-historique" ${ti('bf.sans-historique')} hidden>${t('bf.sans-historique')}</p>
     <p class="bf-description" hidden></p>
+    <p class="bf-voisine" hidden></p>
     <p class="bf-source"></p>
   `;
 
@@ -146,8 +148,12 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
       : t('bf.ne-transmet');
     rendreAge();
     const description = $('.bf-description');
-    description.textContent = station.description;
-    description.hidden = !station.description;
+    description.textContent = [station.maintenance ? t('bf.maintenance') : '', station.description].filter(Boolean).join(' ');
+    description.hidden = !description.textContent;
+    $('.bf-temperature').textContent = Number.isFinite(station.temperature) && etat !== 'hs' ? formatTemp(station.temperature) : '';
+    const voisine = $('.bf-voisine');
+    voisine.hidden = !station.voisine;
+    if (station.voisine) poser(voisine, 'bf.voisine', { nom: station.voisine.nom, reseau: station.voisine.reseau === 'ffvl' ? 'FFVL' : 'OpenWindMap' });
     const lien = document.createElement('a');
     lien.href = station.lien || source.lien;
     lien.target = '_blank';
@@ -186,6 +192,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     controleur?.abort();
     historique = [];
     blocHistorique.hidden = !source.historique;
+    $('.bf-sans-historique').hidden = Boolean(source.historique);
     if (!source.historique) return;
     const demandee = station.id;
     const memoire = cacheHistorique.get(`${source.id}/${demandee}`);
@@ -310,6 +317,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     actualiser(nouvelleStation) {
       if (!station || nouvelleStation.id !== station.id) return;
       station = nouvelleStation;
+      source = reseauDe(station);
       rendreMaintenant();
       cacheHistorique.delete(`${source.id}/${station.id}`);
       void chargerHistorique();

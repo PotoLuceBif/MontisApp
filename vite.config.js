@@ -61,13 +61,4 @@ export default defineConfig({
     // MapLibre seul dépasse les 500 Ko par défaut et ne se découpe pas
     chunkSizeWarningLimit: 1200,
   },
-  server: {
-    proxy: {
-      '/ffvl': {
-        target: 'https://data.ffvl.fr',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/ffvl/, ''),
-      },
-    },
-  },
 });

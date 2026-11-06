@@ -71,6 +71,29 @@ const heureOmbres = (minutes) => async (page) => {
     curseur.dispatchEvent(new Event('input', { bubbles: true }));
   }, minutes);
 };
+// Touche sur la carte le premier objet affiché d'une couche dont une propriété commence par `debut`
+const toucherObjet = (couche, propriete, debut) => async (page) => {
+  await page.waitForFunction(
+    ([c, pr, d]) => window.map.getLayer?.(c) && window.map.queryRenderedFeatures({ layers: [c] }).some((f) => String(f.properties[pr]).startsWith(d)),
+    [couche, propriete, debut],
+    { timeout: 20000 },
+  );
+  const point = await page.evaluate(([c, pr, d]) => {
+    const { clientWidth: l, clientHeight: h } = window.map.getContainer();
+    const centre = (f) => window.map.project(f.geometry.coordinates);
+    const objets = window.map.queryRenderedFeatures({ layers: [c] })
+      .filter((f) => String(f.properties[pr]).startsWith(d))
+      .map((f) => ({ f, p: centre(f) }))
+      .filter(({ p }) => p.x > 40 && p.x < l - 40 && p.y > 120 && p.y < h * 0.45);
+    const choisi = objets[0] ?? { p: centre(window.map.queryRenderedFeatures({ layers: [c] }).find((f) => String(f.properties[pr]).startsWith(d))) };
+    const cadre = window.map.getContainer().getBoundingClientRect();
+    return { x: cadre.left + choisi.p.x, y: cadre.top + choisi.p.y };
+  }, [couche, propriete, debut]);
+  await page.mouse.click(point.x, point.y);
+  await page.waitForTimeout(1500);
+};
+const ANNECY = { center: [6.25, 45.83], zoom: 10.5, bearing: 0, pitch: 0 };
+const SITES = [vue(ANNECY), module('parapente'), clic('[data-para-vue="sites"]'), (p) => p.waitForTimeout(500)];
 // Fait défiler le panneau jusqu'à un bloc
 const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
 // Touche la frise météo à une fraction de sa largeur
@@ -86,6 +109,12 @@ const ECRANS = [
   { nom: 'menu', actions: [clic('#menu-bouton')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
   { nom: 'parapente', actions: [module('parapente')] },
+  // Balises OpenWindMap et FFVL réunies, terrains FFVL (réseau requis : api.pioupiou.fr, data.gouv.fr)
+  { nom: 'parapente-sites', actions: [...SITES, (p) => p.waitForTimeout(6000)] },
+  { nom: 'parapente-sites-carte', actions: [...SITES, (p) => p.waitForTimeout(6000), clic('#menu-bouton')] },
+  { nom: 'parapente-terrain', actions: [...SITES, clic('#menu-bouton'), vue({ ...ANNECY, zoom: 11.5 }), toucherObjet('terrains-ffvl-points', 'classe', 'decollage')] },
+  { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
+  { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },
   { nom: 'randonnee', actions: [module('rando')] },
   { nom: 'velo', actions: [module('velo')] },
   { nom: 'ski', actions: [module('ski')] },
@@ -234,6 +263,7 @@ async function main() {
 
   const rapport = [];
   const reseauEnEchec = new Set();
+  const fichiersDataGouv = new Map();
   try {
     for (const [format, options] of Object.entries(FORMATS)) {
       for (const ecran of ecrans) {
@@ -243,6 +273,21 @@ async function main() {
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));
         page.on('requestfailed', (r) => reseauEnEchec.add(new URL(r.url()).host));
+        // Le réseau des sessions cloud coupe souvent data.gouv.fr : quelques essais, et une seule lecture par fichier
+        await page.route(/www\.data\.gouv\.fr\/api\/1\/datasets\/r\//, async (route) => {
+          const url = route.request().url();
+          for (let essai = 0; !fichiersDataGouv.has(url) && essai < 5; essai += 1) {
+            try {
+              const reponse = await route.fetch({ maxRedirects: 5, timeout: 30000 });
+              if (reponse.ok()) fichiersDataGouv.set(url, await reponse.body());
+            } catch {
+              await new Promise((fin) => setTimeout(fin, 1000));
+            }
+          }
+          if (fichiersDataGouv.has(url)) {
+            await route.fulfill({ body: fichiersDataGouv.get(url), contentType: 'application/json', headers: { 'access-control-allow-origin': '*' } });
+          } else await route.abort();
+        });
         if (ecran.simuler) {
           await page.route(/api\.open-meteo\.com\/v1\/forecast/, (route) => route.fulfill({ json: previsionsSimulees(route.request().url()) }));
         }

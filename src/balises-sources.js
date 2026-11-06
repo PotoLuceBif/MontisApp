@@ -1,21 +1,22 @@
 import { dateEtHeure, t } from './i18n.js';
 import { dateHorsLigne } from './hors-ligne.js';
+import { fusionnerReseaux, lireBalisesFFVL, nombre } from './balises-calcul.js';
 
-// Sources de relevés de vent. Chaque source renvoie les mêmes stations :
-// { id, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
+// Sources de relevés de vent, réunies sur la carte. Chaque source renvoie les mêmes stations :
+// { id, reseau, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
 // `direction` : d'où vient le vent, en degrés. `date` : horodatage en millisecondes.
 //
-// Une seule source à la fois : la licence d'OpenWindMap interdit de mêler ses mesures
-// à celles de capteurs dont les données ne sont pas ouvertes.
-
-// FFVL : à passer à 1 (VITE_FFVL=1) une fois la clé obtenue. La clé ne doit pas arriver
-// dans le navigateur : `/ffvl` doit pointer vers un relais serveur qui l'ajoute.
-export const FFVL_ACTIVE = import.meta.env.VITE_FFVL === '1';
+// La licence d'OpenWindMap n'admet que des capteurs aux données ouvertes à côté des siens :
+// c'est le cas de la FFVL (Licence Ouverte 2.0, fichiers publics, mêmes relevés, sans délai).
 
 const URL_OPENWINDMAP = 'https://api.pioupiou.fr/v1/live-with-meta/all';
 const URL_ARCHIVE_OPENWINDMAP = 'https://api.pioupiou.fr/v1/archive/';
-const URL_BALISES_FFVL = '/ffvl/json/balises.json';
-const URL_RELEVES_FFVL = '/ffvl/json/relevesmeteo.json';
+// Adresses stables de data.gouv.fr : elles redirigent vers le dernier fichier publié
+const URL_DATA_GOUV = 'https://www.data.gouv.fr/api/1/datasets/r/';
+const URL_BALISES_FFVL = `${URL_DATA_GOUV}8d795154-9145-4ab2-99de-6768a36f31ea`;
+const URL_RELEVES_FFVL = `${URL_DATA_GOUV}047b2ab9-627f-4e5f-9d68-5b948433c61d`;
+export const URL_TERRAINS_FFVL = `${URL_DATA_GOUV}4375c95d-cf26-4e71-b72d-2e09be5a0e36`;
+export const LIEN_FFVL = 'https://www.data.gouv.fr/fr/organizations/federation-francaise-de-vol-libre/';
 const DUREE_HISTORIQUE = 24 * 60 * 60 * 1000;
 const AGE_ANCIEN = 2 * 60 * 60 * 1000;
 const AGE_HORS_SERVICE = 24 * 60 * 60 * 1000;
@@ -39,50 +40,31 @@ export function texteAge(date) {
 
 export const dateComplete = (date) => t('commun.le-date', { date: dateEtHeure(date) });
 
-const nombre = (valeur) =>
-  valeur == null || String(valeur).trim() === '' ? Number.NaN : Number(valeur);
-
 // Sans mesure, une balise reste affichée comme hors service : seule sa position est indispensable
 function stationValide(station) {
   return station.lat >= -90 && station.lat <= 90
     && station.lon >= -180 && station.lon <= 180;
 }
 
-async function lireJson(url, signal) {
-  const reponse = await fetch(url, { signal, cache: 'no-store' });
+const PAUSE_NOUVEL_ESSAI = 1500;
+
+// Une coupure réseau a droit à une seconde tentative : en montagne, la liaison va et vient
+async function recuperer(url, signal, cache) {
+  try {
+    return await fetch(url, { signal, cache });
+  } catch (erreur) {
+    if (signal?.aborted || erreur.name === 'AbortError') throw erreur;
+    await new Promise((fin) => setTimeout(fin, PAUSE_NOUVEL_ESSAI));
+    if (signal?.aborted) throw erreur;
+    return fetch(url, { signal, cache });
+  }
+}
+
+export async function lireJson(url, signal, { cache = 'no-store' } = {}) {
+  const reponse = await recuperer(url, signal, cache);
   if (reponse.status === 429) throw new Error(t('balises.trop-requetes'));
   if (!reponse.ok) throw new Error(t('commun.statut-http', { statut: reponse.status }));
-  return { ...(await reponse.json()), dateEnregistree: dateHorsLigne(reponse) };
-}
-
-function erreurFFVL(message, code) {
-  const erreur = new Error(message);
-  erreur.code = code;
-  return erreur;
-}
-
-export async function chargerFFVL(url, signal) {
-  const rep = await fetch(url, { signal, cache: 'no-store' });
-  const texte = await rep.text();
-  if (
-    rep.status === 401 ||
-    rep.status === 403 ||
-    /available using an ffvl api key|clé api|api key/i.test(texte)
-  ) {
-    throw erreurFFVL(t('balises.ffvl-cle'), 'acces');
-  }
-  if (!rep.ok) throw new Error(`${url} : erreur HTTP ${rep.status} – ${texte.slice(0, 200)}`);
-
-  let donnees;
-  try {
-    donnees = JSON.parse(texte);
-  } catch {
-    throw new Error(`${url} : réponse non JSON : ${texte.slice(0, 200)}`);
-  }
-
-  if (Array.isArray(donnees)) return donnees;
-  if (donnees && typeof donnees === 'object') return Object.values(donnees);
-  throw new Error(`${url} : format de données FFVL inattendu.`);
+  return { donnees: await reponse.json(), dateEnregistree: dateHorsLigne(reponse) };
 }
 
 const OPENWINDMAP = {
@@ -91,12 +73,13 @@ const OPENWINDMAP = {
   lien: 'https://www.openwindmap.org',
   attribution: 'Vent © <a href="https://www.openwindmap.org" target="_blank" rel="noopener noreferrer">contributeurs OpenWindMap</a>',
   async charger(signal) {
-    const { data, dateEnregistree } = await lireJson(URL_OPENWINDMAP, signal);
+    const { donnees: { data } = {}, dateEnregistree } = await lireJson(URL_OPENWINDMAP, signal);
     if (!Array.isArray(data)) throw new Error('Format de données OpenWindMap inattendu.');
     const stations = data
       .filter((brut) => brut?.location?.success !== false && brut?.location?.latitude != null)
       .map((brut) => ({
         id: String(brut.id),
+        reseau: 'openwindmap',
         nom: brut.meta?.name || t('balises.nom-defaut', { id: brut.id }),
         description: brut.meta?.description?.trim() || '',
         lat: nombre(brut.location?.latitude),
@@ -117,7 +100,7 @@ const OPENWINDMAP = {
   async historique(id, signal) {
     const debut = new Date(Date.now() - DUREE_HISTORIQUE).toISOString();
     const url = `${URL_ARCHIVE_OPENWINDMAP}${encodeURIComponent(id)}?start=${debut}&stop=now&format=json`;
-    const { data } = await lireJson(url, signal);
+    const { donnees: { data } = {} } = await lireJson(url, signal);
     // Colonnes : temps, latitude, longitude, min, moyenne, max, direction, pression
     return (Array.isArray(data) ? data : [])
       .map((ligne) => ({
@@ -131,43 +114,55 @@ const OPENWINDMAP = {
   },
 };
 
+const DUREE_LISTE_FFVL = 6 * 60 * 60 * 1000;
+let listeFFVL = null;
+
 const FFVL = {
   id: 'ffvl',
   libelle: 'FFVL',
-  lien: 'https://federation.ffvl.fr/pages/opendata',
-  attribution: 'Vent © <a href="https://federation.ffvl.fr/pages/opendata" target="_blank" rel="noopener noreferrer">FFVL</a>',
+  lien: LIEN_FFVL,
+  attribution: 'Balises et terrains © <a href="https://www.data.gouv.fr/fr/organizations/federation-francaise-de-vol-libre/" target="_blank" rel="noopener noreferrer">FFVL</a> (Licence Ouverte)',
+  // Pas d'historique ouvert : la FFVL ne publie que le dernier relevé de chaque balise
+  historique: null,
   async charger(signal) {
+    // La liste des balises change une fois par jour, les relevés toutes les 5 minutes
+    const listeAJour = listeFFVL && Date.now() - listeFFVL.recue < DUREE_LISTE_FFVL;
     const [balises, releves] = await Promise.all([
-      chargerFFVL(URL_BALISES_FFVL, signal),
-      chargerFFVL(URL_RELEVES_FFVL, signal),
+      listeAJour ? listeFFVL.reponse : lireJson(URL_BALISES_FFVL, signal),
+      lireJson(URL_RELEVES_FFVL, signal),
     ]);
-    const parId = new Map(
-      releves
-        .filter((releve) => releve && typeof releve === 'object' && releve.idbalise != null)
-        .map((releve) => [String(releve.idbalise), releve])
-    );
-    return balises
-      .filter((balise) => balise && typeof balise === 'object' && parId.has(String(balise.idBalise)))
-      .map((balise) => {
-        const releve = parId.get(String(balise.idBalise));
-        return {
-          id: String(balise.idBalise),
-          nom: balise.nom || t('balises.nom-defaut', { id: balise.idBalise }),
-          description: '',
-          lat: nombre(balise.latitude),
-          lon: nombre(balise.longitude),
-          altitude: nombre(balise.altitude),
-          eteinte: false,
-          moyenne: nombre(releve.vitesseVentMoy),
-          rafale: nombre(releve.vitesseVentMax),
-          minimum: nombre(releve.vitesseVentMin),
-          direction: nombre(releve.directVentMoy),
-          date: new Date(String(releve.date ?? '').replace(' ', 'T')).getTime(),
-          lien: '',
-        };
-      })
-      .filter(stationValide);
+    if (!listeAJour) listeFFVL = { reponse: balises, recue: Date.now() };
+    const stations = lireBalisesFFVL(balises.donnees, releves.donnees, {
+      nomDefaut: (id) => t('balises.nom-defaut', { id }),
+    });
+    stations.dateEnregistree = releves.dateEnregistree;
+    return stations;
   },
 };
 
-export const SOURCES_BALISES = FFVL_ACTIVE ? [OPENWINDMAP, FFVL] : [OPENWINDMAP];
+export const RESEAUX = { openwindmap: OPENWINDMAP, ffvl: FFVL };
+
+// Les deux réseaux à la fois. L'échec de l'un n'empêche pas d'afficher l'autre :
+// `stations.manquants` nomme les réseaux qui n'ont pas répondu.
+export const BALISES = {
+  id: 'balises',
+  libelle: 'OpenWindMap · FFVL',
+  attribution: `${OPENWINDMAP.attribution} · ${FFVL.attribution}`,
+  async charger(signal) {
+    const [owm, ffvl] = await Promise.allSettled([OPENWINDMAP.charger(signal), FFVL.charger(signal)]);
+    if (owm.status === 'rejected' && ffvl.status === 'rejected') throw owm.reason;
+    [owm, ffvl].forEach((resultat) => {
+      if (resultat.status === 'rejected') console.warn('Balises :', resultat.reason);
+    });
+    const liste = (resultat) => (resultat.status === 'fulfilled' ? resultat.value : []);
+    const stations = fusionnerReseaux(liste(owm), liste(ffvl));
+    stations.manquants = [[owm, OPENWINDMAP], [ffvl, FFVL]]
+      .filter(([resultat]) => resultat.status === 'rejected')
+      .map(([, reseau]) => reseau.libelle);
+    const dates = [liste(owm).dateEnregistree, liste(ffvl).dateEnregistree].filter(Boolean);
+    stations.dateEnregistree = dates.length ? Math.min(...dates) : null;
+    return stations;
+  },
+};
+
+export const reseauDe = (station) => RESEAUX[station?.reseau] ?? OPENWINDMAP;

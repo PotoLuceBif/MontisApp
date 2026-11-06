@@ -2534,7 +2534,8 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 }
 .menu-contenu .para-legende-note { margin: 0; font-size: 11px; }
 .menu-contenu .para-etat-erreur { color: #e05b67; }
-.para-source { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--texte-2); font-size: 12px; }
+.para-source { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; color: var(--texte-2); font-size: 12px; }
+.para-source a { display: inline-flex; align-items: center; min-height: 32px; }
 .para-source select {
   min-height: 34px; padding: 4px 7px; border: 1px solid var(--bord); border-radius: 7px;
   background: var(--surface); color: var(--texte); font: 600 12px var(--police);
@@ -2934,6 +2935,50 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .para-point { width: 7px; height: 7px; border-radius: 50%; }
 .para-point-vert { background: #2e9e4f; }
 .para-point-bleu { background: #1f6fd1; }
+.para-point-rouge { background: #d93a2b; }
+.para-point-autorisation { box-sizing: border-box; border: 2px solid #f0a020; background: #2e9e4f; }
+
+/* Fiche d'un terrain FFVL */
+.tf-alerte { margin: 0; padding: 9px 11px; border-radius: 10px; font-size: 13px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.tf-alerte-rouge { background: color-mix(in srgb, #d93a2b 16%, transparent); color: #b42318; }
+.tf-alerte-orange { background: color-mix(in srgb, #f0a020 16%, transparent); color: #9a5b00; }
+:root:is([data-theme='sombre'], [data-theme='cyberpunk']) .tf-alerte-rouge { color: #ff8a7e; }
+:root:is([data-theme='sombre'], [data-theme='cyberpunk']) .tf-alerte-orange { color: #f6c063; }
+.tf-vent { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 12px; }
+.tf-rose { width: 104px; height: 104px; overflow: visible; }
+.tf-rose text { fill: var(--texte-2); font: 700 9px var(--police); text-anchor: middle; dominant-baseline: central; }
+.tf-rose-petite { width: 30px; height: 30px; }
+.tf-secteur { stroke: var(--surface); stroke-width: 1.5; }
+.tf-secteur-ok { fill: #2e9e4f; }
+.tf-secteur-non { fill: color-mix(in srgb, #d93a2b 70%, transparent); }
+.tf-secteur-neutre { fill: var(--surface-2); }
+.tf-fleche path { fill: none; stroke: var(--texte); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.tf-vent-texte { display: grid; min-width: 0; gap: 8px; }
+.tf-orientations { display: grid; gap: 3px; margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
+.tf-ok { color: var(--texte); font-weight: 650; }
+.tf-balise {
+  display: grid; gap: 1px; width: 100%; min-height: 44px; padding: 7px 10px; border: 1px solid var(--bord);
+  border-left: 4px solid var(--vent-couleur, var(--bord)); border-radius: 10px; background: var(--surface-2);
+  color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.tf-balise:hover { background: var(--survol); }
+.tf-balise small { color: var(--texte-2); font-size: 11.5px; overflow-wrap: anywhere; }
+.tf-balise strong { font-size: 14px; }
+.tf-accord { justify-self: start; margin-top: 3px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tf-accord-favorable { background: color-mix(in srgb, #2e9e4f 18%, transparent); color: #1f7a3b; }
+.tf-accord-defavorable { background: color-mix(in srgb, #d93a2b 16%, transparent); color: #b42318; }
+:root:is([data-theme='sombre'], [data-theme='cyberpunk']) .tf-accord-favorable { color: #5fd38a; }
+:root:is([data-theme='sombre'], [data-theme='cyberpunk']) .tf-accord-defavorable { color: #ff8a7e; }
+.tf-note { margin: 0; color: var(--texte-2); font-size: 12px; }
+.tf-infos { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.tf-texte { display: grid; gap: 2px; }
+.tf-texte h4 { margin: 0; color: var(--texte-2); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.tf-texte p { margin: 0; font-size: 13px; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
+.tf-plus[open] { display: grid; }
+.tf-plus summary { min-height: 44px; display: flex; align-items: center; color: var(--accent); font-size: 13px; font-weight: 650; cursor: pointer; }
+.bf-voisine { margin: 0; color: var(--texte-2); font-size: 12px; }
+.bf-temperature:empty { display: none; }
+.bf-sans-historique { margin: 0; }
 .para-lien { color: var(--accent); font-weight: 650; }
 :is(.parapente button, .parapente a, .parapente input, .parapente summary):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;

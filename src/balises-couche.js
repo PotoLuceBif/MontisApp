@@ -2,7 +2,8 @@
 // dans le sens du vent. Deux couches de symboles, car la pastille reste droite quand la manche
 // tourne ; on écarte nous-mêmes les balises trop proches pour que les deux restent appariées.
 import { creerFicheBalise } from './balise-fiche.js';
-import { COULEUR_BALISE_INACTIVE, etatStation } from './balises-sources.js';
+import { COULEUR_BALISE_INACTIVE, etatStation, reseauDe } from './balises-sources.js';
+import { distanceMetres } from './balises-calcul.js';
 import { PALETTE_CARTE, palierVent } from './vent-cadran.js';
 import { valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
@@ -267,7 +268,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   function ouvrir(id) {
     const station = stations.find((candidate) => candidate.id === id);
     if (!station) return;
-    fiche.ouvrir(station, source);
+    fiche.ouvrir(station, reseauDe(station));
     publier(); // la balise ouverte reste affichée, même en zone dense
     marquerSelection(id);
   }
@@ -335,6 +336,16 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
         .sort((a, b) => a.ecart - b.ecart)
         .slice(0, limite)
         .map(({ station }) => station);
+    },
+    // La balise qui mesure la plus proche d'un point, à moins de `rayon` mètres
+    plusProche(lon, lat, rayon) {
+      let meilleure = null;
+      stations.forEach((station) => {
+        if (etatStation(station) === 'hs') return;
+        const distance = distanceMetres({ lon, lat }, station);
+        if (distance <= rayon && (!meilleure || distance < meilleure.distance)) meilleure = { station, distance };
+      });
+      return meilleure;
     },
     centrerSur(id) {
       const station = stations.find((candidate) => candidate.id === id);

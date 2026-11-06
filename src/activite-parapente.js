@@ -1,7 +1,7 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
 import { lire, ecrire } from './reglages.js';
-import { COULEUR_BALISE_INACTIVE, FFVL_ACTIVE, SOURCES_BALISES, texteAge } from './balises-sources.js';
+import { COULEUR_BALISE_INACTIVE, RESEAUX, texteAge } from './balises-sources.js';
 import { PALETTE_CARTE, cadranVent, couleurInterface, libellesPaliersVent, texteProvenance } from './vent-cadran.js';
 import { formatVent, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
@@ -33,9 +33,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     <section class="para-vue" data-para-contenu="sites" ${ta('aria-label', 'para.sites-balises')} hidden>
       <div class="para-source">
         ${tt('para.source')}
-        ${SOURCES_BALISES.length > 1
-    ? `<select class="para-source-choix" ${ta('aria-label', 'para.source')}>${SOURCES_BALISES.map(({ id, libelle }) => `<option value="${id}">${libelle}</option>`).join('')}</select>`
-    : `<a class="para-lien" href="${SOURCES_BALISES[0].lien}" target="_blank" rel="noopener noreferrer">${SOURCES_BALISES[0].libelle} ↗</a>`}
+        ${Object.values(RESEAUX).map(({ lien, libelle }) => `<a class="para-lien" href="${lien}" target="_blank" rel="noopener noreferrer">${libelle} ↗</a>`).join('<span aria-hidden="true">·</span>')}
       </div>
       <p class="note para-etat" role="status" aria-live="polite"></p>
       <label class="option-case"><input type="checkbox" data-para-layer-balises> ${tt('para.balises')}
@@ -50,14 +48,14 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
         <h3 ${ti('para.balises-zone')}>${t('para.balises-zone')}</h3>
         <div class="para-balises-liste"></div>
       </div>
-      ${FFVL_ACTIVE
-    ? `<label class="option-case"><input type="checkbox" data-para-layer-sites> ${tt('para.sites-ffvl')}
+      <label class="option-case"><input type="checkbox" data-para-layer-sites> ${tt('para.sites-ffvl')}
         <small ${ti('para.sites-ffvl-detail')}>${t('para.sites-ffvl-detail')}</small></label>
-      <div class="para-legende">
+      <div class="para-legende para-legende-sites">
         <span><i class="para-point para-point-vert"></i> ${tt('para.decollage')}</span>
         <span><i class="para-point para-point-bleu"></i> ${tt('para.atterrissage')}</span>
-      </div>`
-    : `<p class="note" ${ti('para.aucune-source')}>${t('para.aucune-source')}</p>`}
+        <span><i class="para-point para-point-rouge"></i> ${tt('para.interdit')}</span>
+        <span><i class="para-point para-point-autorisation"></i> ${tt('para.autorisation')}</span>
+      </div>
       <button type="button" class="para-bouton para-actualiser" ${ti('para.actualiser')}>${t('para.actualiser')}</button>
     </section>
 
@@ -75,7 +73,6 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   const messageEtat = panneau.querySelector('.para-etat');
   const blocBalises = panneau.querySelector('.para-balises');
   const listeBalises = panneau.querySelector('.para-balises-liste');
-  const choixSource = panneau.querySelector('.para-source-choix');
   const boutonActualiser = panneau.querySelector('.para-actualiser');
   const caseBalises = panneau.querySelector('[data-para-layer-balises]');
   const caseSites = panneau.querySelector('[data-para-layer-sites]');
@@ -85,7 +82,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
 
   const coche = (nom, defaut) => lire(nom, defaut) !== false;
   caseBalises.checked = coche('balises-visibles', true);
-  if (caseSites) caseSites.checked = coche('sites-visibles', true);
+  caseSites.checked = coche('sites-visibles', true);
 
   function rendreBalises() {
     if (!actif || vueActive !== 'sites') return;
@@ -144,16 +141,12 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   });
   const portee = initPortee(map, { onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
 
-  if (choixSource) {
-    choixSource.value = donnees.sourceActive.id;
-    choixSource.addEventListener('change', () => donnees.choisirSource(choixSource.value));
-  }
   // Chaque onglet montre sa propre couche : balises et flèches de vent se gêneraient,
   // et un clic ouvrirait deux détails à la fois
   function synchroniserCarte() {
     const surOnglet = actif && vueActive === 'sites';
     donnees.setBalises(surOnglet && caseBalises.checked);
-    donnees.setSites(surOnglet && Boolean(caseSites?.checked));
+    donnees.setSites(surOnglet && caseSites.checked);
   }
 
   caseBalises.addEventListener('change', () => {
@@ -161,7 +154,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     synchroniserCarte();
     rendreBalises();
   });
-  caseSites?.addEventListener('change', () => {
+  caseSites.addEventListener('change', () => {
     ecrire('sites-visibles', caseSites.checked);
     synchroniserCarte();
   });
