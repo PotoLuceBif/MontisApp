@@ -484,6 +484,8 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
       if (!nouveauJour && heure % groupe) return;
       const x = xBord(rang);
       if (x < MARGE + 10 || x > largeur - MARGE - 10) return;
+      // L'heure lue s'affiche sur le curseur : pas d'heure de l'axe dessous
+      if (Math.abs(x - xCentre(curseur)) < 42) return;
       ctx.fillStyle = nouveauJour ? c.texte : c.texte2;
       ctx.font = `${nouveauJour ? 700 : 500} 10px ${c.police}`;
       const texte = nouveauJour ? nomJour(new Date(`${heures[index].slice(0, 10)}T12:00:00`), 'short') : etiquetteHeure(heures[index]);
@@ -520,9 +522,11 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
 
     let y = MARGE;
     const points = [];
+    const zones = [];
     affichees().forEach((id) => {
       const repere = DESSINS[id](c, y);
       if (repere) points.push(repere);
+      zones.push({ id, haut: y + LEGENDE, h: LIGNES[id], repere });
       y += hauteurLigne(id) + ECART;
     });
     dessinerAxe(c, hauteur - AXE);
@@ -548,71 +552,87 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
       ctx.fill();
       ctx.stroke();
     });
+    dessinerEtiquettes(c, x, zones);
   }
 
-  // --- Lecture de l'heure touchée ---
-  function element(classe, libelle, texte) {
-    const bloc = document.createElement('div');
-    bloc.className = `frise-valeur ${classe}`;
-    const nom = document.createElement('span');
-    nom.textContent = libelle;
-    const contenu = document.createElement('strong');
-    contenu.textContent = texte;
-    bloc.append(nom, contenu);
-    return bloc;
+  // Valeurs de l'heure lue, posées sur le curseur : une étiquette par ligne, l'heure sur l'axe
+  function etiquette(c, x, yCentre, texte, couleur, { plein = false, haut = 0, bas = hauteur } = {}) {
+    ctx.font = `650 11px ${c.police}`;
+    const l = ctx.measureText(texte).width + 12;
+    const h = 18;
+    // À droite du curseur, ou à gauche près du bord droit
+    let gauche = plein ? x - l / 2 : x + 7;
+    if (!plein && gauche + l > largeur - MARGE) gauche = x - 7 - l;
+    gauche = Math.max(MARGE, Math.min(largeur - MARGE - l, gauche));
+    const y = Math.max(haut, Math.min(bas - h, yCentre - h / 2));
+    ctx.beginPath();
+    ctx.roundRect(gauche, y, l, h, 5);
+    ctx.fillStyle = plein ? couleur : c.surface;
+    ctx.globalAlpha = plein ? 1 : 0.94;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    if (!plein) {
+      ctx.strokeStyle = couleur;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+    ctx.fillStyle = plein ? c.surface : c.texte;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texte, gauche + 6, y + h / 2 + 0.5);
   }
 
-  function afficherLecture() {
-    lecture.replaceChildren();
-    if (!donnees || !indices.length) return;
+  function dessinerEtiquettes(c, x, zones) {
+    const lues = valeursLues(c);
+    zones.forEach(({ id, haut, h, repere }) => {
+      const lue = lues[id];
+      if (!lue) return;
+      const v = repere ? valeur(repere.champ, curseur) : null;
+      const yCentre = repere && Number.isFinite(v) ? repere.yDe(v) - 14 : haut + h / 2;
+      etiquette(c, x, yCentre, lue.texte, lue.couleur, { haut: haut - 2, bas: haut + h + (id === 'vent' ? FLECHES : 2) });
+    });
     const heure = donnees.time[indices[curseur]];
-    const titre = document.createElement('p');
-    titre.className = 'frise-heure';
-    const jour = nomJour(new Date(`${heure.slice(0, 10)}T12:00:00`), 'long');
-    titre.textContent = t('frise.heure-lue', { jour, heure: etiquetteHeure(heure) });
-    lecture.appendChild(titre);
-    const grille = document.createElement('div');
-    grille.className = 'frise-valeurs';
+    const jour = nomJour(new Date(`${heure.slice(0, 10)}T12:00:00`), 'short');
+    etiquette(c, x, hauteur - AXE / 2, `${jour} ${etiquetteHeure(heure)}`, c.accent, { plein: true });
+  }
+
+  // Textes de l'heure lue, par ligne
+  function valeursLues(c) {
     const v = (champ) => valeur(champ, curseur);
-    const lignes = affichees();
-    if (lignes.includes('temperature')) {
-      grille.append(element('frise-valeur-temperature', t('frise.temperature'), Number.isFinite(v('temperature_2m')) ? formatTemp(v('temperature_2m')) : '—'));
+    const lues = {};
+    if (Number.isFinite(v('temperature_2m'))) {
+      lues.temperature = { texte: formatTemp(v('temperature_2m')), couleur: v('temperature_2m') < 0 ? c.froid : c.chaud };
     }
-    if (lignes.includes('precipitations')) {
-      const mm = v('precipitation');
-      const proba = v('precipitation_probability');
-      let texte = '—';
-      if (Number.isFinite(mm)) {
-        texte = mm <= 0 ? t('frise.sec') : estNeige(mm, v('snowfall')) ? formatNeige(v('snowfall')) : formatPluie(mm);
-        if (Number.isFinite(proba)) texte += ` · ${pourcent(proba)}`;
-      }
-      grille.append(element('frise-valeur-precipitations', t('frise.precipitations'), texte));
+    const mm = v('precipitation');
+    if (Number.isFinite(mm)) {
+      let texte = mm <= 0 ? t('frise.sec') : estNeige(mm, v('snowfall')) ? formatNeige(v('snowfall')) : formatPluie(mm);
+      if (Number.isFinite(v('precipitation_probability'))) texte += ` · ${pourcent(v('precipitation_probability'))}`;
+      lues.precipitations = { texte, couleur: c.pluie };
     }
-    if (lignes.includes('vent')) {
-      const moyen = v('wind_speed_10m');
-      const rafale = v('wind_gusts_10m');
-      const direction = v('wind_direction_10m');
-      let texte = '—';
-      if (Number.isFinite(moyen)) {
-        texte = formatVent(moyen);
-        if (Number.isFinite(direction)) texte += ` ${pointCardinal(direction)}`;
-        if (Number.isFinite(rafale)) texte += ` · ${t('frise.raf', { valeur: formatVent(rafale) })}`;
-      }
-      grille.append(element('frise-valeur-vent', t('frise.vent'), texte));
+    const moyen = v('wind_speed_10m');
+    if (Number.isFinite(moyen)) {
+      let texte = formatVent(moyen);
+      if (Number.isFinite(v('wind_direction_10m'))) texte += ` ${pointCardinal(v('wind_direction_10m'))}`;
+      if (Number.isFinite(v('wind_gusts_10m'))) texte += ` · ${t('frise.raf', { valeur: formatVent(v('wind_gusts_10m')) })}`;
+      lues.vent = { texte, couleur: c.vent[palierVent(moyen)] };
     }
-    if (lignes.includes('orage')) {
-      const niveau = niveauOrage(v('cape'), v('weather_code'));
-      const bloc = element(`frise-valeur-orage niveau-${niveau}`, t('frise.orage'), t(NIVEAUX_ORAGE[niveau]));
-      if (Number.isFinite(v('cape'))) bloc.title = t('frise.cape', { valeur: Math.round(v('cape')) });
-      grille.append(bloc);
+    const niveau = niveauOrage(v('cape'), v('weather_code'));
+    lues.orage = { texte: t(NIVEAUX_ORAGE[niveau]), couleur: niveau ? c.orage[niveau] : c.bord };
+    if (Number.isFinite(v('cloud_cover_low'))) lues.nuages = { texte: pourcent(v('cloud_cover_low')), couleur: c.texte2 };
+    if (Number.isFinite(v('freezing_level_height'))) {
+      lues.isotherme = { texte: formatAltitude(v('freezing_level_height'), { pas: 50 }), couleur: c.iso };
     }
-    if (lignes.includes('nuages')) {
-      grille.append(element('frise-valeur-nuages', t('frise.nuages'), Number.isFinite(v('cloud_cover_low')) ? pourcent(v('cloud_cover_low')) : '—'));
-    }
-    if (lignes.includes('isotherme')) {
-      grille.append(element('frise-valeur-isotherme', t('frise.isotherme'), Number.isFinite(v('freezing_level_height')) ? formatAltitude(v('freezing_level_height'), { pas: 50 }) : '—'));
-    }
-    lecture.appendChild(grille);
+    return lues;
+  }
+
+  // Même lecture en texte, pour les lecteurs d'écran
+  function afficherLecture() {
+    if (!donnees || !indices.length || !largeur) return;
+    const heure = donnees.time[indices[curseur]];
+    const jour = nomJour(new Date(`${heure.slice(0, 10)}T12:00:00`), 'long');
+    const lues = valeursLues(couleurs());
+    const textes = affichees().filter((id) => lues[id]).map((id) => `${t(`frise.${id}`)} ${lues[id].texte}`);
+    lecture.textContent = `${t('frise.heure-lue', { jour, heure: etiquetteHeure(heure) })} : ${textes.join(', ')}`;
   }
 
   function majNote() {
