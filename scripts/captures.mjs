@@ -10,6 +10,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
+import { previsionsSimulees } from './meteo-simulee.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -72,6 +73,13 @@ const heureOmbres = (minutes) => async (page) => {
 };
 // Fait défiler le panneau jusqu'à un bloc
 const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
+// Touche la frise météo à une fraction de sa largeur
+const lireFrise = (fraction) => async (page) => {
+  const frise = page.locator('.frise:not([hidden]) .frise-graphique').first();
+  await frise.waitFor({ timeout: 8000 });
+  const boite = await frise.boundingBox();
+  await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
+};
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
@@ -81,7 +89,13 @@ const ECRANS = [
   { nom: 'randonnee', actions: [module('rando')] },
   { nom: 'velo', actions: [module('velo')] },
   { nom: 'ski', actions: [module('ski')] },
-  { nom: 'meteo', actions: [module('meteo-locale')] },
+  // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
+  { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
+  // Frise heure par heure : lecture d'une heure, choix des lignes, jour choisi
+  { nom: 'meteo-frise', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire')] },
+  { nom: 'meteo-frise-lecture', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire'), lireFrise(0.3), (p) => p.waitForTimeout(800), defiler('.frise-lecture')] },
+  { nom: 'meteo-frise-lignes', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.frise-bouton-lignes'), clic('.frise-puce-nuages'), clic('.frise-puce-isotherme'), defiler('.meteo-horaire')] },
+  { nom: 'meteo-frise-jour', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.meteo-jour:nth-child(3)'), defiler('.meteo-horaire')] },
   { nom: 'meteo-radar', actions: [module('radar')] },
   { nom: 'meteo-vent', actions: [module('vent')] },
   // Pastilles météo : le radar reste panneau Météo fermé ; le vent, panneau Carte ouvert par-dessus (téléphone)
@@ -158,7 +172,8 @@ const ECRANS = [
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long
-  { nom: 'point', actions: [appuiLong(0.5, 0.42)] },
+  { nom: 'point', simuler: true, actions: [appuiLong(0.5, 0.42)] },
+  { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
@@ -228,6 +243,9 @@ async function main() {
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));
         page.on('requestfailed', (r) => reseauEnEchec.add(new URL(r.url()).host));
+        if (ecran.simuler) {
+          await page.route(/api\.open-meteo\.com\/v1\/forecast/, (route) => route.fulfill({ json: previsionsSimulees(route.request().url()) }));
+        }
 
         await page.goto(adresse, { waitUntil: 'load' });
         await page.waitForTimeout(ATTENTE_CHARGEMENT);

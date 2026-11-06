@@ -504,6 +504,9 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .point-detail { margin-top: 3px; color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
 .point-attente { color: var(--texte-2); font-size: 13px; }
 .point-indisponible { color: var(--texte-2); font-size: 13px; opacity: 0.8; }
+.point-frise { padding: 9px 0 10px; border-top: 1px solid var(--bord); }
+.point-frise h4 { margin: 0 0 7px; color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.point-frise .frise { margin: 0; padding: 8px; }
 .point-pente {
   flex: none; min-width: 40px; padding: 2px 8px; border-radius: 6px; text-align: center;
   background: var(--surface-2); color: var(--texte); font-weight: 700; font-variant-numeric: tabular-nums;
@@ -2136,6 +2139,104 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   font-size: 10.5px;
 }
 .meteo-heure strong { color: var(--texte); font-size: 13px; }
+.meteo-heure { cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
+.meteo-heure.lue { border-color: var(--accent); background: var(--accent-doux); }
+
+/* Frise météo heure par heure (meteo-frise.js) */
+:root {
+  --frise-chaud: #d9730d;
+  --frise-froid: #3f7fc4;
+  --frise-pluie: #2f86c9;
+  --frise-neige: #8eaed3;
+  --frise-iso: #2f7fbf;
+  --orage-1: #c99a00;
+  --orage-2: #df6718;
+  --orage-3: #c2338a;
+}
+:root[data-theme='sombre'], :root[data-theme='cyberpunk'] {
+  --frise-chaud: #ffb155;
+  --frise-froid: #7fb6ea;
+  --frise-pluie: #5daee6;
+  --frise-neige: #dce9ff;
+  --frise-iso: #8fd0ff;
+  --orage-1: #f2d14b;
+  --orage-2: #ff9b45;
+  --orage-3: #ff5da2;
+}
+.frise {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid var(--bord);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.frise[hidden] { display: none; }
+.frise-outils { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.frise-aide { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.35; }
+.frise-bouton-lignes {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte);
+  font: 600 11px var(--police);
+  cursor: pointer;
+}
+.frise-bouton-lignes svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.frise-bouton-lignes[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
+.frise-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.frise-choix[hidden] { display: none; }
+.frise-puce {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--bord);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--texte-2);
+  font: 600 11px var(--police);
+  cursor: pointer;
+}
+.frise-puce[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--texte); }
+.frise-bouton-lignes:focus-visible, .frise-puce:focus-visible, .frise-graphique:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.frise-graphique { display: block; width: 100%; touch-action: pan-y; cursor: crosshair; border-radius: 4px; }
+.frise-lecture { display: grid; gap: 6px; }
+.frise-heure { margin: 0; color: var(--texte); font-size: 11.5px; font-weight: 700; }
+.frise-heure::first-letter { text-transform: uppercase; }
+.frise-valeurs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 5px 12px; }
+.frise-valeur { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 6px; padding-left: 8px; border-left: 3px solid var(--bord); font-size: 11px; }
+.frise-valeur span { color: var(--texte-2); white-space: nowrap; }
+.frise-valeur strong { min-width: 0; color: var(--texte); font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.frise-valeur-temperature { border-left-color: var(--frise-chaud); }
+.frise-valeur-precipitations { border-left-color: var(--frise-pluie); }
+.frise-valeur-vent { border-left-color: var(--vent-rafale); }
+.frise-valeur-nuages { border-left-color: var(--texte-2); }
+.frise-valeur-isotherme { border-left-color: var(--frise-iso); }
+.frise-valeur-orage.niveau-1 { border-left-color: var(--orage-1); }
+.frise-valeur-orage.niveau-2 { border-left-color: var(--orage-2); }
+.frise-valeur-orage.niveau-3 { border-left-color: var(--orage-3); }
+.frise-valeur-orage.niveau-3 strong { color: var(--orage-3); }
+.frise-legende { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; color: var(--texte-2); font-size: 10.5px; }
+.frise-legende[hidden], .frise-note[hidden] { display: none; }
+.frise-legende > span:first-child { color: var(--texte); font-weight: 600; }
+.frise-legende-niveau { display: inline-flex; align-items: center; gap: 5px; }
+.frise-legende-niveau::before { width: 10px; height: 10px; border-radius: 2px; content: ''; }
+.frise-legende-niveau.niveau-1::before { background: var(--orage-1); }
+.frise-legende-niveau.niveau-2::before { background: var(--orage-2); }
+.frise-legende-niveau.niveau-3::before { background: var(--orage-3); }
+.frise-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
+:root[data-theme='cyberpunk'] .frise {
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
+  background: #09131d;
+}
+:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #09131d); }
 .meteo-icone {
   display: grid;
   width: 30px;
