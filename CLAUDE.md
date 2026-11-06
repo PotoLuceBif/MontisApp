@@ -19,7 +19,7 @@ npm run captures  # captures téléphone et ordinateur dans captures/, avec rapp
 
 `npm test` vérifie les calculs purs (unités, vent, portée de vol, analyse de parcours, GPX, soleil, pente et distances de la fiche du point, frise météo, couches de pente et d'orientation, ombre portée), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
 
-Variables d'environnement : aucune n'est nécessaire (voir `.env.example`). `VITE_FFVL=1` active le code FFVL, qui suppose un relais serveur inexistant à ce jour.
+Variables d'environnement : aucune n'est nécessaire (voir `.env.example`).
 
 ## Règles de conception
 
@@ -113,7 +113,7 @@ Jamais pour un simple avancement.
 
 ```
 index.html              Point d'entrée, ne contient que #map
-vite.config.js          Génération de /sw.js, proxy /ffvl (développement seulement)
+vite.config.js          Génération de /sw.js
 .env.example            Variables possibles, sans valeur
 scripts/                Extraction des données (voir Données locales) ; captures.mjs : captures d'écran
 tests/                  Tests Vitest des calculs purs
@@ -178,7 +178,9 @@ src/                    Tout le code (détail ci-dessous)
 | Fichier | Rôle |
 |---|---|
 | `activite-parapente.js`, `parapente.js` | Menu de l'activité ; balises et sites |
-| `balises-sources.js`, `balises-couche.js` | Sources de relevés ; pastilles et manches à air sur la carte |
+| `balises-sources.js`, `balises-couche.js` | Réseaux OpenWindMap et FFVL, chargés ensemble (`BALISES`) ; pastilles et manches à air sur la carte |
+| `balises-calcul.js` | Lecture des fichiers FFVL, réunion des deux réseaux sans doublons (testé) |
+| `terrain-fiche.js`, `terrains-calcul.js` | Fiche d'un terrain FFVL ; lecture des terrains, statut, orientations, vent dans l'axe (testé) |
 | `balise-fiche.js`, `balise-graphique.js` | Fiche d'une balise ; graphique de son évolution |
 | `portee.js`, `portee-calcul.js` | Portée de vol depuis un point ; calcul pur du chemin le plus court (testé) |
 
@@ -232,7 +234,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 | Prévisions, vent, neige | Open-Meteo | Peut répondre 429 (limite de requêtes) ; un message est prévu |
 | Radar de pluie | RainViewer ; lien vers MétéoSuisse | Zoom 7 au plus |
 | Balises de vent | OpenWindMap (`api.pioupiou.fr`) | Créditer avec lien visible ; interdit de mêler ses mesures à des capteurs non ouverts sans licence étendue |
-| Balises et sites FFVL | `data.ffvl.fr`, data.gouv.fr | Désactivé dans le code (`VITE_FFVL`). Depuis le 2 novembre 2026, données ouvertes sous Licence Ouverte Etalab, sans clé : intégration prévue au lot 2.0 de la feuille de route. Le proxy `/ffvl` n'existe qu'en développement |
+| Balises et terrains FFVL | Fichiers de data.gouv.fr (`www.data.gouv.fr/api/1/datasets/r/<ressource>`, redirigés vers `static.data.gouv.fr`) | Licence Ouverte 2.0, citer la FFVL. Dernier relevé seulement, pas d'historique. Relevés toutes les 5 min, balises et terrains une fois par jour (terrains : 3,6 Mo, 750 Ko compressé). L'API `data.ffvl.fr` exige toujours une clé : ne pas l'utiliser. La liste des balises contient les coordonnées des responsables : ne jamais les afficher |
 | Itinéraires balisés, EuroVelo | Waymarked Trails | Écritures exactes (« GR5 » et « GR 5 » diffèrent) ; un itinéraire entier peut peser environ 10 Mo |
 | Routage | BRouter, puis Valhalla | BRouter abandonne au-delà de 3 s de calcul ; un tronçon non calculé apparaît en tireté |
 | Avalanches | Bulletins EAWS (`static.avalanche.report`) | Selon la couverture des bulletins |
@@ -243,7 +245,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 
 **En place**
 - Carte 2D/3D et globe, fonds multiples, thèmes, PWA et mode hors ligne.
-- Vol libre (ex-Parapente) : balises OpenWindMap et leur fiche, analyse du vent et volume 3D, portée de vol.
+- Vol libre (ex-Parapente) : balises OpenWindMap et FFVL réunies et leur fiche, terrains FFVL (décollages, atterrissages, interdits) et leur fiche, analyse du vent et volume 3D, portée de vol.
 - Randonnée et Vélo : menu commun, création de parcours, Mes parcours, import GPX, profil, itinéraires balisés.
 - Vélo : calque vélo, alertes de passages raides, EuroVelo, bike parks.
 - Ski : stations, pistes, enneigement, avalanches, visite 3D (aussi pour les bike parks).
@@ -256,10 +258,10 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Soleil (lot 1.1) dans Météo › Conditions locales : lever, coucher, durée du jour, midi solaire, heures dorées, aube et crépuscule, position actuelle et course du jour. Calculé sur l'appareil, donc hors ligne aussi. Heures au fuseau du lieu (`utc_offset_seconds` d'Open-Meteo), sinon à celui de l'appareil, indiqué. Horizon supposé dégagé, le relief n'est pas pris en compte (lot 1.4).
 - Ombre du soleil (lot 1.4) dans Carte › Relief, en 2D et en 3D : jour (flèches ou calendrier), curseur d'heure, « Maintenant », position du soleil et cadran ; ombrage éclairé par le soleil réel et ombre portée par les montagnes (à partir du zoom 10, jusqu'à 30 km), intensité, pastille « Soleil 9h00 » ou « Nuit ». Calculée sur l'appareil, hors ligne dans les zones téléchargées. Écrans `carte-ombres`, `carte-ombres-3d`, `carte-ombres-ferme`, `carte-ombres-jour`, `carte-ombres-nuit` dans les captures.
 - Frise météo (lot 1.5) : `meteo-frise.js`, commune à Météo › Conditions locales (au-dessus des cartes horaires, qui restent) et à la fiche du point (24 h : température, précipitations, vent, orage). Lignes empilées sur un même axe du temps : température (froide sous 0 °C), précipitations (pluie ou neige) et leur probabilité, vent moyen et rafales aux couleurs des paliers avec la direction, orage, nuages bas, isotherme 0 °C avec l'altitude du lieu. Un appui ou un glissé lit une heure et souligne sa carte, et toucher une carte place la lecture. Choix des lignes gardé (`meteo-frise-lignes`). Orage : CAPE ≥ 300 J/kg « Instabilité modérée », ≥ 1 000 « Instabilité forte », codes 95, 96, 99 « Orage prévu » (`frise-calcul.js`, testé). Les captures `meteo`, `meteo-frise*`, `point` et `point-frise` utilisent des prévisions simulées (`scripts/meteo-simulee.mjs`, option `simuler` d'un écran), Open-Meteo étant bloqué en session cloud.
+- Balises et terrains FFVL (lot 2.0), décision du propriétaire du 6 novembre 2026 : les deux réseaux réunis. Les balises FFVL de type OpenWindMap sont écartées (la FFVL n'en publie pas les relevés) ; à moins de 200 m, la balise qui mesure la plus récente reste et sa fiche signale l'autre (`fusionnerReseaux`). Identifiants FFVL préfixés `ffvl-` (ceux d'OpenWindMap restent nus, l'archive les utilise) ; `reseauDe(station)` donne le réseau d'une station (historique, lien, crédit). Si un réseau ne répond pas, l'autre s'affiche et le panneau le dit. Fiche FFVL : température, altitude, maintenance, « pas d'évolution » à la place du graphique. Terrains : vert décollage (treuil et pente-école compris), bleu atterrissage, rouge interdit ou fermé (au-dessus des autres), cerclé d'orange sur autorisation ; sous les balises. Fiche du terrain : statut, alerte FFVL, rose des orientations avec le vent de la balise la plus proche à moins de 15 km (« Dans l'axe » ou non, décollages seulement), niveau IPPI, marche, consignes, restrictions, règles de vol, conditions idéales, description et accès repliés, raccourci Prévisions (sa croix ramène à la fiche), mention de prudence. Les textes de la FFVL restent en français. Hors ligne : relevés et terrains enregistrés par le service worker (`www.data.gouv.fr/api/1/datasets/r/` dans `DONNEES`). Écrans `parapente-sites`, `parapente-sites-carte`, `parapente-terrain`, `parapente-terrain-interdit`, `parapente-balise-ffvl` (réseau requis : `api.pioupiou.fr`, `www.data.gouv.fr`, `static.data.gouv.fr`, ouverts dans l'environnement cloud « MontisApp » ; le script réessaie data.gouv.fr, que le proxy coupe souvent).
 - Pastilles Météo (lot 1.3 bis) : radar de pluie (« Pluie 14h20 ») et analyse du vent (« Vent 18h00 »), ou « indisponible » en cas d'échec. Écrans `meteo-radar-pastille`, `meteo-vent-pastille`, `meteo-vent-pastille-ouvre` dans les captures.
 
 **Points ouverts constatés**
-- FFVL : données désormais ouvertes et sans clé (data.gouv.fr) ; à intégrer au lot 2.0, après vérification de l'API, des licences et comparaison avec OpenWindMap.
 - Au démarrage : 249 Ko de code Montis (81 Ko compressé), en deux fichiers : le code (144 Ko) et les deux fichiers de langue (105 Ko) ; MapLibre (1,1 Mo) à part.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
