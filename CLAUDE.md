@@ -85,10 +85,14 @@ src/                    Tout le code (détail ci-dessous)
 | `main.js` | Crée la carte, relief et courbes, globe, ciel, bascule 2D/3D, mémoire de la vue |
 | `menu.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules |
 | `reglages.js` | `lire`, `ecrire`, `quandPret`, `retourAZero` (localStorage `montis.reglages`) |
+| `i18n.js`, `src/i18n/` | Traduction : `t('cle')`, `tt`/`ta`/`poser` pour les textes marqués `data-i18n` ; `fr.json` sert de secours |
+| `preferences.js`, `unites.js` | Langue et unités ; affichage des mesures (tout reste métrique en interne) |
 | `options-carte.js` | État partagé entre le bouton 3D et le menu (`etat`), courbes |
 | `style.css` | Tous les styles et les thèmes |
 | `apparence.js` | Thème et couleur d'accent |
 | `parametres.js` | Page Paramètres |
+| `parametres-hors-ligne.js`, `donnees-hors-ligne.js` | Section « Données hors ligne » : stockage, vidage, Wi-Fi uniquement |
+| `parametres-sauvegarde.js`, `sauvegarde.js` | Section « Sauvegarde » : export et import `.json` des réglages et parcours |
 | `barre-haut.js`, `bascule-mode.js` | Barre du haut, sélecteur 2D/3D |
 | `bandeau-menu.js` | Illustration en tête du menu |
 | `panneau-carte.js` | Panneau posé sur la carte, réductible sur téléphone |
@@ -145,6 +149,20 @@ src/                    Tout le code (détail ci-dessous)
 | `zone-lieux.js`, `fiche-lieu.js` | Recherche par nom ou zone et repères groupés ; fiche commune aux stations et bike parks |
 | `visite-station.js` | Visite 3D d'une station ou d'un bike park |
 
+## Graphe du code (Graphify)
+
+`graphify-out/` contient un graphe du code produit par [Graphify](https://github.com/safishamsi/graphify) (analyse AST locale, sans clé d'API) : `GRAPH_REPORT.md` résume les modules centraux, les communautés et les cycles d'import ; `graph.json` sert aux requêtes. Utile pour mesurer l'impact d'une modification avant de lire les fichiers.
+
+```bash
+pip install graphifyy                         # outil Python, absent par défaut
+graphify update .                             # rafraîchir après des changements de code
+graphify affected "creerEditeurParcours"      # ce qui dépend d'une fonction
+graphify explain "ecrire"                     # voisins d'un nœud
+graphify path "creerActiviteVelo" "lire"      # chemin entre deux nœuds
+```
+
+Le graphe peut être en retard sur le code : `GRAPH_REPORT.md` indique le commit d'origine. `.graphifyignore` exclut `public/` (données lourdes).
+
 ## Données locales
 
 Fichiers générés par `scripts/`, à relancer seulement pour rafraîchir les données (réseau requis, longue durée). Licence ODbL, à créditer.
@@ -197,5 +215,6 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - La dépendance `suncalc` est déclarée, mais importée nulle part.
 - Le build signale un bundle de plus de 500 Ko : pas de découpage du code pour l'instant.
 - Aucun test automatique.
+- Cycle d'import `donnees-hors-ligne.js` ↔ `zones-hors-ligne.js` (relevé par Graphify), sans effet constaté.
 
 Aucune feuille de route n'est écrite dans le dépôt : demander la priorité au propriétaire plutôt que la supposer.

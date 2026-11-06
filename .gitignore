@@ -32,3 +32,7 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Graphify : seuls le rapport et graph.json sont commités
+graphify-out/cache/
+graphify-out/graph.html
