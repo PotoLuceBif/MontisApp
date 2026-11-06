@@ -13,6 +13,8 @@ import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, nomDecalage, positionSoleil } from './soleil.js';
 import { formatAltitude, formatLongueur, formatPente, formatTemp, formatVent } from './unites.js';
 import { t } from './i18n.js';
+import { CHAMPS_FRISE, creerFrise } from './meteo-frise.js';
+import { indicesHeures } from './frise-calcul.js';
 import { ecrire, lire } from './reglages.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
@@ -170,9 +172,10 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
       latitude: lat.toFixed(4),
       longitude: lng.toFixed(4),
       current: 'temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      hourly: 'freezing_level_height',
+      hourly: CHAMPS_FRISE.join(','),
       daily: 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max',
-      forecast_days: '1',
+      // Deux jours : la frise montre les 24 heures qui suivent, même en soirée
+      forecast_days: '2',
       timezone: 'auto',
     });
     const requete = signalAvecDelai();
@@ -326,6 +329,30 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
       }));
     });
     return bouton;
+  }
+
+  // Frise des 24 prochaines heures, sous la météo ; gardée d'un rendu à l'autre pour garder l'heure lue
+  let frise = null;
+  let blocFrise = null;
+  function friseMeteo() {
+    const meteo = etat.meteo;
+    if (!meteo || typeof meteo !== 'object' || !Array.isArray(meteo.hourly?.time) || typeof meteo.current?.time !== 'string') return null;
+    if (!frise) {
+      frise = creerFrise({ lignes: ['temperature', 'precipitations', 'vent', 'orage'], choix: false });
+      blocFrise = document.createElement('section');
+      blocFrise.className = 'point-frise';
+      const titre = document.createElement('h4');
+      blocFrise.append(titre, frise.element);
+    }
+    blocFrise.querySelector('h4').textContent = t('meteo.24h');
+    const altitude = typeof etat.terrain === 'object' && Number.isFinite(etat.terrain?.altitude) ? etat.terrain.altitude : meteo.elevation;
+    frise.definir({
+      hourly: meteo.hourly,
+      rangs: indicesHeures(meteo.hourly.time, `${meteo.current.time.slice(0, 13)}:00`),
+      altitude,
+      garderHeure: true,
+    });
+    return blocFrise;
   }
 
   function meteoAvecRaccourci() {
@@ -485,6 +512,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
         ligne(t('point.pente'), valeurTerrain()),
         ligne(t('soleil.titre'), valeurSoleil()),
         ligne(t('point.meteo'), meteoAvecRaccourci()),
+        ...[friseMeteo()].filter(Boolean),
         ligne(t('point.refuge'), valeurRefuge()),
         ligne(t('point.eau'), valeurEau())
       );

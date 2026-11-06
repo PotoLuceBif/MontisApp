@@ -10,6 +10,8 @@ import { creerSectionSoleil } from './meteo-soleil.js';
 import { creerIconeMeteo, descriptionMeteo } from './meteo-icone.js';
 import { decalageAppareil } from './soleil.js';
 import { MINI_PLUIE, creerPastilleCouche } from './couches-actives.js';
+import { creerFrise } from './meteo-frise.js';
+import { indicesHeures } from './frise-calcul.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -452,6 +454,9 @@ export function creerConditionsLocales(map) {
   const texteBoutonChoisir = boutonChoisir.querySelector('span');
   const soleil = creerSectionSoleil();
   panneau.querySelector('.meteo-jours').after(soleil.section);
+  // La frise montre l'évolution ; les cartes en dessous gardent le détail de chaque heure
+  const frise = creerFrise({ onHeure: (index) => marquerCarte(index, true) });
+  heures.before(frise.element);
 
   let actif = false;
   let selectionEnCours = false;
@@ -468,6 +473,7 @@ export function creerConditionsLocales(map) {
   let nomVilleProche = '';
   let decalageLieu = null; // fuseau du lieu donné par Open-Meteo, en minutes
   let minuteurSoleil = null;
+  let altitudeLieu = null;
 
   // Le soleil se calcule sans réseau : affiché dès le choix du lieu, même si les prévisions échouent
   function majSoleil() {
@@ -662,28 +668,16 @@ export function creerConditionsLocales(map) {
   }
 
   function afficherHeures(donnees, debut, date = null) {
-    let indices;
-    if (date) {
-      indices = donnees.time
-        .map((valeur, index) => ({ valeur, index }))
-        .filter(({ valeur }) => valeur.startsWith(`${date}T`) && valeur >= debut)
-        .map(({ index }) => index);
-      poser(titreHoraire, 'meteo.previsions-jour', { jour: formaterJour(date) });
-    } else {
-      const debutIndex = donnees.time.findIndex((valeur) => valeur >= debut);
-      const premierIndex = debutIndex < 0 ? donnees.time.length : debutIndex;
-      indices = Array.from(
-        { length: Math.min(24, donnees.time.length - premierIndex) },
-        (_, offset) => premierIndex + offset
-      );
-      poser(titreHoraire, 'meteo.24h');
-    }
+    const indices = indicesHeures(donnees.time, debut, date);
+    if (date) poser(titreHoraire, 'meteo.previsions-jour', { jour: formaterJour(date) });
+    else poser(titreHoraire, 'meteo.24h');
 
     heures.replaceChildren();
 
     for (const index of indices) {
       const carte = document.createElement('article');
       carte.className = 'meteo-heure';
+      carte.dataset.index = String(index);
       const heureLocale = document.createElement('time');
       heureLocale.textContent = donnees.time[index].slice(11, 16);
       const symbole = creerIconeMeteo(donnees.weather_code[index]);
@@ -715,6 +709,22 @@ export function creerConditionsLocales(map) {
     }
 
     horaire.hidden = heures.childElementCount === 0;
+    frise.definir({ hourly: donnees, rangs: indices, altitude: altitudeLieu, garderHeure: true });
+    marquerCarte(frise.heureLue(), false);
+  }
+
+  // Carte de l'heure lue sur la frise : soulignée, et amenée à l'écran si on lit la frise
+  function marquerCarte(index, amener) {
+    let cible = null;
+    for (const carte of heures.children) {
+      const lue = carte.dataset.index === String(index);
+      carte.classList.toggle('lue', lue);
+      if (lue) cible = carte;
+    }
+    if (!cible || !amener) return;
+    // Défilement horizontal seulement : le panneau ne doit pas sauter
+    const gauche = cible.offsetLeft - heures.offsetLeft - (heures.clientWidth - cible.offsetWidth) / 2;
+    heures.scrollTo({ left: Math.max(0, gauche), behavior: 'smooth' });
   }
 
   function formaterJour(date) {
@@ -840,6 +850,7 @@ export function creerConditionsLocales(map) {
     heureActuelle = actuel.time;
     decalageLieu = Number.isFinite(donnees.utc_offset_seconds) ? donnees.utc_offset_seconds / 60 : null;
     previsionsHoraires = hourly;
+    altitudeLieu = Number.isFinite(donnees.elevation) ? donnees.elevation : null;
     majLieu();
 
     actuelle.replaceChildren();
@@ -919,7 +930,7 @@ export function creerConditionsLocales(map) {
       latitude: String(position.latitude),
       longitude: String(position.longitude),
       current: 'temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      hourly: 'temperature_2m,precipitation_probability,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,freezing_level_height',
+      hourly: 'temperature_2m,precipitation_probability,precipitation,rain,snowfall,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,cloud_cover_low,freezing_level_height',
       daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max',
       forecast_days: '5',
       timezone: 'auto',
@@ -983,6 +994,12 @@ export function creerConditionsLocales(map) {
     positionChoisie = true;
     ecrire(METEO_LOCATION, position);
     if (actif) chargerPrevisions();
+  });
+  heures.addEventListener('click', (event) => {
+    const carte = event.target.closest('.meteo-heure');
+    if (!carte) return;
+    frise.placerHeure(Number(carte.dataset.index));
+    marquerCarte(Number(carte.dataset.index), false);
   });
   jours.addEventListener('click', (event) => {
     const bouton = event.target.closest('.meteo-jour');
