@@ -141,10 +141,11 @@ export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {
     return bloc;
   }
 
-  // Sans balise sur le terrain même, le vent prévu par Montis à cet endroit
+  // Sans balise sur le terrain même, le vent prévu par Montis à cet endroit (pas pour un terrain fermé)
   function boutonAnalyseVent() {
     const proche = baliseProche(terrain.lon, terrain.lat, RAYON_BALISE);
-    if (!analyserVent || (proche && baliseSurPlace(proche.distance, terrain.altitude, proche.station.altitude))) return null;
+    if (!analyserVent || terrain.statut === 'interdit' || terrain.statut === 'ferme') return null;
+    if (proche && baliseSurPlace(proche.distance, terrain.altitude, proche.station.altitude)) return null;
     const bouton = document.createElement('button');
     bouton.type = 'button';
     bouton.className = 'point-lien';
