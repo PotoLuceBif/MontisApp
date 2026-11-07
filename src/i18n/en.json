@@ -1136,6 +1136,8 @@
   "tf.balise": "{nom} station, {distance} away",
   "tf.dans-axe": "Within range",
   "tf.hors-axe": "Out of range",
+  "tf.voir-balise": "View station ›",
+  "tf.analyser-vent": "Analyse the wind here",
   "tf.sans-balise": "No station measuring within 15 km.",
   "tf.fonction-decollage": "Take-off",
   "tf.fonction-atterrissage": "Landing",

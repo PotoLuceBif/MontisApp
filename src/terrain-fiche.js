@@ -3,7 +3,7 @@
 import { creerPanneauCarte } from './panneau-carte.js';
 import { ecrire } from './reglages.js';
 import { etatStation, texteAge } from './balises-sources.js';
-import { SECTEURS, accordVent } from './terrains-calcul.js';
+import { SECTEURS, accordVent, baliseSurPlace } from './terrains-calcul.js';
 import { couleurInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
@@ -34,7 +34,7 @@ function roseOrientations(terrain, direction, classe = '') {
   return `<svg class="tf-rose ${classe}" viewBox="-10 -10 84 84" aria-hidden="true">${secteurs}${classe ? '' : lettres}${fleche}</svg>`;
 }
 
-export function creerFicheTerrain(map, { onFermer = () => {}, onRetour = null, baliseProche = () => null, ouvrirBalise = () => {} } = {}) {
+export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {}, onRetour = null, baliseProche = () => null, ouvrirBalise = () => {}, analyserVent = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'terrain-fiche-reduite',
     libelle: 'panneau.terrain',
@@ -124,7 +124,12 @@ export function creerFicheTerrain(map, { onFermer = () => {}, onRetour = null, b
         poser(verdict, accord === 'favorable' ? 'tf.dans-axe' : 'tf.hors-axe');
         lien.append(verdict);
       }
-      lien.addEventListener('click', () => ouvrirBalise(mesure.id));
+      const voir = document.createElement('span');
+      voir.className = 'tf-balise-voir';
+      poser(voir, 'tf.voir-balise');
+      lien.append(voir);
+      const ici = terrain;
+      lien.addEventListener('click', () => ouvrirBalise(mesure.id, () => revenir(ici)));
       texte.append(lien);
     } else {
       const aucune = document.createElement('p');
@@ -134,6 +139,26 @@ export function creerFicheTerrain(map, { onFermer = () => {}, onRetour = null, b
     }
     bloc.append(texte);
     return bloc;
+  }
+
+  // Sans balise sur le terrain même, le vent prévu par Montis à cet endroit
+  function boutonAnalyseVent() {
+    const proche = baliseProche(terrain.lon, terrain.lat, RAYON_BALISE);
+    if (!analyserVent || (proche && baliseSurPlace(proche.distance, terrain.altitude, proche.station.altitude))) return null;
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'point-lien';
+    bouton.innerHTML = `
+      <svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/></svg>
+      <span></span>
+      <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+    poser(bouton.querySelector('span'), 'tf.analyser-vent');
+    const ici = terrain;
+    bouton.addEventListener('click', () => {
+      fermer();
+      analyserVent(ici, () => revenir(ici));
+    });
+    return bouton;
   }
 
   function boutonPrevisions() {
@@ -227,6 +252,7 @@ export function creerFicheTerrain(map, { onFermer = () => {}, onRetour = null, b
       infos,
       ...textes,
       ...(details ? [details] : []),
+      ...[boutonAnalyseVent()].filter(Boolean),
       boutonPrevisions(),
       source,
       prudence,
@@ -251,6 +277,17 @@ export function creerFicheTerrain(map, { onFermer = () => {}, onRetour = null, b
     panneau.afficher();
     rendre();
     garderVisible();
+    onOuvrir(terrain);
+  }
+
+  // Retour depuis la fiche d'une balise : la carte revient sur le terrain s'il est sorti de la vue
+  function revenir(ancien) {
+    if (map.getBounds().contains([ancien.lon, ancien.lat])) {
+      ouvrir(ancien);
+      return;
+    }
+    map.once('moveend', () => ouvrir(ancien));
+    map.easeTo({ center: [ancien.lon, ancien.lat], duration: 600 });
   }
 
   function fermer() {

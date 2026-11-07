@@ -1,5 +1,8 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
+import * as maplibregl from 'maplibre-gl';
+import { DECALAGE_PIN, creerPinSeul } from './pins.js';
+import { pinTerrain } from './terrains-calcul.js';
 import { lire, ecrire } from './reglages.js';
 import { COULEUR_BALISE_INACTIVE, RESEAUX, texteAge } from './balises-sources.js';
 import { PALETTE_CARTE, cadranVent, couleurInterface, libellesPaliersVent, texteProvenance } from './vent-cadran.js';
@@ -138,6 +141,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     // Pendant le choix du point de départ de la portée, un clic ne doit rien ouvrir d'autre
     peutOuvrirBalise: () => !portee.enAttente,
     onRetourFiche: ouvrirMenu,
+    analyserVent,
   });
   const portee = initPortee(map, { onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
 
@@ -169,8 +173,39 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   });
   map.on('moveend', rendreBalises);
 
+  // Depuis la fiche d'un terrain sans balise sur place : la carte se centre dessus, l'onglet Vent
+  // s'ouvre, et sa flèche retour ramène à l'onglet Sites et à la fiche du terrain
+  let retourVent = null;
+  // L'onglet Vent masque les terrains : le pin de celui-ci reste, pour s'y repérer
+  let pinVent = null;
+  function retirerPinVent() {
+    pinVent?.remove();
+    pinVent = null;
+  }
+  function analyserVent(terrain, retour) {
+    const ouvrirVent = () => {
+      retourVent = () => {
+        retourVent = null;
+        choisirVue('sites');
+        retour();
+      };
+      retirerPinVent();
+      pinVent = new maplibregl.Marker({ element: creerPinSeul(pinTerrain(terrain)).element, anchor: 'bottom', offset: DECALAGE_PIN })
+        .setLngLat([terrain.lon, terrain.lat])
+        .addTo(map);
+      if (vueActive === 'vent') {
+        analyseVent.desactiver();
+        ouvrirOutil();
+      } else choisirVue('vent');
+    };
+    map.once('moveend', ouvrirVent);
+    // Sur téléphone, le panneau du vent couvre le bas de l'écran : le terrain se place au-dessus
+    const telephone = window.matchMedia('(max-width: 640px)').matches;
+    map.easeTo({ center: [terrain.lon, terrain.lat], offset: [0, telephone ? -window.innerHeight * 0.25 : 0], duration: 600 });
+  }
+
   function ouvrirOutil() {
-    if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
+    if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null), onRetour: () => (retourVent ?? ouvrirMenu)() });
     else if (vueActive === 'portee') portee.ouvrir();
   }
 
@@ -187,6 +222,10 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   // `null` : aucun outil ouvert.
   function choisirVue(nom) {
     if (nom === vueActive) return;
+    if (nom !== 'vent') {
+      retourVent = null;
+      retirerPinVent();
+    }
     if (vueActive === 'vent') analyseVent.desactiver();
     if (vueActive === 'portee') portee.fermer();
     vueActive = nom;
@@ -230,6 +269,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       synchroniserCarte();
       if (vueActive === 'vent') analyseVent.desactiver();
       if (vueActive === 'portee') portee.fermer();
+      retirerPinVent();
     },
   };
 }

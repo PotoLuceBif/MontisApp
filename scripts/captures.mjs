@@ -116,8 +116,12 @@ const ongletSites = async (page) => {
     if (onglet.getAttribute('aria-pressed') !== 'true') onglet.click();
   });
 };
+// Le premier élément visible : plusieurs panneaux ont les mêmes boutons
+const clicVisible = (selecteur) => (page) => page.evaluate((s) => [...document.querySelectorAll(s)].find((e) => e.offsetParent !== null)?.click(), selecteur);
 // Les relevés et les terrains arrivent en quelques secondes
 const SITES = [vue(ANNECY), module('parapente'), ongletSites, (p) => p.waitForTimeout(6000)];
+// Fiche d'un décollage près d'Annecy
+const TERRAIN = [...SITES, clic('#menu-bouton'), vue({ ...ANNECY, zoom: 11.5 }), toucherObjet('terrains-ffvl-points', 'classe', 'decollage')];
 // Fait défiler le panneau jusqu'à un bloc
 const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
 // Touche la frise météo à une fraction de sa largeur
@@ -138,7 +142,13 @@ const ECRANS = [
   { nom: 'parapente-sites-carte', actions: [...SITES, clic('#menu-bouton')] },
   // Pins des terrains et leur anneau d'orientations, carte tournée : l'anneau suit la carte
   { nom: 'parapente-terrains-pins', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
-  { nom: 'parapente-terrain', actions: [...SITES, clic('#menu-bouton'), vue({ ...ANNECY, zoom: 11.5 }), toucherObjet('terrains-ffvl-points', 'classe', 'decollage')] },
+  { nom: 'parapente-terrain', actions: TERRAIN },
+  // Lien vers la balise la plus proche (24 h), puis flèche retour vers le terrain
+  { nom: 'parapente-terrain-balise', actions: [...TERRAIN, clic('.tf-balise'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'parapente-terrain-retour', actions: [...TERRAIN, clic('.tf-balise'), (p) => p.waitForTimeout(3000), clicVisible('.bf-retour'), (p) => p.waitForTimeout(1500)] },
+  // Pas de balise sur le terrain : analyse du vent centrée dessus
+  { nom: 'parapente-terrain-vent', actions: [...TERRAIN, defiler('.tf .point-lien'), (p) => p.waitForTimeout(500), clicVisible('.tf .point-lien'), (p) => p.waitForTimeout(6000)] },
+  { nom: 'parapente-terrain-vent-retour', actions: [...TERRAIN, defiler('.tf .point-lien'), (p) => p.waitForTimeout(500), clicVisible('.tf .point-lien'), (p) => p.waitForTimeout(6000), clicVisible('.bf-retour'), (p) => p.waitForTimeout(2000)] },
   { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
   { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },
   { nom: 'randonnee', actions: [module('rando')] },

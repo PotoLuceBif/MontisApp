@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accordVent, codeAnneau, lireSecteurs, lireTerrains, pinTerrain, secteurDe, statutTerrain, terrainsEnGeoJSON } from '../src/terrains-calcul.js';
+import { accordVent, baliseSurPlace, codeAnneau, lireSecteurs, lireTerrains, pinTerrain, secteurDe, statutTerrain, terrainsEnGeoJSON } from '../src/terrains-calcul.js';
 
 const brut = [
   {
@@ -89,5 +89,15 @@ describe('pins et anneaux', () => {
     expect(codeAnneau({ statut: 'interdit', favorables: ['S'] })).toBe('');
     const [premier] = terrainsEnGeoJSON(lireTerrains(brut)).features;
     expect(premier.properties).toMatchObject({ pin: 'terrain-decollage', anneau: 'nnnoonnn' });
+  });
+});
+
+describe('balise sur place', () => {
+  it('à 100 m au plus, et à 100 m d’altitude près si les deux altitudes sont connues', () => {
+    expect(baliseSurPlace(80, 1200, 1250)).toBe(true);
+    expect(baliseSurPlace(80, null, 1250)).toBe(true);
+    expect(baliseSurPlace(80, 1200, 1350)).toBe(false);
+    expect(baliseSurPlace(150, 1200, 1200)).toBe(false);
+    expect(baliseSurPlace(undefined, 1200, 1200)).toBe(false);
   });
 });

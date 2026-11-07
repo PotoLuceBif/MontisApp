@@ -26,7 +26,7 @@ const HAUT_TETE_CHOISIE = 19.5;
 const SANS_GROUPE = ['!', ['has', 'point_count']];
 const ATTRIBUTION_TERRAINS = 'Terrains © <a href="https://www.data.gouv.fr/fr/organizations/federation-francaise-de-vol-libre/" target="_blank" rel="noopener noreferrer">FFVL</a> (Licence Ouverte)';
 
-export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise = () => true, onRetourFiche } = {}) {
+export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise = () => true, onRetourFiche, analyserVent = null } = {}) {
   let balisesVisibles = false;
   let sitesVisibles = false;
   let actif = false;
@@ -45,10 +45,13 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   const source = BALISES;
   const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche });
   const ficheTerrain = creerFicheTerrain(map, {
+    onOuvrir: (terrain) => marquerTerrain(terrain.id),
     onFermer: () => marquerTerrain(null),
     onRetour: onRetourFiche,
     baliseProche: (lon, lat, rayon) => couche.plusProche(lon, lat, rayon),
-    ouvrirBalise: (id) => couche.centrerSur(id),
+    // Les 24 dernières heures de la balise ; sa flèche retour ramène au terrain
+    ouvrirBalise: (id, retour) => couche.centrerSur(id, { retour, periode: 24 }),
+    analyserVent,
   });
 
   function majVisibilite() {
@@ -221,7 +224,6 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       return;
     }
     ficheTerrain.ouvrir(terrain);
-    marquerTerrain(terrain.id);
   });
   map.on('mousemove', (event) => {
     if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS)) return;

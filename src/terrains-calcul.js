@@ -78,6 +78,15 @@ export function lireTerrains(brut) {
   return terrains;
 }
 
+// Une balise mesure-t-elle sur le terrain même : à 100 m au plus, et à 100 m d'altitude près
+// quand les deux altitudes sont connues
+export const ECART_SUR_PLACE = 100;
+export function baliseSurPlace(distance, altitudeTerrain, altitudeBalise) {
+  if (!Number.isFinite(distance) || distance > ECART_SUR_PLACE) return false;
+  if (!Number.isFinite(altitudeTerrain) || !Number.isFinite(altitudeBalise)) return true;
+  return Math.abs(altitudeTerrain - altitudeBalise) <= ECART_SUR_PLACE;
+}
+
 export function secteurDe(direction) {
   if (!Number.isFinite(direction)) return null;
   return SECTEURS[Math.round((((direction % 360) + 360) % 360) / 45) % 8];
