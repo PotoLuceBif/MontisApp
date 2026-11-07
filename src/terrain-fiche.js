@@ -3,7 +3,7 @@
 import { creerPanneauCarte } from './panneau-carte.js';
 import { ecrire } from './reglages.js';
 import { etatStation, texteAge } from './balises-sources.js';
-import { SECTEURS, accordVent, baliseSurPlace } from './terrains-calcul.js';
+import { SECTEURS, accordVent, baliseSurPlace, pinTerrain } from './terrains-calcul.js';
 import { couleurInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
@@ -186,7 +186,9 @@ export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {
   }
 
   function rendre() {
-    const genre = t(terrain.genre === 'decollage' ? 'para.decollage' : 'para.atterrissage');
+    // Comme le pin : une pente-école seule se nomme ainsi
+    const genre = pinTerrain(terrain) === 'terrain-pente-ecole' ? t('tf.fonction-pente-ecole')
+      : t(terrain.genre === 'decollage' ? 'para.decollage' : 'para.atterrissage');
     panneau.titre.textContent = terrain.nom;
     fiche.dataset.statut = terrain.statut;
     const meta = [genre, Number.isFinite(terrain.altitude) ? formatAltitude(terrain.altitude) : '', terrain.commune]

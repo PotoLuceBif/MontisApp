@@ -3,6 +3,7 @@
 const ECHELLE = 4; // pixels d'image par pixel d'écran : net sur les écrans très denses
 const PINS = ['terrain-decollage', 'terrain-atterrissage', 'terrain-pente-ecole', 'terrain-ferme'];
 export const IMAGE_GROUPE = 'terrain-groupe';
+export const IMAGE_AUTORISATION = 'terrain-autorisation';
 const PREFIXE_ANNEAU = 'terrain-anneau-';
 // Rayon intérieur et extérieur, en pixels d'écran : juste autour de la tête du pin (11,5 px avec son liseré)
 const RAYON_INTERIEUR = 13.5;
@@ -70,6 +71,29 @@ function dessinerAnneau(code) {
   return ctx.getImageData(0, 0, toile.width, toile.height);
 }
 
+// Pastille « ! » des terrains sur autorisation, à poser sur la tête du pin
+function dessinerAutorisation() {
+  const taille = 16;
+  const toile = document.createElement('canvas');
+  toile.width = taille * ECHELLE;
+  toile.height = taille * ECHELLE;
+  const ctx = toile.getContext('2d');
+  ctx.scale(ECHELLE, ECHELLE);
+  ctx.beginPath();
+  ctx.arc(8, 8, 6.6, 0, Math.PI * 2);
+  ctx.fillStyle = '#f59e0b';
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = '#0a1020';
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(7.1, 3.9, 1.8, 5.2);
+  ctx.beginPath();
+  ctx.arc(8, 11.3, 1.05, 0, Math.PI * 2);
+  ctx.fill();
+  return ctx.getImageData(0, 0, toile.width, toile.height);
+}
+
 // Ajoute ce qui manque au style (un changement de fond l'a vidé)
 export function poserImagesTerrains(map, images) {
   images.forEach((donnees, nom) => {
@@ -80,7 +104,9 @@ export function poserImagesTerrains(map, images) {
 // Pour `setMissingStyleImageResolver` : dessine l'anneau demandé, ou repose un pin perdu
 export function fournirImageTerrain(map, nom, images) {
   if (map.hasImage(nom)) return;
-  if (nom.startsWith(PREFIXE_ANNEAU)) {
+  if (nom === IMAGE_AUTORISATION) {
+    map.addImage(nom, dessinerAutorisation(), { pixelRatio: ECHELLE });
+  } else if (nom.startsWith(PREFIXE_ANNEAU)) {
     map.addImage(nom, dessinerAnneau(nom.slice(PREFIXE_ANNEAU.length)), { pixelRatio: ECHELLE });
   } else if (images?.has(nom)) {
     map.addImage(nom, images.get(nom), { pixelRatio: ECHELLE });

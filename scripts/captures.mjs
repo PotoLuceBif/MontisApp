@@ -149,6 +149,8 @@ const ECRANS = [
   // Pas de balise sur le terrain : analyse du vent centrée dessus
   { nom: 'parapente-terrain-vent', actions: [...TERRAIN, defiler('.tf .point-lien'), (p) => p.waitForTimeout(500), clicVisible('.tf .point-lien'), (p) => p.waitForTimeout(6000)] },
   { nom: 'parapente-terrain-vent-retour', actions: [...TERRAIN, defiler('.tf .point-lien'), (p) => p.waitForTimeout(500), clicVisible('.tf .point-lien'), (p) => p.waitForTimeout(6000), clicVisible('.bf-retour'), (p) => p.waitForTimeout(2000)] },
+  // Terrain sur autorisation : pastille « ! » sur le pin, bandeau dans la fiche
+  { nom: 'parapente-terrain-autorisation', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.0605, 45.6437], zoom: 13, bearing: 0, pitch: 0 }), toucherObjet('terrains-ffvl-autorisations', 'autorisation', 'true')] },
   { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
   { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },
   { nom: 'randonnee', actions: [module('rando')] },

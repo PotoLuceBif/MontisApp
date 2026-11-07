@@ -2,7 +2,7 @@ import { BALISES, URL_TERRAINS_FFVL, lireJson } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
 import { lireTerrains, terrainsEnGeoJSON } from './terrains-calcul.js';
-import { IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, poserImagesTerrains } from './terrains-images.js';
+import { IMAGE_AUTORISATION, IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, poserImagesTerrains } from './terrains-images.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { heureCourte, surLangue, t } from './i18n.js';
 
@@ -14,8 +14,9 @@ const COUCHE_GROUPES = 'terrains-ffvl-groupes';
 const COUCHE_ANNEAUX = 'terrains-ffvl-anneaux';
 const COUCHE_ANNEAU_CHOISI = 'terrains-ffvl-anneau-choisi';
 const COUCHE_TERRAINS = 'terrains-ffvl-points';
+const COUCHE_AUTORISATIONS = 'terrains-ffvl-autorisations';
 const COUCHE_TERRAINS_NOMS = 'terrains-ffvl-noms';
-const COUCHES_TERRAINS = [COUCHE_GROUPES, COUCHE_ANNEAUX, COUCHE_ANNEAU_CHOISI, COUCHE_TERRAINS, COUCHE_TERRAINS_NOMS];
+const COUCHES_TERRAINS = [COUCHE_GROUPES, COUCHE_ANNEAUX, COUCHE_ANNEAU_CHOISI, COUCHE_TERRAINS, COUCHE_AUTORISATIONS, COUCHE_TERRAINS_NOMS];
 const TOLERANCE_CLIC = 6;
 // Au-delà (à partir du zoom 11), chaque terrain a son pin ; jusque-là, les voisins se regroupent comme les stations
 const ZOOM_MAX_GROUPES = 10;
@@ -24,6 +25,9 @@ const DECALAGE_POINTE = [0, 4.25];
 const HAUT_TETE = 17;
 const HAUT_TETE_CHOISIE = 19.5;
 const SANS_GROUPE = ['!', ['has', 'point_count']];
+// Pastille « ! » en haut à droite de la tête du pin, à 45°
+const PLACE_AUTORISATION = [9, -26];
+const PLACE_AUTORISATION_CHOISIE = [10.5, -30];
 const ATTRIBUTION_TERRAINS = 'Terrains © <a href="https://www.data.gouv.fr/fr/organizations/federation-francaise-de-vol-libre/" target="_blank" rel="noopener noreferrer">FFVL</a> (Licence Ouverte)';
 
 export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise = () => true, onRetourFiche, analyserVent = null } = {}) {
@@ -72,6 +76,8 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     map.setLayoutProperty(COUCHE_TERRAINS, 'symbol-sort-key', ['case', choisi, 10, ['match', ['get', 'pin'], 'terrain-ferme', 2, 'terrain-atterrissage', 0, 1]]);
     map.setFilter(COUCHE_ANNEAUX, ['all', avecAnneau, ['!', choisi]]);
     map.setFilter(COUCHE_ANNEAU_CHOISI, ['all', avecAnneau, choisi]);
+    map.setLayoutProperty(COUCHE_AUTORISATIONS, 'icon-offset', ['case', choisi, ['literal', PLACE_AUTORISATION_CHOISIE], ['literal', PLACE_AUTORISATION]]);
+    map.setLayoutProperty(COUCHE_AUTORISATIONS, 'symbol-sort-key', ['case', choisi, 10, 0]);
   }
 
   let images = null;
@@ -150,6 +156,21 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
           'icon-image': ['get', 'pin'],
           'icon-anchor': 'bottom',
           'icon-offset': DECALAGE_POINTE,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+        },
+      }, dessous);
+    }
+    // Terrain sur autorisation : on vole seulement après avoir prévenu (club, propriétaire…)
+    if (!map.getLayer(COUCHE_AUTORISATIONS)) {
+      map.addLayer({
+        id: COUCHE_AUTORISATIONS,
+        type: 'symbol',
+        source: SOURCE_TERRAINS,
+        filter: ['all', SANS_GROUPE, ['get', 'autorisation']],
+        layout: {
+          'icon-image': IMAGE_AUTORISATION,
+          'icon-offset': PLACE_AUTORISATION,
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },
