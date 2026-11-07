@@ -78,6 +78,15 @@ export function lireTerrains(brut) {
   return terrains;
 }
 
+// Une balise mesure-t-elle sur le terrain même : à 100 m au plus, et à 100 m d'altitude près
+// quand les deux altitudes sont connues
+export const ECART_SUR_PLACE = 100;
+export function baliseSurPlace(distance, altitudeTerrain, altitudeBalise) {
+  if (!Number.isFinite(distance) || distance > ECART_SUR_PLACE) return false;
+  if (!Number.isFinite(altitudeTerrain) || !Number.isFinite(altitudeBalise)) return true;
+  return Math.abs(altitudeTerrain - altitudeBalise) <= ECART_SUR_PLACE;
+}
+
 export function secteurDe(direction) {
   if (!Number.isFinite(direction)) return null;
   return SECTEURS[Math.round((((direction % 360) + 360) % 360) / 45) % 8];
@@ -92,6 +101,21 @@ export function accordVent(direction, { favorables = [], defavorables = [] } = {
   return 'inconnu';
 }
 
+// Le pin d'un terrain : fermé ou interdit d'abord, puis la fonction (le treuil prend celui du décollage)
+export function pinTerrain({ statut, genre, fonctions = [] }) {
+  if (statut === 'interdit' || statut === 'ferme') return 'terrain-ferme';
+  const ecole = fonctions.includes('pente-école') && !fonctions.some((f) => ['décollage', 'treuil', 'tyrolienne'].includes(f));
+  if (ecole) return 'terrain-pente-ecole';
+  return genre === 'decollage' ? 'terrain-decollage' : 'terrain-atterrissage';
+}
+
+// L'anneau des orientations, un caractère par secteur depuis le nord : o favorable, n à éviter,
+// - non renseigné. Vide pour un terrain fermé : il n'a pas d'anneau.
+export function codeAnneau({ statut, favorables = [], defavorables = [] }) {
+  if (statut === 'interdit' || statut === 'ferme') return '';
+  return SECTEURS.map((secteur) => (favorables.includes(secteur) ? 'o' : defavorables.includes(secteur) ? 'n' : '-')).join('');
+}
+
 export function terrainsEnGeoJSON(terrains) {
   return {
     type: 'FeatureCollection',
@@ -104,6 +128,8 @@ export function terrainsEnGeoJSON(terrains) {
         // Interdit et fermé se lisent pareil sur la carte : ne pas s'y poser
         classe: terrain.statut === 'interdit' || terrain.statut === 'ferme' ? 'interdit' : terrain.genre,
         autorisation: terrain.statut === 'autorisation',
+        pin: pinTerrain(terrain),
+        anneau: codeAnneau(terrain),
       },
     })),
   };

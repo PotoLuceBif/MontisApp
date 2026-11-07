@@ -265,10 +265,10 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
     map.setFilter(COUCHE_SELECTION, ['==', ['get', 'id'], id ?? '']);
   }
 
-  function ouvrir(id) {
+  function ouvrir(id, options) {
     const station = stations.find((candidate) => candidate.id === id);
     if (!station) return;
-    fiche.ouvrir(station, reseauDe(station));
+    fiche.ouvrir(station, reseauDe(station), options);
     publier(); // la balise ouverte reste affichée, même en zone dense
     marquerSelection(id);
   }
@@ -347,10 +347,10 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
       });
       return meilleure;
     },
-    centrerSur(id) {
+    centrerSur(id, options) {
       const station = stations.find((candidate) => candidate.id === id);
       if (!station) return;
-      map.once('moveend', () => ouvrir(id));
+      map.once('moveend', () => ouvrir(id, options));
       map.flyTo({ center: [station.lon, station.lat], zoom: Math.max(map.getZoom(), 11) });
     },
   };

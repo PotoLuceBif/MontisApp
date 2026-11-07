@@ -302,9 +302,13 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     get idOuverte() {
       return station?.id ?? null;
     },
-    ouvrir(nouvelleStation, nouvelleSource) {
+    // `retour` : où mène la flèche retour (le terrain d'où l'on vient), sinon au menu.
+    // `periode` : la durée montrée cette fois-ci, sans changer le choix enregistré.
+    ouvrir(nouvelleStation, nouvelleSource, { retour = null, periode: periodeDemandee = null } = {}) {
       station = nouvelleStation;
       source = nouvelleSource;
+      panneau.definirRetour(retour ?? onRetour);
+      if (PERIODES.includes(periodeDemandee)) periode = periodeDemandee;
       panneau.afficher();
       rendreMaintenant();
       void afficherAltitude();

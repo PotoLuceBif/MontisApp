@@ -1136,6 +1136,8 @@
   "tf.balise": "Balise {nom}, à {distance}",
   "tf.dans-axe": "Dans l’axe",
   "tf.hors-axe": "Hors de l’axe",
+  "tf.voir-balise": "Voir la balise ›",
+  "tf.analyser-vent": "Analyser le vent ici",
   "tf.sans-balise": "Aucune balise ne mesure à moins de 15 km.",
   "tf.fonction-decollage": "Décollage",
   "tf.fonction-atterrissage": "Atterrissage",

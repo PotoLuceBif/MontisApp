@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accordVent, lireSecteurs, lireTerrains, secteurDe, statutTerrain, terrainsEnGeoJSON } from '../src/terrains-calcul.js';
+import { accordVent, baliseSurPlace, codeAnneau, lireSecteurs, lireTerrains, pinTerrain, secteurDe, statutTerrain, terrainsEnGeoJSON } from '../src/terrains-calcul.js';
 
 const brut = [
   {
@@ -69,5 +69,35 @@ describe('orientations', () => {
     expect(accordVent(10, terrain)).toBe('defavorable');
     expect(accordVent(60, terrain)).toBe('inconnu');
     expect(accordVent(Number.NaN, terrain)).toBe('inconnu');
+  });
+});
+
+describe('pins et anneaux', () => {
+  it('choisit le pin selon le statut et la fonction', () => {
+    expect(pinTerrain({ statut: 'ok', genre: 'decollage', fonctions: ['décollage'] })).toBe('terrain-decollage');
+    expect(pinTerrain({ statut: 'ok', genre: 'decollage', fonctions: ['treuil'] })).toBe('terrain-decollage');
+    expect(pinTerrain({ statut: 'ok', genre: 'decollage', fonctions: ['pente-école', 'atterrissage'] })).toBe('terrain-pente-ecole');
+    expect(pinTerrain({ statut: 'ok', genre: 'decollage', fonctions: ['décollage', 'pente-école'] })).toBe('terrain-decollage');
+    expect(pinTerrain({ statut: 'autorisation', genre: 'atterrissage', fonctions: ['atterrissage'] })).toBe('terrain-atterrissage');
+    expect(pinTerrain({ statut: 'ferme', genre: 'decollage', fonctions: ['décollage'] })).toBe('terrain-ferme');
+    expect(pinTerrain({ statut: 'interdit', genre: 'atterrissage', fonctions: ['atterrissage'] })).toBe('terrain-ferme');
+  });
+
+  it('code les huit secteurs depuis le nord, sans anneau pour un terrain fermé', () => {
+    expect(codeAnneau({ statut: 'ok', favorables: ['SE', 'S'], defavorables: ['N', 'O'] })).toBe('n--oo-n-');
+    expect(codeAnneau({ statut: 'ok' })).toBe('--------');
+    expect(codeAnneau({ statut: 'interdit', favorables: ['S'] })).toBe('');
+    const [premier] = terrainsEnGeoJSON(lireTerrains(brut)).features;
+    expect(premier.properties).toMatchObject({ pin: 'terrain-decollage', anneau: 'nnnoonnn' });
+  });
+});
+
+describe('balise sur place', () => {
+  it('à 100 m au plus, et à 100 m d’altitude près si les deux altitudes sont connues', () => {
+    expect(baliseSurPlace(80, 1200, 1250)).toBe(true);
+    expect(baliseSurPlace(80, null, 1250)).toBe(true);
+    expect(baliseSurPlace(80, 1200, 1350)).toBe(false);
+    expect(baliseSurPlace(150, 1200, 1200)).toBe(false);
+    expect(baliseSurPlace(undefined, 1200, 1200)).toBe(false);
   });
 });
