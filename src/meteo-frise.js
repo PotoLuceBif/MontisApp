@@ -1,5 +1,6 @@
-// Frise météo heure par heure : des lignes empilées sur un même axe du temps, et une lecture
-// de l'heure touchée. Commune à Météo › Conditions locales et à la fiche du point.
+// Frise météo heure par heure : des lignes empilées sur un même axe du temps. L'heure touchée
+// se lit sur la frise même : sa valeur dans la légende de chaque ligne, l'heure sur l'axe.
+// Commune à Météo › Conditions locales et à la fiche du point.
 import { PALIERS_VENT, paletteInterface, palierVent } from './vent-cadran.js';
 import { pointCardinal } from './vent-calcul.js';
 import {
@@ -50,7 +51,7 @@ const LIGNES = {
   isotherme: 36,
 };
 const ORDRE = Object.keys(LIGNES);
-const LEGENDE = 15; // titre et résumé au-dessus de chaque tracé
+const LEGENDE = 15; // titre, valeur lue et résumé au-dessus de chaque tracé
 const ECART = 7;
 const AXE = 18;
 const MARGE = 2;
@@ -90,6 +91,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
   let indices = [];
   let elevation = null;
   let curseur = 0; // rang dans `indices`
+  let lues = {}; // valeur de chaque ligne à l'heure lue
   let largeur = 0;
   let hauteur = 0;
   let pas = 0;
@@ -154,6 +156,26 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
   const hauteurTotale = () => affichees().reduce((total, id) => total + hauteurLigne(id) + ECART, MARGE) + AXE;
   const xCentre = (rang) => MARGE + (rang + 0.5) * pas;
   const xBord = (rang) => MARGE + rang * pas;
+  // Hauteurs des tracés, sans les légendes : les traits verticaux s'y arrêtent pour ne pas barrer
+  // les textes ; le dernier descend jusqu'à l'axe
+  function tranches() {
+    let y = MARGE;
+    const liste = affichees().map((id) => {
+      const tranche = [y + LEGENDE - 2, y + hauteurLigne(id) + 2];
+      y += hauteurLigne(id) + ECART;
+      return tranche;
+    });
+    if (liste.length) liste.at(-1)[1] = hauteur - AXE;
+    return liste;
+  }
+  function traitVertical(x) {
+    ctx.beginPath();
+    tranches().forEach(([haut, bas]) => {
+      ctx.moveTo(x, haut);
+      ctx.lineTo(x, bas);
+    });
+    ctx.stroke();
+  }
 
   function couleurs() {
     const style = getComputedStyle(section);
@@ -164,6 +186,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
       bord: lireVar('--bord'),
       surface: lireVar('--surface'),
       accent: lireVar('--accent'),
+      accentTexte: lireVar('--accent-texte'),
       chaud: lireVar('--frise-chaud'),
       froid: lireVar('--frise-froid'),
       pluie: lireVar('--frise-pluie'),
@@ -176,18 +199,28 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     };
   }
 
-  function legende(c, y, titre, resume) {
-    ctx.font = `600 10.5px ${c.police}`;
+  // Titre et valeur de l'heure lue à gauche, résumé de la période à droite s'il reste la place.
+  // `resume` peut être une liste de formes, de la plus longue à la plus courte.
+  function legende(c, y, id, titre, resume) {
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillStyle = c.texte;
+    ctx.font = `500 10.5px ${c.police}`;
+    ctx.fillStyle = c.texte2;
     ctx.fillText(titre, MARGE, y + 10);
-    if (resume) {
-      ctx.font = `500 10px ${c.police}`;
-      ctx.textAlign = 'right';
-      ctx.fillStyle = c.texte2;
-      ctx.fillText(resume, largeur - MARGE, y + 10);
+    let fin = MARGE + ctx.measureText(titre).width;
+    const lu = lues[id];
+    if (lu) {
+      ctx.font = `700 11px ${c.police}`;
+      ctx.fillStyle = lu.couleur || c.texte;
+      ctx.fillText(lu.texte, fin + 6, y + 10);
+      fin += 6 + ctx.measureText(lu.texte).width;
     }
+    ctx.font = `500 10px ${c.police}`;
+    const forme = [resume].flat().find((texte) => texte && fin + 12 + ctx.measureText(texte).width <= largeur - MARGE);
+    if (!forme) return;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = c.texte2;
+    ctx.fillText(forme, largeur - MARGE, y + 10);
   }
 
   // Courbe continue, coupée là où la donnée manque
@@ -214,7 +247,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
   // --- Lignes ---
   function dessinerTemperature(c, y) {
     const ext = extremes('temperature_2m');
-    legende(c, y, t('frise.temperature'), ext && t('frise.min-max', { min: formatTemp(ext.min, { court: true }), max: formatTemp(ext.max, { court: true }) }));
+    legende(c, y, 'temperature', t('frise.temperature'), ext && t('frise.min-max', { min: formatTemp(ext.min, { court: true }), max: formatTemp(ext.max, { court: true }) }));
     const haut = y + LEGENDE;
     const h = LIGNES.temperature;
     const degres = indices.map((_, rang) => versTemp(valeur('temperature_2m', rang)));
@@ -256,7 +289,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
       : neige >= 0.5
         ? t('frise.total-neige', { pluie: formatPluie(total), neige: formatNeige(neige) })
         : t('frise.total', { valeur: formatPluie(total) });
-    legende(c, y, t('frise.precipitations'), resume);
+    legende(c, y, 'precipitations', t('frise.precipitations'), resume);
     const haut = y + LEGENDE;
     const h = LIGNES.precipitations;
     const plafond = plafondPluie(indices.map((_, rang) => valeur('precipitation', rang)));
@@ -287,7 +320,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     const rafales = indices.map((_, rang) => valeur('wind_gusts_10m', rang));
     const moyens = indices.map((_, rang) => valeur('wind_speed_10m', rang));
     const maxRafale = Math.max(...rafales.filter(Number.isFinite));
-    legende(c, y, t('frise.vent'), Number.isFinite(maxRafale) ? t('frise.rafales-max', { valeur: formatVent(maxRafale) }) : '');
+    legende(c, y, 'vent', t('frise.vent'), Number.isFinite(maxRafale) ? [t('frise.rafales-max', { valeur: formatVent(maxRafale) }), t('frise.max', { valeur: formatVent(maxRafale) })] : '');
     const haut = y + LEGENDE;
     const h = LIGNES.vent;
     const plafond = plafondVent([...rafales, ...moyens]);
@@ -393,13 +426,13 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
   function dessinerOrage(c, y) {
     const niveaux = indices.map((_, rang) => niveauOrage(valeur('cape', rang), valeur('weather_code', rang)));
     const pire = Math.max(0, ...niveaux);
-    legende(c, y, t('frise.orage'), t(NIVEAUX_ORAGE[pire]));
+    legende(c, y, 'orage', t('frise.orage'), t(NIVEAUX_ORAGE[pire]));
     bande(c, y, (rang) => (niveaux[rang] ? { couleur: c.orage[niveaux[rang]] } : null));
   }
 
   function dessinerNuages(c, y) {
     const ext = extremes('cloud_cover_low');
-    legende(c, y, t('frise.nuages'), ext ? t('frise.max', { valeur: pourcent(ext.max) }) : '');
+    legende(c, y, 'nuages', t('frise.nuages'), ext ? t('frise.max', { valeur: pourcent(ext.max) }) : '');
     bande(c, y, (rang) => {
       const p = valeur('cloud_cover_low', rang);
       return Number.isFinite(p) && p >= 5 ? { couleur: c.texte2, opacite: 0.15 + (p / 100) * 0.75 } : null;
@@ -413,7 +446,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
         ? formatAltitude(ext.min, { pas: 50 })
         : t('frise.entre', { min: formatAltitude(ext.min, { pas: 50 }), max: formatAltitude(ext.max, { pas: 50 }) })
       : '';
-    legende(c, y, t('frise.isotherme'), resume);
+    legende(c, y, 'isotherme', t('frise.isotherme'), resume);
     const haut = y + LEGENDE;
     const h = LIGNES.isotherme;
     const valeurs = indices.map((_, rang) => versAltitude(valeur('freezing_level_height', rang)));
@@ -476,6 +509,11 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     const groupe = [1, 2, 3, 4, 6].find((n) => n * pas >= largeurTexte) ?? 6;
     const heures = donnees.time;
     const jours = new Set(changementsDeJour(heures, indices));
+    const heureLue = heures[indices[curseur]];
+    const texteLu = `${nomJour(new Date(`${heureLue.slice(0, 10)}T12:00:00`), 'short')} ${etiquetteHeure(heureLue)}`;
+    ctx.font = `700 10px ${c.police}`;
+    const largeurLue = ctx.measureText(texteLu).width + 12;
+    const xLu = Math.min(largeur - MARGE - largeurLue / 2, Math.max(MARGE + largeurLue / 2, xCentre(curseur)));
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'center';
     indices.forEach((index, rang) => {
@@ -484,6 +522,7 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
       if (!nouveauJour && heure % groupe) return;
       const x = xBord(rang);
       if (x < MARGE + 10 || x > largeur - MARGE - 10) return;
+      if (Math.abs(x - xLu) < largeurLue / 2 + 14) return;
       ctx.fillStyle = nouveauJour ? c.texte : c.texte2;
       ctx.font = `${nouveauJour ? 700 : 500} 10px ${c.police}`;
       const texte = nouveauJour ? nomJour(new Date(`${heures[index].slice(0, 10)}T12:00:00`), 'short') : etiquetteHeure(heures[index]);
@@ -497,13 +536,17 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     ctx.globalAlpha = 0.35;
     ctx.setLineDash([2, 3]);
     jours.forEach((index) => {
-      const x = Math.round(xBord(indices.indexOf(index))) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(x, MARGE);
-      ctx.lineTo(x, y);
-      ctx.stroke();
+      traitVertical(Math.round(xBord(indices.indexOf(index))) + 0.5);
     });
     ctx.restore();
+    ctx.fillStyle = c.accent;
+    ctx.beginPath();
+    ctx.roundRect(xLu - largeurLue / 2, y + 2, largeurLue, AXE - 3, 7);
+    ctx.fill();
+    ctx.fillStyle = c.accentTexte;
+    ctx.font = `700 10px ${c.police}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(texteLu, xLu, y + 13);
   }
 
   function dessiner() {
@@ -511,11 +554,12 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     ctx.clearRect(0, 0, largeur, hauteur);
     const c = couleurs();
     pas = (largeur - 2 * MARGE) / indices.length;
+    lues = valeursLues(c);
 
     // Colonne de l'heure lue
     ctx.fillStyle = c.accent;
     ctx.globalAlpha = 0.12;
-    ctx.fillRect(xBord(curseur), MARGE, pas, hauteur - AXE - MARGE);
+    tranches().forEach(([haut, bas]) => ctx.fillRect(xBord(curseur), haut, pas, bas - haut));
     ctx.globalAlpha = 1;
 
     let y = MARGE;
@@ -527,15 +571,12 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
     });
     dessinerAxe(c, hauteur - AXE);
 
-    // Curseur sur toute la hauteur, avec un point sur chaque courbe
+    // Curseur sur tous les tracés, avec un point sur chaque courbe
     const x = Math.round(xCentre(curseur)) + 0.5;
     ctx.strokeStyle = c.texte;
     ctx.globalAlpha = 0.6;
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, MARGE);
-    ctx.lineTo(x, hauteur - AXE);
-    ctx.stroke();
+    traitVertical(x);
     ctx.globalAlpha = 1;
     points.forEach(({ yDe, champ, couleur }) => {
       const v = valeur(champ, curseur);
@@ -551,68 +592,47 @@ export function creerFrise({ lignes = null, choix = true, onHeure = () => {} } =
   }
 
   // --- Lecture de l'heure touchée ---
-  function element(classe, libelle, texte) {
-    const bloc = document.createElement('div');
-    bloc.className = `frise-valeur ${classe}`;
-    const nom = document.createElement('span');
-    nom.textContent = libelle;
-    const contenu = document.createElement('strong');
-    contenu.textContent = texte;
-    bloc.append(nom, contenu);
-    return bloc;
+  function valeursLues(c) {
+    const v = (champ) => valeur(champ, curseur);
+    const lu = {};
+    const temperature = v('temperature_2m');
+    if (Number.isFinite(temperature)) lu.temperature = { texte: formatTemp(temperature) };
+    const mm = v('precipitation');
+    if (Number.isFinite(mm)) {
+      let texte = mm <= 0 ? t('frise.sec') : estNeige(mm, v('snowfall')) ? formatNeige(v('snowfall')) : formatPluie(mm);
+      const proba = v('precipitation_probability');
+      if (Number.isFinite(proba)) texte += ` · ${pourcent(proba)}`;
+      lu.precipitations = { texte };
+    }
+    const moyen = v('wind_speed_10m');
+    if (Number.isFinite(moyen)) {
+      let texte = formatVent(moyen);
+      const direction = v('wind_direction_10m');
+      const rafale = v('wind_gusts_10m');
+      if (Number.isFinite(direction)) texte += ` ${pointCardinal(direction)}`;
+      if (Number.isFinite(rafale)) texte += ` · ${t('frise.raf', { valeur: formatVent(rafale) })}`;
+      lu.vent = { texte };
+    }
+    if (Number.isFinite(v('cape')) || Number.isFinite(v('weather_code'))) {
+      const niveau = niveauOrage(v('cape'), v('weather_code'));
+      lu.orage = { texte: t(NIVEAUX_ORAGE[niveau]), couleur: niveau === 3 ? c?.orage[3] : null };
+    }
+    if (Number.isFinite(v('cloud_cover_low'))) lu.nuages = { texte: pourcent(v('cloud_cover_low')) };
+    if (Number.isFinite(v('freezing_level_height'))) lu.isotherme = { texte: formatAltitude(v('freezing_level_height'), { pas: 50 }) };
+    return lu;
   }
 
+  // Phrase lue par les lecteurs d'écran : à l'œil, tout est sur la frise
   function afficherLecture() {
-    lecture.replaceChildren();
-    if (!donnees || !indices.length) return;
+    if (!donnees || !indices.length) {
+      lecture.textContent = '';
+      return;
+    }
     const heure = donnees.time[indices[curseur]];
-    const titre = document.createElement('p');
-    titre.className = 'frise-heure';
     const jour = nomJour(new Date(`${heure.slice(0, 10)}T12:00:00`), 'long');
-    titre.textContent = t('frise.heure-lue', { jour, heure: etiquetteHeure(heure) });
-    lecture.appendChild(titre);
-    const grille = document.createElement('div');
-    grille.className = 'frise-valeurs';
-    const v = (champ) => valeur(champ, curseur);
-    const lignes = affichees();
-    if (lignes.includes('temperature')) {
-      grille.append(element('frise-valeur-temperature', t('frise.temperature'), Number.isFinite(v('temperature_2m')) ? formatTemp(v('temperature_2m')) : '—'));
-    }
-    if (lignes.includes('precipitations')) {
-      const mm = v('precipitation');
-      const proba = v('precipitation_probability');
-      let texte = '—';
-      if (Number.isFinite(mm)) {
-        texte = mm <= 0 ? t('frise.sec') : estNeige(mm, v('snowfall')) ? formatNeige(v('snowfall')) : formatPluie(mm);
-        if (Number.isFinite(proba)) texte += ` · ${pourcent(proba)}`;
-      }
-      grille.append(element('frise-valeur-precipitations', t('frise.precipitations'), texte));
-    }
-    if (lignes.includes('vent')) {
-      const moyen = v('wind_speed_10m');
-      const rafale = v('wind_gusts_10m');
-      const direction = v('wind_direction_10m');
-      let texte = '—';
-      if (Number.isFinite(moyen)) {
-        texte = formatVent(moyen);
-        if (Number.isFinite(direction)) texte += ` ${pointCardinal(direction)}`;
-        if (Number.isFinite(rafale)) texte += ` · ${t('frise.raf', { valeur: formatVent(rafale) })}`;
-      }
-      grille.append(element('frise-valeur-vent', t('frise.vent'), texte));
-    }
-    if (lignes.includes('orage')) {
-      const niveau = niveauOrage(v('cape'), v('weather_code'));
-      const bloc = element(`frise-valeur-orage niveau-${niveau}`, t('frise.orage'), t(NIVEAUX_ORAGE[niveau]));
-      if (Number.isFinite(v('cape'))) bloc.title = t('frise.cape', { valeur: Math.round(v('cape')) });
-      grille.append(bloc);
-    }
-    if (lignes.includes('nuages')) {
-      grille.append(element('frise-valeur-nuages', t('frise.nuages'), Number.isFinite(v('cloud_cover_low')) ? pourcent(v('cloud_cover_low')) : '—'));
-    }
-    if (lignes.includes('isotherme')) {
-      grille.append(element('frise-valeur-isotherme', t('frise.isotherme'), Number.isFinite(v('freezing_level_height')) ? formatAltitude(v('freezing_level_height'), { pas: 50 }) : '—'));
-    }
-    lecture.appendChild(grille);
+    const valeurs = valeursLues();
+    const morceaux = affichees().filter((id) => valeurs[id]).map((id) => `${t(`frise.${id}`)} ${valeurs[id].texte}`);
+    lecture.textContent = [t('frise.heure-lue', { jour, heure: etiquetteHeure(heure) }), ...morceaux].join('. ');
   }
 
   function majNote() {
