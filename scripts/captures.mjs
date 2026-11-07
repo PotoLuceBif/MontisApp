@@ -59,7 +59,8 @@ const appuiLong = (x, y) => async (page) => {
 };
 
 // Place la carte (en développement, elle est accessible par window.map)
-const vue = (options) => (page) => page.evaluate((o) => window.map.jumpTo(o), options);
+// Sans rien renvoyer : Playwright tenterait de copier toute la carte
+const vue = (options) => (page) => page.evaluate((o) => { window.map.jumpTo(o); }, options);
 const AIGUILLES = { center: [6.93, 45.9], zoom: 13.4, bearing: 0, pitch: 0 };
 const MATIN = { center: [6.9, 45.88], zoom: 12.3, bearing: 0, pitch: 0 }; // vallée de Chamonix
 // Place le curseur d'heure de l'ombre du soleil (minutes depuis minuit)
@@ -72,11 +73,19 @@ const heureOmbres = (minutes) => async (page) => {
   }, minutes);
 };
 // Touche sur la carte le premier objet affiché d'une couche dont une propriété commence par `debut`
+// Playwright `waitForFunction` interroge la page sans cesse et bloque le rendu de la carte : on attend à la main
+async function attendreSur(page, fonction, argument, delai = 30000) {
+  for (const fin = Date.now() + delai; Date.now() < fin;) {
+    if (await page.evaluate(fonction, argument)) return;
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`Attente dépassée (${delai / 1000} s)`);
+}
 const toucherObjet = (couche, propriete, debut) => async (page) => {
-  await page.waitForFunction(
+  await attendreSur(
+    page,
     ([c, pr, d]) => window.map.getLayer?.(c) && window.map.queryRenderedFeatures({ layers: [c] }).some((f) => String(f.properties[pr]).startsWith(d)),
     [couche, propriete, debut],
-    { timeout: 20000 },
   );
   const point = await page.evaluate(([c, pr, d]) => {
     const { clientWidth: l, clientHeight: h } = window.map.getContainer();
@@ -92,8 +101,23 @@ const toucherObjet = (couche, propriete, debut) => async (page) => {
   await page.mouse.click(point.x, point.y);
   await page.waitForTimeout(1500);
 };
+// Attend qu'une couche de la carte montre au moins un objet
+const attendreCouche = (couche) => (page) => attendreSur(
+  page,
+  (c) => window.map.getLayer?.(c) && window.map.queryRenderedFeatures({ layers: [c] }).length > 0,
+  couche,
+);
 const ANNECY = { center: [6.25, 45.83], zoom: 10.5, bearing: 0, pitch: 0 };
-const SITES = [vue(ANNECY), module('parapente'), clic('[data-para-vue="sites"]'), (p) => p.waitForTimeout(500)];
+// Le module se charge à sa première ouverture : son onglet n'existe pas tout de suite
+const ongletSites = async (page) => {
+  await page.waitForSelector('[data-para-vue="sites"]', { state: 'attached', timeout: 15000 });
+  await page.evaluate(() => {
+    const onglet = document.querySelector('[data-para-vue="sites"]');
+    if (onglet.getAttribute('aria-pressed') !== 'true') onglet.click();
+  });
+};
+// Les relevés et les terrains arrivent en quelques secondes
+const SITES = [vue(ANNECY), module('parapente'), ongletSites, (p) => p.waitForTimeout(6000)];
 // Fait défiler le panneau jusqu'à un bloc
 const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
 // Touche la frise météo à une fraction de sa largeur
@@ -110,8 +134,10 @@ const ECRANS = [
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
   { nom: 'parapente', actions: [module('parapente')] },
   // Balises OpenWindMap et FFVL réunies, terrains FFVL (réseau requis : api.pioupiou.fr, data.gouv.fr)
-  { nom: 'parapente-sites', actions: [...SITES, (p) => p.waitForTimeout(6000)] },
-  { nom: 'parapente-sites-carte', actions: [...SITES, (p) => p.waitForTimeout(6000), clic('#menu-bouton')] },
+  { nom: 'parapente-sites', actions: [...SITES] },
+  { nom: 'parapente-sites-carte', actions: [...SITES, clic('#menu-bouton')] },
+  // Pins des terrains et leur anneau d'orientations, carte tournée : l'anneau suit la carte
+  { nom: 'parapente-terrains-pins', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
   { nom: 'parapente-terrain', actions: [...SITES, clic('#menu-bouton'), vue({ ...ANNECY, zoom: 11.5 }), toucherObjet('terrains-ffvl-points', 'classe', 'decollage')] },
   { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
   { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },

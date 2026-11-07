@@ -2,6 +2,7 @@ import { BALISES, URL_TERRAINS_FFVL, lireJson } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
 import { lireTerrains, terrainsEnGeoJSON } from './terrains-calcul.js';
+import { IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, poserImagesTerrains } from './terrains-images.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { heureCourte, surLangue, t } from './i18n.js';
 
@@ -9,11 +10,20 @@ const INTERVALLE_ACTUALISATION = 5 * 60 * 1000;
 const DELAI_RELECTURE = 60 * 1000;
 const DUREE_TERRAINS = 12 * 60 * 60 * 1000; // la FFVL publie ses terrains une fois par jour
 const SOURCE_TERRAINS = 'terrains-ffvl';
+const COUCHE_GROUPES = 'terrains-ffvl-groupes';
+const COUCHE_ANNEAUX = 'terrains-ffvl-anneaux';
+const COUCHE_ANNEAU_CHOISI = 'terrains-ffvl-anneau-choisi';
 const COUCHE_TERRAINS = 'terrains-ffvl-points';
 const COUCHE_TERRAINS_NOMS = 'terrains-ffvl-noms';
-const COUCHES_TERRAINS = [COUCHE_TERRAINS, COUCHE_TERRAINS_NOMS];
-const TOLERANCE_CLIC = 12;
-const COULEURS_TERRAINS = { decollage: '#2e9e4f', atterrissage: '#1f6fd1', interdit: '#d93a2b' };
+const COUCHES_TERRAINS = [COUCHE_GROUPES, COUCHE_ANNEAUX, COUCHE_ANNEAU_CHOISI, COUCHE_TERRAINS, COUCHE_TERRAINS_NOMS];
+const TOLERANCE_CLIC = 6;
+// Au-delà (à partir du zoom 11), chaque terrain a son pin ; jusque-là, les voisins se regroupent comme les stations
+const ZOOM_MAX_GROUPES = 10;
+// Pointe du pin (48 px) à 4,25 px du bas ; centre de la tête 17 px au-dessus de la pointe, 19,5 choisi (×1,15)
+const DECALAGE_POINTE = [0, 4.25];
+const HAUT_TETE = 17;
+const HAUT_TETE_CHOISIE = 19.5;
+const SANS_GROUPE = ['!', ['has', 'point_count']];
 const ATTRIBUTION_TERRAINS = 'Terrains © <a href="https://www.data.gouv.fr/fr/organizations/federation-francaise-de-vol-libre/" target="_blank" rel="noopener noreferrer">FFVL</a> (Licence Ouverte)';
 
 export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, peutOuvrirBalise = () => true, onRetourFiche } = {}) {
@@ -49,34 +59,96 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     couche.definirVisible(balisesVisibles);
   }
 
+  // Le terrain choisi prend son pin agrandi, passe devant les autres et garde son anneau à sa taille
   function marquerTerrain(id) {
-    if (map.getLayer(COUCHE_TERRAINS)) {
-      map.setPaintProperty(COUCHE_TERRAINS, 'circle-stroke-width', ['case', ['==', ['get', 'id'], id ?? ''], 3.5, 1.5]);
-    }
+    if (!map.getLayer(COUCHE_TERRAINS)) return;
+    const choisi = ['==', ['get', 'id'], id ?? ''];
+    const avecAnneau = ['all', SANS_GROUPE, ['!=', ['get', 'anneau'], '']];
+    map.setLayoutProperty(COUCHE_TERRAINS, 'icon-image', ['case', choisi, ['concat', ['get', 'pin'], '-selected'], ['get', 'pin']]);
+    // Les fermés par-dessus : on doit les voir même en zone dense
+    map.setLayoutProperty(COUCHE_TERRAINS, 'symbol-sort-key', ['case', choisi, 10, ['match', ['get', 'pin'], 'terrain-ferme', 2, 'terrain-atterrissage', 0, 1]]);
+    map.setFilter(COUCHE_ANNEAUX, ['all', avecAnneau, ['!', choisi]]);
+    map.setFilter(COUCHE_ANNEAU_CHOISI, ['all', avecAnneau, choisi]);
   }
+
+  let images = null;
+  chargerImagesTerrains().then((chargees) => {
+    images = chargees;
+    assurerCouchesTerrains();
+  }).catch((erreur) => console.warn('Pins des terrains :', erreur));
+  // Seul résolveur de la carte : un autre module qui en voudrait un devra passer par ici
+  map.setMissingStyleImageResolver(async (id) => {
+    if (id.startsWith('terrain-')) fournirImageTerrain(map, id, await chargerImagesTerrains().catch(() => null));
+  });
+
+  // Les secteurs suivent la carte quand elle tourne ; le pin, lui, reste droit
+  const coucheAnneau = (id, hauteur, taille) => ({
+    id,
+    type: 'symbol',
+    source: SOURCE_TERRAINS,
+    filter: ['==', ['get', 'id'], ''],
+    layout: {
+      'icon-image': ['concat', nomAnneau(''), ['get', 'anneau']],
+      'icon-size': taille,
+      'icon-rotation-alignment': 'map',
+      'icon-pitch-alignment': 'viewport',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: { 'icon-translate': [0, -hauteur], 'icon-translate-anchor': 'viewport' },
+  });
 
   // Sous les balises : un relevé se lit par-dessus son décollage
   function assurerCouchesTerrains() {
-    if (!terrains.size) return;
+    if (!terrains.size || !images) return;
+    poserImagesTerrains(map, images);
     const donnees = terrainsEnGeoJSON([...terrains.values()]);
     if (!map.getSource(SOURCE_TERRAINS)) {
-      map.addSource(SOURCE_TERRAINS, { type: 'geojson', data: donnees, attribution: ATTRIBUTION_TERRAINS });
+      map.addSource(SOURCE_TERRAINS, {
+        type: 'geojson',
+        data: donnees,
+        attribution: ATTRIBUTION_TERRAINS,
+        cluster: true,
+        clusterRadius: 48,
+        clusterMaxZoom: ZOOM_MAX_GROUPES,
+      });
     } else {
       map.getSource(SOURCE_TERRAINS).setData(donnees);
     }
     const dessous = ['balises-vent-selection', 'balises-vent-manches', 'balises-vent-pastilles'].find((id) => map.getLayer(id));
+    if (!map.getLayer(COUCHE_GROUPES)) {
+      map.addLayer({
+        id: COUCHE_GROUPES,
+        type: 'symbol',
+        source: SOURCE_TERRAINS,
+        filter: ['has', 'point_count'],
+        layout: {
+          'icon-image': IMAGE_GROUPE,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': 13,
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: { 'text-color': '#ffffff' },
+      }, dessous);
+    }
+    if (!map.getLayer(COUCHE_ANNEAUX)) map.addLayer(coucheAnneau(COUCHE_ANNEAUX, HAUT_TETE, 1), dessous);
+    if (!map.getLayer(COUCHE_ANNEAU_CHOISI)) map.addLayer(coucheAnneau(COUCHE_ANNEAU_CHOISI, HAUT_TETE_CHOISIE, 1.15), dessous);
     if (!map.getLayer(COUCHE_TERRAINS)) {
       map.addLayer({
         id: COUCHE_TERRAINS,
-        type: 'circle',
+        type: 'symbol',
         source: SOURCE_TERRAINS,
-        // Les interdits par-dessus : on doit les voir même en zone dense
-        layout: { 'circle-sort-key': ['match', ['get', 'classe'], 'interdit', 2, 'decollage', 1, 0] },
-        paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 3, 10, 5.5, 14, 8],
-          'circle-color': ['match', ['get', 'classe'], 'interdit', COULEURS_TERRAINS.interdit, 'atterrissage', COULEURS_TERRAINS.atterrissage, COULEURS_TERRAINS.decollage],
-          'circle-stroke-color': ['case', ['get', 'autorisation'], '#f0a020', '#ffffff'],
-          'circle-stroke-width': 1.5,
+        filter: SANS_GROUPE,
+        layout: {
+          'icon-image': ['get', 'pin'],
+          'icon-anchor': 'bottom',
+          'icon-offset': DECALAGE_POINTE,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
         },
       }, dessous);
     }
@@ -86,6 +158,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         type: 'symbol',
         source: SOURCE_TERRAINS,
         minzoom: 12,
+        filter: SANS_GROUPE,
         layout: {
           'text-field': ['get', 'nom'],
           'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
@@ -125,11 +198,21 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       ficheTerrain.fermer();
       return;
     }
+    // Un groupe : on s'en approche jusqu'à ce qu'il s'ouvre
+    const [groupe] = map.queryRenderedFeatures(boite, { layers: [COUCHE_GROUPES] });
+    if (groupe) {
+      ficheTerrain.fermer();
+      map.getSource(SOURCE_TERRAINS).getClusterExpansionZoom(groupe.properties.cluster_id)
+        .then((zoom) => map.easeTo({ center: groupe.geometry.coordinates, zoom: Math.max(zoom, ZOOM_MAX_GROUPES + 1), duration: 600 }))
+        .catch(() => {});
+      return;
+    }
+    // Le pin le plus proche du doigt : on vise sa tête, au-dessus de la coordonnée
     const touches = map.queryRenderedFeatures(boite, { layers: [COUCHE_TERRAINS] });
     const plusPres = touches
       .map((feature) => {
         const ecran = map.project(feature.geometry.coordinates);
-        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - y) };
+        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - HAUT_TETE - y) };
       })
       .sort((a, b) => a.ecart - b.ecart)[0]?.feature;
     const terrain = plusPres && terrains.get(String(plusPres.properties.id));
@@ -142,7 +225,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   });
   map.on('mousemove', (event) => {
     if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS)) return;
-    if (map.queryRenderedFeatures(event.point, { layers: [COUCHE_TERRAINS] }).length) map.getCanvas().style.cursor = 'pointer';
+    if (map.queryRenderedFeatures(event.point, { layers: [COUCHE_TERRAINS, COUCHE_GROUPES] }).length) map.getCanvas().style.cursor = 'pointer';
   });
   map.on('style.load', assurerCouchesTerrains);
   window.addEventListener('fiche-ouverte', () => ficheTerrain.fermer());
