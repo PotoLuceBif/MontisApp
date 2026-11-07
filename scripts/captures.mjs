@@ -122,7 +122,7 @@ const ECRANS = [
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
   // Frise heure par heure : lecture d'une heure, choix des lignes, jour choisi
   { nom: 'meteo-frise', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire')] },
-  { nom: 'meteo-frise-lecture', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire'), lireFrise(0.3), (p) => p.waitForTimeout(800), defiler('.frise-lecture')] },
+  { nom: 'meteo-frise-lecture', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire'), lireFrise(0.3), (p) => p.waitForTimeout(800), defiler('.meteo-horaire')] },
   { nom: 'meteo-frise-lignes', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.frise-bouton-lignes'), clic('.frise-puce-nuages'), clic('.frise-puce-isotherme'), defiler('.meteo-horaire')] },
   { nom: 'meteo-frise-jour', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.meteo-jour:nth-child(3)'), defiler('.meteo-horaire')] },
   { nom: 'meteo-radar', actions: [module('radar')] },
