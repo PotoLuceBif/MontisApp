@@ -6,6 +6,7 @@ import './style.css';
 import { initMenu } from './menu.js';
 import { etat, majCourbes } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
+import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { retablirFond } from './fond-de-carte.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
@@ -157,6 +158,46 @@ if (vueSauveeValide) {
 } else if (vueSauvee) {
   console.warn('Vue de carte sauvegardée invalide : la position par défaut sera utilisée.');
 }
+
+// ===== Ouverture sur sa position (premier lancement, ou après une absence) =====
+const ZOOM_POSITION = 12;
+let carteTouchee = false;
+map.on('movestart', (event) => {
+  if (event.originalEvent) carteTouchee = true;
+});
+
+function centrerSurPosition() {
+  if (!('geolocation' in navigator)) return;
+  carteTouchee = false;
+  navigator.geolocation.getCurrentPosition(
+    // Si l'on a déjà bougé la carte en attendant, on ne la reprend pas
+    ({ coords }) => {
+      if (carteTouchee) return;
+      map.jumpTo({ center: [coords.longitude, coords.latitude], zoom: ZOOM_POSITION });
+    },
+    // Refus ou échec : la dernière vue reste, sinon la position par défaut
+    () => {},
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 10 * 60 * 1000 }
+  );
+}
+
+const noterVisite = () => ecrire('derniere-visite', Date.now());
+if (doitCentrerSurPosition({ vueSauvee: vueSauveeValide ? vueSauvee : null, derniereVisite: lire('derniere-visite', null), maintenant: Date.now() })) {
+  centrerSurPosition();
+}
+noterVisite();
+// Une appli installée reste souvent en mémoire : la retrouver après une absence vaut une ouverture
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    noterVisite();
+    return;
+  }
+  if (doitCentrerSurPosition({ vueSauvee: true, derniereVisite: lire('derniere-visite', null), maintenant: Date.now() })) {
+    centrerSurPosition();
+  }
+  noterVisite();
+});
+window.addEventListener('pagehide', noterVisite);
 
 map.on('moveend', () => {
   const c = map.getCenter();
