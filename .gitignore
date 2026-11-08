@@ -35,3 +35,6 @@ Thumbs.db
 
 # Captures d'écran de scripts/captures.mjs
 captures/
+
+# Liaison au projet Vercel (vercel link), propre à cette machine
+.vercel

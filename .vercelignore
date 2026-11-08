@@ -1,0 +1,9 @@
+# Fichiers jamais envoyés à Vercel (vercel deploy depuis ce dossier)
+.env
+.env.*
+!.env.example
+montis.bundle
+captures/
+scripts/cache-*.json
+node_modules
+dist
