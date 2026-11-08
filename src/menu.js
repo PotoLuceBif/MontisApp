@@ -1,6 +1,7 @@
 import { creerFondDeCarte } from './fond-de-carte.js';
 import { creerOptionRelief } from './relief.js';
 import { creerElementsCarte } from './elements-carte.js';
+import { creerNatureSousSol } from './nature-sous-sol.js';
 import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
@@ -18,6 +19,8 @@ const ICONES_MENU = {
   fond: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/>',
   relief: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
   courbes: '<path d="M4 19c4-5 12-5 16 0M3 14c5-6 13-6 18 0M5 9c4-4 10-4 14 0"/>',
+  nature: '<path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/>',
+  nature: '<path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/>',
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
   reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
@@ -250,6 +253,7 @@ export function initMenu(map) {
         immediat(creerFondDeCarte(map)),
         immediat(creerOptionRelief(map)), // inclut les courbes de niveau
         immediat(creerElementsCarte(map)),
+        immediat(creerNatureSousSol(map)),
         immediat(creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') })),
       ],
       emplacement: 'flottant',

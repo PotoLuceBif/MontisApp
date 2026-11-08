@@ -1,6 +1,6 @@
 import { lire, ecrire, quandPret } from './reglages.js';
 import { afficherSommets } from './sommets.js';
-import { afficherVilles, afficherRefuges } from './lieux.js';
+import { afficherVilles, afficherRefuges, afficherFrontieres } from './lieux.js';
 import { afficherBatiments } from './batiments.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
 import { poser, surLangue, t } from './i18n.js';
@@ -15,6 +15,7 @@ const GROUPES = [
       { cle: 'sommets', label: 'elements.sommets', aide: 'elements.sommets-aide', defaut: false, appliquer: afficherSommets },
       { cle: 'villes', label: 'elements.villes', aide: 'elements.villes-aide', defaut: false, appliquer: afficherVilles },
       { cle: 'refuges', label: 'elements.refuges', aide: 'elements.refuges-aide', defaut: false, appliquer: afficherRefuges },
+      { cle: 'frontieres', label: 'elements.frontieres', aide: 'elements.frontieres-aide', defaut: false, appliquer: afficherFrontieres },
     ],
   },
    {

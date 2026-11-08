@@ -216,6 +216,32 @@ const ECRANS = [
     nom: 'carte-rouvert',
     actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
   },
+  // Géologie (Carte › Nature et sous-sol) : carte du BRGM superposée, pastille, hors de France
+  { nom: 'carte-geologie', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'carte-geologie-legende', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(3000), clic('[data-famille="calcaires"] button'), defiler('.geologie-vues')] },
+  { nom: 'carte-geologie-detaillee', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), clic('.geologie-vues [data-vue="detaillee"]'), (p) => p.waitForTimeout(5000)] },
+  // Frontières des pays (Carte › Éléments de la carte › Lieux), sur la géologie près de Genève
+  {
+    nom: 'carte-frontieres',
+    actions: [vue({ center: [6.1, 46.2], zoom: 9.5, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), module('elements'),
+      (p) => p.evaluate(() => {
+        const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Frontières|borders/i.test(l.textContent))?.querySelector('input');
+        if (case_ && !case_.checked) case_.click();
+      }), (p) => p.waitForTimeout(4000)],
+  },
+  // Vue détaillée : un appui sur la carte ouvre la bulle « sous ton doigt »
+  {
+    nom: 'carte-geologie-bulle',
+    actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('.geologie-vues [data-vue="detaillee"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(3000), async (p) => { const { width, height } = p.viewportSize(); await p.mouse.click(Math.round(width * 0.5), Math.round(height * 0.55)); }, (p) => p.waitForTimeout(4000)],
+  },
+  { nom: 'carte-geologie-ferme', actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  {
+    nom: 'carte-geologie-3d',
+    actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('#bascule-mode [data-mode="3d"]'),
+      (p) => p.waitForTimeout(1200), vue({ ...AIGUILLES, pitch: 60, bearing: 160 }), (p) => p.waitForTimeout(5000)],
+  },
+  { nom: 'carte-geologie-suisse', actions: [vue({ center: [7.75, 46.02], zoom: 11, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
   { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
@@ -240,6 +266,7 @@ const ECRANS = [
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long
   { nom: 'point', simuler: true, actions: [appuiLong(0.5, 0.42)] },
+  { nom: 'point-geologie', simuler: true, actions: [vue(MATIN), appuiLong(0.5, 0.42), (p) => p.waitForTimeout(3000), defiler('.point-prudence')] },
   { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },

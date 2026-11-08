@@ -16,6 +16,8 @@ import { t } from './i18n.js';
 import { CHAMPS_FRISE, creerFrise } from './meteo-frise.js';
 import { indicesHeures } from './frise-calcul.js';
 import { ecrire, lire } from './reglages.js';
+import { COUCHES_BRGM, WMS_BRGM, adresseInfoBrgm, geologieDuPoint, lireInfoBrgm } from './geologie-calcul.js';
+import { familleDuCode } from './geologie-familles.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const RAYON_REFUGE = 30000;
@@ -122,6 +124,7 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     refuge: 'chargement',
     eauTuiles: eauDansLesTuiles(map, point),
     eau: estHorsLigne() ? 'hors-ligne' : 'chargement', // fontaines et sources d'OpenStreetMap (Overpass)
+    geologie: estHorsLigne() ? 'hors-ligne' : 'chargement',
     decalage: null, // fuseau du lieu, donné par Open-Meteo
     cible: null, // 'refuge' ou 'eau' quand l'utilisateur l'a localisé
   };
@@ -166,6 +169,21 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
 
   if (etat.meteo === 'chargement') chargerMeteo();
   if (etat.eau === 'chargement') chargerEau();
+  if (etat.geologie === 'chargement') chargerGeologie();
+
+  async function chargerGeologie() {
+    const requete = signalAvecDelai();
+    try {
+      const reponse = await fetch(adresseInfoBrgm(WMS_BRGM, COUCHES_BRGM, lng, lat), { signal: requete.signal });
+      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+      poser('geologie', geologieDuPoint(lireInfoBrgm(await reponse.text())) || 'aucune');
+    } catch (e) {
+      console.warn('Géologie :', e);
+      poser('geologie', estHorsLigne() ? 'hors-ligne' : 'erreur');
+    } finally {
+      requete.liberer();
+    }
+  }
 
   async function chargerMeteo() {
     const params = new URLSearchParams({
@@ -419,6 +437,59 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     return cibleTouchable('eau', { ...eau, nom: eau.nom || nomGenre }, eau.nom || nomGenre, details);
   }
 
+  function valeurGeologie() {
+    const g = etat.geologie;
+    if (g === 'chargement') return enAttente();
+    if (typeof g === 'string') return indisponible(t(`point.geologie-${g}`));
+    const bloc = document.createElement('div');
+    if (g.roche) {
+      // La famille de la carte simple : même couleur, même nom, son résumé et ce qu'elle change sur le terrain
+      const famille = familleDuCode(g.roche.code);
+      if (famille) {
+        const nom = document.createElement('span');
+        nom.className = 'point-geologie-famille';
+        const pastille = document.createElement('i');
+        pastille.style.background = famille.couleur;
+        nom.append(pastille, t(`geologie.roche-${famille.cle}`));
+        bloc.append(
+          principal(nom),
+          texteSecondaire(t(`geologie.resume-${famille.cle}`)),
+          texteSecondaire([g.roche.type, t('point.geologie-echelle')].filter(Boolean).join(' · '))
+        );
+        const terrain = document.createElement('details');
+        terrain.className = 'point-terrain';
+        const titre = document.createElement('summary');
+        titre.textContent = t('point.geologie-terrain');
+        const texte = document.createElement('p');
+        texte.textContent = t(`geologie.terrain-${famille.cle}`);
+        terrain.append(titre, texte);
+        bloc.append(terrain);
+      } else {
+        bloc.append(
+          principal(document.createTextNode(g.roche.description)),
+          texteSecondaire([g.roche.type, t('point.geologie-echelle')].filter(Boolean).join(' · '))
+        );
+      }
+    }
+    if (g.feuille) {
+      bloc.append(texteSecondaire(t('point.geologie-feuille', { numero: g.feuille.numero, nom: g.feuille.nom })));
+      if (g.feuille.notice) {
+        const lien = document.createElement('a');
+        lien.className = 'point-lien';
+        lien.href = g.feuille.notice;
+        lien.target = '_blank';
+        lien.rel = 'noopener';
+        lien.innerHTML = `
+          <svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/></svg>
+          <span></span>
+          <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`;
+        lien.querySelector('span').textContent = t('point.geologie-notice');
+        bloc.append(lien);
+      }
+    }
+    return bloc;
+  }
+
   // ---------- Localiser un refuge ou un point d'eau, puis y aller ----------
   function localiser(cle, objet) {
     etat.cible = cle;
@@ -514,7 +585,8 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
         ligne(t('point.meteo'), meteoAvecRaccourci()),
         ...[friseMeteo()].filter(Boolean),
         ligne(t('point.refuge'), valeurRefuge()),
-        ligne(t('point.eau'), valeurEau())
+        ligne(t('point.eau'), valeurEau()),
+        ligne(t('point.geologie'), valeurGeologie())
       );
       const prudence = document.createElement('div');
       prudence.className = 'point-prudence';

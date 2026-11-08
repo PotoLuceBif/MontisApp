@@ -14,7 +14,7 @@ const DELAI_DONNEES = 8000; // ms avant de préférer les données enregistrées
 const PRESERVES = [CACHE_APP, CACHE_ZONES, CACHE_TUILES, CACHE_DONNEES];
 const EN_TETE_DATE = 'x-montis-date';
 
-const TUILES = /tiles\.openfreemap\.org\/planet\/.+\.pbf|s3\.amazonaws\.com\/elevation-tiles-prod\/|demotiles\.maplibre\.org\/font\/|tile\.openstreetmap\.org\/|tile\.opentopomap\.org\/|data\.geopf\.fr\/wmts|server\.arcgisonline\.com\/|tile\.waymarkedtrails\.org\//;
+const TUILES = /tiles\.openfreemap\.org\/planet\/.+\.pbf|s3\.amazonaws\.com\/elevation-tiles-prod\/|demotiles\.maplibre\.org\/font\/|tile\.openstreetmap\.org\/|tile\.opentopomap\.org\/|data\.geopf\.fr\/wmts|geoservices\.brgm\.fr\/geologie\?.*REQUEST=GetMap|server\.arcgisonline\.com\/|tile\.waymarkedtrails\.org\//;
 const DONNEES = /api\.open-meteo\.com\/|api\.pioupiou\.fr\/|www\.data\.gouv\.fr\/api\/1\/datasets\/r\/|(?:hiking|mtb|cycling)\.waymarkedtrails\.org\/api\/|static\.avalanche\.report\//;
 const DESCRIPTION_FOND = 'https://tiles.openfreemap.org/planet';
 

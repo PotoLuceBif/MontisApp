@@ -694,6 +694,7 @@ export function creerVisiteStation(map, {
     majCourbes(map);
     etat.majPentes?.(); // la couche de pentes a pu changer pendant la visite
     etat.majOmbres?.(); // l'ombre du soleil aussi
+    etat.majGeologie?.(); // et la géologie
   }
 
   // Charge les pistes avant de toucher à la carte : en cas d'échec, rien n'a changé
