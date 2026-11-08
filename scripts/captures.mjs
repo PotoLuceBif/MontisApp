@@ -216,6 +216,8 @@ const ECRANS = [
     nom: 'carte-rouvert',
     actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
   },
+  // Activité en cours, menu fermé : sa pastille avec les couches
+  { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
   { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {

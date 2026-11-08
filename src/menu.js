@@ -7,6 +7,7 @@ import { BANDEAU_MENU } from './bandeau-menu.js';
 import { creerCartesHorsLigne } from './zones-hors-ligne.js';
 import { differer, facade, immediat } from './module-differe.js';
 import { OUTIL_ACTIVITE } from './outil-activite.js';
+import { creerPastilleCouche } from './couches-actives.js';
 import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 
 const ICONES_MENU = {
@@ -290,7 +291,33 @@ export function initMenu(map) {
     e.ligne.removeAttribute('aria-busy');
   }
 
+  // Pastille de l'activité en cours, avec les couches : la carte dit pourquoi elle montre balises ou repères,
+  // ✕ arrête l'activité, un appui rouvre le menu sur elle
+  let activiteEnCours = null;
+  const pastilleActivite = creerPastilleCouche({
+    ordre: -10,
+    nom: () => (activiteEnCours ? t(activiteEnCours.def.labelCle) : ''),
+    legende: () => {
+      const fichier = activiteEnCours && ICONES_ACTIVITES[activiteEnCours.def.icone];
+      return fichier ? `<img class="mini-activite" src="/icons/activites/${fichier}.svg" alt="" width="22" height="22">` : '';
+    },
+    onOuvrir: () => {
+      const e = activiteEnCours;
+      ouvrir(true);
+      if (e) requestAnimationFrame(() => e.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    },
+    onRetirer: () => activiteEnCours?.ligne.click(),
+  });
+  function suivreActivite(e, actif) {
+    if (!e.exclusif) return;
+    if (actif) activiteEnCours = e;
+    else if (activiteEnCours === e) activiteEnCours = null;
+    pastilleActivite.montrer(!!activiteEnCours);
+    if (activiteEnCours) pastilleActivite.maj();
+  }
+
   function demarrer(e) {
+    suivreActivite(e, true);
     e.actif = true;
     e.ligne.classList.add('actif');
     e.ligne.setAttribute('aria-pressed', 'true');
@@ -330,6 +357,7 @@ export function initMenu(map) {
   }
 
   function arreter(e) {
+    suivreActivite(e, false);
     e.actif = false;
     e.demande += 1;
     finChargement(e);
@@ -497,7 +525,7 @@ export function initMenu(map) {
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);
 
-      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0 };
+      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0, exclusif: categorie.exclusif };
       etats.push(etat);
 
       ligne.addEventListener('click', () => {
