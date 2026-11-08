@@ -94,3 +94,32 @@ export function adresseInfoBrgm(base, couches, lng, lat, demiCote = 0.02) {
   });
   return `${base}?${params}`;
 }
+
+// Noms des feuilles en capitales (« SAINT-GERVAIS-LES-BAINS ») : casse habituelle, petits mots en minuscules
+const PETITS_MOTS = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'en', 'sur', 'sous', 'et', 'aux', 'au']);
+export function nomFeuille(nom) {
+  return String(nom)
+    .toLowerCase()
+    .replace(/[\p{L}]+/gu, (mot, position) => (position > 0 && PETITS_MOTS.has(mot) ? mot : mot[0].toUpperCase() + mot.slice(1)))
+    .replace(/\b([ld])'(\p{L})/giu, (_, l, s) => `${l.toLowerCase()}'${s.toUpperCase()}`);
+}
+
+// « Roches Sédimentaires » → « Roches sédimentaires »
+export const phrase = (texte) => {
+  const t = String(texte).trim().toLowerCase();
+  return t ? t[0].toUpperCase() + t.slice(1) : '';
+};
+
+// Notice de la feuille au 1/50 000 (PDF du BRGM, qui contient sa légende détaillée)
+export const adresseNotice = (numero) => `http://ficheinfoterre.brgm.fr/Notices/${String(numero).padStart(4, '0')}N.pdf`;
+
+// Ce que le BRGM dit d'un point : roche dominante au 1/1 000 000 et feuille au 1/50 000, ou null hors couverture
+export function geologieDuPoint(info) {
+  const roche = info.LITHO_1M_SIMPLIFIEE?.[0];
+  const feuille = info.SCAN_F_GEOL50_CATALOG?.[0];
+  if (!roche?.DESCR && !feuille?.nom) return null;
+  return {
+    roche: roche?.DESCR ? { description: roche.DESCR.trim(), type: phrase(roche.TYPE || '') } : null,
+    feuille: feuille?.nom ? { numero: feuille.numero, nom: nomFeuille(feuille.nom), notice: feuille.numero ? adresseNotice(feuille.numero) : null } : null,
+  };
+}

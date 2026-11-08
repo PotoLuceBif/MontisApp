@@ -4,6 +4,19 @@ import { lire, ecrire } from './reglages.js';
 import { poser, surLangue, ta } from './i18n.js';
 import { pourcent } from './unites.js';
 
+// Repères de lecture : teintes conventionnelles des cartes géologiques françaises, de la plus récente à la plus ancienne.
+// Approximatives : chaque feuille a sa légende.
+const REPERES = [
+  ['quaternaire', '#f2eaa2'],
+  ['tertiaire', '#f3b660'],
+  ['cretace', '#86c46a'],
+  ['jurassique', '#5fb4d6'],
+  ['trias', '#b27fc2'],
+  ['primaire', '#8fae9f'],
+  ['granites', '#e5615a'],
+  ['metamorphiques', '#d49a8c'],
+];
+
 const ICONE_STRATES = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
   <path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/></svg>`;
 
@@ -26,6 +39,10 @@ export function creerNatureSousSol(map) {
           </div>
           <input type="range" class="geologie-opacite" min="0.2" max="1" step="0.05" ${ta('aria-label', 'geologie.opacite')}>
         </div>
+        <h4 class="geologie-sous-titre" data-i18n="geologie.reperes"></h4>
+        <ul class="geologie-legende">
+          ${REPERES.map(([cle, couleur]) => `<li><i style="background: ${couleur}"></i><span data-i18n="geologie.age-${cle}"></span></li>`).join('')}
+        </ul>
         <p class="note" data-i18n="geologie.aide"></p>
         <p class="note geologie-credit" data-i18n="geologie.credit"></p>
       </div>

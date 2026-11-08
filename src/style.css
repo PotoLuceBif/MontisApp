@@ -281,6 +281,10 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .geologie-hors-ligne { display: none; }
 :root[data-reseau='hors-ligne'] .geologie-hors-ligne { display: block; margin-top: 8px; }
 .mini-geologie { stroke: none; }
+.geologie-sous-titre { margin: 2px 0 0; color: var(--texte-2); font-size: 12px; font-weight: 650; }
+.geologie-legende { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px 12px; margin: 0; padding: 0; list-style: none; }
+.geologie-legende li { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--texte); font-size: 12.5px; }
+.geologie-legende i { flex: none; width: 18px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
 /* Ombre du soleil */
 .relief-ombres { margin-top: 6px; }
 .relief-ombres .ombres-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
@@ -546,6 +550,7 @@ svg.nuit .ombres-cadran-ombre { display: none; }
   border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2);
   color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
 }
+a.point-lien { box-sizing: border-box; text-decoration: none; }
 .point-lien span { flex: 1; min-width: 0; }
 .point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .point-lien-icone { width: 18px; height: 18px; color: var(--accent); }

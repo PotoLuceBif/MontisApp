@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, lireInfoBrgm, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
+import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, geologieDuPoint, lireInfoBrgm, nomFeuille, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
 
 // Tuile 256 × 256 : moitié gauche colorée, moitié droite blanche (hors de France)
 function tuileMoitie() {
@@ -104,5 +104,33 @@ describe('adresseInfoBrgm', () => {
     expect(adresse.searchParams.get('BBOX')).toBe('45.900000,6.850000,45.940000,6.890000');
     expect(adresse.searchParams.get('QUERY_LAYERS')).toBe('A,B');
     expect(adresse.searchParams.get('I')).toBe('50');
+  });
+});
+
+describe('nomFeuille', () => {
+  it('remet la casse habituelle', () => {
+    expect(nomFeuille('CHAMONIX')).toBe('Chamonix');
+    expect(nomFeuille('SAINT-GERVAIS-LES-BAINS')).toBe('Saint-Gervais-les-Bains');
+    expect(nomFeuille("BOURG-D'OISANS")).toBe("Bourg-d'Oisans");
+    expect(nomFeuille('LE MONETIER-LES-BAINS')).toBe('Le Monetier-les-Bains');
+  });
+});
+
+describe('geologieDuPoint', () => {
+  it('réunit la roche et la feuille, avec la notice', () => {
+    const g = geologieDuPoint({
+      LITHO_1M_SIMPLIFIEE: [{ DESCR: 'Calcaires, marnes et gypse', TYPE: 'Roches Sédimentaires' }],
+      SCAN_F_GEOL50_CATALOG: [{ numero: '680', nom: 'CHAMONIX' }],
+    });
+    expect(g.roche).toEqual({ description: 'Calcaires, marnes et gypse', type: 'Roches sédimentaires' });
+    expect(g.feuille).toEqual({ numero: '680', nom: 'Chamonix', notice: 'http://ficheinfoterre.brgm.fr/Notices/0680N.pdf' });
+  });
+
+  it('hors de France : rien', () => {
+    expect(geologieDuPoint({})).toBeNull();
+  });
+
+  it('une feuille sans roche reste utile', () => {
+    expect(geologieDuPoint({ SCAN_F_GEOL50_CATALOG: [{ numero: '1', nom: 'DUNKERQUE' }] }).roche).toBeNull();
   });
 });
