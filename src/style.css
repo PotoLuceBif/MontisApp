@@ -270,6 +270,17 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 }
 .relief-pentes .pentes-etat { margin: -2px 0 10px; color: var(--texte); }
 .relief-pentes .pentes-prudence { margin: 0; }
+/* Nature et sous-sol : géologie */
+.geologie .geologie-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.geologie .geologie-choix svg { width: 18px; height: 18px; flex: none; }
+.geologie-details { display: grid; gap: 10px; margin-top: 10px; }
+.geologie-details[hidden], .geologie-etat[hidden] { display: none; }
+.geologie .note { margin: 0; }
+.geologie .geologie-etat { color: var(--texte); }
+.geologie .geologie-credit { font-size: 11px; }
+.geologie-hors-ligne { display: none; }
+:root[data-reseau='hors-ligne'] .geologie-hors-ligne { display: block; margin-top: 8px; }
+.mini-geologie { stroke: none; }
 /* Ombre du soleil */
 .relief-ombres { margin-top: 6px; }
 .relief-ombres .ombres-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }

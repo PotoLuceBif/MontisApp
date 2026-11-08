@@ -1158,5 +1158,19 @@
   "tf.plus": "Description and access",
   "tf.source": "FFVL site ·",
   "tf.source-date": "FFVL site, updated {date} ·",
-  "tf.prudence": "Information from the FFVL, in French. Check on site and with the local club: Montis helps you decide, it does not decide for you."
+  "tf.prudence": "Information from the FFVL, in French. Check on site and with the local club: Montis helps you decide, it does not decide for you.",
+  "nature.titre": "Nature and geology",
+  "geologie.titre": "Geology",
+  "geologie.afficher": "Geological map",
+  "geologie.court": "Geology",
+  "geologie.court-hors-zone": "Geology · outside France",
+  "geologie.court-erreur": "Geology unavailable",
+  "geologie.court-hors-ligne": "Geology · offline",
+  "geologie.opacite": "Opacity",
+  "geologie.aide": "Geological map of France at 1:50,000: the colour shows the rock and its age. Each sheet has its own legend.",
+  "geologie.credit": "Source: BRGM, served by the IGN Géoplateforme.",
+  "geologie.hors-ligne-off": "Offline: the geological map can’t be downloaded. Only areas viewed recently may show.",
+  "geologie.etat-hors-zone": "Outside France: the BRGM geological map doesn’t cover this place.",
+  "geologie.etat-erreur": "Geological map unavailable right now: the service isn’t responding.",
+  "geologie.etat-hors-ligne": "Offline: the geological map only shows where it was already viewed."
 }

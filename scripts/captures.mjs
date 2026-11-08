@@ -216,6 +216,15 @@ const ECRANS = [
     nom: 'carte-rouvert',
     actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-reduire'), clic('#outil-rapide-panneau-carte .outil-rapide-entete')],
   },
+  // Géologie (Carte › Nature et sous-sol) : carte du BRGM superposée, pastille, hors de France
+  { nom: 'carte-geologie', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'carte-geologie-ferme', actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  {
+    nom: 'carte-geologie-3d',
+    actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('#bascule-mode [data-mode="3d"]'),
+      (p) => p.waitForTimeout(1200), vue({ ...AIGUILLES, pitch: 60, bearing: 160 }), (p) => p.waitForTimeout(5000)],
+  },
+  { nom: 'carte-geologie-suisse', actions: [vue({ center: [7.75, 46.02], zoom: 11, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
   { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {

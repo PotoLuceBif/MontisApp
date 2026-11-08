@@ -1158,5 +1158,19 @@
   "tf.plus": "Description et accès",
   "tf.source": "Terrain FFVL ·",
   "tf.source-date": "Terrain FFVL, fiche du {date} ·",
-  "tf.prudence": "Informations de la FFVL, en français. Vérifiez sur place et auprès du club local : Montis aide à décider, il ne décide pas."
+  "tf.prudence": "Informations de la FFVL, en français. Vérifiez sur place et auprès du club local : Montis aide à décider, il ne décide pas.",
+  "nature.titre": "Nature et sous-sol",
+  "geologie.titre": "Géologie",
+  "geologie.afficher": "Carte géologique",
+  "geologie.court": "Géologie",
+  "geologie.court-hors-zone": "Géologie · hors de France",
+  "geologie.court-erreur": "Géologie indisponible",
+  "geologie.court-hors-ligne": "Géologie · hors ligne",
+  "geologie.opacite": "Opacité",
+  "geologie.aide": "Carte géologique de la France au 1/50 000 : la couleur dit la roche et son âge. Chaque feuille a sa propre légende.",
+  "geologie.credit": "Source : BRGM, diffusée par la Géoplateforme de l’IGN.",
+  "geologie.hors-ligne-off": "Hors ligne : la carte géologique ne se télécharge pas. Seules les zones déjà vues récemment peuvent s’afficher.",
+  "geologie.etat-hors-zone": "Hors de France : la carte géologique du BRGM ne couvre pas cet endroit.",
+  "geologie.etat-erreur": "Carte géologique indisponible pour le moment : le service ne répond pas.",
+  "geologie.etat-hors-ligne": "Hors ligne : la carte géologique ne s’affiche que là où elle a déjà été vue."
 }
