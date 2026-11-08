@@ -21,6 +21,7 @@ const adresseTuile = (z, x, y) =>
 
 // Couverture de chaque tuile reçue, pour dire « hors de France » sous le centre de la carte
 const masques = new Map();
+let recues = 0; // tuiles reçues depuis le dernier déplacement
 
 function toile() {
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(256, 256);
@@ -45,6 +46,7 @@ function ajouterProtocole() {
     const cle = `${z}/${x}/${y}`;
     masques.delete(cle);
     masques.set(cle, blancTransparent(donnees.data));
+    recues += 1;
     if (masques.size > MAX_MASQUES) masques.delete(masques.keys().next().value);
     return { data: await createImageBitmap(donnees) };
   });
@@ -93,11 +95,11 @@ export function initGeologie(map, { surEtat, eteindre }) {
 
   let actif = false;
   let erreurs = 0;
-  let etatCouche = 'ok'; // 'ok', 'hors-zone', 'erreur', 'hors-ligne'
+  let etatCouche = 'ok'; // 'ok', 'hors-zone', 'incomplete', 'erreur', 'hors-ligne'
 
   const pastille = creerPastilleCouche({
     ordre: 5,
-    nom: () => (etatCouche === 'ok' ? t('geologie.court') : t(`geologie.court-${etatCouche}`)),
+    nom: () => (['ok', 'incomplete'].includes(etatCouche) ? t('geologie.court') : t(`geologie.court-${etatCouche}`)),
     legende: () => MINI_GEOLOGIE,
     onOuvrir: () => ouvrirReglage('nature'),
     onRetirer: () => eteindre(),
@@ -106,7 +108,8 @@ export function initGeologie(map, { surEtat, eteindre }) {
   function majEtat() {
     let suivant = 'ok';
     const couvert = actif ? centreCouvert(map) : null;
-    if (erreurs) suivant = estHorsLigne() ? 'hors-ligne' : 'erreur';
+    // Quelques tuiles en échec au milieu des autres : la carte est là, mais incomplète
+    if (erreurs) suivant = estHorsLigne() ? 'hors-ligne' : recues ? 'incomplete' : 'erreur';
     else if (couvert === false) suivant = 'hors-zone';
     if (suivant !== etatCouche) {
       etatCouche = suivant;
@@ -127,7 +130,7 @@ export function initGeologie(map, { surEtat, eteindre }) {
     erreurs += 1;
     majEtat();
   });
-  map.on('movestart', () => { erreurs = 0; });
+  map.on('movestart', () => { erreurs = 0; recues = 0; });
   map.on('moveend', majEtat);
   map.on('sourcedata', (e) => { if (e.sourceId === SOURCE && e.tile) majEtat(); });
   window.addEventListener('reseau-change', majEtat);
@@ -136,6 +139,7 @@ export function initGeologie(map, { surEtat, eteindre }) {
     afficher(oui) {
       actif = oui;
       erreurs = 0;
+      recues = 0;
       appliquer();
       pastille.montrer(oui);
       majEtat();

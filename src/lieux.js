@@ -132,3 +132,37 @@ export function afficherRefuges(map, visible) {
 
   map.setLayoutProperty(COUCHE_REFUGES, 'visibility', visible ? 'visible' : 'none');
 }
+// ---------- Frontières des pays (fond vectoriel, donc aussi sur les autres fonds et hors ligne) ----------
+const FRONTIERES = ['frontieres-halo', 'frontieres'];
+const FILTRE_FRONTIERES = ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]];
+
+export function afficherFrontieres(map, visible) {
+  assurerSourceVecteur(map);
+  if (!map.getLayer('frontieres')) {
+    // Sous les noms et les pictogrammes, au-dessus des fonds, de la géologie et des pentes
+    const avant = map.getStyle().layers.find((c) => c.type === 'symbol')?.id;
+    const commun = { type: 'line', source: SOURCE_VECTEUR, 'source-layer': 'boundary', filter: FILTRE_FRONTIERES };
+    map.addLayer({
+      ...commun,
+      id: 'frontieres-halo',
+      layout: { visibility: 'none', 'line-join': 'round' },
+      paint: {
+        'line-color': '#141824',
+        'line-opacity': 0.45,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.5, 10, 5],
+      },
+    }, avant);
+    map.addLayer({
+      ...commun,
+      id: 'frontieres',
+      layout: { visibility: 'none', 'line-join': 'round' },
+      paint: {
+        'line-color': '#f3eee4',
+        'line-opacity': 0.9,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1, 10, 1.8],
+        'line-dasharray': [5, 3],
+      },
+    }, avant);
+  }
+  for (const id of FRONTIERES) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+}

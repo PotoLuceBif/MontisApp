@@ -218,7 +218,16 @@ const ECRANS = [
   },
   // Géologie (Carte › Nature et sous-sol) : carte du BRGM superposée, pastille, hors de France
   { nom: 'carte-geologie', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
-  { nom: 'carte-geologie-legende', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(3000), defiler('.geologie-legende')] },
+  { nom: 'carte-geologie-legende', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(3000), defiler('.geologie-sous-titre')] },
+  // Frontières des pays (Carte › Éléments de la carte › Lieux), sur la géologie près de Genève
+  {
+    nom: 'carte-frontieres',
+    actions: [vue({ center: [6.1, 46.2], zoom: 9.5, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), module('elements'),
+      (p) => p.evaluate(() => {
+        const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Frontières|borders/i.test(l.textContent))?.querySelector('input');
+        if (case_ && !case_.checked) case_.click();
+      }), (p) => p.waitForTimeout(4000)],
+  },
   { nom: 'carte-geologie-ferme', actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   {
     nom: 'carte-geologie-3d',

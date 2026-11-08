@@ -4,17 +4,17 @@ import { lire, ecrire } from './reglages.js';
 import { poser, surLangue, ta } from './i18n.js';
 import { pourcent } from './unites.js';
 
-// Repères de lecture : teintes conventionnelles des cartes géologiques françaises, de la plus récente à la plus ancienne.
-// Approximatives : chaque feuille a sa légende.
-const REPERES = [
-  ['quaternaire', '#f2eaa2'],
-  ['tertiaire', '#f3b660'],
-  ['cretace', '#86c46a'],
-  ['jurassique', '#5fb4d6'],
-  ['trias', '#b27fc2'],
-  ['primaire', '#8fae9f'],
-  ['granites', '#e5615a'],
-  ['metamorphiques', '#d49a8c'],
+// Lire la carte : la notation des feuilles (lettres imprimées sur chaque terrain) est commune à toutes les feuilles,
+// contrairement aux couleurs. Du plus récent au plus ancien.
+const NOTATIONS = [
+  ['F G E', 'quaternaire'],
+  ['p m g e', 'tertiaire'],
+  ['c n', 'cretace'],
+  ['j l', 'jurassique'],
+  ['t', 'trias'],
+  ['r h d s', 'primaire'],
+  ['γ', 'granites'],
+  ['ζ ξ', 'metamorphiques'],
 ];
 
 const ICONE_STRATES = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -39,10 +39,12 @@ export function creerNatureSousSol(map) {
           </div>
           <input type="range" class="geologie-opacite" min="0.2" max="1" step="0.05" ${ta('aria-label', 'geologie.opacite')}>
         </div>
-        <h4 class="geologie-sous-titre" data-i18n="geologie.reperes"></h4>
+        <h4 class="geologie-sous-titre" data-i18n="geologie.lire"></h4>
+        <p class="note" data-i18n="geologie.lire-aide"></p>
         <ul class="geologie-legende">
-          ${REPERES.map(([cle, couleur]) => `<li><i style="background: ${couleur}"></i><span data-i18n="geologie.age-${cle}"></span></li>`).join('')}
+          ${NOTATIONS.map(([lettres, cle]) => `<li><b class="geologie-lettres">${lettres}</b><span data-i18n="geologie.age-${cle}"></span></li>`).join('')}
         </ul>
+        <p class="note" data-i18n="geologie.lire-chiffre"></p>
         <p class="note" data-i18n="geologie.aide"></p>
         <p class="note geologie-credit" data-i18n="geologie.credit"></p>
       </div>
