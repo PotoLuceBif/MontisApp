@@ -2,6 +2,7 @@
 // - simple : carte lithologique du BRGM (grandes familles de roches, 1/1 000 000), par son service WMS ;
 // - détaillée : carte géologique du BRGM au 1/50 000, servie par la Géoplateforme de l'IGN, blanc rendu transparent.
 // Chargé à la première activation (nature-sous-sol.js).
+import { REPERE_CALQUES } from './style-montis.js';
 import { addProtocol } from 'maplibre-gl';
 import { blancTransparent, empriseTuile, pointCouvert } from './geologie-calcul.js';
 import { etat } from './options-carte.js';
@@ -14,7 +15,7 @@ import { creerBulleGeologie } from './geologie-bulle.js';
 const PROTOCOLE = 'montis-geol';
 export const VUES = ['simple', 'detaillee'];
 // Sous les ombres et les pentes, sous les routes et les courbes : ils restent lisibles par-dessus
-const AVANT = ['ombre-soleil', 'pentes-pentes', 'montis-road-casing', 'courbes'];
+const AVANT = ['ombre-soleil', 'pentes-pentes', REPERE_CALQUES, 'montis-road-casing', 'courbes'];
 const MAX_MASQUES = 400;
 const EMPRISE_FRANCE = [-12.21, 40.68, 11.9, 52.17]; // publiée par la Géoplateforme : aucune requête au-delà
 

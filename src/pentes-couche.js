@@ -1,5 +1,6 @@
 // Couches de pente et d'orientation, calculées dans le navigateur depuis les tuiles de relief
 // (voir pentes-tuile.js), à la manière de maplibre-contour.
+import { REPERE_CALQUES } from './style-montis.js';
 import { addProtocol } from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { etat } from './options-carte.js';
@@ -7,7 +8,7 @@ import { etat } from './options-carte.js';
 const PROTOCOLE = 'montis-pente';
 export const ZOOM_MIN_PENTES = 12; // plus loin, le relief est trop lissé : les pentes seraient sous-estimées
 export const GENRES = ['pentes', 'orientation'];
-const AVANT = ['montis-road-casing', 'courbes']; // routes et sentiers restent lisibles au-dessus
+const AVANT = [REPERE_CALQUES, 'montis-road-casing', 'courbes']; // routes et sentiers restent lisibles au-dessus
 
 // Le calcul passe par un travailleur ; sans OffscreenCanvas (vieux navigateurs), sur la page
 let travailleur = null;

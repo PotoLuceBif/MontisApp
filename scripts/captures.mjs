@@ -108,6 +108,23 @@ const attendreCouche = (couche) => (page) => attendreSur(
   couche,
 );
 const ANNECY = { center: [6.25, 45.83], zoom: 10.5, bearing: 0, pitch: 0 };
+const ZERMATT = { center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 };
+// Panneau Fond de carte : un onglet, un fond, un calque officiel (la liste se redessine : on cherche à chaque fois)
+const ongletFond = (o) => clic(`.fond-onglets [data-onglet="${o}"]`);
+const choisirFond = (id) => async (page) => {
+  await page.evaluate((i) => {
+    let radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
+    if (!radio) {
+      document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
+      for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
+      radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
+    }
+    radio?.click();
+  }, id);
+  await page.waitForTimeout(500);
+};
+const cocherCalque = (id) => clic(`.fond-calque[data-calque="${id}"] input[type="checkbox"]:not(:checked)`);
+const fermerCarte = clic('#outil-rapide-panneau-carte .outil-rapide-fermer');
 // Le module se charge à sa première ouverture : son onglet n'existe pas tout de suite
 const ongletSites = async (page) => {
   await page.waitForSelector('[data-para-vue="sites"]', { state: 'attached', timeout: 15000 });
@@ -174,6 +191,23 @@ const ECRANS = [
     actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief'), clic('.couche-pastille:not([hidden]) .couche-pastille-corps')],
   },
   { nom: 'carte-fond', actions: [module('fond')] },
+  // Fonds topo (lot 3.10) : onglets Pays et Anciennes, cartes nationales, calques officiels
+  { nom: 'carte-fond-pays', actions: [vue(ZERMATT), module('fond'), ongletFond('pays')] },
+  { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
+  { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
+  { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
+  // Une carte nationale s'arrête à la frontière : le fond Montis complète (France à gauche, Suisse à droite)
+  { nom: 'carte-fond-frontiere', actions: [vue({ center: [6.98, 46.03], zoom: 11.3, bearing: 0, pitch: 0 }), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(5000)] },
+  { nom: 'carte-fond-hors-zone', actions: [vue(AIGUILLES), module('fond'), choisirFond('swisstopo'), ongletFond('pays')] },
+  {
+    nom: 'carte-fond-calques',
+    actions: [vue(ZERMATT), module('fond'), ongletFond('ici'), cocherCalque('ch-ski-rando'), cocherCalque('ch-pentes'), (p) => p.waitForTimeout(800), defiler('.fond-calques')],
+  },
+  { nom: 'carte-fond-calques-ferme', actions: [vue(ZERMATT), module('fond'), ongletFond('ici'), cocherCalque('ch-ski-rando'), cocherCalque('ch-pentes'), fermerCarte, (p) => p.waitForTimeout(4000)] },
+  { nom: 'carte-fond-ign-pentes', actions: [vue(AIGUILLES), module('fond'), choisirFond('ign-plan'), ongletFond('ici'), cocherCalque('ign-pentes'), fermerCarte, (p) => p.waitForTimeout(4000)] },
+  { nom: 'carte-fond-cassini', actions: [vue({ center: [5.72, 45.19], zoom: 11, bearing: 0, pitch: 0 }), module('fond'), ongletFond('anciennes'), choisirFond('cassini'), fermerCarte, (p) => p.waitForTimeout(4000)] },
+  { nom: 'carte-fond-usgs', actions: [vue({ center: [-121.76, 46.85], zoom: 12, bearing: 0, pitch: 0 }), module('fond'), choisirFond('usgs-topo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
+  { nom: 'carte-fond-3d', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ ...ZERMATT, zoom: 12.5, pitch: 60, bearing: 220 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'carte-relief', actions: [module('relief')] },
   { nom: 'carte-pentes', actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), (p) => p.waitForTimeout(3000)] },
   { nom: 'carte-orientation', actions: [vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), (p) => p.waitForTimeout(3000)] },

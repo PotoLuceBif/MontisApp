@@ -18,6 +18,16 @@ Le service worker est écrit dans `src/sw-modele.js` et publié sous `/sw.js` pa
 
 La navigation utilise un bouton logo pour les activités et une bulle Réglages à côté. Les bulles Météo et Carte affichent seulement leur icône au repos ; leur libellé apparaît au survol sur ordinateur ou pendant un appui long sur mobile. Un appui distinct ouvre le panneau correspondant. Les panneaux se ferment avec leur croix, Échap ou en ouvrant une autre rubrique. La flèche vers le bas les réduit en une barre (en bas de l’écran sur téléphone) pour voir la carte ; un appui sur la barre les rouvre là où on les avait laissés. Chaque couche allumée depuis **Carte** (pentes, orientation, sommets, refuges…) garde une pastille sur la carte : sa ✕ l’éteint, un appui ouvre son réglage.
 
+## Fonds de carte
+
+**Carte > Fond de carte** range les fonds en quatre onglets :
+- **Ici** : ce qui couvre l’endroit affiché (cartes nationales, cartes du monde entier, calques à superposer, cartes anciennes) ;
+- **Monde** : fond Montis, OpenTopoMap, TopPlusOpen, Topo Esri, OpenStreetMap, CyclOSM, satellite Esri ;
+- **Pays** : les cartes officielles par pays. France (plan IGN, carte régionale, photo aérienne), Suisse (carte nationale, en couleur ou en gris, SWISSIMAGE), Autriche (basemap.at et sa photo), Espagne (IGN Espagne, carte topo de Catalogne), Norvège, Belgique, États-Unis (USGS Topo, avec ou sans photo), Canada (Toporama), Japon (GSI) ;
+- **Anciennes** : Cassini, état-major (1820–1866), IGN de 1950, cartes suisses Dufour et Siegfried.
+
+Une carte nationale s’arrête à la frontière de son pays : au-delà, le fond Montis complète la carte, routes et noms compris. Sous **À superposer**, les calques officiels se posent sur n’importe quel fond, avec leur opacité et leur pastille : pentes de l’IGN, et pour la Suisse pentes de plus de 30°, itinéraires de ski de rando et de raquettes, sentiers balisés, zones de tranquillité de la faune. Chaque fond est crédité dans la carte. Aucun ne demande de clé ; le Top 25 de l’IGN et les cartes britannique, suédoise et finlandaise en demandent une, et attendent un relais côté serveur. Les contours des pays viennent de Natural Earth (`node scripts/extraire-zones-fonds.mjs`).
+
 ## Fiche d’un point
 
 Un appui long n’importe où sur la carte (clic droit sur ordinateur) ouvre la fiche de ce point : coordonnées à copier, altitude, pente et orientation du versant, lever et coucher du soleil avec sa position actuelle, météo du moment et de la journée (avec l’isotherme 0 °C et l’indice UV), refuge et point d’eau (lac, cours d’eau, fontaine ou source) les plus proches à vol d’oiseau. Touchez le refuge ou l’eau pour le voir sur la carte, puis **Y aller depuis ce point** : Montis ouvre Créer un parcours du point jusqu’à la cible (en Randonnée, ou en Vélo si c’est l’activité en cours). La flèche retour de l’éditeur ramène à la fiche du point ; le tracé reste en brouillon, et **Créer un parcours** le reprend. La pente est une moyenne sur une trentaine de mètres, calculée depuis les tuiles de relief, affichée en degrés et en pourcentage (« 35° · 70 % ») avec les couleurs des seuils 30°, 35°, 40° et 45°. Le bouton **Prévisions sur 5 jours** ouvre Météo › Conditions locales sur ce point ; sa croix ramène à la fiche.

@@ -18,6 +18,10 @@ export const CALQUES_MONTIS = [
   'montis-summit',
 ];
 
+// Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
+// au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
+export const REPERE_CALQUES = 'repere-calques';
+
 export const STYLE_MONTIS = {
   version: 8,
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
