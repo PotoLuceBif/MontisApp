@@ -1188,7 +1188,7 @@
   "geologie.vue-simple": "Simple",
   "geologie.vue-detaillee": "Detailed",
   "geologie.simple-aide": "The main rock families. Tap a rock to see what it means on the ground.",
-  "geologie.detaillee-aide": "1:50,000 map, very precise, but its colours change from one sheet to the next. Tap the map to see what’s under your finger: the rock of the area, what it means on the ground, the sheet and its notes.",
+  "geologie.detaillee-aide": "1:50,000 map, very precise, but its colours change from one sheet to the next: no common legend.",
   "geologie.prudence": "1:1,000,000 map: close up, boundaries are approximate and the real ground may differ. General guidance, check on site.",
   "geologie.court-trop-loin": "Geology · too far",
   "geologie.etat-trop-loin": "Zoom in to see the rocks.",
@@ -1228,5 +1228,8 @@
   "point.geologie-terrain": "On the ground",
   "geologie.bulle-titre": "Under your finger",
   "geologie.bulle-couleur": "Colour under your finger",
-  "geologie.bulle-secteur": "Dominant rock of the area, from the 1:1,000,000 map: the sheet’s notes give the detail."
+  "geologie.bulle-secteur": "Dominant rock of the area, from the 1:1,000,000 map: the sheet’s notes give the detail.",
+  "geologie.identifier": "Identify a rock",
+  "geologie.identifier-toucher": "Tap the map: the rock of the area, what it means on the ground, the sheet and its notes.",
+  "geologie.identifier-cliquer": "Click the map: the rock of the area, what it means on the ground, the sheet and its notes."
 }

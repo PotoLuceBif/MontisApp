@@ -283,6 +283,31 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .mini-geologie { stroke: none; }
 .geologie-vue { display: grid; gap: 8px; }
 .geologie-vue[hidden] { display: none; }
+.geologie-astuce {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 12px; background: var(--accent-doux);
+}
+.geologie-astuce-icone {
+  position: relative; display: grid; flex: none; width: 40px; height: 40px; place-items: center;
+  border-radius: 50%; background: var(--surface); color: var(--accent);
+}
+.geologie-astuce-icone svg { width: 22px; height: 22px; }
+/* Une onde discrète autour de la cible : « touche ici » */
+.geologie-astuce-icone::after {
+  content: ''; position: absolute; inset: 0; border: 2px solid var(--accent); border-radius: 50%;
+  animation: geol-onde 2.2s ease-out infinite;
+}
+@keyframes geol-onde { from { opacity: .7; scale: 1; } to { opacity: 0; scale: 1.5; } }
+@media (prefers-reduced-motion: reduce) { .geologie-astuce-icone::after { animation: none; opacity: 0; } }
+.geologie-astuce-textes { display: grid; gap: 2px; min-width: 0; }
+.geologie-astuce-textes strong { color: var(--texte); font-size: 13.5px; font-weight: 650; }
+.geologie-astuce-textes span { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.geologie-astuce-cliquer { display: none; }
+@media (pointer: fine) {
+  .geologie-astuce-toucher { display: none; }
+  .geologie-astuce-cliquer { display: inline; }
+}
+.geol-identifier .maplibregl-canvas { cursor: crosshair; }
 .geologie-familles { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .geologie-famille { border: 1px solid var(--bord); border-radius: 10px; background: var(--surface); }
 .geologie-famille-entete {

@@ -160,6 +160,7 @@ export function creerBulleGeologie(map, { adresseTuile, zoomMax }) {
   return {
     activer(oui) {
       actif = oui;
+      map.getCanvasContainer().classList.toggle('geol-identifier', oui);
       if (!oui) fermer();
     },
   };

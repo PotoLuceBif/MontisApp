@@ -9,6 +9,9 @@ const VUES = ['simple', 'detaillee'];
 
 const ICONE_STRATES = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
   <path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/></svg>`;
+// Cible : un appui sur la carte identifie la roche (vue détaillée)
+const ICONE_CIBLE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+  <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
 const CHEVRON = '<svg class="geologie-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
 // Une famille de roches : sa couleur, son nom, une ligne de résumé ; un appui déplie ce qu'elle change sur le terrain
@@ -40,6 +43,16 @@ export function creerNatureSousSol(map) {
           ${VUES.map((vue) => `<button type="button" data-vue="${vue}" data-i18n="geologie.vue-${vue}"></button>`).join('')}
         </div>
         <p class="note geologie-etat" role="status" hidden></p>
+        <div class="geologie-vue" data-pour="detaillee">
+          <div class="geologie-astuce">
+            <span class="geologie-astuce-icone" aria-hidden="true">${ICONE_CIBLE}</span>
+            <span class="geologie-astuce-textes">
+              <strong data-i18n="geologie.identifier"></strong>
+              <span class="geologie-astuce-toucher" data-i18n="geologie.identifier-toucher"></span>
+              <span class="geologie-astuce-cliquer" data-i18n="geologie.identifier-cliquer"></span>
+            </span>
+          </div>
+        </div>
         <div class="relief-reglage">
           <div class="relief-entete">
             <span data-i18n="geologie.opacite"></span>
