@@ -276,6 +276,8 @@ const ECRANS = [
       (p) => p.waitForTimeout(1200), vue({ ...AIGUILLES, pitch: 60, bearing: 160 }), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'carte-geologie-suisse', actions: [vue({ center: [7.75, 46.02], zoom: 11, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
+  // Activité en cours, menu fermé : sa pastille avec les couches
+  { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
   { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
