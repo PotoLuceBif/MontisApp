@@ -5,11 +5,12 @@ export const COTE_MASQUE = 32; // couverture d'une tuile, mémorisée en 32 × 3
 
 // Rend transparents les pixels blancs (RGBA modifiés sur place) : hors de France, la tuile est blanche,
 // et le blanc voilerait le fond voisin. Renvoie le masque de couverture (1 = carte présente).
-export function blancTransparent(pixels, cote = 256) {
+// `blanc: false` : tuile déjà transparente hors couverture, seul le masque est calculé.
+export function blancTransparent(pixels, cote = 256, { blanc = true } = {}) {
   const masque = new Uint8Array(COTE_MASQUE * COTE_MASQUE);
   const pas = cote / COTE_MASQUE;
   for (let i = 0; i < pixels.length; i += 4) {
-    if (pixels[i] >= SEUIL_BLANC && pixels[i + 1] >= SEUIL_BLANC && pixels[i + 2] >= SEUIL_BLANC) {
+    if (blanc && pixels[i] >= SEUIL_BLANC && pixels[i + 1] >= SEUIL_BLANC && pixels[i + 2] >= SEUIL_BLANC) {
       pixels[i + 3] = 0;
     } else if (pixels[i + 3] > 0) {
       const p = i / 4;
@@ -31,10 +32,20 @@ export function tuileDuPoint(lng, lat, z) {
   return { z, x, y, u: fx - x, v: fy - y };
 }
 
-// Le point est-il couvert par la carte ? null si la tuile n'est pas encore connue
-export function pointCouvert(masques, lng, lat, z) {
+// Emprise d'une tuile en Web Mercator (EPSG:3857) : [ouest, sud, est, nord] en mètres
+const DEMI_MONDE = 20037508.342789244;
+export function empriseTuile(z, x, y) {
+  const cote = (2 * DEMI_MONDE) / 2 ** z;
+  const ouest = -DEMI_MONDE + x * cote;
+  const nord = DEMI_MONDE - y * cote;
+  return [ouest, nord - cote, ouest + cote, nord];
+}
+
+// Le point est-il couvert par la carte ? null si la tuile n'est pas encore connue.
+// `prefixe` : la vue des tuiles mémorisées (« simple/ », « detaillee/ »).
+export function pointCouvert(masques, lng, lat, z, prefixe = '') {
   const { x, y, u, v } = tuileDuPoint(lng, lat, z);
-  const masque = masques.get(`${z}/${x}/${y}`);
+  const masque = masques.get(`${prefixe}${z}/${x}/${y}`);
   if (!masque) return null;
   const col = Math.min(COTE_MASQUE - 1, Math.floor(u * COTE_MASQUE));
   const lig = Math.min(COTE_MASQUE - 1, Math.floor(v * COTE_MASQUE));
@@ -119,7 +130,9 @@ export function geologieDuPoint(info) {
   const feuille = info.SCAN_F_GEOL50_CATALOG?.[0];
   if (!roche?.DESCR && !feuille?.nom) return null;
   return {
-    roche: roche?.DESCR ? { description: roche.DESCR.trim(), type: phrase(roche.TYPE || '') } : null,
+    roche: roche?.DESCR
+      ? { code: Number(roche.CODE_GEOL) || null, description: roche.DESCR.trim(), type: phrase(roche.TYPE || '') }
+      : null,
     feuille: feuille?.nom ? { numero: feuille.numero, nom: nomFeuille(feuille.nom), notice: feuille.numero ? adresseNotice(feuille.numero) : null } : null,
   };
 }

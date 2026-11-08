@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, geologieDuPoint, lireInfoBrgm, nomFeuille, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
+import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, empriseTuile, geologieDuPoint, lireInfoBrgm, nomFeuille, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
+import { FAMILLES, familleDuCode } from '../src/geologie-familles.js';
 
 // Tuile 256 × 256 : moitié gauche colorée, moitié droite blanche (hors de France)
 function tuileMoitie() {
@@ -119,10 +120,10 @@ describe('nomFeuille', () => {
 describe('geologieDuPoint', () => {
   it('réunit la roche et la feuille, avec la notice', () => {
     const g = geologieDuPoint({
-      LITHO_1M_SIMPLIFIEE: [{ DESCR: 'Calcaires, marnes et gypse', TYPE: 'Roches Sédimentaires' }],
+      LITHO_1M_SIMPLIFIEE: [{ CODE_GEOL: '2', DESCR: 'Calcaires, marnes et gypse', TYPE: 'Roches Sédimentaires' }],
       SCAN_F_GEOL50_CATALOG: [{ numero: '680', nom: 'CHAMONIX' }],
     });
-    expect(g.roche).toEqual({ description: 'Calcaires, marnes et gypse', type: 'Roches sédimentaires' });
+    expect(g.roche).toEqual({ code: 2, description: 'Calcaires, marnes et gypse', type: 'Roches sédimentaires' });
     expect(g.feuille).toEqual({ numero: '680', nom: 'Chamonix', notice: 'http://ficheinfoterre.brgm.fr/Notices/0680N.pdf' });
   });
 
@@ -132,5 +133,52 @@ describe('geologieDuPoint', () => {
 
   it('une feuille sans roche reste utile', () => {
     expect(geologieDuPoint({ SCAN_F_GEOL50_CATALOG: [{ numero: '1', nom: 'DUNKERQUE' }] }).roche).toBeNull();
+  });
+});
+
+describe('blancTransparent sans blanc', () => {
+  it('garde le blanc et lit la couverture dans la transparence', () => {
+    const pixels = new Uint8ClampedArray(512 * 512 * 4);
+    for (let p = 0; p < 512 * 256; p += 1) pixels.set([255, 255, 255, 255], p * 4); // moitié haute : blanc opaque
+    const masque = blancTransparent(pixels, 512, { blanc: false });
+    expect(pixels[3]).toBe(255);
+    expect(masque[0]).toBe(1);
+    expect(masque[COTE_MASQUE * COTE_MASQUE - 1]).toBe(0);
+  });
+});
+
+describe('empriseTuile', () => {
+  it('couvre le monde au zoom 0', () => {
+    const [o, s, e, n] = empriseTuile(0, 0, 0);
+    expect(o).toBeCloseTo(-20037508.34, 1);
+    expect(n).toBeCloseTo(20037508.34, 1);
+    expect(e - o).toBeCloseTo(n - s, 6);
+  });
+
+  it('quart nord-est au zoom 1', () => {
+    expect(empriseTuile(1, 1, 0).map((v) => Math.round(v))).toEqual([0, 0, 20037508, 20037508]);
+  });
+});
+
+describe('pointCouvert par vue', () => {
+  it('cherche la tuile de la vue demandée', () => {
+    const masque = new Uint8Array(COTE_MASQUE * COTE_MASQUE).fill(1);
+    const { z, x, y } = tuileDuPoint(6.87, 45.92, 10);
+    const masques = new Map([[`simple/${z}/${x}/${y}`, masque]]);
+    expect(pointCouvert(masques, 6.87, 45.92, z, 'simple/')).toBe(true);
+    expect(pointCouvert(masques, 6.87, 45.92, z, 'detaillee/')).toBeNull();
+  });
+});
+
+describe('FAMILLES', () => {
+  it('une famille par code du BRGM, sans doublon', () => {
+    const codes = FAMILLES.map((f) => f.code);
+    expect(new Set(codes).size).toBe(codes.length);
+    expect(codes.sort((a, b) => a - b)).toEqual([1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('retrouve la famille d’un code, texte compris', () => {
+    expect(familleDuCode('8').cle).toBe('granites');
+    expect(familleDuCode(4)).toBeNull();
   });
 });

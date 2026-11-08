@@ -17,6 +17,7 @@ import { CHAMPS_FRISE, creerFrise } from './meteo-frise.js';
 import { indicesHeures } from './frise-calcul.js';
 import { ecrire, lire } from './reglages.js';
 import { adresseInfoBrgm, geologieDuPoint, lireInfoBrgm } from './geologie-calcul.js';
+import { familleDuCode } from './geologie-familles.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const RAYON_REFUGE = 30000;
@@ -445,10 +446,33 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
     if (typeof g === 'string') return indisponible(t(`point.geologie-${g}`));
     const bloc = document.createElement('div');
     if (g.roche) {
-      bloc.append(
-        principal(document.createTextNode(g.roche.description)),
-        texteSecondaire([g.roche.type, t('point.geologie-echelle')].filter(Boolean).join(' · '))
-      );
+      // La famille de la carte simple : même couleur, même nom, son résumé et ce qu'elle change sur le terrain
+      const famille = familleDuCode(g.roche.code);
+      if (famille) {
+        const nom = document.createElement('span');
+        nom.className = 'point-geologie-famille';
+        const pastille = document.createElement('i');
+        pastille.style.background = famille.couleur;
+        nom.append(pastille, t(`geologie.roche-${famille.cle}`));
+        bloc.append(
+          principal(nom),
+          texteSecondaire(t(`geologie.resume-${famille.cle}`)),
+          texteSecondaire([g.roche.type, t('point.geologie-echelle')].filter(Boolean).join(' · '))
+        );
+        const terrain = document.createElement('details');
+        terrain.className = 'point-terrain';
+        const titre = document.createElement('summary');
+        titre.textContent = t('point.geologie-terrain');
+        const texte = document.createElement('p');
+        texte.textContent = t(`geologie.terrain-${famille.cle}`);
+        terrain.append(titre, texte);
+        bloc.append(terrain);
+      } else {
+        bloc.append(
+          principal(document.createTextNode(g.roche.description)),
+          texteSecondaire([g.roche.type, t('point.geologie-echelle')].filter(Boolean).join(' · '))
+        );
+      }
     }
     if (g.feuille) {
       bloc.append(texteSecondaire(t('point.geologie-feuille', { numero: g.feuille.numero, nom: g.feuille.nom })));

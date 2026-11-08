@@ -218,7 +218,8 @@ const ECRANS = [
   },
   // Géologie (Carte › Nature et sous-sol) : carte du BRGM superposée, pastille, hors de France
   { nom: 'carte-geologie', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
-  { nom: 'carte-geologie-legende', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(3000), defiler('.geologie-sous-titre')] },
+  { nom: 'carte-geologie-legende', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(3000), clic('[data-famille="calcaires"] button'), defiler('.geologie-vues')] },
+  { nom: 'carte-geologie-detaillee', actions: [vue(ANNECY), module('nature'), clic('.geologie-choix button'), clic('.geologie-vues [data-vue="detaillee"]'), (p) => p.waitForTimeout(5000)] },
   // Frontières des pays (Carte › Éléments de la carte › Lieux), sur la géologie près de Genève
   {
     nom: 'carte-frontieres',

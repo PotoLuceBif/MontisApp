@@ -281,10 +281,22 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .geologie-hors-ligne { display: none; }
 :root[data-reseau='hors-ligne'] .geologie-hors-ligne { display: block; margin-top: 8px; }
 .mini-geologie { stroke: none; }
-.geologie-sous-titre { margin: 2px 0 0; color: var(--texte-2); font-size: 12px; font-weight: 650; }
-.geologie-legende { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.geologie-legende li { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: baseline; gap: 10px; color: var(--texte); font-size: 13px; }
-.geologie-lettres { color: var(--accent); font: 700 14px/1.3 ui-monospace, 'Cascadia Mono', Menlo, monospace; letter-spacing: .04em; }
+.geologie-vue { display: grid; gap: 8px; }
+.geologie-vue[hidden] { display: none; }
+.geologie-familles { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.geologie-famille { border: 1px solid var(--bord); border-radius: 10px; background: var(--surface); }
+.geologie-famille-entete {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 10px;
+  border: 0; background: none; color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.geologie-pastille { flex: none; width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3); }
+.geologie-famille-textes { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.geologie-famille-textes strong { font-size: 13.5px; font-weight: 650; }
+.geologie-famille-textes small { color: var(--texte-2); font-size: 12px; line-height: 1.3; }
+.geologie-chevron { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--texte-2); stroke-width: 2; transition: rotate .15s; }
+.geologie-famille-entete[aria-expanded="true"] .geologie-chevron { rotate: 180deg; }
+.geologie-terrain { margin: 0; padding: 0 12px 10px 42px; color: var(--texte); font-size: 12.5px; line-height: 1.45; }
+.geologie-terrain[hidden] { display: none; }
 /* Ombre du soleil */
 .relief-ombres { margin-top: 6px; }
 .relief-ombres .ombres-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
@@ -551,6 +563,14 @@ svg.nuit .ombres-cadran-ombre { display: none; }
   color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
 }
 a.point-lien { box-sizing: border-box; text-decoration: none; }
+.point-geologie-famille { display: flex; align-items: center; gap: 8px; }
+.point-geologie-famille i { flex: none; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3); }
+.point-terrain { margin-top: 6px; color: var(--texte); font-size: 13px; }
+.point-terrain summary { min-height: 32px; display: flex; align-items: center; color: var(--accent); font-weight: 600; cursor: pointer; }
+.point-terrain summary::after { content: ""; width: 7px; height: 7px; margin: -3px 0 0 9px; border: solid currentColor; border-width: 0 2px 2px 0; rotate: 45deg; transition: rotate .15s; }
+.point-terrain[open] summary::after { rotate: 225deg; margin-top: 4px; }
+.point-terrain summary::-webkit-details-marker { display: none; }
+.point-terrain p { margin: 2px 0 0; line-height: 1.45; }
 .point-lien span { flex: 1; min-width: 0; }
 .point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .point-lien-icone { width: 18px; height: 18px; color: var(--accent); }
