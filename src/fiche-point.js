@@ -16,7 +16,7 @@ import { t } from './i18n.js';
 import { CHAMPS_FRISE, creerFrise } from './meteo-frise.js';
 import { indicesHeures } from './frise-calcul.js';
 import { ecrire, lire } from './reglages.js';
-import { adresseInfoBrgm, geologieDuPoint, lireInfoBrgm } from './geologie-calcul.js';
+import { COUCHES_BRGM, WMS_BRGM, adresseInfoBrgm, geologieDuPoint, lireInfoBrgm } from './geologie-calcul.js';
 import { familleDuCode } from './geologie-familles.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
@@ -25,9 +25,6 @@ const RAYON_EAU = 3000;
 const DELAI = 20000;
 const DELAI_EAU = 30000;
 const DELAI_EAU_SERVEUR = 10000;
-// Géologie : roche dominante au 1/1 000 000 et feuille au 1/50 000 (la formation exacte n'est pas interrogeable)
-const WMS_BRGM = 'https://geoservices.brgm.fr/geologie';
-const COUCHES_BRGM = ['LITHO_1M_SIMPLIFIEE', 'SCAN_F_GEOL50_CATALOG'];
 // Clé lue par Météo › Conditions locales (meteo.js) pour le lieu des prévisions
 const CLE_LIEU_METEO = 'meteo-position';
 

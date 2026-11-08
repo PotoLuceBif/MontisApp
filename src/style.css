@@ -564,6 +564,18 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 }
 a.point-lien { box-sizing: border-box; text-decoration: none; }
 .point-geologie-famille { display: flex; align-items: center; gap: 8px; }
+.geol-popup .maplibregl-popup-content { padding: 12px 14px 10px; }
+.geol-popup .maplibregl-popup-close-button { width: 36px; height: 36px; color: var(--texte-2); font-size: 20px; }
+.geol-bulle { display: grid; gap: 4px; min-width: 210px; font: 13px/1.4 var(--police); }
+.geol-bulle p { margin: 0; }
+.geol-bulle-tete { display: flex; align-items: center; gap: 8px; padding-right: 26px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.geol-bulle-pastille { flex: none; width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3); }
+.geol-bulle-famille { display: flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 15px; }
+.geol-bulle-resume { color: var(--texte); }
+.geol-bulle-note { color: var(--texte-2); font-size: 11.5px; }
+.geol-bulle-feuille { margin-top: 4px !important; color: var(--texte-2); }
+.geol-bulle-attente, .geol-bulle-indisponible { color: var(--texte-2); }
+.geol-bulle .point-lien { margin-top: 6px; }
 .point-geologie-famille i { flex: none; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .3); }
 .point-terrain { margin-top: 6px; color: var(--texte); font-size: 13px; }
 .point-terrain summary { min-height: 32px; display: flex; align-items: center; color: var(--accent); font-weight: 600; cursor: pointer; }

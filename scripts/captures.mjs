@@ -229,6 +229,12 @@ const ECRANS = [
         if (case_ && !case_.checked) case_.click();
       }), (p) => p.waitForTimeout(4000)],
   },
+  // Vue détaillée : un appui sur la carte ouvre la bulle « sous ton doigt »
+  {
+    nom: 'carte-geologie-bulle',
+    actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('.geologie-vues [data-vue="detaillee"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(3000), async (p) => { const { width, height } = p.viewportSize(); await p.mouse.click(Math.round(width * 0.5), Math.round(height * 0.55)); }, (p) => p.waitForTimeout(4000)],
+  },
   { nom: 'carte-geologie-ferme', actions: [vue(MATIN), module('nature'), clic('.geologie-choix button'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   {
     nom: 'carte-geologie-3d',

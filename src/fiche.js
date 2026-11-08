@@ -57,6 +57,9 @@ export function bloquerFiches(valeur) {
   bloque = !!valeur;
 }
 
+// Un outil a-t-il pris les clics de la carte ? (la bulle de la géologie s'efface alors)
+export const fichesBloquees = () => bloque;
+
 function decrire(f, genre) {
   const p = f.properties || {};
   const nom = p.name || '';

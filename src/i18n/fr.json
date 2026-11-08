@@ -1188,7 +1188,7 @@
   "geologie.vue-simple": "Simple",
   "geologie.vue-detaillee": "Détaillée",
   "geologie.simple-aide": "Les grandes familles de roches. Touche une roche pour savoir ce qu’elle change sur le terrain.",
-  "geologie.detaillee-aide": "Carte au 1/50 000, très précise, mais ses couleurs changent d’une feuille à l’autre. Un appui long sur la carte donne la roche, la feuille et sa notice, qui détaille chaque terrain.",
+  "geologie.detaillee-aide": "Carte au 1/50 000, très précise, mais ses couleurs changent d’une feuille à l’autre. Touche la carte pour savoir ce qu’il y a sous ton doigt : la roche du secteur, ce qu’elle change sur le terrain, la feuille et sa notice.",
   "geologie.prudence": "Carte au 1/1 000 000 : de près, les contours sont approximatifs, et le terrain réel peut différer. Généralités à vérifier sur place.",
   "geologie.court-trop-loin": "Géologie · trop loin",
   "geologie.etat-trop-loin": "Rapproche la carte pour voir les roches.",
@@ -1225,5 +1225,8 @@
   "geologie.roche-ophiolites": "Ophiolites",
   "geologie.resume-ophiolites": "Ancien fond d’océan : roches vertes et sombres",
   "geologie.terrain-ophiolites": "Roches vertes (serpentinites, gabbros) : rocher souvent lisse et glissant, surtout mouillé. Végétation rare. Certaines contiennent de l’amiante naturel : ne pas casser ni poncer la roche.",
-  "point.geologie-terrain": "Sur le terrain"
+  "point.geologie-terrain": "Sur le terrain",
+  "geologie.bulle-titre": "Sous ton doigt",
+  "geologie.bulle-couleur": "Couleur sous ton doigt",
+  "geologie.bulle-secteur": "Roche dominante du secteur, d’après la carte au 1/1 000 000 : la notice de la feuille donne le détail."
 }

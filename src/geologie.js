@@ -9,6 +9,7 @@ import { lire, ecrire } from './reglages.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { t } from './i18n.js';
 import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
+import { creerBulleGeologie } from './geologie-bulle.js';
 
 const PROTOCOLE = 'montis-geol';
 export const VUES = ['simple', 'detaillee'];
@@ -126,6 +127,8 @@ export function initGeologie(map, { surEtat, eteindre }) {
 
   let actif = false;
   let vueActive = 'simple';
+  // Vue détaillée : un appui sur la carte dit ce qu'il y a sous le doigt (sa légende change d'une feuille à l'autre)
+  const bulle = creerBulleGeologie(map, { adresseTuile: VUE.detaillee.adresse, zoomMax: VUE.detaillee.maxzoom });
   let erreurs = 0;
   let etatCouche = 'ok'; // 'ok', 'trop-loin', 'hors-zone', 'incomplete', 'erreur', 'hors-ligne'
 
@@ -177,6 +180,7 @@ export function initGeologie(map, { surEtat, eteindre }) {
       erreurs = 0;
       recues = 0;
       appliquer();
+      bulle.activer(actif && vueActive === 'detaillee');
       pastille.montrer(oui);
       majEtat();
     },

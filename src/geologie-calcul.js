@@ -1,5 +1,9 @@
 // Calculs purs de la carte géologique : blanc rendu transparent, couverture d'un point, lecture du BRGM.
 
+// Roche dominante au 1/1 000 000 et feuille au 1/50 000 (la formation exacte du 1/50 000 n'est pas interrogeable)
+export const WMS_BRGM = 'https://geoservices.brgm.fr/geologie';
+export const COUCHES_BRGM = ['LITHO_1M_SIMPLIFIEE', 'SCAN_F_GEOL50_CATALOG'];
+
 export const SEUIL_BLANC = 240; // au-dessus sur les trois canaux : papier ou hors couverture
 export const COTE_MASQUE = 32; // couverture d'une tuile, mémorisée en 32 × 32 cases
 
@@ -135,4 +139,19 @@ export function geologieDuPoint(info) {
       : null,
     feuille: feuille?.nom ? { numero: feuille.numero, nom: nomFeuille(feuille.nom), notice: feuille.numero ? adresseNotice(feuille.numero) : null } : null,
   };
+}
+
+// Couleur d'une petite zone de carte (RGBA) : médiane de chaque canal, pour ignorer un trait ou une lettre.
+// null si la zone est blanche (hors de la carte).
+export function couleurPixel(pixels) {
+  const canaux = [[], [], []];
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i + 3] < 128) continue;
+    for (let c = 0; c < 3; c += 1) canaux[c].push(pixels[i + c]);
+  }
+  if (!canaux[0].length) return null;
+  const mediane = (valeurs) => valeurs.sort((a, b) => a - b)[Math.floor(valeurs.length / 2)];
+  const [r, g, b] = canaux.map(mediane);
+  if (r >= SEUIL_BLANC && g >= SEUIL_BLANC && b >= SEUIL_BLANC) return null;
+  return `rgb(${r}, ${g}, ${b})`;
 }

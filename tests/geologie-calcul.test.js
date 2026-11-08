@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, empriseTuile, geologieDuPoint, lireInfoBrgm, nomFeuille, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
+import { COTE_MASQUE, adresseInfoBrgm, blancTransparent, couleurPixel, empriseTuile, geologieDuPoint, lireInfoBrgm, nomFeuille, pointCouvert, tuileDuPoint } from '../src/geologie-calcul.js';
 import { FAMILLES, familleDuCode } from '../src/geologie-familles.js';
 
 // Tuile 256 × 256 : moitié gauche colorée, moitié droite blanche (hors de France)
@@ -180,5 +180,22 @@ describe('FAMILLES', () => {
   it('retrouve la famille d’un code, texte compris', () => {
     expect(familleDuCode('8').cle).toBe('granites');
     expect(familleDuCode(4)).toBeNull();
+  });
+});
+
+describe('couleurPixel', () => {
+  const zone = (couleurs) => new Uint8ClampedArray(couleurs.flatMap((c) => [...c, 255]));
+
+  it('ignore un trait noir au milieu d’un aplat', () => {
+    const aplat = Array(20).fill([120, 160, 200]);
+    expect(couleurPixel(zone([...aplat, [0, 0, 0], [0, 0, 0], [10, 10, 10]]))).toBe('rgb(120, 160, 200)');
+  });
+
+  it('du blanc : hors de la carte', () => {
+    expect(couleurPixel(zone(Array(9).fill([255, 255, 255])))).toBeNull();
+  });
+
+  it('pixels transparents ignorés', () => {
+    expect(couleurPixel(new Uint8ClampedArray([10, 20, 30, 0]))).toBeNull();
   });
 });
