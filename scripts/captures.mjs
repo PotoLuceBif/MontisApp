@@ -11,7 +11,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { previsionsSimulees } from './meteo-simulee.mjs';
-import { gpxRando, igcVol, tcxVelo } from './sorties-demo.mjs';
+import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -155,6 +155,7 @@ const FICHIERS_DEMO = {
   'rando.gpx': { mimeType: 'application/gpx+xml', contenu: gpxRando },
   'velo.tcx': { mimeType: 'application/xml', contenu: tcxVelo },
   'vol.igc': { mimeType: 'text/plain', contenu: igcVol },
+  'ski.gpx': { mimeType: 'application/gpx+xml', contenu: gpxSki },
 };
 const importerSorties = (noms) => async (page) => {
   await page.waitForSelector('.traces input[type="file"]', { state: 'attached', timeout: 15000 });
@@ -372,6 +373,13 @@ const ECRANS = [
   { nom: 'traces-sorties', actions: [module('sorties'), importerSorties(['rando.gpx', 'velo.tcx', 'vol.igc'])] },
   { nom: 'traces-sortie', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2000)] },
   { nom: 'traces-sortie-reduite', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie .bf-reduire')] },
+  { nom: 'traces-sortie-stats', actions: [module('sorties'), importerSorties(['rando.gpx']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-pente', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie [data-mode="pente"]')] },
+  { nom: 'traces-sortie-cardio', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie [data-mode="cardio"]'), clicVisible('.bf-sortie .bf-reduire')] },
+  { nom: 'traces-sortie-velo', actions: [module('sorties'), importerSorties(['velo.tcx']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-ski', actions: [module('sorties'), importerSorties(['ski.gpx']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-vol', actions: [module('sorties'), importerSorties(['vol.igc']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-3d', actions: [module('sorties'), importerSorties(['rando.gpx']), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(3000)] },
   { nom: 'traces-parcours', actions: [parcoursEnregistre, module('parcours'), attendre('.traces-liste')] },
   {
     nom: 'combine-parcours-carte-fermee',

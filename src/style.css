@@ -2877,8 +2877,39 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .bf-sortie .bf-resume-rose .traces-icone { width: 30px; height: 30px; }
 .bf-sortie .traces-types { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
 .bf-sortie .parcours-stats { margin-bottom: 8px; }
-.traces-canaux { margin: 0 0 6px; color: var(--texte-2); font-size: 12px; }
-.bf-sortie .traces-a-venir { margin: 0; color: var(--texte-2); font-size: 12px; font-style: italic; }
+.traces-canaux { margin: 4px 0 0; color: var(--texte-2); font-size: 12px; }
+.bf-sortie .traces-principales { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+.bf-sortie .traces-principales .parcours-stat-principale { grid-column: auto; }
+.traces-couleur { display: grid; gap: 6px; margin-bottom: 14px; }
+.traces-couleur[hidden] { display: none; }
+.traces-couleur-titre, .traces-reperes h4 { color: var(--texte-2); font-size: 12px; font-weight: 650; margin: 0; }
+.traces-legende-barre { height: 8px; border-radius: 99px; }
+.traces-legende-bornes { display: flex; justify-content: space-between; margin-top: 3px; color: var(--texte-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.traces-legende-classes { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--texte-2); font-size: 11px; }
+.traces-legende-classes span { display: inline-flex; align-items: center; gap: 4px; }
+.traces-legende-classes i { width: 14px; height: 6px; border-radius: 99px; }
+.traces-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 0 0 14px; }
+.traces-stats div { min-width: 0; }
+.traces-stats dt { color: var(--texte-2); font-size: 11.5px; }
+.traces-stats dd { margin: 1px 0 0; color: var(--texte); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.traces-reperes { display: grid; gap: 6px; margin-bottom: 10px; }
+.traces-reperes[hidden] { display: none; }
+.traces-reperes-liste { display: grid; gap: 4px; }
+.traces-repere {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 8px; border: 1px solid var(--bord); border-radius: 9px;
+  background: var(--surface); color: var(--texte); font: 600 13px var(--police); text-align: left; cursor: pointer;
+}
+.sortie-repere-pastille {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px 0 5px; border: 2px solid #0b111b; border-radius: 99px;
+  background: #f2f4f7; color: #0b111b; font: 700 12px var(--police); white-space: nowrap; box-shadow: 0 2px 6px rgb(0 0 0 / 35%);
+}
+.traces-repere .sortie-repere-pastille { padding: 0 5px; }
+.sortie-repere-pastille svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.sortie-repere-haut svg, .sortie-repere-vitesse svg { fill: currentColor; stroke-width: 1.2; }
+.sortie-repere-vitesse { background: #ffd43b; }
+.sortie-repere-pause { background: #b8c4d6; }
+.sortie-repere-deco { background: #8fd3ff; }
+.maplibregl-marker.sortie-repere { padding: 0; border: 0; background: none; cursor: pointer; }
 .parcours-alertes { display: grid; gap: 4px; }
 .parcours-alertes[hidden] { display: none; }
 .parcours-alerte {

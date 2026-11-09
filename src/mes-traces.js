@@ -1,6 +1,5 @@
 // Mes traces : les sorties importées des montres et des varios, et les parcours enregistrés
 // dans Randonnée et Vélo. Deux lignes du menu, chargées à leur première ouverture.
-import { creerPanneauCarte } from './panneau-carte.js';
 import { creerStockageParcours } from './parcours-stockage.js';
 import { lire } from './reglages.js';
 import { deposer } from './demandes.js';
@@ -8,71 +7,19 @@ import { erreurSortie, formatDuNom, lireSortie } from './sortie-lecture.js';
 import {
   ajouterSortie, listerSorties, lireSortieComplete, modifierSortie, supprimerSortie,
 } from './sorties-stockage.js';
-import { formatAltitude, formatDenivele, formatDistance } from './unites.js';
+import { formatDenivele, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { formatDate, poser, t, ta, ti, tt } from './i18n.js';
+import { t, ti, tt } from './i18n.js';
+import { dateCourte, detailSortie, iconeType, nomSortie, svg, typeDe } from './traces-commun.js';
+import { creerVueSortie } from './sortie-vue.js';
 
 const TAILLE_MAX = 60 * 1024 * 1024;
-export const TYPES = [
-  { id: 'rando', cle: 'rando.titre', fichier: 'randonnee' },
-  { id: 'velo', cle: 'velo.titre', fichier: 'velo' },
-  { id: 'ski', cle: 'ski.titre', fichier: 'ski' },
-  { id: 'parapente', cle: 'para.titre', fichier: 'parapente' },
-];
 const ACTIVITES_PARCOURS = ['rando', 'velo'];
-const SOURCE = 'sortie-trace';
-const SOURCE_BOUTS = 'sortie-bouts';
-const COULEUR_CERNE = '#0b111b';
-const CANAUX_LIBELLES = {
-  alt: 'traces.canal-alt', altGps: 'traces.canal-alt-gps', fc: 'traces.canal-fc', cadence: 'traces.canal-cadence',
-  puissance: 'traces.canal-puissance', temperature: 'traces.canal-temperature', vitesse: 'traces.canal-vitesse',
-};
 const DESSINS = {
   importer: '<path d="M12 15V3m0 0L7.500 7.500M12 3l4.500 4.500"/><path d="M5 13v6h14v-6"/>',
   renommer: '<path d="M4 20h4L19 9l-4-4L4 16v4ZM13 7l4 4"/>',
   supprimer: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/>',
-  autre: '<circle cx="12" cy="12" r="8"/><path d="M8 14c2-4 6-4 8 0"/>',
 };
-const svg = (dessin) => `<svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg>`;
-
-const typeDe = (id) => TYPES.find((type) => type.id === id) ?? null;
-const iconeType = (id) => {
-  const type = typeDe(id);
-  return type
-    ? `<img class="traces-icone" src="/icons/activites/${type.fichier}.svg" alt="" width="36" height="36">`
-    : `<span class="traces-icone traces-icone-autre">${svg(DESSINS.autre)}</span>`;
-};
-const libelleType = (id) => t(typeDe(id)?.cle ?? 'traces.type-autre');
-
-export function nomSortie(sortie) {
-  if (sortie.nom) return sortie.nom;
-  if (sortie.debut) return t('traces.nom-defaut', { type: libelleType(sortie.type), date: formatDate(sortie.debut, { day: 'numeric', month: 'long' }) });
-  return sortie.fichier || libelleType(sortie.type);
-}
-
-// Durée réelle, à la minute (formaterDuree arrondit aux 5 minutes, fait pour une estimation)
-export function formatDureeReelle(secondes) {
-  const minutes = Math.round(secondes / 60);
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return h ? t('duree.heures', { h, m: String(m).padStart(2, '0') }) : t('duree.minutes', { m });
-}
-
-// L'année seulement si ce n'est pas l'année en cours : la ligne reste courte sur téléphone
-const dateCourte = (date) => formatDate(date, { day: 'numeric', month: 'short', ...(new Date(date).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
-
-function detailSortie(sortie) {
-  const { distance, duree, plus } = sortie.resume ?? {};
-  return [
-    sortie.debut ? dateCourte(sortie.debut) : null,
-    Number.isFinite(distance) ? formatDistance(distance) : null,
-    Number.isFinite(duree) && duree > 0 ? formatDureeReelle(duree) : null,
-    Number.isFinite(plus) ? `D+ ${formatDenivele(plus)}` : null,
-  ].filter(Boolean).join(' · ');
-}
-
-const accent = () =>
-  getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#5fb59a';
 
 // Une ligne de liste : ouvrir, renommer, supprimer (même allure que Mes parcours)
 function ligneListe({ icone, nom, detail, onOuvrir, onRenommer, onSupprimer }) {
@@ -120,159 +67,6 @@ function ligneListe({ icone, nom, detail, onOuvrir, onRenommer, onSupprimer }) {
   supprimer.addEventListener('click', onSupprimer);
   ligne.append(ouvrir, renommer, supprimer);
   return ligne;
-}
-
-// ---------- Vue d'une sortie sur la carte ----------
-function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
-  let sortie = null;
-  const panneau = creerPanneauCarte({
-    cle: 'sortie-panneau-reduit',
-    libelle: 'traces.sortie',
-    classe: 'bf-outil bf-sortie',
-    onFermer: () => fermer(),
-    onRetour: () => {
-      fermer();
-      ouvrirMenu();
-    },
-  });
-  panneau.corps.innerHTML = `
-    <div class="parcours-pratiques parcours-pratiques-panneau traces-types" role="group" ${ta('aria-label', 'traces.type')}>
-      ${TYPES.map(({ id, cle }) => `<button type="button" data-type="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
-    </div>
-    <div class="parcours-stats">
-      <div class="parcours-stat parcours-stat-principale">${tt('editeur.distance')}<strong data-v="distance">—</strong></div>
-      <div class="parcours-stat parcours-stat-principale">${tt('traces.duree')}<strong data-v="duree">—</strong></div>
-      <div class="parcours-stat"><span>D+</span><strong data-v="plus">—</strong></div>
-      <div class="parcours-stat"><span>D−</span><strong data-v="moins">—</strong></div>
-      <div class="parcours-stat">${tt('editeur.alt-max')}<strong data-v="max">—</strong></div>
-      <div class="parcours-stat">${tt('editeur.alt-min')}<strong data-v="min">—</strong></div>
-    </div>
-    <p class="traces-canaux"></p>
-    <p class="note traces-a-venir" ${ti('traces.a-venir')}>${t('traces.a-venir')}</p>
-  `;
-  const $ = (selecteur) => panneau.corps.querySelector(selecteur);
-  const boutonsType = [...panneau.corps.querySelectorAll('[data-type]')];
-
-  function assurerCouches() {
-    if (map.getSource(SOURCE)) return;
-    map.addSource(SOURCE, { type: 'geojson', tolerance: 0, data: { type: 'FeatureCollection', features: [] } });
-    map.addSource(SOURCE_BOUTS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    const lissage = { 'line-cap': 'round', 'line-join': 'round' };
-    map.addLayer({
-      id: 'sortie-trace-contour', type: 'line', source: SOURCE, layout: lissage,
-      paint: { 'line-color': COULEUR_CERNE, 'line-opacity': 0.9, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 4, 14, 9] },
-    });
-    map.addLayer({
-      id: 'sortie-trace', type: 'line', source: SOURCE, layout: lissage,
-      paint: { 'line-color': accent(), 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 2.5, 14, 5] },
-    });
-    map.addLayer({
-      id: 'sortie-bouts', type: 'circle', source: SOURCE_BOUTS,
-      paint: {
-        'circle-radius': 7,
-        'circle-color': ['match', ['get', 'bout'], 'depart', '#3ecf8e', '#f2f4f7'],
-        'circle-stroke-color': COULEUR_CERNE,
-        'circle-stroke-width': 3,
-      },
-    });
-  }
-
-  function dessiner() {
-    const { lng, lat } = sortie.points;
-    const limites = [0, ...sortie.coupures, lng.length];
-    const lignes = [];
-    for (let i = 0; i < limites.length - 1; i++) {
-      const ligne = [];
-      for (let j = limites[i]; j < limites[i + 1]; j++) ligne.push([lng[j], lat[j]]);
-      if (ligne.length > 1) lignes.push(ligne);
-    }
-    assurerCouches();
-    map.setPaintProperty('sortie-trace', 'line-color', accent());
-    map.getSource(SOURCE).setData({ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: lignes } });
-    const dernier = lng.length - 1;
-    map.getSource(SOURCE_BOUTS).setData({
-      type: 'FeatureCollection',
-      features: [
-        { type: 'Feature', properties: { bout: 'arrivee' }, geometry: { type: 'Point', coordinates: [lng[dernier], lat[dernier]] } },
-        { type: 'Feature', properties: { bout: 'depart' }, geometry: { type: 'Point', coordinates: [lng[0], lat[0]] } },
-      ],
-    });
-    let [ouest, sud, est, nord] = [Infinity, Infinity, -Infinity, -Infinity];
-    for (let i = 0; i < lng.length; i++) {
-      ouest = Math.min(ouest, lng[i]);
-      est = Math.max(est, lng[i]);
-      sud = Math.min(sud, lat[i]);
-      nord = Math.max(nord, lat[i]);
-    }
-    const telephone = window.matchMedia('(max-width: 640px)').matches;
-    map.fitBounds([[ouest, sud], [est, nord]], {
-      padding: telephone
-        ? { top: 90, bottom: Math.round(window.innerHeight * 0.45), left: 40, right: 40 }
-        : { top: 80, bottom: 80, left: 440, right: 80 },
-      maxZoom: 15,
-      duration: 900,
-    });
-  }
-
-  function remplir() {
-    panneau.titre.textContent = nomSortie(sortie);
-    panneau.meta.textContent = [
-      libelleType(sortie.type),
-      sortie.debut ? formatDate(sortie.debut, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
-    ].filter(Boolean).join(' · ');
-    panneau.definirResume({ rose: iconeType(sortie.type), nom: nomSortie(sortie), detail: detailSortie(sortie), valeur: '', unite: '' });
-    boutonsType.forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.type === sortie.type)));
-    const r = sortie.resume ?? {};
-    const ecrireValeur = (id, texte) => {
-      $(`[data-v="${id}"]`).textContent = texte ?? '—';
-    };
-    ecrireValeur('distance', Number.isFinite(r.distance) ? formatDistance(r.distance) : null);
-    ecrireValeur('duree', Number.isFinite(r.duree) && r.duree > 0 ? formatDureeReelle(r.duree) : null);
-    ecrireValeur('plus', Number.isFinite(r.plus) ? formatDenivele(r.plus) : null);
-    ecrireValeur('moins', Number.isFinite(r.moins) ? formatDenivele(r.moins) : null);
-    ecrireValeur('max', Number.isFinite(r.altMax) ? formatAltitude(r.altMax) : null);
-    ecrireValeur('min', Number.isFinite(r.altMin) ? formatAltitude(r.altMin) : null);
-    const canaux = (sortie.canaux ?? []).filter((canal) => CANAUX_LIBELLES[canal]).map((canal) => t(CANAUX_LIBELLES[canal]));
-    $('.traces-canaux').textContent = t('traces.donnees', {
-      format: sortie.format.toUpperCase(),
-      liste: [sortie.points.t ? t('traces.canal-heure') : null, ...canaux].filter(Boolean).join(', ') || t('traces.canal-position'),
-    });
-  }
-
-  boutonsType.forEach((bouton) => bouton.addEventListener('click', async () => {
-    if (!sortie || bouton.dataset.type === sortie.type) return;
-    sortie.type = bouton.dataset.type;
-    remplir();
-    try {
-      await modifierSortie(sortie.id, { type: sortie.type });
-    } catch (erreur) {
-      console.warn('Type de sortie non enregistré :', erreur);
-    }
-    onModifiee();
-  }));
-
-  function fermer() {
-    sortie = null;
-    panneau.masquer();
-    map.getSource(SOURCE)?.setData({ type: 'FeatureCollection', features: [] });
-    map.getSource(SOURCE_BOUTS)?.setData({ type: 'FeatureCollection', features: [] });
-  }
-
-  surPreferences(() => sortie && remplir());
-
-  return {
-    ouvrir(complete) {
-      sortie = complete;
-      remplir();
-      panneau.afficher();
-      panneau.agrandir();
-      dessiner();
-    },
-    get id() {
-      return sortie?.id ?? null;
-    },
-    fermer,
-  };
 }
 
 // ---------- Ligne « Sorties » ----------
