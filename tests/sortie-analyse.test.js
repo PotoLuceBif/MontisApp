@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  analyserSortie, bornes, couleurDegrade, descentesSki, distancesCumulees, modesPossibles, morceaux, pentesLissees, vitessesLissees,
+  analyserSortie, bornes, couleurDegrade, descentesSki, distancesCumulees, indiceProche, modesPossibles, morceaux, pentesLissees, variosLisses, vitessesLissees,
 } from '../src/sortie-analyse.js';
 
 const DEG_PAR_METRE = 1 / 111195; // latitude
@@ -42,6 +42,20 @@ describe('mesures de base', () => {
     const d = Array.from({ length: 11 }, (_, i) => i * 10);
     const alts = d.map((x) => x * 0.2);
     expect(pentesLissees(alts, d, 25)[5]).toBeCloseTo(20, 6);
+  });
+});
+
+describe('lecture du temps', () => {
+  it('donne la vitesse verticale', () => {
+    expect([...variosLisses([0, 10000, 20000], [1000, 1020, 1040], 10)]).toEqual([2, 2, 2]);
+  });
+
+  it('trouve le point le plus proche dans une série croissante', () => {
+    const serie = [0, 10, 20, 30];
+    expect(indiceProche(serie, -5)).toBe(0);
+    expect(indiceProche(serie, 14)).toBe(1);
+    expect(indiceProche(serie, 16)).toBe(2);
+    expect(indiceProche(serie, 99)).toBe(3);
   });
 });
 

@@ -78,7 +78,7 @@ Revue avec le propriétaire le 9 novembre 2026. Les gens enregistrent leurs sort
 
 - [x] **2.1 Import et Mes traces** (9 novembre 2026). Lecture des fichiers GPX, FIT, TCX et IGC (testée), section Mes traces du menu avec ses lignes Sorties et Parcours, type de sortie deviné ou choisi, sorties dans IndexedDB et dans la sauvegarde `.json`, trace d'une sortie sur la carte avec ses premiers chiffres. Détail dans `docs/historique.md`.
 - [x] **2.2 Vue d'une sortie** (9 novembre 2026). Trace colorée au choix (vitesse, altitude, pente, cardio, selon le fichier) avec sa légende, temps en mouvement et pauses, stats selon l'activité (rando, vélo, ski, vol), points marquants sur la carte et dans le panneau, en 2D et en 3D. Détail dans `docs/historique.md`.
-- [ ] **2.3 Curseur et lecture.** Une frise comme celle de la météo : lignes empilées sur l'axe du temps (altitude, vitesse, cardio, pente, selon le fichier). Faire glisser le curseur déplace le point sur la carte et affiche les valeurs de l'instant ; un bouton lecture l'anime.
+- [x] **2.3 Curseur et lecture** (9 novembre 2026). Frise de la sortie (altitude, vitesse, cardio, vario pour un vol, puissance), lue au doigt ; point sur la carte, trace pas encore parcourue estompée ; lecture animée à trois vitesses, caméra qui suit. Détail dans `docs/historique.md`.
 - [ ] **2.4 Le contexte de la sortie.** Soleil et ombres à l'heure réelle de la sortie (briques du lot 1.4), météo de ce jour-là (archives d'Open-Meteo).
 
 Pour plus tard : comparer une sortie au parcours prévu, exporter une vidéo du replay. **Sécurité** (mode urgence, 112, heure de retour), **pack sortie hors ligne** et **position et cap sur la carte** : à revoir avec le propriétaire, sans date.

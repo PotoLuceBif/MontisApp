@@ -172,6 +172,14 @@ const parcoursEnregistre = (page) => page.evaluate(() => {
   localStorage.setItem('montis.rando-parcours', JSON.stringify([{ id: 'p1', nom: 'Lac de la Thuile', etapes, total: 8200, plus: 540, date: Date.UTC(2026, 9, 3), pratique: 'rando' }]));
 });
 
+// Touche la frise d'une sortie à une fraction de sa largeur
+const toucherFriseSortie = (fraction) => async (page) => {
+  const frise = page.locator('.bf-sortie .sortie-frise-toile');
+  await frise.waitFor({ timeout: 8000 });
+  const boite = await frise.boundingBox();
+  await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
+};
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
@@ -380,6 +388,10 @@ const ECRANS = [
   { nom: 'traces-sortie-ski', actions: [module('sorties'), importerSorties(['ski.gpx']), defiler('.bf-sortie .traces-stats')] },
   { nom: 'traces-sortie-vol', actions: [module('sorties'), importerSorties(['vol.igc']), defiler('.bf-sortie .traces-stats')] },
   { nom: 'traces-sortie-3d', actions: [module('sorties'), importerSorties(['rando.gpx']), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'traces-frise', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.42)] },
+  { nom: 'traces-frise-reduite', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.42), clicVisible('.bf-sortie .bf-reduire')] },
+  { nom: 'traces-lecture', actions: [module('sorties'), importerSorties(['velo.tcx']), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-lire'), (p) => p.waitForTimeout(6000)] },
+  { nom: 'traces-frise-vol', actions: [module('sorties'), importerSorties(['vol.igc']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.3)] },
   { nom: 'traces-parcours', actions: [parcoursEnregistre, module('parcours'), attendre('.traces-liste')] },
   {
     nom: 'combine-parcours-carte-fermee',

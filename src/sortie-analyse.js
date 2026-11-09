@@ -55,6 +55,34 @@ export function pentesLissees(alts, d, fenetre = FENETRE_PENTE) {
   return p;
 }
 
+// Vitesse verticale en chaque point (m/s) : altitude gagnée sur une fenêtre de temps
+export function variosLisses(t, alts, fenetre = FENETRE_VARIO) {
+  const n = t.length;
+  const v = new Float64Array(n);
+  let debut = 0;
+  let fin = 0;
+  for (let i = 0; i < n; i++) {
+    while (t[i] - t[debut] > fenetre * 1000) debut++;
+    while (fin < n - 1 && t[fin + 1] - t[i] <= fenetre * 1000) fin++;
+    const [a, z] = [Math.min(debut, Math.max(0, i - 1)), Math.max(fin, Math.min(n - 1, i + 1))];
+    const duree = (t[z] - t[a]) / 1000;
+    v[i] = duree > 0 ? (alts[z] - alts[a]) / duree : 0;
+  }
+  return v;
+}
+
+// Indice du point le plus proche d'une valeur dans une série croissante (temps ou distance)
+export function indiceProche(serie, valeur) {
+  let bas = 0;
+  let haut = serie.length - 1;
+  while (bas < haut) {
+    const milieu = (bas + haut) >> 1;
+    if (serie[milieu] < valeur) bas = milieu + 1;
+    else haut = milieu;
+  }
+  return bas > 0 && valeur - serie[bas - 1] < serie[bas] - valeur ? bas - 1 : bas;
+}
+
 // Altitudes sans trous (valeurs manquantes prises au voisin connu), lissées
 function altitudesPleines(alt) {
   if (!alt) return null;
@@ -320,7 +348,8 @@ export function valeursMode(mode, analyse, points) {
 }
 
 // Morceaux de trace d'une même couleur : `couleurDe(i)` donne la couleur du segment qui finit au point i
-export function morceaux({ lng, lat }, coupures, couleurDe) {
+// `longueurMax` : points par morceau au plus, pour estomper la trace pas encore parcourue morceau par morceau
+export function morceaux({ lng, lat }, coupures, couleurDe, longueurMax = Infinity) {
   const sauts = new Set(coupures);
   const features = [];
   let courant = null;
@@ -330,8 +359,8 @@ export function morceaux({ lng, lat }, coupures, couleurDe) {
       continue;
     }
     const couleur = couleurDe(i);
-    if (!courant || courant.properties.couleur !== couleur) {
-      courant = { type: 'Feature', properties: { couleur }, geometry: { type: 'LineString', coordinates: [[lng[i - 1], lat[i - 1]]] } };
+    if (!courant || courant.properties.couleur !== couleur || courant.geometry.coordinates.length > longueurMax) {
+      courant = { type: 'Feature', properties: { couleur, debut: i - 1 }, geometry: { type: 'LineString', coordinates: [[lng[i - 1], lat[i - 1]]] } };
       features.push(courant);
     }
     courant.geometry.coordinates.push([lng[i], lat[i]]);

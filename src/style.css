@@ -2880,6 +2880,23 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .traces-canaux { margin: 4px 0 0; color: var(--texte-2); font-size: 12px; }
 .bf-sortie .traces-principales { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
 .bf-sortie .traces-principales .parcours-stat-principale { grid-column: auto; }
+.traces-lecture { display: grid; gap: 8px; margin-bottom: 14px; }
+.traces-lecture[hidden] { display: none; }
+.sortie-frise-toile { display: block; width: 100%; touch-action: none; cursor: ew-resize; }
+.sortie-frise-toile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.traces-commandes { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.traces-lire {
+  display: grid; place-items: center; width: 48px; height: 44px; border: 0; border-radius: 10px;
+  background: var(--accent); color: var(--accent-texte); cursor: pointer;
+}
+.traces-lire svg { width: 22px; height: 22px; fill: currentColor; stroke: currentColor; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.traces-vitesses { font-variant-numeric: tabular-nums; }
+.traces-suivre {
+  min-height: 44px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2);
+  color: var(--texte-2); font: 650 12px var(--police); cursor: pointer;
+}
+.traces-suivre[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
+.traces-types-titre { margin: 0 0 6px; color: var(--texte-2); font-size: 12px; font-weight: 650; }
 .traces-couleur { display: grid; gap: 6px; margin-bottom: 14px; }
 .traces-couleur[hidden] { display: none; }
 .traces-couleur-titre, .traces-reperes h4 { color: var(--texte-2); font-size: 12px; font-weight: 650; margin: 0; }
