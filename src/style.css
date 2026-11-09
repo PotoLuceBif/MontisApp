@@ -189,6 +189,40 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .fond-item:hover { background: var(--survol); }
 .fond-item:has(input:checked) { background: var(--accent-doux); }
 .fond-nom { flex: 1; font-weight: 600; }
+.fond-panneau .fond-onglets button { min-width: 0; padding-inline: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fond-panneau .liste-fonds { max-height: none; }
+.fond-panneau .note { margin: 0 0 8px; }
+.fond-panneau .fond-actuel { margin: 10px 0 0; }
+.fond-panneau .fond-alerte { margin: 6px 0 0; padding: 8px 10px; border-radius: 9px; background: var(--accent-doux); color: var(--texte); line-height: 1.4; }
+.fond-panneau .fond-alerte[hidden] { display: none; }
+.fond-item { min-height: 48px; padding: 8px 12px; }
+.fond-textes { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.fond-desc { color: var(--texte-2); font-size: 12px; line-height: 1.35; }
+.fond-groupe { margin: 14px 0 6px; color: var(--texte-2); font: 700 11px var(--police); letter-spacing: .06em; text-transform: uppercase; }
+.fond-contenu > .fond-groupe:first-child, .fond-contenu > .note + .fond-groupe { margin-top: 4px; }
+.fond-calques { display: grid; gap: 2px; border: 1px solid var(--bord); border-radius: 11px; padding: 2px 12px; }
+.fond-calque + .fond-calque { border-top: 1px solid var(--bord); }
+.fond-calque .option-case { padding: 9px 0; }
+.fond-calque-opacite { padding: 0 0 10px 24px; }
+.fond-pays-liste { display: grid; gap: 6px; }
+.fond-pays { border: 1px solid var(--bord); border-radius: 11px; overflow: hidden; }
+.fond-pays.ouvert { background: color-mix(in srgb, var(--surface-2) 50%, transparent); }
+.fond-pays-entete {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 8px 12px;
+  border: 0; background: none; color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.fond-pays-entete:hover { background: var(--survol); }
+.fond-pays-nom { font-weight: 700; }
+.fond-pays-nb { flex: 1; text-align: right; color: var(--texte-2); font-size: 12px; white-space: nowrap; }
+.fond-chevron { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--texte-2); stroke-width: 2; transition: rotate .15s; }
+.fond-pays-entete[aria-expanded="true"] .fond-chevron { rotate: 180deg; }
+.fond-pays-corps { padding: 0 10px 10px; }
+.fond-pays-corps .fond-groupe { margin-top: 10px; }
+.fond-badge {
+  flex: none; padding: 2px 7px; border-radius: 99px; background: var(--surface-2); color: var(--texte-2);
+  font-size: 11px; font-weight: 700; line-height: 1.4;
+}
+.fond-badge-choisi { background: var(--accent); color: var(--accent-texte); }
 
 /* Relief */
 .relief-entete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
@@ -242,6 +276,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .couche-pastille button { border: 0; background: transparent; color: inherit; font: 650 12.5px var(--police); cursor: pointer; }
 .couche-pastille-corps { display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 4px 0 10px; white-space: nowrap; }
 .couche-pastille-legende { display: flex; align-items: center; }
+.mini-activite { display: block; width: 22px; height: 22px; border-radius: 6px; }
 .couche-pastille-legende[hidden] { display: none; }
 .mini-pentes { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
 .mini-pentes i { flex: 1; }

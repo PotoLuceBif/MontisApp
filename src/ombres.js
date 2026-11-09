@@ -1,6 +1,7 @@
 // Ombre du soleil : ombrage du relief éclairé depuis la position réelle du soleil, et ombre portée par les
 // montagnes voisines (calculée dans le travailleur des pentes). Réglages du jour et de l'heure, pastille.
 // Chargé à la première activation (ombres-panneau.js).
+import { REPERE_CALQUES } from './style-montis.js';
 import { addProtocol } from 'maplibre-gl';
 import { calculer } from './pentes-couche.js';
 import { ZOOM_MAX_OMBRES } from './ombre-tuile.js';
@@ -17,7 +18,7 @@ import { nombre, pourcent } from './unites.js';
 const PROTOCOLE = 'montis-ombre';
 const SOURCE_PORTEE = 'ombre-portee';
 const COUCHE_OMBRAGE = 'ombre-soleil';
-const AVANT = ['pentes-pentes', 'montis-road-casing', 'courbes']; // pentes, routes et sentiers restent lisibles
+const AVANT = ['pentes-pentes', REPERE_CALQUES, 'montis-road-casing', 'courbes']; // pentes, routes et sentiers restent lisibles
 const MINUTE = 60000;
 const PAS_CURSEUR = 5;
 
