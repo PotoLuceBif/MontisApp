@@ -14,7 +14,7 @@ Le principe : on ne multiplie pas les fonctions par activité. On construit **qu
 
 **Un lot = une branche depuis `developpement` = une session.** Depuis le 7 novembre 2026, le travail se fait en local dans `C:\dev\Montis`, sans GitHub : pas de push ni de PR. Pour lancer un lot, écrire dans une nouvelle session :
 
-> /lot 1.4 bis
+> /lot 2.1
 
 Après un test, `/retour` avec des captures d'écran.
 
@@ -57,7 +57,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 ## Fait
 
 - **Phase 0, fondations :** 0.1 Ménage · 0.2 Découpage du bundle · 0.2 bis Activités chargées à la demande · 0.3 Tests automatiques · 0.4 Captures automatiques · 0.5 Activités et pratiques · 0.7 Robustesse.
-- **Phase 1, le point et le terrain :** 1.1 Soleil · 1.2 Fiche universelle du point · 1.3 Pentes et orientation · 1.3 bis Pastilles Météo · 1.4 Ombre du relief · 1.5 Frise météo commune · 1.6 Ouverture sur sa position.
+- **Phase 1, le point et le terrain :** 1.1 Soleil · 1.2 Fiche universelle du point · 1.3 Pentes et orientation · 1.3 bis Pastilles Météo · 1.4 Ombre du relief · 1.4 bis Soleil en 3D et ombre dans les visites · 1.5 Frise météo commune · 1.6 Ouverture sur sa position.
 - **Hors phase :** 2.0 Balises et terrains FFVL · 3.9 Géologie · 3.10 Fonds topo.
 
 - [x] **0.7 Robustesse** (9 novembre 2026, demandée par le propriétaire). Relecture de toute l'appli et essais « réseau coupé » et « réseau qui traîne ». Interface posée dès que le style est prêt, plus après les premières tuiles (avant : plus d'une minute sans menu ni recherche sur un réseau lent). Délai maximal sur chaque requête de service (recherche, radar, itinéraire, balises, neige, avalanches, Waymarked Trails, portée, zones hors ligne), messages d'échec lisibles, zone hors ligne surtout vide comptée comme un échec, sauvegarde vérifiée étape par étape, textes au tutoiement, MapLibre 6.17. Détail dans `docs/historique.md`.
@@ -68,7 +68,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 ### Phase 1 : fin
 
-- [ ] **1.4 bis Soleil en 3D et ombre dans les visites.** Demandé par le propriétaire le 9 novembre 2026. Le soleil dessiné dans le ciel en 3D (azimut et hauteur de `soleil.js`) quand l'ombre du soleil est allumée, pour comprendre d'où vient l'ombre. Dans les visites de stations de ski et de bike parks (`visite-station.js`), un bouton « Ombre du soleil » à côté de « Pentes 30° » et des courbes de niveau, avec la même mécanique que Carte › Relief (ombre portée par le relief, jour et curseur d'heure).
+- [x] **1.4 bis Soleil en 3D et ombre dans les visites** (9 novembre 2026). Soleil dessiné dans le ciel en 3D quand l'ombre du soleil est allumée, pâli derrière le relief ; hors du champ, petit soleil au bord de l'écran avec une flèche, dans sa direction sur le sol (comme le cadran), écarté des boutons et panneaux. Bouton « Ombre du soleil » dans les visites de stations et de bike parks, avec jour, curseur d'heure et position du soleil (fiche réduite : l'heure seule). Détail dans `docs/historique.md`.
 
 ### Phase 2 : sur le terrain (vers la 1.0 beta)
 
