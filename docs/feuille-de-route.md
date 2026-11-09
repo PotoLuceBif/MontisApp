@@ -70,15 +70,18 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 - [x] **1.4 bis Soleil en 3D et ombre dans les visites** (9 novembre 2026). Soleil dessiné dans le ciel en 3D quand l'ombre du soleil est allumée, pâli derrière le relief ; hors du champ, petit soleil au bord de l'écran avec une flèche, dans sa direction sur le sol (comme le cadran), écarté des boutons et panneaux. Bouton « Ombre du soleil » dans les visites de stations et de bike parks, avec jour, curseur d'heure et position du soleil (fiche réduite : l'heure seule). Détail dans `docs/historique.md`.
 
-### Phase 2 : sur le terrain (vers la 1.0 beta)
+### Phase 2 : revoir ses sorties (vers la 1.0 beta)
 
-Faire de Montis un outil de terrain, pas seulement de préparation. Ordre validé le 9 novembre 2026.
+Revue avec le propriétaire le 9 novembre 2026. Les gens enregistrent leurs sorties avec leur montre ; Montis ne refait pas l'enregistrement, il en fait **la plus belle visualisation** : relief, 3D, curseur du temps, soleil et météo du jour. Les autres applis montrent une trace 2D, et font payer la 3D. Pas de suivi en direct ni d'alerte de sortie de trace : le propriétaire n'en veut pas.
 
-- [ ] **2.1 Suivi en direct.** Position et cap sur la carte, distance et dénivelé restants sur le parcours affiché, alerte de sortie de trace, écran gardé allumé si demandé. Rando, vélo et toutes les activités à trace.
-- [ ] **2.5 Sécurité.** Mode urgence (coordonnées en grand, altitude, 112 et secours en montagne par pays, sans réseau), heure de retour prévue, envoi de sa position par SMS ou partage du téléphone, sans serveur. Avancé juste après le suivi : court à faire, et décisif le jour où on en a besoin.
-- [ ] **2.2 Enregistrement et carnet de sorties.** Enregistrer sa trace réelle (écran allumé), la ranger avec date, durée, dénivelé ; carnet consultable hors ligne, inclus dans la sauvegarde `.json`.
-- [ ] **2.4 Pack sortie hors ligne.** D'un geste depuis un parcours : carte et relief de la zone, frise météo du jour, bulletin d'avalanche, trace.
-- [ ] **2.3 Revoir une sortie.** Statistiques, profil, replay animé en 3D ; import IGC pour le vol libre.
+**Mes traces** (nom choisi par le propriétaire) : une entrée du menu, accessible quelle que soit l'activité, avec deux onglets, **Sorties** (ce que tu as fait, importé de la montre) et **Parcours** (ce que tu prévois).
+
+- [ ] **2.1 Import et Mes traces.** Lecture des fichiers GPX, FIT (Garmin, Coros, Suunto, Wahoo), IGC (varios : altitude barométrique et GPS) et TCX, avec leurs tests : points horodatés, altitude, cardio, cadence, puissance, température quand le fichier les a. Section Mes traces (Sorties et Parcours), type de sortie détecté ou choisi (rando, vélo, ski, vol…), sorties rangées dans IndexedDB (trop lourdes pour le localStorage) et incluses dans la sauvegarde `.json`.
+- [ ] **2.2 Vue d'une sortie.** Vue d'ensemble : trace entière cadrée, colorée au choix (vitesse, altitude, pente, cardio), points marquants (vitesse max, point haut, pauses), stats selon l'activité (rando : distance, D+ et D−, temps en mouvement et en pause, vitesse de montée ; vélo : vitesses moyenne et max ; ski : descentes, dénivelé descendu, vitesse max ; vol : durée, altitude max, gain max). En 2D et en 3D.
+- [ ] **2.3 Curseur et lecture.** Une frise comme celle de la météo : lignes empilées sur l'axe du temps (altitude, vitesse, cardio, pente, selon le fichier). Faire glisser le curseur déplace le point sur la carte et affiche les valeurs de l'instant ; un bouton lecture l'anime.
+- [ ] **2.4 Le contexte de la sortie.** Soleil et ombres à l'heure réelle de la sortie (briques du lot 1.4), météo de ce jour-là (archives d'Open-Meteo).
+
+Pour plus tard : comparer une sortie au parcours prévu, exporter une vidéo du replay. **Sécurité** (mode urgence, 112, heure de retour), **pack sortie hors ligne** et **position et cap sur la carte** : à revoir avec le propriétaire, sans date.
 
 Puis **4.5 Partage par lien** (voir phase 4), avancé ici : simple, et utile à tout le reste.
 
@@ -108,7 +111,8 @@ Chaque lot ajoute des pratiques à une activité existante (voir « Structure de
 
 - **3.8 Faune et flore, règles des parcs.** Reporté le 8 novembre 2026, à repenser avec le propriétaire avant de coder ; il ira dans Carte › Nature et sous-sol. *Vérifié :* tuiles de densité d'observations de GBIF (`api.gbif.org/v2/map/occurrence/density`), qui regroupe déjà iNaturalist et une partie des données françaises. Les règles des parcs (bivouac, chiens, drones) n'existent presque pas en données : à saisir à la main, au moins pour les parcs nationaux. Pas de localisation précise pour les espèces sensibles.
 - **La cinquième activité** (escalade, via ferrata, alpinisme, canyon), après la 1.0. Voir « Pistes pour la cinquième activité ».
-- **P.1 Enregistrer un trajet écran verrouillé.** Exige une appli native (Capacitor par exemple) : une appli web perd le GPS écran verrouillé. En attendant, le lot 2.2 enregistre écran allumé.
+- **P.1 Enregistrer un trajet depuis Montis.** Écarté le 9 novembre 2026 : les montres le font mieux. Écran verrouillé, il exigerait une appli native (Capacitor par exemple), une appli web perdant le GPS.
+- **Sécurité, pack sortie hors ligne, position et cap sur la carte** (anciens 2.5, 2.4 et une partie du 2.1) : sortis de la phase 2 le 9 novembre 2026, à revoir.
 
 ## Structure de l'appli
 
@@ -126,7 +130,7 @@ Décidée le 2 novembre 2026. Elle évite que les nouvelles pratiques se chevauc
 
 **Étage 2 : les briques communes, hors des activités.** Pentes, orientation, ombres et géologie dans Carte ; frise météo, isotherme et avalanches dans Météo. Une activité ou une pratique les **allume par défaut**, l'utilisateur peut toujours les allumer lui-même. Règle : chaque donnée a un seul module propriétaire, plusieurs activités l'affichent.
 
-**Étage 3 : toujours disponible, quelle que soit l'activité.** Le point (appui long), la sortie GPS (bouton sur la carte, jamais coupée par un changement de panneau), le carnet, l'urgence.
+**Étage 3 : toujours disponible, quelle que soit l'activité.** Le point (appui long), Mes traces (sorties et parcours), plus tard l'urgence.
 
 Météo et Carte s'ouvrent par-dessus l'activité **sans l'arrêter**. Seul le passage à une autre activité arrête la précédente.
 
@@ -154,6 +158,6 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 
 ## Décisions
 
-**Prises :** structure en activités et pratiques (2 novembre 2026) ; Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026) ; texte de la mention de prudence (3 novembre 2026), en entier une fois, « Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles. », puis en rappel court, « Estimations : à vérifier sur le terrain. » ; appli 100 % locale, sans compte (9 novembre 2026) ; tutoiement dans toute l'interface (9 novembre 2026) ; ordre des phases 2 et 3 ci-dessus (9 novembre 2026).
+**Prises :** structure en activités et pratiques (2 novembre 2026) ; Météo et Carte qui n'arrêtent plus l'activité (2 novembre 2026) ; texte de la mention de prudence (3 novembre 2026), en entier une fois, « Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles. », puis en rappel court, « Estimations : à vérifier sur le terrain. » ; appli 100 % locale, sans compte (9 novembre 2026) ; tutoiement dans toute l'interface (9 novembre 2026) ; ordre des phases 2 et 3 ci-dessus (9 novembre 2026) ; phase 2 recentrée sur la visualisation des sorties de la montre, section « Mes traces », formats GPX, FIT, IGC et TCX (9 novembre 2026).
 
 **À prendre :** périmètre et nom de la cinquième activité (après la 1.0).
