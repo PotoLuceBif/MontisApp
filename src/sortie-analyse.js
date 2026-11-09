@@ -31,8 +31,10 @@ export function vitessesLissees(t, d, fenetre = FENETRE_VITESSE) {
   for (let i = 0; i < n; i++) {
     while (t[i] - t[debut] > fenetre * 1000) debut++;
     while (fin < n - 1 && t[fin + 1] - t[i] <= fenetre * 1000) fin++;
-    const duree = (t[fin] - t[debut]) / 1000;
-    v[i] = duree > 0 ? (d[fin] - d[debut]) / duree : 0;
+    // Points espacés (un toutes les 20 s, courant en GPX) : au moins un voisin de chaque côté
+    const [a, z] = [Math.min(debut, Math.max(0, i - 1)), Math.max(fin, Math.min(n - 1, i + 1))];
+    const duree = (t[z] - t[a]) / 1000;
+    v[i] = duree > 0 ? (d[z] - d[a]) / duree : 0;
   }
   return v;
 }
@@ -46,8 +48,9 @@ export function pentesLissees(alts, d, fenetre = FENETRE_PENTE) {
   for (let i = 0; i < n; i++) {
     while (d[i] - d[debut] > fenetre) debut++;
     while (fin < n - 1 && d[fin + 1] - d[i] <= fenetre) fin++;
-    const distance = d[fin] - d[debut];
-    p[i] = distance > 5 ? ((alts[fin] - alts[debut]) / distance) * 100 : 0;
+    const [a, z] = [Math.min(debut, Math.max(0, i - 1)), Math.max(fin, Math.min(n - 1, i + 1))];
+    const distance = d[z] - d[a];
+    p[i] = distance > 5 ? ((alts[z] - alts[a]) / distance) * 100 : 0;
   }
   return p;
 }
