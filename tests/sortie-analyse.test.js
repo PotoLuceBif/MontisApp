@@ -32,6 +32,12 @@ describe('mesures de base', () => {
     expect([...vitessesLissees(t, d, 10)]).toEqual([2, 2, 2, 2, 2]);
   });
 
+  it('garde une vitesse quand les points sont plus espacés que la fenêtre', () => {
+    const t = [0, 20000, 40000];
+    const d = [0, 30, 60];
+    expect([...vitessesLissees(t, d, 10)]).toEqual([1.5, 1.5, 1.5]);
+  });
+
   it('mesure la pente sur une fenêtre de distance', () => {
     const d = Array.from({ length: 11 }, (_, i) => i * 10);
     const alts = d.map((x) => x * 0.2);
