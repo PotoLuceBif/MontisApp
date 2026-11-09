@@ -52,11 +52,22 @@ describe('placerSoleil', () => {
   it('pose à droite un soleil à l\'est quand on regarde au nord', () => {
     const place = placer({ azimut: 90, hauteur: 30 }, { pitch: 60 });
     expect(place.x).toBeCloseTo(380, 6);
-    expect(place.y).toBeCloseTo(400, 6);
+    expect(place.y).toBeLessThan(400); // la perspective le remonte : il est aussi en hauteur
   });
 
-  it('pose en bas un soleil derrière soi, et tient compte du cap', () => {
-    const place = placer({ azimut: 270, hauteur: 30 }, { pitch: 60, bearing: 90 });
+  it('pose le soleil hors du cadre sur la ligne qui va du centre à sa vraie position', () => {
+    const p = projeterSoleil({ azimut: 40, hauteur: 25 }, camera({ pitch: 60 }));
+    expect(p.devant).toBe(true);
+    const place = placerSoleil(p, { ...ECRAN, marge: 20 });
+    expect(place.dedans).toBe(false);
+    // même direction depuis le centre (produit vectoriel nul, même sens)
+    const croix = (place.x - p.cx) * (p.y - p.cy) - (place.y - p.cy) * (p.x - p.cx);
+    expect(Math.abs(croix)).toBeLessThan(1e-6);
+    expect((place.x - p.cx) * (p.x - p.cx)).toBeGreaterThan(0);
+  });
+
+  it('pose en bas un soleil derrière soi et bas, et tient compte du cap', () => {
+    const place = placer({ azimut: 270, hauteur: 10 }, { pitch: 60, bearing: 90 });
     expect(place.x).toBeCloseTo(200, 6);
     expect(place.y).toBeCloseTo(780, 6);
     expect(place.angle).toBeCloseTo(180, 6);

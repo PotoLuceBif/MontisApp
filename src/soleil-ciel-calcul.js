@@ -14,10 +14,12 @@ export function projeterSoleil({ azimut, hauteur }, { bearing, pitch, fov, large
   // Le centre de la perspective suit les marges de la carte
   const cx = left + (largeur - left - right) / 2;
   const cy = top + (hauteurEcran - top - bottom) / 2;
-  const relatif = ((azimut - bearing) % 360 + 360) % 360;
-  if (z <= 1e-6) return { cx, cy, relatif, devant: false };
+  // Direction du soleil à l'écran vue de la caméra : celle où il apparaîtrait en tournant la tête
+  // (pour un soleil devant, c'est exactement la direction de son point projeté)
+  const direction = { dx: x, dy: -y };
+  if (z <= 1e-6) return { cx, cy, ...direction, devant: false };
   const focale = hauteurEcran / 2 / Math.tan((fov * RAD) / 2);
-  return { cx, cy, relatif, devant: true, x: cx + (focale * x) / z, y: cy - (focale * y) / z };
+  return { cx, cy, ...direction, devant: true, x: cx + (focale * x) / z, y: cy - (focale * y) / z };
 }
 
 // Position de la caméra MapLibre : derrière le centre de la carte, à la distance qui donne ce zoom.
@@ -35,11 +37,11 @@ export function positionCamera({ lng, lat, zoom, pitch, bearing, fov, hauteurEcr
   };
 }
 
-// À sa place s'il est à l'écran ; sinon au bord, dans sa direction sur le sol (comme le cadran du panneau) :
-// devant soi en haut, derrière soi en bas, à l'est à droite quand le nord est en haut
+// À sa place s'il est à l'écran ; sinon au bord, dans sa direction vue de la caméra, perspective comprise
+// (le prolongement exact de sa position quand il est devant, hors du cadre)
 // `marge` (bord) : un nombre, ou { haut, bas, gauche, droite } pour éviter les boutons posés sur la carte.
 // `margeVisible` : un soleil à moins de cette distance du bord de l'écran reste à sa vraie place
-export function placerSoleil({ devant, x, y, cx, cy, relatif }, { largeur, hauteurEcran, marge = 0, margeVisible }) {
+export function placerSoleil({ devant, x, y, cx, cy, dx: vx, dy: vy }, { largeur, hauteurEcran, marge = 0, margeVisible }) {
   const { haut = 0, bas = 0, gauche = 0, droite = 0 } = typeof marge === 'number'
     ? { haut: marge, bas: marge, gauche: marge, droite: marge }
     : marge;
@@ -47,8 +49,10 @@ export function placerSoleil({ devant, x, y, cx, cy, relatif }, { largeur, haute
   if (devant && x >= v && x <= largeur - v && y >= v && y <= hauteurEcran - v) {
     return { x, y, dedans: true };
   }
-  const dx = Math.sin(relatif * RAD);
-  const dy = -Math.cos(relatif * RAD);
+  // Droit derrière la caméra, sans direction : en bas
+  const norme = Math.hypot(vx, vy);
+  const dx = norme < 1e-9 ? 0 : vx / norme;
+  const dy = norme < 1e-9 ? 1 : vy / norme;
   // Le bord se cherche depuis le centre de la perspective, ramené dans le cadre
   cx = Math.min(largeur - droite, Math.max(gauche, cx));
   cy = Math.min(hauteurEcran - bas, Math.max(haut, cy));
@@ -58,5 +62,6 @@ export function placerSoleil({ devant, x, y, cx, cy, relatif }, { largeur, haute
   if (dy > 1e-9) limites.push((hauteurEcran - bas - cy) / dy);
   if (dy < -1e-9) limites.push((haut - cy) / dy);
   const s = Math.max(0, Math.min(...limites));
-  return { x: cx + dx * s, y: cy + dy * s, dedans: false, angle: relatif };
+  const angle = (Math.atan2(dx, -dy) / RAD + 360) % 360; // 0 = vers le haut de l'écran
+  return { x: cx + dx * s, y: cy + dy * s, dedans: false, angle };
 }
