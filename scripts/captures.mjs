@@ -11,6 +11,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { previsionsSimulees } from './meteo-simulee.mjs';
+import { gpxRando, igcVol, tcxVelo } from './sorties-demo.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -148,6 +149,27 @@ const lireFrise = (fraction) => async (page) => {
   const boite = await frise.boundingBox();
   await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
 };
+
+const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { state: 'attached', timeout: 15000 });
+const FICHIERS_DEMO = {
+  'rando.gpx': { mimeType: 'application/gpx+xml', contenu: gpxRando },
+  'velo.tcx': { mimeType: 'application/xml', contenu: tcxVelo },
+  'vol.igc': { mimeType: 'text/plain', contenu: igcVol },
+};
+const importerSorties = (noms) => async (page) => {
+  await page.waitForSelector('.traces input[type="file"]', { state: 'attached', timeout: 15000 });
+  await page.setInputFiles('.traces input[type="file"]', noms.map((nom) => ({
+    name: nom,
+    mimeType: FICHIERS_DEMO[nom].mimeType,
+    buffer: Buffer.from(FICHIERS_DEMO[nom].contenu()),
+  })));
+  await page.waitForTimeout(2500);
+};
+// Un parcours Rando enregistré, pour la liste Mes traces › Parcours
+const parcoursEnregistre = (page) => page.evaluate(() => {
+  const etapes = [{ lng: 6.1, lat: 45.77, mode: 'route', troncon: null }, { lng: 6.12, lat: 45.79, mode: 'route', troncon: { geom: [[6.1, 45.77], [6.12, 45.79]] } }];
+  localStorage.setItem('montis.rando-parcours', JSON.stringify([{ id: 'p1', nom: 'Lac de la Thuile', etapes, total: 8200, plus: 540, date: Date.UTC(2026, 9, 3), pratique: 'rando' }]));
+});
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
@@ -345,6 +367,12 @@ const ECRANS = [
       (page) => page.waitForTimeout(5000),
     ],
   },
+  // Mes traces : sorties importées (fichiers fabriqués, scripts/sorties-demo.mjs), vue d'une sortie, parcours
+  { nom: 'traces-sorties-vide', actions: [module('sorties'), attendre('.traces input[type="file"]')] },
+  { nom: 'traces-sorties', actions: [module('sorties'), importerSorties(['rando.gpx', 'velo.tcx', 'vol.igc'])] },
+  { nom: 'traces-sortie', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2000)] },
+  { nom: 'traces-sortie-reduite', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie .bf-reduire')] },
+  { nom: 'traces-parcours', actions: [parcoursEnregistre, module('parcours'), attendre('.traces-liste')] },
   {
     nom: 'combine-parcours-carte-fermee',
     actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],

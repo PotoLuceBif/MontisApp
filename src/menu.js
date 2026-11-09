@@ -25,6 +25,8 @@ const ICONES_MENU = {
   reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
+  sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
+  parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -221,6 +223,23 @@ export function initMenu(map) {
         ),
         differer({ id: 'ski', labelCle: 'ski.titre', icone: 'ski' }, () =>
           import('./activite-ski.js').then((m) => m.creerActiviteSki(map))
+        ),
+      ],
+      emplacement: 'menu',
+    },
+    {
+      // Toujours disponible : s'ouvre par-dessus l'activité sans l'arrêter
+      id: 'traces',
+      titre: 'menu.traces',
+      icone: 'sorties',
+      aide: 'menu.aide-traces',
+      exclusif: false,
+      modules: [
+        differer({ id: 'sorties', labelCle: 'traces.sorties', icone: 'sorties' }, () =>
+          import('./mes-traces.js').then((m) => m.creerSorties(map, { fermerMenu, ouvrirMenu }))
+        ),
+        differer({ id: 'parcours', labelCle: 'traces.parcours', icone: 'parcours' }, () =>
+          import('./mes-traces.js').then((m) => m.creerParcoursTraces(map, { fermerMenu }))
         ),
       ],
       emplacement: 'menu',
