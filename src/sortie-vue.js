@@ -2,9 +2,10 @@
 // stats selon l'activité, points marquants. Panneau posé sur la carte, réductible.
 import * as maplibregl from 'maplibre-gl';
 import { creerPanneauCarte } from './panneau-carte.js';
+import { creerFriseSortie } from './sortie-frise.js';
 import { modifierSortie } from './sorties-stockage.js';
 import {
-  analyserSortie, bornes, couleurDegrade, DEGRADE, modesPossibles, morceaux, valeursMode,
+  analyserSortie, bornes, couleurDegrade, DEGRADE, indiceProche, modesPossibles, morceaux, valeursMode, variosLisses,
 } from './sortie-analyse.js';
 import { PALIERS_PENTE, palierPente } from './parcours-analyse.js';
 import { paletteInterface } from './vent-cadran.js';
@@ -16,6 +17,10 @@ import { TYPES, formatDureeReelle, iconeType, libelleType, nomSortie } from './t
 
 const SOURCE = 'sortie-trace';
 const SOURCE_BOUTS = 'sortie-bouts';
+const SOURCE_CURSEUR = 'sortie-curseur';
+// Durée d'une lecture complète (s) : lente, normale, rapide
+const DUREES_LECTURE = [90, 40, 15];
+const ESTOMPE = 0.28;
 const COULEUR_CERNE = '#0b111b';
 const CANAUX_LIBELLES = {
   alt: 'traces.canal-alt', altGps: 'traces.canal-alt-gps', fc: 'traces.canal-fc', cadence: 'traces.canal-cadence',
@@ -29,6 +34,12 @@ const ICONES_REPERES = {
   deco: '<path d="M4 15c4-6 12-6 16 0"/><path d="M12 15v5"/>',
 };
 
+// Deux chiffres significatifs : ×465 se lit ×470, ×1 239 se lit ×1 200
+const arrondiRond = (x) => {
+  if (x < 10) return Math.max(1, Math.round(x));
+  const echelle = 10 ** (Math.floor(Math.log10(x)) - 1);
+  return Math.round(x / echelle) * echelle;
+};
 const vitesseTexte = (ms) => (imperial() ? `${nombre(ms * 2.236936, 1)} mph` : `${nombre(ms * 3.6, 1)} km/h`);
 const varioTexte = (ms) => `${ms > 0 ? '+' : ''}${nombre(ms, 1)} m/s`;
 const pourcentTexte = (p) => `${Math.round(p)} %`;
@@ -75,6 +86,11 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
   let analyse = null;
   let mode = lire('sortie-couleur', 'vitesse');
   let reperes = [];
+  let frise = null;
+  let indice = null;
+  let lecture = null;
+  let dureeLecture = DUREES_LECTURE[lire('sortie-lecture-vitesse', 1)] ?? DUREES_LECTURE[1];
+  let suivre = lire('sortie-suivre', true) !== false;
 
   const panneau = creerPanneauCarte({
     cle: 'sortie-panneau-reduit',
@@ -87,12 +103,17 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     },
   });
   panneau.corps.innerHTML = `
-    <div class="parcours-pratiques parcours-pratiques-panneau traces-types" role="group" ${ta('aria-label', 'traces.type')}>
-      ${TYPES.map(({ id, cle }) => `<button type="button" data-type="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
-    </div>
     <div class="parcours-stats traces-principales">
       <div class="parcours-stat parcours-stat-principale">${tt('editeur.distance')}<strong data-v="distance">—</strong></div>
       <div class="parcours-stat parcours-stat-principale"><span data-v="libelle-temps"></span><strong data-v="temps">—</strong></div>
+    </div>
+    <div class="traces-lecture" hidden>
+      <div class="traces-frise"></div>
+      <div class="traces-commandes">
+        <button type="button" class="traces-lire" ${ta('aria-label', 'traces.lire')}></button>
+        <div class="parcours-pratiques traces-vitesses" role="group" ${ta('aria-label', 'traces.vitesse-lecture')}></div>
+        <button type="button" class="traces-suivre" aria-pressed="false" ${ti('traces.suivre')}>${t('traces.suivre')}</button>
+      </div>
     </div>
     <div class="traces-couleur">
       <span class="traces-couleur-titre" ${ti('traces.colorer')}>${t('traces.colorer')}</span>
@@ -103,6 +124,10 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     <div class="traces-reperes" hidden>
       <h4 ${ti('traces.reperes')}>${t('traces.reperes')}</h4>
       <div class="traces-reperes-liste"></div>
+    </div>
+    <h4 class="traces-types-titre" ${ti('traces.type')}>${t('traces.type')}</h4>
+    <div class="parcours-pratiques parcours-pratiques-panneau traces-types" role="group" ${ta('aria-label', 'traces.type')}>
+      ${TYPES.map(({ id, cle }) => `<button type="button" data-type="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
     </div>
     <p class="traces-canaux"></p>
   `;
@@ -132,7 +157,173 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
         'circle-stroke-width': 3,
       },
     });
+    map.addSource(SOURCE_CURSEUR, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+      id: 'sortie-curseur-halo', type: 'circle', source: SOURCE_CURSEUR,
+      paint: { 'circle-radius': 16, 'circle-color': '#ffffff', 'circle-opacity': 0.25, 'circle-blur': 0.4, 'circle-pitch-alignment': 'map' },
+    });
+    map.addLayer({
+      id: 'sortie-curseur', type: 'circle', source: SOURCE_CURSEUR,
+      paint: { 'circle-radius': 8, 'circle-color': '#ffffff', 'circle-stroke-color': COULEUR_CERNE, 'circle-stroke-width': 3 },
+    });
   }
+
+  // ---------- Curseur du temps et lecture ----------
+  // La trace déjà parcourue reste vive, le reste s'estompe
+  function estomper() {
+    if (!map.getLayer('sortie-trace')) return;
+    const opacite = indice == null || indice >= analyse.n - 1 ? 1 : ['case', ['<', ['get', 'debut'], indice], 1, ESTOMPE];
+    map.setPaintProperty('sortie-trace', 'line-opacity', opacite);
+    map.setPaintProperty('sortie-trace-contour', 'line-opacity', Array.isArray(opacite) ? ['case', ['<', ['get', 'debut'], indice], 0.9, ESTOMPE] : 0.9);
+  }
+
+  // Le point au centre de la partie visible de la carte (au-dessus du panneau sur téléphone)
+  function centrerSur(position) {
+    const { clientWidth: largeur, clientHeight: hauteur } = map.getContainer();
+    const telephone = window.matchMedia('(max-width: 640px)').matches;
+    const cadre = panneau.element.getBoundingClientRect();
+    const bas = telephone && panneau.ouvert ? Math.min(hauteur * 0.7, hauteur - cadre.top) : 0;
+    const gauche = !telephone && panneau.ouvert ? cadre.right : 0;
+    const p = map.project(position);
+    const cible = [gauche + (largeur - gauche) / 2, (hauteur - bas) / 2];
+    map.jumpTo({ center: map.unproject([p.x - cible[0] + largeur / 2, p.y - cible[1] + hauteur / 2]) });
+  }
+
+  // Le point est-il dans la partie de la carte que le panneau ne cache pas ?
+  function estVisible(i) {
+    const { clientWidth: largeur, clientHeight: hauteur } = map.getContainer();
+    const p = map.project([sortie.points.lng[i], sortie.points.lat[i]]);
+    const cadre = panneau.element.getBoundingClientRect();
+    const telephone = window.matchMedia('(max-width: 640px)').matches;
+    const bas = telephone && panneau.ouvert ? cadre.top : hauteur;
+    const gauche = !telephone && panneau.ouvert ? cadre.right : 0;
+    return p.x > gauche + 30 && p.x < largeur - 30 && p.y > 80 && p.y < bas - 20;
+  }
+
+  function placerCurseur(i, { centrer = false } = {}) {
+    indice = i;
+    const position = [sortie.points.lng[i], sortie.points.lat[i]];
+    map.getSource(SOURCE_CURSEUR)?.setData({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: position } });
+    estomper();
+    if (centrer) centrerSur(position);
+    panneau.definirResume({ detail: lectureCourte(i) });
+  }
+
+  function lectureCourte(i) {
+    const morceauxTexte = [];
+    if (analyse.temps) morceauxTexte.push(heureCourte(new Date(analyse.temps[i])));
+    morceauxTexte.push(formatDistance(analyse.distance[i]));
+    if (analyse.alts) morceauxTexte.push(formatAltitude(analyse.alts[i]));
+    return morceauxTexte.join(' · ');
+  }
+
+  function majBoutonLecture() {
+    const bouton = $('.traces-lire');
+    const enCours = !!lecture;
+    bouton.innerHTML = enCours
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5Z"/></svg>';
+    bouton.setAttribute('aria-label', t(enCours ? 'traces.pause' : 'traces.lire'));
+    bouton.classList.toggle('actif', enCours);
+  }
+
+  function arreterLecture() {
+    if (!lecture) return;
+    cancelAnimationFrame(lecture.image);
+    lecture = null;
+    majBoutonLecture();
+  }
+
+  function lancerLecture() {
+    const axe = analyse.temps ?? analyse.distance;
+    const debut = axe[0];
+    const etendue = Math.max(1, axe[analyse.n - 1] - debut);
+    // Arrivé au bout : on repart du début
+    let position = indice == null || indice >= analyse.n - 1 ? debut : axe[indice];
+    let precedent = null;
+    lecture = { image: 0 };
+    majBoutonLecture();
+    const pas = (instant) => {
+      if (!lecture) return;
+      if (precedent != null) position += ((instant - precedent) / 1000) * (etendue / dureeLecture);
+      precedent = instant;
+      const fini = position >= debut + etendue;
+      const i = fini ? analyse.n - 1 : indiceProche(axe, position);
+      frise.placer(i);
+      placerCurseur(i, { centrer: suivre });
+      if (fini) {
+        arreterLecture();
+        return;
+      }
+      lecture.image = requestAnimationFrame(pas);
+    };
+    lecture.image = requestAnimationFrame(pas);
+  }
+
+  function rendreVitesses() {
+    const conteneur = $('.traces-vitesses');
+    conteneur.style.gridTemplateColumns = `repeat(${DUREES_LECTURE.length}, minmax(0, 1fr))`;
+    const reelle = analyse.temps ? (analyse.temps[analyse.n - 1] - analyse.temps[0]) / 1000 : null;
+    conteneur.innerHTML = DUREES_LECTURE.map((duree, k) => {
+      // En temps réel, la vitesse de lecture se lit en « fois plus vite » ; sans heure, lent, normal, rapide
+      const libelle = reelle ? `×${nombre(arrondiRond(reelle / duree))}` : t(['traces.lent', 'traces.normal', 'traces.rapide'][k]);
+      return `<button type="button" data-duree="${k}" aria-pressed="${duree === dureeLecture}">${libelle}</button>`;
+    }).join('');
+    conteneur.querySelectorAll('[data-duree]').forEach((bouton) => bouton.addEventListener('click', () => {
+      dureeLecture = DUREES_LECTURE[Number(bouton.dataset.duree)];
+      ecrire('sortie-lecture-vitesse', Number(bouton.dataset.duree));
+      rendreVitesses();
+    }));
+  }
+
+  function majSuivre() {
+    $('.traces-suivre').setAttribute('aria-pressed', String(suivre));
+  }
+
+  function lignesFrise() {
+    const lignes = [];
+    if (analyse.alts) lignes.push({ id: 'altitude', cle: 'traces.mode-altitude', valeurs: analyse.alts, texte: formatAltitude });
+    if (analyse.vitesse) lignes.push({ id: 'vitesse', cle: 'traces.mode-vitesse', valeurs: analyse.vitesse, texte: vitesseTexte });
+    if (analyse.type === 'parapente' && analyse.temps && analyse.alts) {
+      lignes.push({ id: 'vario', cle: 'traces.vario', valeurs: variosLisses(analyse.temps, analyse.alts), texte: varioTexte });
+    }
+    const cardio = valeursMode('cardio', analyse, sortie.points);
+    if (cardio) lignes.push({ id: 'cardio', cle: 'traces.mode-cardio', valeurs: cardio, texte: (v) => `${Math.round(v)} bpm` });
+    if (sortie.points.puissance) lignes.push({ id: 'puissance', cle: 'traces.canal-puissance', valeurs: sortie.points.puissance, texte: (v) => `${Math.round(v)} W` });
+    return lignes;
+  }
+
+  function construireFrise() {
+    frise?.detruire();
+    frise = null;
+    const bloc = $('.traces-lecture');
+    const lignes = lignesFrise();
+    bloc.hidden = !lignes.length;
+    if (!lignes.length) return;
+    const axe = analyse.temps ?? analyse.distance;
+    frise = creerFriseSortie({
+      lignes,
+      axe,
+      texteAxe: (valeur, i) => (analyse.temps ? heureCourte(new Date(valeur)) : formatDistance(analyse.distance[i])),
+      onDebut: arreterLecture,
+      onIndice: (i) => placerCurseur(i, { centrer: !estVisible(i) }),
+    });
+    $('.traces-frise').replaceChildren(frise.element);
+    rendreVitesses();
+    majSuivre();
+    majBoutonLecture();
+    if (indice != null) frise.placer(Math.min(indice, analyse.n - 1));
+  }
+
+  $('.traces-lire').addEventListener('click', () => {
+    if (lecture) arreterLecture();
+    else lancerLecture();
+  });
+  $('.traces-suivre').addEventListener('click', () => {
+    suivre = !suivre;
+    ecrire('sortie-suivre', suivre);
+    majSuivre();
+  });
 
   function couleurs() {
     // Ni heure ni altitude : une seule couleur, celle de l'accent
@@ -154,7 +345,9 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
   function dessinerTrace() {
     assurerCouches();
     const { couleurDe, bornes: b } = couleurs();
-    map.getSource(SOURCE).setData({ type: 'FeatureCollection', features: morceaux(sortie.points, sortie.coupures, couleurDe) });
+    // Morceaux de 20 points au plus : la partie pas encore parcourue s'estompe sans à-coups
+    map.getSource(SOURCE).setData({ type: 'FeatureCollection', features: morceaux(sortie.points, sortie.coupures, couleurDe, 20) });
+    estomper();
     rendreLegende(b);
   }
 
@@ -196,6 +389,9 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
   map.on('zoomend', () => reperes.length && empiler());
 
   function allerA(marquant) {
+    arreterLecture();
+    frise?.placer(marquant.index);
+    placerCurseur(marquant.index);
     map.flyTo({ center: [sortie.points.lng[marquant.index], sortie.points.lat[marquant.index]], zoom: Math.max(map.getZoom(), 14), duration: 900 });
   }
 
@@ -337,6 +533,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     analyse = analyserSortie(sortie);
     remplir();
     poserReperes();
+    construireFrise();
     try {
       await modifierSortie(sortie.id, { type: sortie.type });
     } catch (erreur) {
@@ -346,6 +543,15 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
   }));
 
   function fermer() {
+    arreterLecture();
+    frise?.detruire();
+    frise = null;
+    indice = null;
+    map.getSource(SOURCE_CURSEUR)?.setData({ type: 'FeatureCollection', features: [] });
+    if (map.getLayer('sortie-trace')) {
+      map.setPaintProperty('sortie-trace', 'line-opacity', 1);
+      map.setPaintProperty('sortie-trace-contour', 'line-opacity', 0.9);
+    }
     sortie = null;
     analyse = null;
     panneau.masquer();
@@ -360,13 +566,17 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     remplir();
     poserReperes();
     dessinerTrace();
+    construireFrise();
   });
 
   return {
     ouvrir(complete) {
+      arreterLecture();
+      indice = null;
       sortie = complete;
       analyse = analyserSortie(sortie);
       remplir();
+      construireFrise();
       panneau.afficher();
       panneau.agrandir();
       dessinerTrace();
