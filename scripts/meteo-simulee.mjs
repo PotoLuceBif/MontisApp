@@ -106,3 +106,24 @@ export function previsionsSimulees(url) {
     daily,
   };
 }
+
+// Archives d'Open-Meteo simulées (météo du jour d'une sortie) : la journée « type » du lendemain, en heures UTC
+export function archiveSimulee(url) {
+  const params = new URL(url).searchParams;
+  const debut = Date.parse(`${params.get('start_date')}T00:00:00Z`);
+  const fin = Date.parse(`${params.get('end_date')}T00:00:00Z`) + 86400000;
+  const champs = (params.get('hourly') || '').split(',').filter(Boolean);
+  const hourly = { time: [] };
+  champs.forEach((champ) => { hourly[champ] = []; });
+  for (let instant = debut; instant < fin; instant += 3600000) {
+    hourly.time.push(new Date(instant).toISOString().slice(0, 16));
+    const heure = new Date(instant).getUTCHours();
+    // Une journée d'été : la journée type, douze degrés plus chaude
+    const valeur = (champ) => {
+      if (champ === 'cloud_cover') return heure < 11 ? 30 : 70;
+      return serieHoraire(champ, 1, heure) + (champ === 'temperature_2m' ? 12 : 0);
+    };
+    champs.forEach((champ) => hourly[champ].push(valeur(champ)));
+  }
+  return { latitude: Number(params.get('latitude')), longitude: Number(params.get('longitude')), timezone: 'GMT', hourly };
+}

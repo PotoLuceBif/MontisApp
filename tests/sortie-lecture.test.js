@@ -204,6 +204,17 @@ describe('FIT', () => {
     expect(sortie.points.fc).toEqual([100, 105]);
   });
 
+  it('lit le fuseau du lieu dans le message activité', () => {
+    const avecActivite = fichierFit([
+      // Activité : heure universelle (253) et heure locale de la montre (5), en Guyane (UTC−3)
+      { global: 34, locale: 4, champs: [[253, 0x86, 4, debut + 10], [5, 0x86, 4, debut + 10 - 3 * 3600]] },
+      { ...pointFit(debut + 1, 4.9, -52.3, 20, 100), locale: 3 },
+      { ...pointFit(debut + 2, 4.91, -52.3, 20, 100), locale: 3 },
+    ]);
+    expect(lireSortie('fit', avecActivite).decalage).toBe(-180);
+    expect(lireSortie('fit', fit).decalage).toBe(null);
+  });
+
   it('reconstitue l\'horodatage compressé', () => {
     const base = 0x41ab0000 + 30; // 5 bits bas : 30
     const decode = decoderFit(

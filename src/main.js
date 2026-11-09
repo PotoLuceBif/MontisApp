@@ -238,7 +238,7 @@ function appliquerMode(mode3D) {
     map.setMaxPitch(85);
     majTerrain();
     // L'ombre du soleil (ombres.js), quand elle est allumée, remplace cet ombrage fixe
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil ? 'none' : 'visible');
+    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil || etat.ombreSortie ? 'none' : 'visible');
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison

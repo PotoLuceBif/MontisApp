@@ -4,7 +4,7 @@
 const EPOQUE_FIT = Date.UTC(1989, 11, 31); // les dates FIT comptent en secondes depuis cette date
 const SEMICERCLE = 180 / 2 ** 31;
 
-const MESSAGE = { fichier: 0, sport: 12, session: 18, point: 20 };
+const MESSAGE = { fichier: 0, sport: 12, session: 18, point: 20, activite: 34 };
 
 // Type de base (5 bits bas) : taille, lecture, valeur invalide
 const TYPES = {
@@ -39,7 +39,7 @@ function lireTexte(octets, debut, taille) {
 export function decoderFit(tampon) {
   const octets = tampon instanceof Uint8Array ? tampon : new Uint8Array(tampon);
   const vue = new DataView(octets.buffer, octets.byteOffset, octets.byteLength);
-  const resultat = { points: [], sport: null, sousSport: null, nom: null, cree: null };
+  const resultat = { points: [], sport: null, sousSport: null, nom: null, cree: null, decalage: null };
   let position = 0;
 
   // Plusieurs fichiers FIT peuvent se suivre (fichiers chaînés)
@@ -159,6 +159,12 @@ function traiterMessage(global, v, resultat) {
   } else if (global === MESSAGE.session) {
     resultat.sport ??= v[5] ?? null;
     resultat.sousSport ??= v[6] ?? null;
+  } else if (global === MESSAGE.activite) {
+    // Heure locale de la montre (champ 5) moins l'heure universelle : le fuseau du lieu, changement d'heure compris
+    if (v[253] != null && v[5] != null) {
+      const minutes = Math.round((v[5] - v[253]) / 60 / 15) * 15;
+      if (Math.abs(minutes) <= 14 * 60) resultat.decalage ??= minutes;
+    }
   } else if (global === MESSAGE.fichier) {
     if (v[4] != null) resultat.cree ??= date(v[4]);
   }

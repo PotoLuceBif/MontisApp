@@ -101,6 +101,7 @@ export function sortieValide(sortie) {
     if (canal === 'lng' || canal === 'lat' || valeurs == null) continue;
     if (!Array.isArray(valeurs) || valeurs.length !== n || !valeurs.every(nombreOuNul)) return false;
   }
+  if (sortie.decalage != null && !Number.isFinite(sortie.decalage)) return false;
   return sortie.coupures == null || (Array.isArray(sortie.coupures) && sortie.coupures.every(Number.isInteger));
 }
 

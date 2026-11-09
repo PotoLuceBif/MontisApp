@@ -96,7 +96,8 @@ export function initOmbres(map, { details, eteindre }) {
 
   // ---------- Soleil dans le ciel, en 3D ----------
   const ciel = creerSoleilCiel(map);
-  const majCiel = () => ciel.montrer(actif && etat.mode3D && !etat.enVisite ? soleil() : null);
+  // Une visite ou une sortie montre son propre soleil (visite-station.js, sortie-ombre.js)
+  const majCiel = () => ciel.montrer(actif && etat.mode3D && !etat.enVisite && !etat.ombreSortie ? soleil() : null);
 
   // ---------- Couches selon le soleil ----------
   let adresse = null;
@@ -104,6 +105,7 @@ export function initOmbres(map, { details, eteindre }) {
   function appliquer() {
     majCiel();
     if (etat.enVisite) return; // la visite masque la carte et la rétablit ensuite
+    if (etat.ombreSortie) return; // l'ombre d'une sortie a la place ; elle rappelle etat.majOmbres en s'éteignant
     const voir = actif && soleil() && !nuit();
     etat.ombresSoleil = actif;
     if (map.getLayer('ombrage')) {

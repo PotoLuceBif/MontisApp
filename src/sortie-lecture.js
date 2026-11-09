@@ -71,7 +71,7 @@ function dateIso(texte) {
 }
 
 // Points [{ t, lng, lat, alt… }] -> sortie en colonnes, sans les canaux vides
-export function construireSortie({ points, nom = null, type = null, format, coupures = [] }) {
+export function construireSortie({ points, nom = null, type = null, format, coupures = [], decalage = null }) {
   const valides = [];
   const indicesCoupures = new Set();
   let coupureEnAttente = false;
@@ -108,6 +108,8 @@ export function construireSortie({ points, nom = null, type = null, format, coup
     debut: dates ? colonnes.t[0] : null,
     points: colonnes,
     coupures: [...indicesCoupures].sort((a, b) => a - b),
+    // Fuseau du lieu en minutes (heure locale moins heure universelle), quand le fichier le donne
+    decalage,
   };
 }
 
@@ -247,7 +249,7 @@ export function lireFitSortie(tampon) {
   } catch (erreur) {
     throw erreur.code ? erreur : erreurSortie('invalide');
   }
-  return construireSortie({ points: fit.points, nom: fit.nom, type: typeDepuisSportFit(fit.sport), format: 'fit' });
+  return construireSortie({ points: fit.points, nom: fit.nom, type: typeDepuisSportFit(fit.sport), format: 'fit', decalage: fit.decalage });
 }
 
 // Lit un fichier dont on connaît le format ; contenu texte, ou ArrayBuffer pour le FIT
