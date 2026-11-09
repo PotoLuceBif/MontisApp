@@ -3575,3 +3575,34 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
   #menu-tiroir { overflow: hidden; }
   body:has(#menu-tiroir.ouvert) .maplibregl-ctrl-bottom-left { visibility: hidden; }
 }
+
+/* Soleil dans le ciel en 3D (soleil-ciel.js) : le point (0, 0) de l'élément est le centre du soleil */
+.soleil-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
+.soleil-ciel[hidden] { display: none; }
+.soleil-ciel > i { position: absolute; border-radius: 50%; }
+.soleil-ciel-halo { left: -46px; top: -46px; width: 92px; height: 92px; background: radial-gradient(circle, rgb(255 226 150 / .55) 0%, rgb(255 200 90 / .18) 45%, transparent 70%); }
+.soleil-ciel-disque { left: -15px; top: -15px; width: 30px; height: 30px; background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); box-shadow: 0 0 18px 6px rgb(255 210 110 / .6); }
+.soleil-ciel-fleche { display: none; }
+.soleil-ciel.derriere { opacity: .4; }
+.soleil-ciel.derriere .soleil-ciel-halo { display: none; }
+/* Hors du champ : petit soleil au bord, flèche vers lui */
+.soleil-ciel.bord .soleil-ciel-halo { left: -22px; top: -22px; width: 44px; height: 44px; }
+.soleil-ciel.bord .soleil-ciel-disque { left: -9px; top: -9px; width: 18px; height: 18px; box-shadow: 0 0 10px 3px rgb(255 210 110 / .55), 0 0 0 2px rgb(14 20 42 / .55); }
+.soleil-ciel.bord .soleil-ciel-fleche {
+  display: block; left: -18px; top: -18px; width: 36px; height: 36px; border-radius: 0;
+  background: linear-gradient(#ffd36b, #ffd36b) center 0 / 2px 0 no-repeat;
+}
+.soleil-ciel.bord .soleil-ciel-fleche::before {
+  content: ''; position: absolute; left: 50%; top: -7px; margin-left: -6px; border: 6px solid transparent; border-top: 0; border-bottom: 8px solid #ffd36b;
+  filter: drop-shadow(0 0 2px rgb(14 20 42 / .8));
+}
+
+/* Ombre du soleil pendant une visite (visite-station.js) : jour, heure et position du soleil */
+.ski-visite-calques .visite-soleil { display: grid; flex-basis: 100%; gap: 8px; padding: 4px 0 2px; }
+.visite-soleil[hidden] { display: none; }
+.visite-soleil .ombres-curseur { height: 28px; }
+.visite-soleil .ombres-soleil { font-size: 12px; color: var(--texte-2); }
+.visite-soleil .ombres-cadran { width: 26px; height: 26px; }
+/* Fiche réduite : seulement l'heure, pour voir l'ombre bouger sans rouvrir la fiche */
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure) { display: none; }
+.ombres-details > .soleil-reglage { display: contents; }

@@ -472,6 +472,8 @@
   "visite.courbes-aide": "Contour lines and elevations",
   "visite.pentes": "Slopes 30°+",
   "visite.pentes-aide": "Slopes steeper than 30 degrees",
+  "visite.ombres": "Sun shadows",
+  "visite.ombres-aide": "Terrain shadows from the sun at the chosen day and time",
   "visite.recentrer": "Recentre",
   "meteo.code.0": "Clear sky",
   "meteo.code.1": "Mainly clear",

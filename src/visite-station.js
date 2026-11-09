@@ -6,6 +6,11 @@ import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
 import { expressionAltitude, formatDenivele, formatLongueur, imperial } from './unites.js';
 import { poser, t } from './i18n.js';
+import { ZOOM_MAX_OMBRES } from './ombre-tuile.js';
+import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
+import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE } from './ombre-couches.js';
+import { creerReglageSoleil } from './soleil-reglage.js';
+import { creerSoleilCiel } from './soleil-ciel.js';
 
 const SOURCE_PISTES = 'visite-pistes';
 const SOURCE_MASQUE = 'visite-masque';
@@ -52,6 +57,10 @@ const CLASSES_PENTES = [
   ['visite.45-plus', '#c98abf'],
 ];
 const ICONE_COURBES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18c3-1 4-5 9-5s6 4 9 5"/><path d="M6 13c2-.8 3-4 6-4s4 3.2 6 4"/><path d="M9.5 8c.9-.6 1.4-2 2.5-2s1.600 1.400 2.500 2"/></svg>';
+const ICONE_SOLEIL = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+// Ombre du soleil pendant la visite : même mécanique que Carte › Relief (ombres.js)
+const COUCHE_OMBRE_SOLEIL = 'visite-ombre-soleil';
+const SOURCE_OMBRE_PORTEE = 'visite-ombre-portee';
 const ICONE_PENTES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18L6.500 6 3 20Z"/><path d="M11.500 20a7 7 0 0 0-1.400-4.200"/></svg>';
 // Sous un fond en image, le décor dessiné ferait double emploi
 const COUCHES_DECOR = {
@@ -498,13 +507,18 @@ export function creerVisiteStation(map, {
   const fonds = ete ? FONDS_BIKEPARK : FONDS_SKI;
   // Réglages séparés pour le ski et les bike parks ; le fond général de l'app n'est jamais touché
   const CLES = ete
-    ? { fond: 'bikepark-fond', courbes: 'bikepark-courbes', pentes: 'bikepark-pentes' }
-    : { fond: 'visite-fond-ski', courbes: 'visite-courbes', pentes: 'visite-pentes' };
+    ? { fond: 'bikepark-fond', courbes: 'bikepark-courbes', pentes: 'bikepark-pentes', ombres: 'bikepark-ombres' }
+    : { fond: 'visite-fond-ski', courbes: 'visite-courbes', pentes: 'visite-pentes', ombres: 'visite-ombres' };
   let enCours = null; // { vue, etaitEn3D, communes, calquesMasques, cadre, reliefCoupe }
   let idsCalques = [];
   let popup = null;
   let courbesVisibles = lire(CLES.courbes, true);
   let pentesVisibles = lire(CLES.pentes, false);
+  let ombresVisibles = lire(CLES.ombres, false);
+  let adresseOmbre = null;
+  let minuteurOmbre = null;
+  let reglageSoleil = null; // créé au premier affichage des options, puis déplacé d'une fiche à l'autre
+  let ciel = null;
   let idFond = fonds.some(({ id }) => id === lire(CLES.fond, '')) ? lire(CLES.fond, '') : fonds[0].id;
   const choixFond = new Set();
 
@@ -618,9 +632,35 @@ export function creerVisiteStation(map, {
       map.addSource(`visite-image-${id}`, { type: 'raster', tiles, tileSize, maxzoom, bounds: cadreCarte, attribution: credit });
       map.addLayer({ id: `visite-image-${id}`, type: 'raster', source: `visite-image-${id}`, layout: { visibility: 'none' } }, 'visite-forets');
     });
+    // Ombre du soleil : au-dessus du fond et du décor, sous les pentes, les courbes et les pistes
+    map.addLayer({
+      id: COUCHE_OMBRE_SOLEIL,
+      type: 'hillshade',
+      source: SOURCES_LIMITEES.ombrage,
+      layout: { visibility: 'none' },
+      paint: PEINTURE_OMBRAGE,
+    }, 'visite-pentes');
+    map.addSource(SOURCE_OMBRE_PORTEE, {
+      type: 'raster',
+      tiles: [adresseTuilesOmbre({ azimut: 180, hauteur: 30 })],
+      tileSize: 256,
+      minzoom: ZOOM_MIN_PORTEES,
+      maxzoom: ZOOM_MAX_OMBRES,
+      bounds: cadreCarte,
+    });
+    map.addLayer({
+      id: SOURCE_OMBRE_PORTEE,
+      type: 'raster',
+      source: SOURCE_OMBRE_PORTEE,
+      minzoom: ZOOM_MIN_PORTEES,
+      layout: { visibility: 'none' },
+      paint: { 'raster-opacity': 0.5, 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
+    }, 'visite-pentes');
+    adresseOmbre = null;
     enCours.limites = limitesPistes;
     idsCalques = map.getStyle().layers.map(({ id }) => id).filter((id) => id.startsWith('visite-'));
     appliquerFondVisite();
+    majOmbresVisite();
   }
 
   function appliquerFondVisite() {
@@ -633,6 +673,8 @@ export function creerVisiteStation(map, {
     Object.values(COUCHES_DECOR).flat().forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', caches.includes(id) ? 'none' : 'visible');
     });
+    // L'ombre du soleil remplace l'ombrage fixe du décor
+    if (ombresVisibles && map.getLayer('visite-ombrage')) map.setLayoutProperty('visite-ombrage', 'visibility', 'none');
     // OpenTopoMap a déjà ses courbes ; sur une photo, seul le blanc reste lisible
     const photo = idFond === 'satellite';
     if (map.getLayer('visite-courbes')) {
@@ -673,7 +715,7 @@ export function creerVisiteStation(map, {
     idsCalques.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
     idsCalques = [];
     const images = fonds.map(({ id }) => `visite-image-${id}`);
-    [...Object.values(SOURCES_LIMITEES), ...images, SOURCE_PENTES, SOURCE_MASQUE, SOURCE_PISTES].forEach((id) => {
+    [...Object.values(SOURCES_LIMITEES), ...images, SOURCE_PENTES, SOURCE_OMBRE_PORTEE, SOURCE_MASQUE, SOURCE_PISTES].forEach((id) => {
       if (map.getSource(id)) map.removeSource(id);
     });
   }
@@ -725,6 +767,8 @@ export function creerVisiteStation(map, {
 
       masquerCarte();
       etat.enVisite = true;
+      etat.majOmbres?.(); // le soleil de Carte › Relief laisse la place à celui de la visite
+      map.on('moveend', suivreSoleil);
       creerCalques(donnees, communes);
       imposerCiel(brouillard(decor.brume));
       map.on('click', surClic);
@@ -797,6 +841,9 @@ export function creerVisiteStation(map, {
     map.off('click', surClic);
     map.off('mousemove', surSurvol);
     map.off('moveend', majPastilleRetour);
+    map.off('moveend', suivreSoleil);
+    clearTimeout(minuteurOmbre);
+    ciel?.montrer(null);
     pastilleRetour.hidden = true;
     map.getCanvas().style.cursor = '';
     retirerCalques();
@@ -822,6 +869,50 @@ export function creerVisiteStation(map, {
       map.setLayoutProperty('visite-pentes', 'visibility', visibles ? 'visible' : 'none');
     }
   }
+
+  // ---------- Ombre du soleil ----------
+  function majOmbresVisite({ attendre = false } = {}) {
+    if (!enCours || !map.getLayer(COUCHE_OMBRE_SOLEIL)) return;
+    const soleil = ombresVisibles && reglageSoleil ? reglageSoleil.calculer() : null;
+    const voir = !!soleil && soleil.hauteur > 0;
+    appliquerFondVisite(); // l'ombrage fixe du décor revient quand l'ombre du soleil s'éteint
+    map.setLayoutProperty(COUCHE_OMBRE_SOLEIL, 'visibility', voir ? 'visible' : 'none');
+    map.setLayoutProperty(SOURCE_OMBRE_PORTEE, 'visibility', voir ? 'visible' : 'none');
+    ciel?.montrer(soleil);
+    if (soleil) reglageSoleil.majTextes();
+    clearTimeout(minuteurOmbre);
+    if (!voir) return;
+    eclairer(map, COUCHE_OMBRE_SOLEIL, SOURCE_OMBRE_PORTEE, soleil, lire('ombres-intensite', 0.45));
+    // L'ombre portée se recalcule à chaque changement : pendant un glissement, on attend que le doigt se pose
+    const adresse = adresseTuilesOmbre(soleil);
+    if (adresse === adresseOmbre) return;
+    const faire = () => {
+      adresseOmbre = adresse;
+      map.getSource(SOURCE_OMBRE_PORTEE)?.setTiles([adresse]);
+    };
+    if (attendre) minuteurOmbre = setTimeout(faire, 350);
+    else faire();
+  }
+
+  function preparerOmbres() {
+    if (reglageSoleil) return;
+    ajouterProtocoleOmbre();
+    reglageSoleil = creerReglageSoleil(map, {
+      surChangement: (options) => majOmbresVisite(options),
+      actif: () => !!enCours && ombresVisibles,
+    });
+    reglageSoleil.element.classList.add('visite-soleil');
+    ciel = creerSoleilCiel(map);
+  }
+
+  function afficherOmbres(visibles) {
+    ombresVisibles = visibles;
+    ecrire(CLES.ombres, visibles);
+    reglageSoleil.element.hidden = !visibles;
+    majOmbresVisite();
+  }
+
+  const suivreSoleil = () => { if (ombresVisibles) majOmbresVisite(); }; // le soleil se calcule au centre
 
   function creerBoutonCalque(icone, libelle, description, actif, surChangement) {
     const bouton = document.createElement('button');
@@ -885,6 +976,14 @@ export function creerVisiteStation(map, {
       surChangement();
     });
 
+    preparerOmbres();
+    reglageSoleil.element.hidden = !ombresVisibles;
+    const ombres = creerBoutonCalque(ICONE_SOLEIL, t('visite.ombres'), t('visite.ombres-aide'), ombresVisibles, (coche) => {
+      afficherOmbres(coche);
+      surChangement();
+    });
+    ombres.classList.add('visite-option-ombres');
+
     const recentrage = document.createElement('button');
     recentrage.type = 'button';
     recentrage.className = 'ski-visite-calque visite-recentrer';
@@ -893,8 +992,9 @@ export function creerVisiteStation(map, {
     recentrage.setAttribute('aria-label', t('visite.recentrer'));
     recentrage.addEventListener('click', () => recentrer());
 
-    bloc.append(courbes, pentes, recentrage, legende, choix);
+    bloc.append(courbes, pentes, ombres, recentrage, legende, reglageSoleil.element, choix);
     choixFond.add(bloc);
+    majOmbresVisite();
     return bloc;
   }
 
