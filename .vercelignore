@@ -7,3 +7,4 @@ captures/
 scripts/cache-*.json
 node_modules
 dist
+exemples/

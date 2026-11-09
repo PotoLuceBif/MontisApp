@@ -1050,7 +1050,7 @@
   "hl.vide": "Cache vidé.",
   "hl.vider-erreur": "Le cache n’a pas pu être vidé.",
   "params.sauvegarde": "Sauvegarde",
-  "sauv.aide": "Exporte dans un fichier .json tes réglages (thème, unités, langue, panneaux) et Mes parcours Rando et Vélo, puis importe-le sur ce téléphone ou un autre pour tout retrouver.",
+  "sauv.aide": "Exporte dans un fichier .json tes réglages (thème, unités, langue, panneaux), Mes parcours Rando et Vélo et les sorties de Mes traces, puis importe-le sur ce téléphone ou un autre pour tout retrouver.",
   "sauv.exclusion": "Les zones de carte hors ligne ne sont pas incluses : trop lourdes, elles se retéléchargent depuis Données hors ligne.",
   "sauv.exporter": "Exporter",
   "sauv.importer": "Importer",
@@ -1059,7 +1059,7 @@
   "sauv.remplacer": "Remplacer",
   "sauv.annuler": "Annuler",
   "sauv.confirmer": "Importer la sauvegarde",
-  "sauv.remplacer-confirmer": "Remplacer tous tes réglages et parcours actuels par ceux du fichier ? Cette action ne peut pas être annulée.",
+  "sauv.remplacer-confirmer": "Remplacer tous tes réglages, parcours et sorties actuels par ceux du fichier ? Cette action ne peut pas être annulée.",
   "sauv.importee": "Sauvegarde importée. Montis redémarre pour l’appliquer…",
   "sauv.vide": "Import annulé.",
   "sauv.du": "Sauvegarde du {date}",
@@ -1076,11 +1076,11 @@
     "un": "remplacent le parcours actuel ({n})",
     "autre": "remplacent les {n} parcours actuels"
   },
-  "sauv.fusion-aide": "Fusionner : les réglages du fichier remplacent les vôtres un par un, et ses parcours s’ajoutent aux vôtres. Rien n’est supprimé.",
-  "sauv.remplacement-aide": "Remplacer : tes réglages et parcours actuels sont effacés, puis remplacés par ceux du fichier.",
+  "sauv.fusion-aide": "Fusionner : les réglages du fichier remplacent les tiens un par un, et ses parcours et sorties s’ajoutent aux tiens. Rien n’est supprimé.",
+  "sauv.remplacement-aide": "Remplacer : tes réglages, parcours et sorties actuels sont effacés, puis remplacés par ceux du fichier.",
   "sauv.lecture": "Vérification du fichier…",
   "sauv.verifiee": "Fichier valide. Vérifie ce qui va être importé :",
-  "sauv.erreur-taille": "Fichier trop lourd pour une sauvegarde Montis (plus de 20 Mo).",
+  "sauv.erreur-taille": "Fichier trop lourd pour une sauvegarde Montis (plus de 100 Mo).",
   "sauv.erreur-json": "Ce fichier n’est pas un JSON lisible. Choisis un fichier exporté depuis Montis.",
   "sauv.erreur-format": "Ce fichier n’est pas une sauvegarde Montis.",
   "sauv.erreur-version-invalide": "Version de sauvegarde absente ou invalide : le fichier semble abîmé.",
@@ -1093,6 +1093,21 @@
     "autre": "{n} nouveaux"
   },
   "sauv.aucun-nouveau": "déjà présents, ils sont mis à jour",
+  "sauv.sorties": "Sorties de Mes traces",
+  "sauv.nouvelles": {
+    "un": "{n} nouvelle, les autres sont mises à jour",
+    "autre": "{n} nouvelles, les autres sont mises à jour"
+  },
+  "sauv.toutes-nouvelles": {
+    "un": "{n} nouvelle",
+    "autre": "{n} nouvelles"
+  },
+  "sauv.aucune-nouvelle": "déjà présentes, elles sont mises à jour",
+  "sauv.remplacent-sorties": {
+    "un": "remplacent la sortie actuelle ({n})",
+    "autre": "remplacent les {n} sorties actuelles"
+  },
+  "sauv.erreur-sorties": "Les sorties du fichier sont incomplètes ou abîmées : rien n’a été importé.",
   "soleil.titre": "Soleil",
   "soleil.titre-jour": "Soleil · {jour}",
   "soleil.course-aria": "Course du soleil au-dessus de l’horizon, de 0 h à 24 h",
