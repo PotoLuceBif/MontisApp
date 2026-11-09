@@ -1,6 +1,6 @@
 // Section « Sauvegarde » des Paramètres : export et import d'un fichier .json,
 // avec aperçu et choix entre fusionner et remplacer.
-import { appliquerSauvegarde, lireSauvegarde, resumerSauvegarde, telechargerSauvegarde } from './sauvegarde.js';
+import { appliquerSauvegarde, idsSortiesActuelles, lireSauvegarde, resumerSauvegarde, telechargerSauvegarde } from './sauvegarde.js';
 import { dateEtHeure, poser, surLangue, t } from './i18n.js';
 import { THEMES } from './apparence.js';
 
@@ -11,8 +11,12 @@ const el = (balise, classe, cle, variables) => {
   return element;
 };
 
+// Les sorties sont au féminin : leurs propres textes
+const SORTIES = { remplacent: 'sauv.remplacent-sorties', tous: 'sauv.toutes-nouvelles', nouveauxCle: 'sauv.nouvelles', aucun: 'sauv.aucune-nouvelle' };
+
 export function creerSectionSauvegarde(section) {
   let sauvegarde = null;
+  let idsSorties = new Set();
   let mode = 'fusion';
 
   const ligne = el('div', 'params-ligne');
@@ -22,8 +26,13 @@ export function creerSectionSauvegarde(section) {
   const boutons = el('div', 'params-boutons');
   const exporter = el('button', 'btn-secondaire', 'sauv.exporter');
   exporter.type = 'button';
-  exporter.addEventListener('click', () => {
-    telechargerSauvegarde();
+  exporter.addEventListener('click', async () => {
+    exporter.disabled = true;
+    try {
+      await telechargerSauvegarde();
+    } finally {
+      exporter.disabled = false;
+    }
     poser(message, 'sauv.exportee');
     message.classList.remove('params-erreur');
   });
@@ -63,9 +72,11 @@ export function creerSectionSauvegarde(section) {
   annuler.addEventListener('click', () => fermerApercu());
   const confirmer = el('button', 'btn-secondaire btn-principal', 'sauv.confirmer');
   confirmer.type = 'button';
-  confirmer.addEventListener('click', () => {
+  confirmer.addEventListener('click', async () => {
     if (mode === 'remplacement' && !confirm(t('sauv.remplacer-confirmer'))) return;
-    const reussi = appliquerSauvegarde(sauvegarde, mode);
+    confirmer.disabled = true;
+    const reussi = await appliquerSauvegarde(sauvegarde, mode);
+    confirmer.disabled = false;
     if (!reussi) {
       afficherErreur('sauv.erreur-ecriture');
       return;
@@ -100,21 +111,23 @@ export function creerSectionSauvegarde(section) {
   const libelleUnites = (id) => (id ? t(id === 'imperial' ? 'params.imperial' : 'params.metrique') : '—');
   const libelleLangue = (id) => ({ fr: 'Français', en: 'English' })[id] ?? '—';
 
-  function precisionParcours(total, nouveaux, actuels) {
-    if (mode !== 'fusion') return t('sauv.remplacent', { n: actuels });
+  function precisionParcours(total, nouveaux, actuels, cles = {}) {
+    const { remplacent = 'sauv.remplacent', tous = 'sauv.tous-nouveaux', nouveauxCle = 'sauv.nouveaux', aucun = 'sauv.aucun-nouveau' } = cles;
+    if (mode !== 'fusion') return t(remplacent, { n: actuels });
     if (!total) return '';
-    if (nouveaux === total) return t('sauv.tous-nouveaux', { n: nouveaux });
-    return nouveaux ? t('sauv.nouveaux', { n: nouveaux }) : t('sauv.aucun-nouveau');
+    if (nouveaux === total) return t(tous, { n: nouveaux });
+    return nouveaux ? t(nouveauxCle, { n: nouveaux }) : t(aucun);
   }
 
   function rendreApercu() {
     if (!sauvegarde) return;
-    const resume = resumerSauvegarde(sauvegarde);
+    const resume = resumerSauvegarde(sauvegarde, idsSorties);
     titreApercu.textContent = resume.date ? t('sauv.du', { date: dateEtHeure(resume.date) }) : t('sauv.sans-date');
     const lignes = [
       [t('sauv.reglages'), t('sauv.reglages-detail', { theme: libelleTheme(resume.theme), unites: libelleUnites(resume.unites), langue: libelleLangue(resume.langue) }), String(resume.nombreReglages)],
       [t('sauv.parcours-rando'), precisionParcours(resume.rando, resume.nouveauxRando, resume.actuelsRando), String(resume.rando)],
       [t('sauv.parcours-velo'), precisionParcours(resume.velo, resume.nouveauxVelo, resume.actuelsVelo), String(resume.velo)],
+      [t('sauv.sorties'), precisionParcours(resume.sorties, resume.nouvellesSorties, resume.actuellesSorties, SORTIES), String(resume.sorties)],
     ];
     contenu.replaceChildren(...lignes.flatMap(([titre, precision, valeur]) => {
       const terme = el('dt');
@@ -143,6 +156,7 @@ export function creerSectionSauvegarde(section) {
     message.classList.remove('params-erreur');
     try {
       sauvegarde = await lireSauvegarde(fichier);
+      idsSorties = await idsSortiesActuelles();
     } catch (probleme) {
       sauvegarde = null;
       afficherErreur(probleme.cle ?? 'sauv.erreur-json', probleme.variables);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FORMAT, VERSION, lireSauvegarde } from '../src/sauvegarde.js';
+import { FORMAT, VERSION, lireSauvegarde, sortieValide } from '../src/sauvegarde.js';
 
 const fichier = (contenu) => {
   const texte = typeof contenu === 'string' ? contenu : JSON.stringify(contenu);
@@ -29,5 +29,29 @@ describe('lireSauvegarde', () => {
   it('refuse un tronçon au tracé abîmé', async () => {
     await expect(lireSauvegarde(fichier(sauvegarde([parcours([etape(6, 45), etape(6.1, 45.1, [[6, 45], ['x', null]])])]))))
       .rejects.toMatchObject({ cle: 'sauv.erreur-parcours' });
+  });
+});
+
+describe('sorties dans la sauvegarde', () => {
+  const sortie = (points) => ({ id: 's1', nom: 'Rando', type: 'rando', format: 'gpx', debut: 1, points, coupures: [] });
+  const points = { lng: [6, 6.1], lat: [45, 45.1], alt: [1000, null] };
+
+  it('lit une sauvegarde sans sorties (version 1)', async () => {
+    const lue = await lireSauvegarde(fichier({ ...sauvegarde([]), version: 1 }));
+    expect(lue.sorties).toEqual([]);
+  });
+
+  it('accepte une sortie aux colonnes de même longueur', async () => {
+    const lue = await lireSauvegarde(fichier({ ...sauvegarde([]), sorties: [sortie(points)] }));
+    expect(lue.sorties).toHaveLength(1);
+  });
+
+  it('refuse une sortie abîmée', async () => {
+    expect(sortieValide(sortie({ ...points, alt: [1000] }))).toBe(false);
+    expect(sortieValide(sortie({ lng: [6, 'x'], lat: [45, 45.1] }))).toBe(false);
+    expect(sortieValide(sortie({ lng: [6], lat: [45] }))).toBe(false);
+    expect(sortieValide({ ...sortie(points), id: '' })).toBe(false);
+    await expect(lireSauvegarde(fichier({ ...sauvegarde([]), sorties: [sortie({ lng: [6], lat: [45] })] })))
+      .rejects.toMatchObject({ cle: 'sauv.erreur-sorties' });
   });
 });

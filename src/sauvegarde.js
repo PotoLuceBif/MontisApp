@@ -1,13 +1,15 @@
 // Sauvegarde dans un fichier .json : réglages (thème, unités, langue, panneaux…) et
-// « Mes parcours » Rando et Vélo. Les zones de carte hors ligne n'y sont pas : trop lourdes.
+// « Mes parcours » Rando et Vélo, et les sorties de Mes traces (IndexedDB, lues à la demande).
+// Les zones de carte hors ligne n'y sont pas : trop lourdes.
 import { toutLire, toutRemplacer } from './reglages.js';
 import { t } from './i18n.js';
 
 export const FORMAT = 'montis-sauvegarde';
-export const VERSION = 1;
+// Version 2 : ajout des sorties (une sauvegarde de version 1 n'en a pas)
+export const VERSION = 2;
 const ACTIVITES = ['rando', 'velo'];
 const CLE_FINESSE = 'montis.finesse';
-const TAILLE_MAX = 20 * 1024 * 1024;
+const TAILLE_MAX = 100 * 1024 * 1024;
 // Propres à cet appareil ou recalculées : inutiles dans une sauvegarde
 const REGLAGES_EXCLUS = ['menu-activite'];
 
@@ -22,7 +24,19 @@ function lireListe(cle) {
   }
 }
 
-export function creerSauvegarde() {
+// Chargé à la demande : le stockage des sorties n'a rien à faire au démarrage
+const stockageSorties = () => import('./sorties-stockage.js');
+
+async function lireSorties() {
+  try {
+    return await (await stockageSorties()).toutesLesSorties();
+  } catch (probleme) {
+    console.warn('Sorties non lues :', probleme);
+    return [];
+  }
+}
+
+export async function creerSauvegarde() {
   const reglages = toutLire();
   REGLAGES_EXCLUS.forEach((cle) => delete reglages[cle]);
   let finesse = null;
@@ -38,11 +52,13 @@ export function creerSauvegarde() {
     reglages,
     finesse,
     parcours: Object.fromEntries(ACTIVITES.map((activite) => [activite, lireListe(cleParcours(activite))])),
+    sorties: await lireSorties(),
   };
 }
 
-export function telechargerSauvegarde() {
-  const contenu = JSON.stringify(creerSauvegarde(), null, 2);
+export async function telechargerSauvegarde() {
+  // Sans indentation : les points des sorties prendraient une ligne chacun
+  const contenu = JSON.stringify(await creerSauvegarde());
   const lien = document.createElement('a');
   lien.href = URL.createObjectURL(new Blob([contenu], { type: 'application/json' }));
   lien.download = `montis-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
@@ -68,6 +84,26 @@ const parcoursValide = (parcours) =>
   && typeof parcours.nom === 'string'
   && Array.isArray(parcours.etapes) && parcours.etapes.every(etapeValide);
 
+const nombreOuNul = (valeur) => valeur === null || Number.isFinite(valeur);
+
+// Une sortie abîmée planterait sa vue : colonnes de même longueur, coordonnées toutes valides
+export function sortieValide(sortie) {
+  if (!sortie || typeof sortie !== 'object' || typeof sortie.id !== 'string' || !sortie.id) return false;
+  if (sortie.nom != null && typeof sortie.nom !== 'string') return false;
+  if (sortie.type != null && typeof sortie.type !== 'string') return false;
+  if (sortie.debut != null && !Number.isFinite(sortie.debut)) return false;
+  const points = sortie.points;
+  if (!points || typeof points !== 'object' || !Array.isArray(points.lng) || !Array.isArray(points.lat)) return false;
+  const n = points.lng.length;
+  if (n < 2 || points.lat.length !== n) return false;
+  if (!points.lng.every(Number.isFinite) || !points.lat.every(Number.isFinite)) return false;
+  for (const [canal, valeurs] of Object.entries(points)) {
+    if (canal === 'lng' || canal === 'lat' || valeurs == null) continue;
+    if (!Array.isArray(valeurs) || valeurs.length !== n || !valeurs.every(nombreOuNul)) return false;
+  }
+  return sortie.coupures == null || (Array.isArray(sortie.coupures) && sortie.coupures.every(Number.isInteger));
+}
+
 // Vérifie le fichier avant d'y toucher : un message clair plutôt qu'un import à moitié fait
 export async function lireSauvegarde(fichier) {
   if (fichier.size > TAILLE_MAX) throw erreur('sauv.erreur-taille');
@@ -88,17 +124,20 @@ export async function lireSauvegarde(fichier) {
     if (!Array.isArray(liste) || !liste.every(parcoursValide)) throw erreur('sauv.erreur-parcours');
     parcours[activite] = liste;
   }
+  const sorties = donnees.sorties ?? [];
+  if (!Array.isArray(sorties) || !sorties.every(sortieValide)) throw erreur('sauv.erreur-sorties');
   return {
     date: Number.isNaN(Date.parse(donnees.date)) ? null : Date.parse(donnees.date),
     reglages: donnees.reglages,
     finesse: typeof donnees.finesse === 'string' ? donnees.finesse : null,
     parcours,
+    sorties,
   };
 }
 
 // `mode` : 'fusion' ajoute au contenu actuel (le fichier l'emporte en cas de doublon),
-// 'remplacement' efface d'abord réglages et parcours actuels
-export function appliquerSauvegarde(sauvegarde, mode) {
+// 'remplacement' efface d'abord réglages, parcours et sorties actuels
+export async function appliquerSauvegarde(sauvegarde, mode) {
   const actuels = toutLire();
   const reglages = mode === 'remplacement' ? { ...sauvegarde.reglages } : { ...actuels, ...sauvegarde.reglages };
   REGLAGES_EXCLUS.forEach((cle) => {
@@ -120,11 +159,28 @@ export function appliquerSauvegarde(sauvegarde, mode) {
     console.warn('Restauration :', erreurEcriture);
     reussi = false;
   }
+  if (sauvegarde.sorties.length || mode === 'remplacement') {
+    try {
+      await (await stockageSorties()).restaurerSorties(sauvegarde.sorties, mode);
+    } catch (erreurSorties) {
+      console.warn('Restauration des sorties :', erreurSorties);
+      reussi = false;
+    }
+  }
   return reussi;
 }
 
+// Identifiants des sorties déjà rangées, pour compter les nouvelles dans l'aperçu
+export async function idsSortiesActuelles() {
+  try {
+    return await (await stockageSorties()).idsDesSorties();
+  } catch {
+    return new Set();
+  }
+}
+
 // Ce que le fichier contient, pour l'aperçu avant import
-export function resumerSauvegarde(sauvegarde) {
+export function resumerSauvegarde(sauvegarde, idsSorties = new Set()) {
   const actuels = Object.fromEntries(ACTIVITES.map((activite) => [activite, lireListe(cleParcours(activite))]));
   const nouveaux = (activite) => {
     const ids = new Set(actuels[activite].map(({ id }) => id));
@@ -143,5 +199,8 @@ export function resumerSauvegarde(sauvegarde) {
     nouveauxVelo: nouveaux('velo'),
     actuelsRando: actuels.rando.length,
     actuelsVelo: actuels.velo.length,
+    sorties: sauvegarde.sorties.length,
+    nouvellesSorties: sauvegarde.sorties.filter(({ id }) => !idsSorties.has(id)).length,
+    actuellesSorties: idsSorties.size,
   };
 }

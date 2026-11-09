@@ -100,7 +100,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     activite,
     onFermer: fermerTout,
     onRetour: () => ouvrirMenu(),
-    onEnregistre: () => rendreMesParcours(),
+    onEnregistre: () => window.dispatchEvent(new CustomEvent('montis:parcours-modifies')),
     stockage,
   });
   const typeDe = (route) => activite.typeDe(route);
@@ -332,7 +332,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       const valider = () => {
         const valeur = champ.value.trim();
         if (valeur && valeur !== parcours.nom) stockage.renommer(parcours.id, valeur);
-        rendreMesParcours();
+        window.dispatchEvent(new CustomEvent('montis:parcours-modifies'));
       };
       champ.addEventListener('blur', valider);
       champ.addEventListener('keydown', (event) => {
@@ -350,7 +350,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     supprimer.addEventListener('click', () => {
       if (!confirm(t('parcours.supprimer-confirmer', { nom: parcours.nom }))) return;
       stockage.supprimer(parcours.id);
-      rendreMesParcours();
+      window.dispatchEvent(new CustomEvent('montis:parcours-modifies'));
     });
     ligne.append(ouvrir, renommer, supprimer);
     return ligne;
@@ -465,7 +465,23 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   }
   window.addEventListener('montis:demande', (event) => {
     if (event.detail === cleItineraire) reprendreItineraire();
+    if (event.detail === cleParcours) reprendreParcours();
   });
+
+  // Un parcours touché dans Mes traces › Parcours s'ouvre ici, comme depuis Mes parcours
+  const cleParcours = `ouvrir-parcours-${activite.id}`;
+  function reprendreParcours() {
+    const id = actif && reprendre(cleParcours);
+    if (!id) return;
+    const parcours = stockage.lister().find((autre) => autre.id === id);
+    if (!parcours) return;
+    fermerMenu();
+    itineraires.fermer();
+    decouverte.masquer();
+    editeur.ouvrirEnregistre(parcours);
+  }
+  // Renommé ou supprimé depuis Mes traces
+  window.addEventListener('montis:parcours-modifies', rendreMesParcours);
 
   return {
     id: activite.id,
@@ -478,6 +494,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       decouverte.activer();
       crochets.activer?.();
       reprendreItineraire();
+      reprendreParcours();
     },
     desactiver() {
       actif = false;

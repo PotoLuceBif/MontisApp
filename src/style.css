@@ -2861,6 +2861,24 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .parcours-parcours-texte strong { overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .parcours-parcours-texte small { overflow: hidden; color: var(--texte-2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .parcours-parcours .zh-zone-bouton svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Mes traces : sorties importées et parcours enregistrés */
+.traces { display: grid; gap: 8px; }
+.traces .rando-actions-principales { grid-template-columns: 1fr; }
+.traces .note { margin: 0; }
+.traces-message[hidden], .traces-vide[hidden] { display: none; }
+.traces-erreur { color: var(--erreur, #ff7a7a); }
+.traces-liste { display: grid; gap: 5px; }
+.traces-ligne-texte { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 48px; }
+.traces-ligne-texte > span:last-child { display: grid; gap: 2px; min-width: 0; }
+.traces-icone { width: 36px; height: 36px; border-radius: 9px; }
+.traces-icone-autre { display: grid; place-items: center; box-sizing: border-box; border: 1px solid var(--bord); background: var(--surface-2, var(--surface)); color: var(--texte-2); }
+.traces-icone-autre svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.bf-sortie .bf-resume-rose .traces-icone { width: 30px; height: 30px; }
+.bf-sortie .traces-types { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 10px; }
+.bf-sortie .parcours-stats { margin-bottom: 8px; }
+.traces-canaux { margin: 0 0 6px; color: var(--texte-2); font-size: 12px; }
+.bf-sortie .traces-a-venir { margin: 0; color: var(--texte-2); font-size: 12px; font-style: italic; }
 .parcours-alertes { display: grid; gap: 4px; }
 .parcours-alertes[hidden] { display: none; }
 .parcours-alerte {

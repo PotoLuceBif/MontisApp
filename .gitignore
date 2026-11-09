@@ -38,3 +38,6 @@ captures/
 
 # Liaison au projet Vercel (vercel link), propre Ã  cette machine
 .vercel
+
+# Fichiers réels de montre du propriétaire (positions personnelles)
+exemples/
