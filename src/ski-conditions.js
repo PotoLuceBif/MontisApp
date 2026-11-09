@@ -1,6 +1,7 @@
 // Enneigement (prévisions Open-Meteo) et risque d'avalanche (bulletins EAWS) d'une station
 import { formatAltitude, formatNeige, formatTemp, formatVent, nombre as formatNombre, uniteNeige, versNeige } from './unites.js';
 import { formatDate, t } from './i18n.js';
+import { requete as requeteReseau } from './requete.js';
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const URL_RISQUES = 'https://static.avalanche.report/eaws_bulletins';
 const DUREE_CACHE_NEIGE_MS = 30 * 60 * 1000;
@@ -82,7 +83,7 @@ export async function chargerNeige(feature) {
   });
   if (altitudes.length) params.set('elevation', altitudes.join(','));
 
-  const reponse = await fetch(`${API_PREVISIONS}?${params}`);
+  const reponse = await requeteReseau(`${API_PREVISIONS}?${params}`);
   const json = await reponse.json().catch(() => null);
   if (!reponse.ok || !json || json.error) throw new Error(json?.reason || `HTTP ${reponse.status}`);
 
@@ -147,7 +148,7 @@ export function creerBlocNeige({ points, jours, duHaut }) {
 // ---------- Risque d'avalanche ----------
 async function chargerNiveaux(date) {
   if (!cacheRisques.has(date)) {
-    const demande = fetch(`${URL_RISQUES}/${date}/${date}.ratings.json`)
+    const demande = requeteReseau(`${URL_RISQUES}/${date}/${date}.ratings.json`)
       .then((reponse) => {
         if (reponse.status === 404) return {}; // aucun bulletin publié pour cette date
         if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);

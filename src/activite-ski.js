@@ -8,6 +8,7 @@ import { formatAltitude, valeurAltitude } from './unites.js';
 import { locale, langue, surPreferences } from './preferences.js';
 import { t, ta, ti, poser } from './i18n.js';
 import { annoncerOutilActivite } from './outil-activite.js';
+import { requete as requeteReseau } from './requete.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -493,7 +494,7 @@ export function creerActiviteSki(map) {
         const url =
           `${URL_PHOTON}?q=${encodeURIComponent(texte)}&limit=15&lang=${langue()}&lat=${centre.lat.toFixed(3)}&lon=${centre.lng.toFixed(3)}` +
           '&osm_tag=leisure:ski_resort&osm_tag=landuse:winter_sports&osm_tag=site:piste';
-        return fetch(url, { signal }).then((reponse) => {
+        return requeteReseau(url, { signal }).then((reponse) => {
           if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
           return reponse.json();
         });

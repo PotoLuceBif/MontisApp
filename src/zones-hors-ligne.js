@@ -6,6 +6,8 @@ import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { formatDate, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { formatTaille, nombre } from './unites.js';
 import { telechargementBloque } from './donnees-hors-ligne.js';
+import { definitionSourceVecteur } from './source-vecteur.js';
+import { requete as requeteReseau } from './requete.js';
 
 const CACHE_ZONES = 'montis-zones';
 const CLE_ZONES = 'montis.zones';
@@ -103,7 +105,15 @@ function estimer(zone) {
 const remplir = (modele, { z, x, y }) => modele.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 
 async function urlsDeZone(zone) {
-  const { tiles } = await (await fetch(DESCRIPTION_FOND)).json();
+  // Adresse à jour des tuiles du fond ; à défaut, la dernière connue (la carte s'en sert déjà)
+  let { tiles } = definitionSourceVecteur();
+  try {
+    const reponse = await requeteReseau(DESCRIPTION_FOND, {}, 10000);
+    const description = reponse.ok ? await reponse.json() : null;
+    if (Array.isArray(description?.tiles) && description.tiles.length) tiles = description.tiles;
+  } catch (erreur) {
+    console.warn('Description du fond, adresse connue utilisée :', erreur);
+  }
   const { fond, relief } = tuilesDeZone(zone);
   return [
     ...fond.map((tuile) => ({ url: remplir(tiles[0], tuile), genre: 'fond' })),
@@ -140,7 +150,7 @@ async function telecharger(zone, { signal, onProgres }) {
     for (let essai = 1; essai <= ESSAIS; essai += 1) {
       if (signal.aborted) return;
       try {
-        const reponse = await fetch(url, { signal, cache: 'reload' });
+        const reponse = await requeteReseau(url, { signal, cache: 'reload' }, 20000);
         if (reponse.ok) {
           const taille = (await reponse.clone().blob()).size;
           await cache.put(cle, reponse);
@@ -154,6 +164,8 @@ async function telecharger(zone, { signal, onProgres }) {
         if (signal.aborted) return;
         if (erreur?.name === 'QuotaExceededError') throw erreur;
       }
+      // Liaison qui va et vient : laisser un peu de temps avant de réessayer
+      if (essai < ESSAIS) await new Promise((fin) => { setTimeout(fin, 1000 * essai); });
     }
     manquantes += 1;
   }
@@ -457,13 +469,14 @@ export function creerCartesHorsLigne(map, { fermerMenu = () => {}, ouvrirMenu = 
         panneau.definirResume({ valeur: '', unite: '' });
         return;
       }
+      // Réseau perdu en route : une zone surtout vide ne doit pas passer pour téléchargée
+      if (resultat.manquantes > resultat.tuiles / 2) throw new Error(`${resultat.manquantes} tuiles sur ${resultat.tuiles} manquantes`);
       zones = [...zones, { ...zone, octets: resultat.octets, manquantes: resultat.manquantes }];
       ecrireZones(zones);
       annoncerZones();
       panneau.definirResume({ detail: t('zh.termine'), valeur: '', unite: '' });
-      progres.textContent = resultat.manquantes
-        ? t('zh.termine-manquantes', { n: resultat.manquantes, taille: tailleLisible(resultat.octets) })
-        : t('zh.disponible', { nom: zone.nom, taille: tailleLisible(resultat.octets) });
+      if (resultat.manquantes) poser(progres, 'zh.termine-manquantes', { n: resultat.manquantes, taille: tailleLisible(resultat.octets) });
+      else poser(progres, 'zh.disponible', { nom: zone.nom, taille: tailleLisible(resultat.octets) });
       barre.style.width = '100%';
       poser($('.zh-annuler'), 'zh.fermer');
     } catch (erreur) {

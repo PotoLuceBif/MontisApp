@@ -17,7 +17,7 @@ npm test          # tests automatiques (Vitest, dans tests/)
 npm run captures  # captures téléphone et ordinateur dans captures/, avec rapport (voir ci-dessous)
 ```
 
-`npm test` vérifie les calculs purs (ouverture sur sa position, géologie, unités, vent, portée de vol, analyse de parcours, GPX, soleil, pente et distances de la fiche du point, frise météo, couches de pente et d'orientation, ombre portée, couverture et découpage des fonds de carte), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
+`npm test` vérifie les calculs purs (ouverture sur sa position, géologie, unités, vent, portée de vol, analyse de parcours, GPX, soleil, pente et distances de la fiche du point, frise météo, couches de pente et d'orientation, ombre portée, couverture et découpage des fonds de carte, lecture d'une sauvegarde, délai des requêtes), dans un navigateur simulé (jsdom). Un calcul ajouté ou modifié reçoit son test. Ni les tests ni `npm run build` ne détectent une erreur d'interface : une modification d'interface se vérifie avec `npm run captures` (Playwright et Chromium, préinstallés en session cloud). Le script lance son serveur, ouvre chaque écran (accueil, menu, Paramètres, chaque activité, chaque outil Météo et Carte) aux deux formats, et écrit `captures/rapport.txt` : erreurs JavaScript et textes restés en français après passage en anglais (un nom propre, comme celui d'une station, peut y figurer sans être une erreur). `npm run captures -- meteo` ne fait que les écrans dont le nom contient « meteo ». Regarder les captures avant de pousser, et les envoyer au propriétaire quand l'interface change. Un nouvel écran s'ajoute dans `ECRANS`. Le réseau des sessions cloud bloque certains serveurs (OpenFreeMap, polices de la carte, Open-Meteo…) : le fond, les textes de la carte ou les prévisions peuvent manquer sur les captures, le rapport le signale. En développement, la carte est accessible par `window.map`.
 
 Variables d'environnement : aucune n'est nécessaire (voir `.env.example`).
 
@@ -42,6 +42,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 
 **Direction artistique**
 - Sombre et pro, pas de blanc ou de bleu « enfantin ». L'interface reste propre, intuitive et professionnelle.
+- L'interface **tutoie** (« Vérifie ta connexion », « Touche la carte ») : décision du propriétaire du 9 novembre 2026. Messages d'échec en minuscule après les deux-points quand ils complètent une phrase (« Radar indisponible : le service ne répond pas pour l'instant. »).
 - Icônes d'activités : carrés arrondis avec dégradé et personnage blanc, dans le style du logo parapente (`public/icons/activites/`).
 - Pins de carte en forme de goutte (`public/pins/`).
 
@@ -105,7 +106,7 @@ Jamais pour un simple avancement.
 - **Carte géologique :** les tuiles passent par `montis-geol://` (`geologie.js`) pour rendre le blanc transparent ; MapLibre charge ces tuiles raster un niveau plus haut que le zoom affiché, d'où la recherche de couverture sur tous les niveaux déjà reçus (`centreCouvert`). Une emprise de `GetFeatureInfo` trop petite sort de l'échelle des couches du BRGM et ne renvoie rien (`adresseInfoBrgm`, 0,02° de demi-côté).
 - **Fonds nationaux et ordre des couches :** une carte nationale passe par `montis-fond://<id>/z/x/y` (`fonds-protocole.js`) : tuile hors du pays jamais demandée, tuile à cheval découpée au contour du pays. Elle se pose au-dessus de tout le fond Montis (`appliquerFond` y déplace routes et noms de Montis), qui complète au-delà. Pentes, ombres, géologie et calques officiels s'insèrent sous le repère `REPERE_CALQUES` (`style-montis.js`), jamais sous `montis-road-casing` : sinon une carte nationale les cache. swisstopo dessine ses tuiles 3857 avec des textes deux fois trop gros : ses sources sont déclarées en 128 px (`TUILE_SWISSTOPO`).
 - **Clé de tuile :** `cleTuile()` existe dans `sw-modele.js` et dans `zones-hors-ligne.js`. Les deux doivent rester identiques.
-- **Ordre au démarrage :** les couches s'ajoutent dans `map.on('load')`. Utiliser `quandPret(map, action)` pour agir sur le style.
+- **Ordre au démarrage :** l'interface et les couches se posent à `style.load` (`main.js`), jamais à `load` : `load` attend les premières tuiles, et sur un réseau lent l'appli restait plus d'une minute sans menu ni recherche. Utiliser `quandPret(map, action)` pour agir sur le style (pas `isStyleLoaded()`, qui repasse à faux pendant le chargement des tuiles).
 - **Source OpenFreeMap :** ne jamais la déclarer par `url` (TileJSON). Si le TileJSON échoue, MapLibre n'émet jamais `load` et rien de Montis n'apparaît. `definitionSourceVecteur()` donne des `tiles` directes ; `suivreDescriptionFond()` met à jour la version et affiche « Fond de carte indisponible » en cas d'échec.
 - **Visite et panneaux :** pendant une visite (`visite-station.js`), sur téléphone, la caméra garde une marge basse égale à la hauteur du panneau posé sur la carte (analyse du vent…), pour laisser la station visible au-dessus. Un panneau météo porte la classe `bf-meteo` : la fiche d'un bike park ne se ferme pas pour lui (`velo-bike-parks.js`), la visite continue.
 - **Clics sur la carte :** `peutOuvrirBalise` et `bloquerFiches` empêchent un clic d'ouvrir deux choses à la fois. Un outil qui capte les clics doit s'y brancher. `bloquerFiches(true)` coupe aussi l'appui long (fiche du point). Après un appui long, `fiche.js` absorbe le clic suivant en phase de capture sur le conteneur de la carte : MapLibre et les autres outils ne le voient pas.
@@ -150,6 +151,7 @@ src/                    Tout le code (détail ci-dessous)
 | `fiche.js` | Fiche d'un objet de la carte touché (via Overpass) ; appui long et clic droit pour la fiche du point |
 | `fiche-point.js`, `point-calcul.js` | Fiche d'un point quelconque (chargée au premier appui long) ; ses calculs purs : pente, orientation, distances, plus proche (testés) |
 | `relief-donnees.js`, `overpass.js` | Altitude, pente et orientation lues dans les tuiles de relief ; requêtes Overpass avec serveurs de repli et délai par serveur |
+| `requete.js` | `requete()` : fetch avec délai maximal (15 s par défaut, erreur `TimeoutError`) ; `messageErreur()` : message lisible d'un échec (hors réseau, trop long, trop de demandes, service en panne) |
 | `demandes.js` | Demandes déposées pour un module chargé à la demande, reprises à son ouverture (« Y aller » vers Randonnée ou Vélo) |
 
 **Carte (menu Carte et fond)**
@@ -234,7 +236,7 @@ Les bike parks sont des secteurs de pistes de descente d'OSM rattachés à la st
 
 ## Sources de données et limites
 
-Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours prévoir l'échec et l'afficher honnêtement.
+Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours prévoir l'échec et l'afficher honnêtement. Une requête vers un service passe par `requete()` (`requete.js`) : en montagne la liaison traîne plus souvent qu'elle ne coupe, et sans délai l'attente ne finit jamais. L'utilisateur lit `messageErreur()`, jamais le message technique (« Failed to fetch »). Seules exceptions : les tuiles (MapLibre les annule lui-même) et le travailleur des pentes, qui n'a pas accès au DOM.
 
 | Usage | Source | Limites connues |
 |---|---|---|
@@ -282,4 +284,4 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Au démarrage : 310 Ko de code Montis (100 Ko compressé), en deux fichiers : le code (176 Ko, dont 17 Ko pour le catalogue et le panneau des fonds du lot 3.10) et les deux fichiers de langue (135 Ko) ; MapLibre (1,1 Mo) à part. Les contours des pays (50 Ko) se chargent à la demande.
 - Les crédits de la carte (attribution MapLibre) restent dans la langue du chargement jusqu'à l'actualisation.
 
-**Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche = une PR), avec la barre qualité que chaque fonction doit franchir. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.
+**Feuille de route :** `docs/feuille-de-route.md` découpe la suite en lots (un lot = une branche), dans l'ordre validé le 9 novembre 2026, avec la barre qualité que chaque fonction doit franchir. Le détail des lots faits est dans `docs/historique.md` : y ajouter celui de chaque lot terminé. Quand le propriétaire demande « le lot X », le faire tel qu'il y est décrit, puis cocher le lot. Pour les décisions marquées « À décider », demander au propriétaire plutôt que supposer.

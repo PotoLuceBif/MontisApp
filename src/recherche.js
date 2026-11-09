@@ -1,9 +1,10 @@
 import * as maplibregl from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
-  import { obtenirBarre } from './barre-haut.js';
+import { obtenirBarre } from './barre-haut.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { t, ta, poser } from './i18n.js';
 import { langue } from './preferences.js';
+import { requete as requeteReseau } from './requete.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
@@ -286,7 +287,7 @@ export function initRecherche(map) {
       `&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`;
 
     try {
-      const rep = await fetch(url, { signal: controleur.signal });
+      const rep = await requeteReseau(url, { signal: controleur.signal });
       if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
       const donnees = await rep.json();
 

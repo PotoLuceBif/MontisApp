@@ -5,7 +5,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import { initMenu } from './menu.js';
 import { etat, majCourbes } from './options-carte.js';
-import { lire, ecrire } from './reglages.js';
+import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { retablirFond } from './fond-de-carte.js';
 import { initRecherche } from './recherche.js';
@@ -244,10 +244,13 @@ function appliquerMode(mode3D) {
     // 2D : on remet à plat, puis on bloque l'inclinaison
     majTerrain();
     if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'none');
-    map.easeTo({ pitch: 0, duration: 400 });
-    map.once('moveend', () => map.setMaxPitch(0));
-    map.setMaxPitch(0);
     map.touchPitch.disable();
+    // Bloquer tout de suite couperait l'animation : la carte se remet à plat, puis se bloque
+    if (map.getPitch() === 0) map.setMaxPitch(0);
+    else {
+      map.once('moveend', () => { if (!etat.mode3D) map.setMaxPitch(0); });
+      map.easeTo({ pitch: 0, duration: 400 });
+    }
   }
 
   ecrire('mode3D', mode3D);
@@ -294,8 +297,11 @@ const texteSommetFond = () => [
   expressionAltitude(['get', 'ele']),
 ];
 
-// ===== Tout ce qui s'ajoute une fois la carte chargée =====
-map.on('load', () => {
+// ===== Tout ce qui s'ajoute une fois le style prêt =====
+// Pas « load » : il attend les premières tuiles, et sur un réseau lent l'appli resterait
+// sans menu ni recherche. Le style est dans le code, il est prêt presque tout de suite.
+map.once('style.load', () => {
+  marquerPrete(map);
   // ---------- Courbes de niveau ----------
   map.addSource('courbes', {
     type: 'vector',

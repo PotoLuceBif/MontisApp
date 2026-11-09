@@ -521,7 +521,6 @@
   "radar.ms-aide": "The radar opens on the official website and is not overlaid on the Montis map.",
   "radar.attribution": "Weather radar: <a href=\"https://www.rainviewer.com/\" target=\"_blank\" rel=\"noopener noreferrer\">RainViewer</a>",
   "radar.chargement": "Loading radar images…",
-  "radar.statut-http": "The radar service responded with status {statut}.",
   "radar.charge": "Radar loaded · {n} images available.",
   "radar.indisponible": "Radar unavailable: {message}",
   "radar.titre": "Rain radar",
@@ -599,11 +598,8 @@
   "meteo.congelation": "Freezing level",
   "meteo.actualise": "Updated at {heure} · indicative mountain forecast.",
   "meteo.chargement": "Loading conditions and forecast…",
-  "meteo.limite": "Open-Meteo request limit reached. Try again later.",
-  "meteo.statut-http": "The weather service responded with status {statut}.",
   "meteo.sans-reseau": "{date}, viewed offline.",
   "meteo.trop-long": "the service is taking too long to respond. Check your connection and try again.",
-  "meteo.erreur-inconnue": "unknown error",
   "meteo.hors-ligne": "Offline: no forecast saved for this place.",
   "meteo.erreur": "Forecast unavailable: {message}",
   "vent.aujourdhui-heure": "Today · {heure}",
@@ -1337,5 +1333,9 @@
   "geologie.bulle-secteur": "Dominant rock of the area, from the 1:1,000,000 map: the sheet’s notes give the detail.",
   "geologie.identifier": "Identify a rock",
   "geologie.identifier-toucher": "Tap the map: the rock of the area, what it means on the ground, the sheet and its notes.",
-  "geologie.identifier-cliquer": "Click the map: the rock of the area, what it means on the ground, the sheet and its notes."
+  "geologie.identifier-cliquer": "Click the map: the rock of the area, what it means on the ground, the sheet and its notes.",
+  "reseau.hors-ligne": "no network.",
+  "reseau.trop-long": "the service is taking too long to respond.",
+  "reseau.service": "the service isn’t responding right now.",
+  "reseau.trop-demandes": "too many requests to the service, try again in a minute."
 }

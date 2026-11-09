@@ -54,11 +54,19 @@ export function telechargerSauvegarde() {
 
 const erreur = (cle, variables) => Object.assign(new Error(t(cle, variables)), { cle, variables });
 
+const coordonnee = (point) => Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1]);
+
+// Chaque étape est vérifiée : un fichier abîmé ferait sinon planter l'éditeur à l'ouverture du parcours
+const etapeValide = (etape) =>
+  etape && typeof etape === 'object'
+  && Number.isFinite(etape.lng) && Number.isFinite(etape.lat)
+  && (etape.troncon == null || (Array.isArray(etape.troncon.geom) && etape.troncon.geom.every(coordonnee)));
+
 const parcoursValide = (parcours) =>
   parcours && typeof parcours === 'object'
   && typeof parcours.id === 'string' && parcours.id
   && typeof parcours.nom === 'string'
-  && Array.isArray(parcours.etapes);
+  && Array.isArray(parcours.etapes) && parcours.etapes.every(etapeValide);
 
 // Vérifie le fichier avant d'y toucher : un message clair plutôt qu'un import à moitié fait
 export async function lireSauvegarde(fichier) {

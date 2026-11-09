@@ -62,10 +62,4 @@ export function surPreferences(action, cles = null) {
   return () => window.removeEventListener(EVENEMENT, ecouteur);
 }
 
-// Prévient tout le monde d'un coup (après une restauration de sauvegarde, par exemple)
-export function annoncerPreferences() {
-  document.documentElement.lang = langue();
-  window.dispatchEvent(new CustomEvent(EVENEMENT, { detail: { cle: '*' } }));
-}
-
 document.documentElement.lang = langue();
