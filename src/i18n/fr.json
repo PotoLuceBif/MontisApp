@@ -472,6 +472,8 @@
   "visite.courbes-aide": "Courbes de niveau et altitudes",
   "visite.pentes": "Pentes 30°+",
   "visite.pentes-aide": "Pentes de plus de 30 degrés",
+  "visite.ombres": "Ombre du soleil",
+  "visite.ombres-aide": "Ombre du relief au soleil du jour et de l’heure choisis",
   "visite.recentrer": "Recentrer",
   "meteo.code.0": "Ciel dégagé",
   "meteo.code.1": "Plutôt dégagé",

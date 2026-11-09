@@ -285,6 +285,13 @@ const ECRANS = [
     actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
       (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
   },
+  // Le soleil dans le ciel en 3D, en fin d'après-midi, face à lui
+  {
+    nom: 'carte-ombres-3d-soleil',
+    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
+      clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 238 }), (p) => p.waitForTimeout(5000)],
+  },
   { nom: 'carte-ombres-ferme', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   // Un jour choisi au calendrier (appui sur le nom du jour)
   {
@@ -320,6 +327,22 @@ const ECRANS = [
       },
       module('vent'),
       (page) => page.waitForTimeout(4000),
+    ],
+  },
+  // Ombre du soleil pendant une visite de station
+  {
+    nom: 'visite-ombres',
+    actions: [
+      module('ski'),
+      async (page) => {
+        await page.fill('.ski .rando-champ', 'Chamonix');
+        await page.waitForTimeout(1500);
+        await page.press('.ski .rando-champ', 'Enter');
+        await page.waitForTimeout(6000);
+      },
+      clicVisible('.visite-option-ombres'),
+      heureOmbres(10 * 60),
+      (page) => page.waitForTimeout(5000),
     ],
   },
   {
