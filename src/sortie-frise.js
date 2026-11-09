@@ -3,7 +3,7 @@
 import { indiceProche } from './sortie-analyse.js';
 import { t } from './i18n.js';
 
-const HAUTEURS = { altitude: 58, vitesse: 34, vario: 34, cardio: 34, puissance: 30 };
+const HAUTEURS = { altitude: 58, vitesse: 34, vario: 34, cardio: 34, puissance: 30, temperature: 30, vent: 30 };
 const LEGENDE = 16;
 const ECART = 8;
 const AXE = 18;
@@ -13,6 +13,8 @@ const COULEURS = {
   vario: '#e7d23c',
   cardio: '#ff6b6b',
   puissance: '#c38bff',
+  temperature: '#ffa94d',
+  vent: '#74c0fc',
 };
 
 // `lignes` : [{ id, cle, valeurs, texte(v), zero? }] ; `axe` : temps (ms) ou distance (m) croissants
@@ -48,7 +50,7 @@ export function creerFriseSortie({ lignes, axe, texteAxe, onIndice = () => {}, o
       const ampleur = Math.max(Math.abs(min), Math.abs(max), 0.5);
       return { min: -ampleur, max: ampleur };
     }
-    if (id === 'vitesse' || id === 'puissance') min = 0;
+    if (id === 'vitesse' || id === 'puissance' || id === 'vent') min = 0;
     return max > min ? { min, max } : { min: min - 1, max: max + 1 };
   });
 

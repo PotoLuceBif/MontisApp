@@ -10,10 +10,17 @@ import {
 import { PALIERS_PENTE, palierPente } from './parcours-analyse.js';
 import { paletteInterface } from './vent-cadran.js';
 import { lire, ecrire } from './reglages.js';
-import { formatAltitude, formatDenivele, formatDistance, formatTemp, imperial, nombre } from './unites.js';
+import { formatAltitude, formatDenivele, formatDistance, formatPluie, formatTemp, formatVent, imperial, nombre, pourcent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { formatDate, heureCourte, t, ta, ti, tt } from './i18n.js';
 import { TYPES, formatDureeReelle, iconeType, libelleType, nomSortie } from './traces-commun.js';
+import { creerOmbreSortie } from './sortie-ombre.js';
+import { adresseMeteoSortie, interpolerHoraire, lireMeteo, resumerMeteo } from './sortie-meteo-calcul.js';
+import { descriptionMeteo } from './meteo-icone.js';
+import { pointCardinal } from './vent-calcul.js';
+import { requete, erreurHttp, messageErreur } from './requete.js';
+
+const ICONE_SOLEIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
 
 const SOURCE = 'sortie-trace';
 const SOURCE_BOUTS = 'sortie-bouts';
@@ -114,13 +121,23 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
         <div class="parcours-pratiques traces-vitesses" role="group" ${ta('aria-label', 'traces.vitesse-lecture')}></div>
         <button type="button" class="traces-suivre" aria-pressed="false" ${ti('traces.suivre')}>${t('traces.suivre')}</button>
       </div>
+      <div class="traces-soleil">
+        <button type="button" class="traces-ombre" aria-pressed="false">${ICONE_SOLEIL}<span ${ti('traces.ombre')}>${t('traces.ombre')}</span></button>
+        <span class="traces-soleil-etat" aria-live="polite"></span>
+      </div>
+    </div>
+    <div class="traces-meteo" hidden>
+      <h4 ${ti('traces.meteo-titre')}>${t('traces.meteo-titre')}</h4>
+      <p class="note traces-meteo-message" role="status" hidden></p>
+      <dl class="traces-stats traces-meteo-stats"></dl>
+      <p class="note traces-meteo-source" ${ti('traces.meteo-source')}>${t('traces.meteo-source')}</p>
     </div>
     <div class="traces-couleur">
       <span class="traces-couleur-titre" ${ti('traces.colorer')}>${t('traces.colorer')}</span>
       <div class="parcours-pratiques traces-modes" role="group" ${ta('aria-label', 'traces.colorer')}></div>
       <div class="traces-legende" aria-hidden="true"></div>
     </div>
-    <dl class="traces-stats"></dl>
+    <dl class="traces-stats traces-stats-sortie"></dl>
     <div class="traces-reperes" hidden>
       <h4 ${ti('traces.reperes')}>${t('traces.reperes')}</h4>
       <div class="traces-reperes-liste"></div>
@@ -207,6 +224,120 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     estomper();
     if (centrer) centrerSur(position);
     panneau.definirResume({ detail: lectureCourte(i) });
+    majSoleil();
+  }
+
+  // ---------- Soleil et ombres à l'heure de la sortie ----------
+  let ombre = null;
+  let ombreVoulue = lire('sortie-ombre', false) === true;
+
+  // Pendant un glissé ou une lecture, l'ombre portée attend une pause pour se recalculer
+  function majSoleil({ attendre = true } = {}) {
+    const etatSoleil = $('.traces-soleil-etat');
+    if (!analyse?.temps) return;
+    const i = indice ?? 0;
+    if (!ombre?.actif) {
+      etatSoleil.textContent = '';
+      return;
+    }
+    const soleil = ombre.placer(analyse.temps[i], sortie.points.lng[i], sortie.points.lat[i], { attendre });
+    etatSoleil.textContent = !soleil
+      ? ''
+      : soleil.hauteur <= 0
+        ? t('traces.soleil-nuit')
+        : t('traces.soleil-position', { hauteur: Math.round(soleil.hauteur), direction: pointCardinal(soleil.azimut) });
+  }
+
+  function majBoutonOmbre() {
+    const bouton = $('.traces-ombre');
+    bouton.setAttribute('aria-pressed', String(!!ombre?.actif));
+    bouton.classList.toggle('actif', !!ombre?.actif);
+  }
+
+  function allumerOmbre(oui) {
+    if (oui) ombre ??= creerOmbreSortie(map);
+    ombre?.allumer(oui);
+    majBoutonOmbre();
+    majSoleil({ attendre: false });
+  }
+
+  $('.traces-ombre').addEventListener('click', () => {
+    ombreVoulue = !ombre?.actif;
+    ecrire('sortie-ombre', ombreVoulue);
+    allumerOmbre(ombreVoulue);
+  });
+
+  // ---------- Météo du jour de la sortie ----------
+  let demandeMeteo = 0;
+
+  function afficherMeteo() {
+    const bloc = $('.traces-meteo');
+    const meteo = sortie?.meteo;
+    const message = $('.traces-meteo-message');
+    if (!meteo) {
+      $('.traces-meteo-stats').replaceChildren();
+      return;
+    }
+    const t0 = analyse.temps[0];
+    const t1 = analyse.temps[analyse.n - 1];
+    const r = resumerMeteo(meteo, t0, t1);
+    bloc.hidden = !r;
+    message.hidden = true;
+    if (!r) return;
+    const lignes = [];
+    if (r.code != null) lignes.push([t('traces.meteo-temps'), descriptionMeteo(r.code)]);
+    if (r.tMin != null) lignes.push([t('traces.meteo-temperature'), Math.round(r.tMin) === Math.round(r.tMax) ? formatTemp(r.tMin) : t('traces.meteo-de-a', { min: formatTemp(r.tMin), max: formatTemp(r.tMax) })]);
+    if (r.vent != null) lignes.push([t('traces.meteo-vent'), `${formatVent(r.vent)}${r.direction != null ? ` ${pointCardinal(r.direction)}` : ''}`]);
+    if (r.rafales != null) lignes.push([t('traces.meteo-rafales'), formatVent(r.rafales)]);
+    if (r.pluie != null) lignes.push([t('traces.meteo-pluie'), formatPluie(r.pluie)]);
+    if (r.nuages != null) lignes.push([t('traces.meteo-nuages'), pourcent(r.nuages)]);
+    $('.traces-meteo-stats').innerHTML = lignes.map(([nom, valeur]) => `<div><dt>${nom}</dt><dd>${valeur}</dd></div>`).join('');
+  }
+
+  // Une seule fois par sortie : la réponse est gardée avec elle, et sert ensuite hors ligne
+  async function chargerMeteo() {
+    const bloc = $('.traces-meteo');
+    const message = $('.traces-meteo-message');
+    if (!analyse.temps) {
+      bloc.hidden = true;
+      return;
+    }
+    if (sortie.meteo) {
+      afficherMeteo();
+      return;
+    }
+    const milieu = Math.floor(analyse.n / 2);
+    const adresse = adresseMeteoSortie({
+      lat: sortie.points.lat[milieu],
+      lng: sortie.points.lng[milieu],
+      debut: analyse.temps[0],
+      fin: analyse.temps[analyse.n - 1],
+    });
+    if (!adresse) {
+      bloc.hidden = true;
+      return;
+    }
+    const demande = ++demandeMeteo;
+    const id = sortie.id;
+    bloc.hidden = false;
+    message.hidden = false;
+    message.textContent = t('traces.meteo-chargement');
+    $('.traces-meteo-stats').replaceChildren();
+    try {
+      const reponse = await requete(adresse);
+      if (!reponse.ok) throw erreurHttp(reponse);
+      const meteo = lireMeteo(await reponse.json());
+      if (!meteo) throw new Error('réponse sans heures');
+      if (demande !== demandeMeteo || sortie?.id !== id) return;
+      sortie.meteo = meteo;
+      afficherMeteo();
+      construireFrise();
+      modifierSortie(id, { meteo }).catch((erreur) => console.warn('Météo non gardée :', erreur));
+    } catch (erreur) {
+      console.warn('Météo de la sortie :', erreur);
+      if (demande !== demandeMeteo || sortie?.id !== id) return;
+      message.textContent = t('traces.meteo-indisponible', { raison: messageErreur(erreur) });
+    }
   }
 
   function lectureCourte(i) {
@@ -290,6 +421,13 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     const cardio = valeursMode('cardio', analyse, sortie.points);
     if (cardio) lignes.push({ id: 'cardio', cle: 'traces.mode-cardio', valeurs: cardio, texte: (v) => `${Math.round(v)} bpm` });
     if (sortie.points.puissance) lignes.push({ id: 'puissance', cle: 'traces.canal-puissance', valeurs: sortie.points.puissance, texte: (v) => `${Math.round(v)} W` });
+    // La météo du jour, interpolée heure par heure à chaque point
+    if (sortie.meteo && analyse.temps) {
+      const temperature = interpolerHoraire(sortie.meteo.heures, sortie.meteo.temperature_2m, analyse.temps);
+      const vent = interpolerHoraire(sortie.meteo.heures, sortie.meteo.wind_speed_10m, analyse.temps);
+      if (temperature) lignes.push({ id: 'temperature', cle: 'traces.meteo-temperature', valeurs: temperature, texte: (v) => formatTemp(v) });
+      if (vent) lignes.push({ id: 'vent', cle: 'traces.meteo-vent', valeurs: vent, texte: (v) => formatVent(v) });
+    }
     return lignes;
   }
 
@@ -502,7 +640,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
 
     const lignes = lignesStats(analyse.type, s, { cadenceEnPas: analyse.type === 'rando' })
       .filter(([cle]) => !(cle === 'traces.stat-duree-totale' && !avecPauses));
-    $('.traces-stats').innerHTML = lignes.map(([cle, valeur]) => `<div><dt>${cle.includes('.') ? t(cle) : cle}</dt><dd>${valeur}</dd></div>`).join('');
+    $('.traces-stats-sortie').innerHTML = lignes.map(([cle, valeur]) => `<div><dt>${cle.includes('.') ? t(cle) : cle}</dt><dd>${valeur}</dd></div>`).join('');
 
     const blocReperes = $('.traces-reperes');
     blocReperes.hidden = !analyse.marquants.length;
@@ -544,6 +682,8 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
 
   function fermer() {
     arreterLecture();
+    demandeMeteo++;
+    if (ombre?.actif) allumerOmbre(false);
     frise?.detruire();
     frise = null;
     indice = null;
@@ -567,6 +707,8 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     poserReperes();
     dessinerTrace();
     construireFrise();
+    afficherMeteo();
+    majSoleil({ attendre: false });
   });
 
   return {
@@ -583,6 +725,10 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
       dessinerBouts();
       poserReperes();
       cadrer();
+      // Soleil et ombres : seulement avec l'heure, et si on les avait allumés la dernière fois
+      $('.traces-soleil').hidden = !analyse.temps;
+      allumerOmbre(ombreVoulue && !!analyse.temps);
+      void chargerMeteo();
     },
     get id() {
       return sortie?.id ?? null;

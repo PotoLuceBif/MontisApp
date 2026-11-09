@@ -10,7 +10,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
-import { previsionsSimulees } from './meteo-simulee.mjs';
+import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 
 const require = createRequire(import.meta.url);
@@ -381,17 +381,22 @@ const ECRANS = [
   { nom: 'traces-sorties', actions: [module('sorties'), importerSorties(['rando.gpx', 'velo.tcx', 'vol.igc'])] },
   { nom: 'traces-sortie', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2000)] },
   { nom: 'traces-sortie-reduite', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie .bf-reduire')] },
-  { nom: 'traces-sortie-stats', actions: [module('sorties'), importerSorties(['rando.gpx']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-stats', actions: [module('sorties'), importerSorties(['rando.gpx']), defiler('.bf-sortie .traces-stats-sortie')] },
   { nom: 'traces-sortie-pente', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie [data-mode="pente"]')] },
   { nom: 'traces-sortie-cardio', actions: [module('sorties'), importerSorties(['rando.gpx']), clicVisible('.bf-sortie [data-mode="cardio"]'), clicVisible('.bf-sortie .bf-reduire')] },
-  { nom: 'traces-sortie-velo', actions: [module('sorties'), importerSorties(['velo.tcx']), defiler('.bf-sortie .traces-stats')] },
-  { nom: 'traces-sortie-ski', actions: [module('sorties'), importerSorties(['ski.gpx']), defiler('.bf-sortie .traces-stats')] },
-  { nom: 'traces-sortie-vol', actions: [module('sorties'), importerSorties(['vol.igc']), defiler('.bf-sortie .traces-stats')] },
+  { nom: 'traces-sortie-velo', actions: [module('sorties'), importerSorties(['velo.tcx']), defiler('.bf-sortie .traces-stats-sortie')] },
+  { nom: 'traces-sortie-ski', actions: [module('sorties'), importerSorties(['ski.gpx']), defiler('.bf-sortie .traces-stats-sortie')] },
+  { nom: 'traces-sortie-vol', actions: [module('sorties'), importerSorties(['vol.igc']), defiler('.bf-sortie .traces-stats-sortie')] },
   { nom: 'traces-sortie-3d', actions: [module('sorties'), importerSorties(['rando.gpx']), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(3000)] },
   { nom: 'traces-frise', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.42)] },
   { nom: 'traces-frise-reduite', actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.42), clicVisible('.bf-sortie .bf-reduire')] },
   { nom: 'traces-lecture', actions: [module('sorties'), importerSorties(['velo.tcx']), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-lire'), (p) => p.waitForTimeout(6000)] },
   { nom: 'traces-frise-vol', actions: [module('sorties'), importerSorties(['vol.igc']), (p) => p.waitForTimeout(1500), toucherFriseSortie(0.3)] },
+  // Soleil et météo du jour de la sortie (archives d'Open-Meteo simulées)
+  { nom: 'traces-contexte', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2500), toucherFriseSortie(0.42), defiler('.bf-sortie .traces-frise')] },
+  { nom: 'traces-ombre', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-ombre'), toucherFriseSortie(0.75), (p) => p.waitForTimeout(4000)] },
+  { nom: 'traces-ombre-3d', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-ombre'), toucherFriseSortie(0.2), clicVisible('.bf-sortie .bf-reduire'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'traces-meteo', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2500), defiler('.bf-sortie .traces-meteo')] },
   { nom: 'traces-parcours', actions: [parcoursEnregistre, module('parcours'), attendre('.traces-liste')] },
   {
     nom: 'combine-parcours-carte-fermee',
@@ -462,6 +467,7 @@ async function main() {
         });
         if (ecran.simuler) {
           await page.route(/api\.open-meteo\.com\/v1\/forecast/, (route) => route.fulfill({ json: previsionsSimulees(route.request().url()) }));
+          await page.route(/archive-api\.open-meteo\.com\/v1\/archive/, (route) => route.fulfill({ json: archiveSimulee(route.request().url()) }));
         }
 
         await page.goto(adresse, { waitUntil: 'load' });
