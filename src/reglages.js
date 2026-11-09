@@ -33,13 +33,18 @@ export function ecrire(nom, valeur) {
   }
 }
 
-// Exécute une action dès que la carte est prête (tout de suite si elle l'est déjà)
+// Carte dont le style est prêt (posé par main.js). `isStyleLoaded()` ne convient pas :
+// il repasse à faux pendant le chargement des tuiles, et « load » ne se produit qu'une fois.
+const cartesPretes = new WeakSet();
+export const marquerPrete = (map) => cartesPretes.add(map);
+
+// Exécute une action dès que le style de la carte est prêt (tout de suite s'il l'est déjà)
 export function quandPret(map, action) {
-  if (map.isStyleLoaded()) {
+  if (cartesPretes.has(map)) {
     action();
     return;
   }
-  map.once('load', action);
+  map.once('style.load', action);
 }
 
 // Efface tous les réglages, puis recharge l'appli centrée sur la position de l'utilisateur

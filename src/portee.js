@@ -8,6 +8,7 @@ import { surPreferences } from './preferences.js';
 import { t, ta, ti, tt, poser } from './i18n.js';
 import { cheminsPlanes } from './portee-calcul.js';
 import { annoncerOutilActivite } from './outil-activite.js';
+import { requete as requeteReseau } from './requete.js';
 
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const MAX_KM = 40;
@@ -61,7 +62,7 @@ function chargerTuile(z, x, y) {
       (async () => {
         try {
           const url = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-          const rep = await fetch(url);
+          const rep = await requeteReseau(url, {}, 20000);
           if (!rep.ok) throw new Error(`erreur ${rep.status}`);
           const bmp = await createImageBitmap(await rep.blob());
           const c = document.createElement('canvas');

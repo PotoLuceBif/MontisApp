@@ -1,6 +1,7 @@
 import { dateEtHeure, t } from './i18n.js';
 import { dateHorsLigne } from './hors-ligne.js';
 import { fusionnerReseaux, lireBalisesFFVL, nombre } from './balises-calcul.js';
+import { requete as requeteReseau } from './requete.js';
 
 // Sources de relevés de vent, réunies sur la carte. Chaque source renvoie les mêmes stations :
 // { id, reseau, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
@@ -51,12 +52,12 @@ const PAUSE_NOUVEL_ESSAI = 1500;
 // Une coupure réseau a droit à une seconde tentative : en montagne, la liaison va et vient
 async function recuperer(url, signal, cache) {
   try {
-    return await fetch(url, { signal, cache });
+    return await requeteReseau(url, { signal, cache });
   } catch (erreur) {
-    if (signal?.aborted || erreur.name === 'AbortError') throw erreur;
+    if (signal?.aborted || erreur.name === 'AbortError' || erreur.name === 'TimeoutError') throw erreur;
     await new Promise((fin) => setTimeout(fin, PAUSE_NOUVEL_ESSAI));
     if (signal?.aborted) throw erreur;
-    return fetch(url, { signal, cache });
+    return requeteReseau(url, { signal, cache });
   }
 }
 

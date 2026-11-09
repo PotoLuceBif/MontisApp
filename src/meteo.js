@@ -12,6 +12,7 @@ import { decalageAppareil } from './soleil.js';
 import { MINI_PLUIE, creerPastilleCouche } from './couches-actives.js';
 import { creerFrise } from './meteo-frise.js';
 import { indicesHeures } from './frise-calcul.js';
+import { erreurHttp, messageErreur, requete as requeteReseau } from './requete.js';
 
 const API_RADAR = 'https://api.rainviewer.com/public/weather-maps.json';
 const PAGE_METEOSUISSE =
@@ -193,10 +194,8 @@ export function creerRadarPluie(map) {
     actuel.disabled = true;
 
     try {
-      const reponse = await fetch(API_RADAR, { signal: controleur.signal });
-      if (!reponse.ok) {
-        throw new Error(t('radar.statut-http', { statut: reponse.status }));
-      }
+      const reponse = await requeteReseau(API_RADAR, { signal: controleur.signal });
+      if (!reponse.ok) throw erreurHttp(reponse);
 
       const resultat = lireImagesRadar(await reponse.json());
       if (!actif) return;
@@ -211,7 +210,7 @@ export function creerRadarPluie(map) {
     } catch (erreur) {
       if (erreur.name === 'AbortError') return;
       statut.classList.add('erreur');
-      poser(statut, 'radar.indisponible', { message: erreur.message });
+      poser(statut, 'radar.indisponible', { message: messageErreur(erreur) });
       actuel.disabled = false;
       majPastille();
       console.error('Chargement du radar météo impossible :', erreur);
@@ -560,7 +559,7 @@ export function creerConditionsLocales(map) {
     });
 
     try {
-      const reponse = await fetch(`${API_GEOCODAGE}?${params}`, { signal: requete.signal });
+      const reponse = await requeteReseau(`${API_GEOCODAGE}?${params}`, { signal: requete.signal });
       if (!reponse.ok) {
         throw new Error(t('meteo.geocodage-http', { statut: reponse.status }));
       }
@@ -589,7 +588,7 @@ export function creerConditionsLocales(map) {
           q: pays ? `${nomVilleProche}, ${pays}` : nomVilleProche,
           limit: '5',
         });
-        const reponseRecherche = await fetch(
+        const reponseRecherche = await requeteReseau(
           `${API_RECHERCHE_GEOCODAGE}?${paramsRecherche}`,
           { signal: requete.signal }
         );
@@ -939,12 +938,7 @@ export function creerConditionsLocales(map) {
     try {
       const reponse = await fetch(`${API_PREVISIONS}?${params}`, { signal: requete.signal });
       if (requete.signal.aborted || controleur !== requete || !actif) return;
-      if (reponse.status === 429) {
-        throw new Error(t('meteo.limite'));
-      }
-      if (!reponse.ok) {
-        throw new Error(t('meteo.statut-http', { statut: reponse.status }));
-      }
+      if (!reponse.ok) throw erreurHttp(reponse);
       const donnees = await reponse.json();
       if (requete.signal.aborted || controleur !== requete || !actif) return;
       afficherPrevisions(donnees);
@@ -954,11 +948,7 @@ export function creerConditionsLocales(map) {
     } catch (erreur) {
       if (controleur !== requete || !actif || (requete.signal.aborted && !delaiDepasse)) return;
       statut.classList.add('erreur');
-      const message = delaiDepasse
-        ? t('meteo.trop-long')
-        : erreur instanceof Error
-          ? erreur.message
-          : t('meteo.erreur-inconnue');
+      const message = delaiDepasse ? t('meteo.trop-long') : messageErreur(erreur);
       if (estHorsLigne()) poser(statut, 'meteo.hors-ligne');
       else poser(statut, 'meteo.erreur', { message });
       boutonReessayer.hidden = false;

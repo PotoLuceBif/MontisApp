@@ -1,6 +1,7 @@
 // Calcul d'un tronçon selon la pratique. BRouter d'abord : lui seul indique surfaces et
 // difficulté. Valhalla en secours : BRouter abandonne au-delà de 3 s de calcul (longues distances).
 import { ORDRE_SAC, distance } from './rando-api.js';
+import { requete as requeteReseau } from './requete.js';
 
 export function decoderPolyligne6(polyligne) {
   if (typeof polyligne !== 'string') throw new Error('Le service a renvoyé un tracé invalide.');
@@ -35,6 +36,9 @@ export function decoderPolyligne6(polyligne) {
 
 const URL_BROUTER = 'https://brouter.de/brouter';
 const URL_VALHALLA = 'https://valhalla1.openstreetmap.de/route';
+// BRouter abandonne lui-même après 3 s de calcul : au-delà, le réseau traîne et Valhalla prend le relais
+const DELAI_BROUTER = 10000;
+const DELAI_VALHALLA = 15000;
 const ATTENTE_REPRISE = 1500; // ms : BRouter répond « réessayez plus tard » quand on insiste
 
 const REVETUS = new Set(['asphalt', 'paved', 'concrete', 'paving_stones', 'sett', 'cobblestone', 'chipseal']);
@@ -74,7 +78,7 @@ async function appelerBrouter(de, vers, pratique, signal, reprise = true) {
     alternativeidx: '0',
     format: 'geojson',
   });
-  const reponse = await fetch(`${URL_BROUTER}?${params}`, { signal });
+  const reponse = await requeteReseau(`${URL_BROUTER}?${params}`, { signal }, DELAI_BROUTER);
   if (reponse.status === 403 && reprise) {
     await new Promise((resoudre) => { setTimeout(resoudre, ATTENTE_REPRISE); });
     return appelerBrouter(de, vers, pratique, signal, false);
@@ -97,7 +101,7 @@ async function appelerValhalla(de, vers, pratique, signal) {
     ...pratique.valhalla,
     units: 'kilometers',
   };
-  const reponse = await fetch(`${URL_VALHALLA}?json=${encodeURIComponent(JSON.stringify(requete))}`, { signal });
+  const reponse = await requeteReseau(`${URL_VALHALLA}?json=${encodeURIComponent(JSON.stringify(requete))}`, { signal }, DELAI_VALHALLA);
   if (!reponse.ok) throw new Error(`Valhalla : statut ${reponse.status}`);
   const { trip } = await reponse.json();
   const geom = (trip?.legs ?? []).flatMap((etape) => decoderPolyligne6(etape.shape));

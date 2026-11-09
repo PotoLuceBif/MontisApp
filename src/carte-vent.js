@@ -19,6 +19,7 @@ import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, libellesPalie
 import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, nombre, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { nomJour, t, ta, ti, tt, poser } from './i18n.js';
+import { erreurHttp, messageErreur } from './requete.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
 const SOURCE_VENT = 'vent-previsions';
@@ -623,8 +624,7 @@ export function creerCarteVent(map) {
       wind_speed_unit: 'kmh',
     });
     const reponse = await fetch(`${API_VENT}?${params}`, { signal });
-    if (reponse.status === 429) throw new Error(t(MESSAGE_LIMITE));
-    if (!reponse.ok) throw new Error(t('meteo.statut-http', { statut: reponse.status }));
+    if (!reponse.ok) throw erreurHttp(reponse);
     const resultat = await reponse.json();
     dateEnregistree = dateHorsLigne(reponse);
     const donnees = Array.isArray(resultat) ? resultat : [resultat];
@@ -674,9 +674,8 @@ export function creerCarteVent(map) {
       } else if (controleurProfil === requete && actif && vueActive === 'volume') {
         erreurVolume = true;
         statutVolume.classList.add('erreur');
-        statutVolume.textContent = estHorsLigne()
-          ? t('vent.hors-ligne-volume')
-          : t('vent.volume-erreur', { message: erreur instanceof Error ? erreur.message : t('meteo.erreur-inconnue') });
+        if (estHorsLigne()) poser(statutVolume, 'vent.hors-ligne-volume');
+        else poser(statutVolume, 'vent.volume-erreur', { message: messageErreur(erreur) });
         console.error('Chargement du volume de vent impossible :', erreur);
       }
     } finally {
@@ -879,11 +878,9 @@ export function creerCarteVent(map) {
       } else if (controleur === requete && actif) {
         erreurCarte = true;
         statut.classList.add('erreur');
-        statut.textContent = estHorsLigne()
-          ? t('vent.hors-ligne-carte')
-          : erreur.message === t(MESSAGE_LIMITE)
-          ? t(MESSAGE_LIMITE)
-          : t('vent.carte-erreur', { message: erreur instanceof Error ? erreur.message : t('meteo.erreur-inconnue') });
+        if (estHorsLigne()) poser(statut, 'vent.hors-ligne-carte');
+        else if (erreur?.statut === 429) poser(statut, MESSAGE_LIMITE);
+        else poser(statut, 'vent.carte-erreur', { message: messageErreur(erreur) });
         console.error('Chargement de la carte de vent impossible :', erreur);
       }
     } finally {

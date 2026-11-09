@@ -403,7 +403,13 @@ export function initFiches(map) {
     if (controleur) controleur.abort();
     courant?.point?.arreter();
     const numero = ++numeroPoint;
-    const { creerFichePoint } = await import('./fiche-point.js');
+    let creerFichePoint;
+    try {
+      ({ creerFichePoint } = await import('./fiche-point.js'));
+    } catch (erreur) {
+      console.warn('Fiche du point non chargée :', erreur); // le prochain appui long réessaie
+      return;
+    }
     if (numero !== numeroPoint) return; // un autre appui long entre-temps
     const fiche = { lng: lngLat.lng, lat: lngLat.lat };
     fiche.point = creerFichePoint({

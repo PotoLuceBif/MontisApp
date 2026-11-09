@@ -1,5 +1,6 @@
 // Accès à l'API de Waymarked Trails (itinéraires balisés d'OpenStreetMap)
 import { t } from './i18n.js';
+import { requete as requeteReseau } from './requete.js';
 const RAYON = 6378137; // rayon de la projection Web Mercator utilisée par l'API
 
 // Niveaux d'itinéraires (champ « group » de l'API)
@@ -79,7 +80,7 @@ export function clientItineraires(carte) {
 
   async function appeler(chemin, signal, cache) {
     if (cache.has(chemin)) return cache.get(chemin);
-    const rep = await fetch(base + chemin, { signal });
+    const rep = await requeteReseau(base + chemin, { signal });
     if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
     const json = await rep.json();
     cache.set(chemin, json);
