@@ -2898,12 +2898,15 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .traces-suivre[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
 .traces-soleil { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .traces-soleil[hidden] { display: none; }
-.traces-ombre {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 9px;
+.traces-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.traces-option {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--bord); border-radius: 9px;
   background: var(--surface-2); color: var(--texte-2); font: 650 13px var(--police); cursor: pointer;
 }
-.traces-ombre svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.traces-option svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .traces-ombre[aria-pressed='true'] { border-color: #f5c84c; color: #f5c84c; }
+.traces-meteo-bouton[aria-pressed='true'] { border-color: #74c0fc; color: #74c0fc; }
+.traces-soleil-etat:empty { display: none; }
 .traces-soleil-etat { color: var(--texte-2); font-size: 12px; font-variant-numeric: tabular-nums; }
 .traces-meteo { display: grid; gap: 6px; margin-bottom: 14px; }
 .traces-meteo[hidden], .traces-meteo-message[hidden] { display: none; }

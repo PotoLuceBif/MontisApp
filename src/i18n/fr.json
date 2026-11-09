@@ -92,6 +92,7 @@
   "traces.rapide": "Rapide",
   "traces.vario": "Vario",
   "traces.ombre": "Ombre du soleil",
+  "traces.meteo-bouton": "Météo du jour",
   "traces.soleil-position": "Soleil à {hauteur}° · {direction}",
   "traces.soleil-nuit": "Nuit à cet instant",
   "traces.meteo-titre": "Météo ce jour-là",

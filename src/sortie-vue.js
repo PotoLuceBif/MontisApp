@@ -20,7 +20,8 @@ import { descriptionMeteo } from './meteo-icone.js';
 import { pointCardinal } from './vent-calcul.js';
 import { requete, erreurHttp, messageErreur } from './requete.js';
 
-const ICONE_SOLEIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+const ICONE_METEO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 9.5 4.2 4.2 0 0 0 7 18Z"/></svg>';
+const ICONE_SOLEIL ='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
 
 const SOURCE = 'sortie-trace';
 const SOURCE_BOUTS = 'sortie-bouts';
@@ -122,7 +123,10 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
         <button type="button" class="traces-suivre" aria-pressed="false" ${ti('traces.suivre')}>${t('traces.suivre')}</button>
       </div>
       <div class="traces-soleil">
-        <button type="button" class="traces-ombre" aria-pressed="false">${ICONE_SOLEIL}<span ${ti('traces.ombre')}>${t('traces.ombre')}</span></button>
+        <div class="traces-options">
+          <button type="button" class="traces-option traces-ombre" aria-pressed="false">${ICONE_SOLEIL}<span ${ti('traces.ombre')}>${t('traces.ombre')}</span></button>
+          <button type="button" class="traces-option traces-meteo-bouton" aria-pressed="false">${ICONE_METEO}<span ${ti('traces.meteo-bouton')}>${t('traces.meteo-bouton')}</span></button>
+        </div>
         <span class="traces-soleil-etat" aria-live="polite"></span>
       </div>
     </div>
@@ -268,12 +272,41 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
   });
 
   // ---------- Météo du jour de la sortie ----------
+  // Une option, comme l'ombre : éteinte, rien n'est demandé ni affiché
   let demandeMeteo = 0;
+  let meteoVoulue = lire('sortie-meteo', false) === true;
+
+  function majBoutonMeteo() {
+    const bouton = $('.traces-meteo-bouton');
+    bouton.setAttribute('aria-pressed', String(meteoVoulue));
+    bouton.classList.toggle('actif', meteoVoulue);
+  }
+
+  function appliquerMeteo() {
+    majBoutonMeteo();
+    if (meteoVoulue) {
+      void chargerMeteo();
+    } else {
+      demandeMeteo++;
+      $('.traces-meteo').hidden = true;
+    }
+  }
+
+  $('.traces-meteo-bouton').addEventListener('click', () => {
+    meteoVoulue = !meteoVoulue;
+    ecrire('sortie-meteo', meteoVoulue);
+    appliquerMeteo();
+    construireFrise();
+  });
 
   function afficherMeteo() {
     const bloc = $('.traces-meteo');
     const meteo = sortie?.meteo;
     const message = $('.traces-meteo-message');
+    if (!meteoVoulue) {
+      bloc.hidden = true;
+      return;
+    }
     if (!meteo) {
       $('.traces-meteo-stats').replaceChildren();
       return;
@@ -431,7 +464,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     if (cardio) lignes.push({ id: 'cardio', cle: 'traces.mode-cardio', valeurs: cardio, texte: (v) => `${Math.round(v)} bpm` });
     if (sortie.points.puissance) lignes.push({ id: 'puissance', cle: 'traces.canal-puissance', valeurs: sortie.points.puissance, texte: (v) => `${Math.round(v)} W` });
     // La météo du jour, interpolée heure par heure à chaque point
-    if (sortie.meteo && analyse.temps) {
+    if (meteoVoulue && sortie.meteo && analyse.temps) {
       const temperature = interpolerHoraire(sortie.meteo.heures, sortie.meteo.temperature_2m, analyse.temps);
       const vent = interpolerHoraire(sortie.meteo.heures, sortie.meteo.wind_speed_10m, analyse.temps);
       if (temperature) lignes.push({ id: 'temperature', cle: 'traces.meteo-temperature', valeurs: temperature, texte: (v) => formatTemp(v) });
@@ -737,7 +770,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
       // Soleil et ombres : seulement avec l'heure, et si on les avait allumés la dernière fois
       $('.traces-soleil').hidden = !analyse.temps;
       allumerOmbre(ombreVoulue && !!analyse.temps);
-      void chargerMeteo();
+      appliquerMeteo();
     },
     get id() {
       return sortie?.id ?? null;
