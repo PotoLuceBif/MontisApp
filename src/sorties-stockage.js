@@ -66,6 +66,7 @@ function fiche(sortie, id) {
     empreinte: empreinte(sortie),
     canaux: Object.keys(sortie.points).filter((canal) => !['lng', 'lat'].includes(canal) && sortie.points[canal]),
     resume: resumerSortie(sortie),
+    decalage: Number.isFinite(sortie.decalage) ? sortie.decalage : null,
   };
 }
 
@@ -83,7 +84,13 @@ export async function ajouterSortie(sortie) {
   const existantes = await listerSorties();
   const cle = empreinte(sortie);
   const doublon = existantes.find((autre) => autre.empreinte === cle);
-  if (doublon) return { doublon };
+  if (doublon) {
+    // Importée avant que Montis lise le fuseau de la montre : le nouvel import le complète
+    if (doublon.decalage == null && Number.isFinite(sortie.decalage)) {
+      return { doublon: (await modifierSortie(doublon.id, { decalage: sortie.decalage })) ?? doublon };
+    }
+    return { doublon };
+  }
   const id = nouvelId();
   const nouvelle = fiche(sortie, id);
   await transaction([FICHES, POINTS], 'readwrite', (tx) => {
@@ -133,8 +140,8 @@ export async function toutesLesSorties() {
     rendre(
       fiches
         .filter(({ id }) => parId.has(id))
-        .map(({ id, nom, type, format, debut, ajoute }) => ({
-          id, nom, type, format, debut, ajoute,
+        .map(({ id, nom, type, format, debut, ajoute, decalage }) => ({
+          id, nom, type, format, debut, ajoute, decalage,
           points: parId.get(id).points,
           coupures: parId.get(id).coupures,
         }))

@@ -12,8 +12,8 @@ import { paletteInterface } from './vent-cadran.js';
 import { lire, ecrire } from './reglages.js';
 import { formatAltitude, formatDenivele, formatDistance, formatPluie, formatTemp, formatVent, imperial, nombre, pourcent } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { formatDate, heureCourte, t, ta, ti, tt } from './i18n.js';
-import { TYPES, formatDureeReelle, iconeType, libelleType, nomSortie } from './traces-commun.js';
+import { t, ta, ti, tt } from './i18n.js';
+import { TYPES, dateSortie, decalageDe, formatDureeReelle, heureSortie, iconeType, libelleType, nomSortie, noteFuseau } from './traces-commun.js';
 import { creerOmbreSortie } from './sortie-ombre.js';
 import { adresseMeteoSortie, interpolerHoraire, lireMeteo, resumerMeteo } from './sortie-meteo-calcul.js';
 import { descriptionMeteo } from './meteo-icone.js';
@@ -302,7 +302,8 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
       bloc.hidden = true;
       return;
     }
-    if (sortie.meteo) {
+    // Une météo gardée avant la prise en compte du fuseau (sans `decalage`) se redemande si le fuseau manque
+    if (sortie.meteo && (sortie.decalage != null || sortie.meteo.decalage !== undefined)) {
       afficherMeteo();
       return;
     }
@@ -329,8 +330,16 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
       const meteo = lireMeteo(await reponse.json());
       if (!meteo) throw new Error('réponse sans heures');
       if (demande !== demandeMeteo || sortie?.id !== id) return;
+      const fuseauAppris = decalageDe(sortie) == null && meteo.decalage != null;
       sortie.meteo = meteo;
       afficherMeteo();
+      if (fuseauAppris) {
+        // Les heures passent de celles de l'appareil à celles du lieu
+        remplir();
+        poserReperes();
+        if (indice != null) panneau.definirResume({ detail: lectureCourte(indice) });
+        onModifiee();
+      }
       construireFrise();
       modifierSortie(id, { meteo }).catch((erreur) => console.warn('Météo non gardée :', erreur));
     } catch (erreur) {
@@ -342,7 +351,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
 
   function lectureCourte(i) {
     const morceauxTexte = [];
-    if (analyse.temps) morceauxTexte.push(heureCourte(new Date(analyse.temps[i])));
+    if (analyse.temps) morceauxTexte.push(heureSortie(analyse.temps[i], sortie));
     morceauxTexte.push(formatDistance(analyse.distance[i]));
     if (analyse.alts) morceauxTexte.push(formatAltitude(analyse.alts[i]));
     return morceauxTexte.join(' · ');
@@ -442,7 +451,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     frise = creerFriseSortie({
       lignes,
       axe,
-      texteAxe: (valeur, i) => (analyse.temps ? heureCourte(new Date(valeur)) : formatDistance(analyse.distance[i])),
+      texteAxe: (valeur, i) => (analyse.temps ? heureSortie(valeur, sortie) : formatDistance(analyse.distance[i])),
       onDebut: arreterLecture,
       onIndice: (i) => placerCurseur(i, { centrer: !estVisible(i) }),
     });
@@ -566,7 +575,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
 
   // ---------- Panneau ----------
   function texteRepere(marquant, court = false) {
-    const heure = sortie.points.t ? heureCourte(new Date(sortie.points.t[marquant.index])) : null;
+    const heure = sortie.points.t ? heureSortie(sortie.points.t[marquant.index], sortie) : null;
     if (marquant.type === 'haut') return court ? formatAltitude(marquant.valeur) : t('traces.repere-haut', { valeur: formatAltitude(marquant.valeur) });
     if (marquant.type === 'vitesse') return court ? vitesseTexte(marquant.valeur) : t('traces.repere-vitesse', { valeur: vitesseTexte(marquant.valeur) });
     if (marquant.type === 'pause') {
@@ -621,7 +630,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     panneau.titre.textContent = nomSortie(sortie);
     panneau.meta.textContent = [
       libelleType(sortie.type),
-      sortie.debut ? formatDate(sortie.debut, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
+      sortie.debut ? dateSortie(sortie.debut, sortie, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null,
     ].filter(Boolean).join(' · ');
     boutonsType.forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.type === sortie.type)));
 
@@ -661,7 +670,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     $('.traces-canaux').textContent = t('traces.donnees', {
       format: sortie.format.toUpperCase(),
       liste: [sortie.points.t ? t('traces.canal-heure') : null, ...canaux].filter(Boolean).join(', ') || t('traces.canal-position'),
-    });
+    }) + (sortie.points.t ? ` ${noteFuseau(sortie)}` : '');
     rendreModes();
   }
 

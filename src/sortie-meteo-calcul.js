@@ -22,22 +22,26 @@ export function adresseMeteoSortie({ lat, lng, debut, fin }, maintenant = Date.n
   const parametres = new URLSearchParams({
     latitude: lat.toFixed(3),
     longitude: lng.toFixed(3),
-    start_date: jourUtc(debut),
-    end_date: jourUtc(fin),
+    // Dates du lieu, inconnues avant la réponse : un jour de marge de chaque côté couvre tous les fuseaux
+    start_date: jourUtc(debut - JOUR),
+    end_date: jourUtc(fin + JOUR),
     hourly: CHAMPS_METEO.join(','),
-    timezone: 'GMT',
+    // Heures du lieu : la réponse donne aussi son fuseau (utc_offset_seconds), gardé pour afficher l'heure locale
+    timezone: 'auto',
     wind_speed_unit: 'kmh',
   });
   return `${base}?${parametres}`;
 }
 
-// Réponse d'Open-Meteo -> { heures (ms UTC), et une série par champ }
+// Réponse d'Open-Meteo -> { heures (ms UTC), décalage du lieu (minutes), et une série par champ }.
+// Les heures arrivent à l'heure du lieu : on retire son décalage pour revenir en temps universel.
 export function lireMeteo(reponse) {
   const horaire = reponse?.hourly;
   if (!horaire || !Array.isArray(horaire.time) || !horaire.time.length) return null;
-  const heures = horaire.time.map((texte) => Date.parse(`${texte}Z`));
+  const secondes = Number.isFinite(reponse.utc_offset_seconds) ? reponse.utc_offset_seconds : 0;
+  const heures = horaire.time.map((texte) => Date.parse(`${texte}Z`) - secondes * 1000);
   if (!heures.every(Number.isFinite)) return null;
-  const meteo = { heures };
+  const meteo = { heures, decalage: Number.isFinite(reponse.utc_offset_seconds) ? Math.round(secondes / 60) : null };
   for (const champ of CHAMPS_METEO) meteo[champ] = Array.isArray(horaire[champ]) ? horaire[champ] : null;
   return meteo;
 }

@@ -10,9 +10,9 @@ describe('adresse de la météo du jour', () => {
   it('prend les archives pour une sortie ancienne', () => {
     const adresse = adresseMeteoSortie({ ...lieu, debut: Date.UTC(2026, 7, 14, 6), fin: Date.UTC(2026, 7, 14, 11) }, MAINTENANT);
     expect(adresse).toMatch(/^https:\/\/archive-api\.open-meteo\.com\/v1\/archive\?/);
-    expect(adresse).toContain('start_date=2026-08-14');
-    expect(adresse).toContain('end_date=2026-08-14');
-    expect(adresse).toContain('timezone=GMT');
+    expect(adresse).toContain('start_date=2026-08-13');
+    expect(adresse).toContain('end_date=2026-08-15');
+    expect(adresse).toContain('timezone=auto');
   });
 
   it('prend les prévisions pour une sortie de ces derniers jours', () => {
@@ -43,6 +43,11 @@ describe('lecture et interpolation', () => {
 
   it('lit les heures en UTC', () => {
     expect(meteo.heures[0]).toBe(Date.UTC(2026, 7, 14, 6));
+    expect(meteo.decalage).toBe(null);
+    // Réponse à l'heure de Guyane (UTC−3) : 06:00 locale = 09:00 UTC
+    const guyane = lireMeteo({ ...reponse, utc_offset_seconds: -10800 });
+    expect(guyane.heures[0]).toBe(Date.UTC(2026, 7, 14, 9));
+    expect(guyane.decalage).toBe(-180);
     expect(lireMeteo({})).toBe(null);
   });
 

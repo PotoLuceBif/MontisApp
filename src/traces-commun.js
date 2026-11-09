@@ -1,6 +1,7 @@
-// Ce que partagent la liste de Mes traces et la vue d'une sortie : types, icônes, noms, durées.
+// Ce que partagent la liste de Mes traces et la vue d'une sortie : types, icônes, noms, durées, heure du lieu.
 import { formatDenivele, formatDistance } from './unites.js';
-import { formatDate, t } from './i18n.js';
+import { heureDuLieu, nomDecalage } from './soleil.js';
+import { formatDate, heureCourte, t } from './i18n.js';
 
 export const TYPES = [
   { id: 'rando', cle: 'rando.titre', fichier: 'randonnee' },
@@ -20,9 +21,31 @@ export const iconeType = (id) => {
 };
 export const libelleType = (id) => t(typeDe(id)?.cle ?? 'traces.type-autre');
 
+// ---------- Heure du lieu ----------
+// Une sortie se lit à l'heure de l'endroit où elle a eu lieu, pas à celle du téléphone qui la regarde.
+// Fuseau (minutes) : celui de la montre (FIT), sinon celui que la météo du jour a donné, sinon inconnu.
+export const decalageDe = (sortie) => sortie?.decalage ?? sortie?.meteo?.decalage ?? null;
+
+export function heureSortie(instant, sortie) {
+  const decalage = decalageDe(sortie);
+  return decalage == null ? heureCourte(new Date(instant)) : heureDuLieu(instant, decalage);
+}
+
+export function dateSortie(instant, sortie, options) {
+  const decalage = decalageDe(sortie);
+  return decalage == null ? formatDate(instant, options) : formatDate(instant + decalage * 60000, { ...options, timeZone: 'UTC' });
+}
+
+// « Heures du lieu (UTC−3) », ou l'aveu que ce sont celles de l'appareil
+export function noteFuseau(sortie) {
+  const decalage = decalageDe(sortie);
+  if (decalage == null) return t('traces.fuseau-appareil');
+  return t(sortie.decalage != null ? 'traces.fuseau-montre' : 'traces.fuseau-lieu', { fuseau: nomDecalage(decalage) });
+}
+
 export function nomSortie(sortie) {
   if (sortie.nom) return sortie.nom;
-  if (sortie.debut) return t('traces.nom-defaut', { type: libelleType(sortie.type), date: formatDate(sortie.debut, { day: 'numeric', month: 'long' }) });
+  if (sortie.debut) return t('traces.nom-defaut', { type: libelleType(sortie.type), date: dateSortie(sortie.debut, sortie, { day: 'numeric', month: 'long' }) });
   return sortie.fichier || libelleType(sortie.type);
 }
 
@@ -34,13 +57,18 @@ export function formatDureeReelle(secondes) {
   return h ? t('duree.heures', { h, m: String(m).padStart(2, '0') }) : t('duree.minutes', { m });
 }
 
-// L'année seulement si ce n'est pas l'année en cours : la ligne reste courte sur téléphone
-export const dateCourte = (date) => formatDate(date, { day: 'numeric', month: 'short', ...(new Date(date).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
+// L'année seulement si ce n'est pas l'année en cours : la ligne reste courte sur téléphone.
+// `sortie` : pour une date de sortie, à lire à l'heure du lieu
+export const dateCourte = (date, sortie = null) => dateSortie(date, sortie, {
+  day: 'numeric',
+  month: 'short',
+  ...(new Date(date).getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }),
+});
 
 export function detailSortie(sortie) {
   const { distance, duree, plus } = sortie.resume ?? {};
   return [
-    sortie.debut ? dateCourte(sortie.debut) : null,
+    sortie.debut ? dateCourte(sortie.debut, sortie) : null,
     Number.isFinite(distance) ? formatDistance(distance) : null,
     Number.isFinite(duree) && duree > 0 ? formatDureeReelle(duree) : null,
     Number.isFinite(plus) ? `D+ ${formatDenivele(plus)}` : null,

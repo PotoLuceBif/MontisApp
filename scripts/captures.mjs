@@ -7,7 +7,7 @@
 // Résultat dans captures/ (ignoré par git) : une image par écran et par format, et rapport.txt
 // avec les erreurs JavaScript et les textes restés en français après le passage en anglais.
 // Exige Playwright et Chromium, déjà installés dans les sessions cloud.
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
@@ -165,6 +165,14 @@ const importerSorties = (noms) => async (page) => {
     buffer: Buffer.from(FICHIERS_DEMO[nom].contenu()),
   })));
   await page.waitForTimeout(2500);
+};
+// Une vraie sortie du propriétaire, si exemples/ en contient (dossier ignoré par git) : sinon, rien
+const importerExemple = async (page) => {
+  const fichier = existsSync('exemples') && readdirSync('exemples').find((nom) => /\.(fit|gpx|tcx|igc)$/i.test(nom));
+  if (!fichier) return;
+  await page.waitForSelector('.traces input[type="file"]', { state: 'attached', timeout: 15000 });
+  await page.setInputFiles('.traces input[type="file"]', `exemples/${fichier}`);
+  await page.waitForTimeout(3000);
 };
 // Un parcours Rando enregistré, pour la liste Mes traces › Parcours
 const parcoursEnregistre = (page) => page.evaluate(() => {
@@ -397,6 +405,7 @@ const ECRANS = [
   { nom: 'traces-ombre', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-ombre'), toucherFriseSortie(0.75), (p) => p.waitForTimeout(4000)] },
   { nom: 'traces-ombre-3d', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1500), clicVisible('.bf-sortie .traces-ombre'), toucherFriseSortie(0.2), clicVisible('.bf-sortie .bf-reduire'), (p) => p.waitForTimeout(5000)] },
   { nom: 'traces-meteo', simuler: true, actions: [module('sorties'), importerSorties(['rando.gpx']), (p) => p.waitForTimeout(2500), defiler('.bf-sortie .traces-meteo')] },
+  { nom: 'traces-exemple', actions: [module('sorties'), importerExemple, (p) => p.waitForTimeout(4000), toucherFriseSortie(0.5), defiler('.bf-sortie .traces-canaux')] },
   { nom: 'traces-parcours', actions: [parcoursEnregistre, module('parcours'), attendre('.traces-liste')] },
   {
     nom: 'combine-parcours-carte-fermee',
