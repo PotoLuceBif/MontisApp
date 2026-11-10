@@ -7,7 +7,7 @@
 // Résultat dans captures/ (ignoré par git) : une image par écran et par format, et rapport.txt
 // avec les erreurs JavaScript et les textes restés en français après le passage en anglais.
 // Exige Playwright et Chromium, déjà installés dans les sessions cloud.
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
@@ -64,7 +64,8 @@ const appuiLong = (x, y) => async (page) => {
 // Sans rien renvoyer : Playwright tenterait de copier toute la carte
 const vue = (options) => (page) => page.evaluate((o) => { window.map.jumpTo(o); }, options);
 const AIGUILLES = { center: [6.93, 45.9], zoom: 13.4, bearing: 0, pitch: 0 };
-const ARGENTIERE = { center: [7.0, 45.97], zoom: 12.6, bearing: 0, pitch: 0 };
+const BULLETIN_SIMULE = readFileSync(new URL('./bulletin-simule.json', import.meta.url), 'utf8');
+const ARGENTIERE ={ center: [7.0, 45.97], zoom: 12.6, bearing: 0, pitch: 0 };
 const PASSON = { center: [6.98, 45.962], zoom: 13.6, bearing: 0, pitch: 0 };
 // Clic sur la carte à une position donnée (l'éditeur de parcours écoute les clics de MapLibre)
 const clicCarte = (lngLat) => async (page) => {
@@ -245,6 +246,9 @@ const ECRANS = [
   { nom: 'ski-rando-ferme', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1500), clic('#menu-fermer'), (p) => p.waitForTimeout(3000)] },
   { nom: 'ski-rando-creer', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-creer'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500)] },
   // Retour à la piste : les pentes allumées par le ski de rando s'éteignent
+  // Bulletin détaillé déplié, avec le bulletin d'hiver de Météo-France (option bulletin)
+  { nom: 'ski-rando-bulletin', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.skirando-bulletin-bouton')] },
+  { nom: 'ski-rando-bulletin-suite', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.bulletin-texte')] },
   { nom: 'ski-rando-piste', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1000), clic('.ski-pratiques [data-pratique="piste"]'), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
@@ -524,6 +528,14 @@ async function main() {
         if (ecran.simuler) {
           await page.route(/api\.open-meteo\.com\/v1\/forecast/, (route) => route.fulfill({ json: previsionsSimulees(route.request().url()) }));
           await page.route(/archive-api\.open-meteo\.com\/v1\/archive/, (route) => route.fulfill({ json: archiveSimulee(route.request().url()) }));
+        }
+        // Bulletin d'hiver de Météo-France (scripts/bulletin-simule.json) : en début de saison, ceux du jour sont presque vides
+        if (ecran.bulletin) {
+          await page.route(/eaws_bulletins\/(\d{4}-\d\d-\d\d)\/$/, (route) => {
+            const [, date] = /(\d{4}-\d\d-\d\d)\/$/.exec(route.request().url());
+            route.fulfill({ body: `<a href="./${date}-FR.json">FR</a>`, contentType: 'text/html', headers: { 'access-control-allow-origin': '*' } });
+          });
+          await page.route(/eaws_bulletins\/\d{4}-\d\d-\d\d\/\d{4}-\d\d-\d\d-FR\.json$/, (route) => route.fulfill({ body: BULLETIN_SIMULE, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' } }));
         }
 
         await page.goto(`${adresse}${ecran.lien ?? ''}`, { waitUntil: 'load' });

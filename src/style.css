@@ -3734,3 +3734,50 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .skirando-avalanches { display: grid; gap: 7px; }
 .skirando-avalanches h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
 .rando-badge.skirando-badge { background: #2b6c8f; }
+.skirando-bulletin-bouton {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 44px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 650 13px/1.2 var(--police); cursor: pointer;
+}
+.skirando-bulletin-bouton[hidden], .skirando-bulletin[hidden] { display: none; }
+.skirando-bulletin-bouton svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s; }
+.skirando-bulletin-bouton[aria-expanded="true"] svg { transform: rotate(180deg); }
+.bulletin-detaille { display: grid; gap: 10px; }
+.bulletin-detaille h4 { margin: 4px 0 0; color: var(--texte); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.bulletin-date { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.4; }
+.bulletin-date[hidden] { display: none; }
+.bulletin-titre { margin: 0; color: var(--texte); font-size: 14px; font-weight: 650; line-height: 1.4; }
+.bulletin-niveaux { display: grid; gap: 6px; }
+.bulletin-niveau { display: flex; align-items: center; gap: 10px; }
+.bulletin-niveau .ski-risque-niveau { width: 32px; height: 32px; font-size: 17px; }
+.bulletin-niveau-textes { display: grid; gap: 1px; }
+.bulletin-niveau-textes strong { font-size: 13px; }
+.bulletin-niveau-textes span { color: var(--texte-2); font-size: 12px; }
+.bulletin-orientations { display: flex; align-items: center; gap: 12px; }
+.bulletin-rose { width: 84px; height: 84px; flex: none; }
+.bulletin-rose path { stroke: var(--surface); stroke-width: 1.2; }
+.bulletin-rose .bulletin-rose-calme { fill: var(--surface-2); }
+.bulletin-rose .ski-risque-1 { fill: #ccff66; }
+.bulletin-rose .ski-risque-2 { fill: #ffff00; }
+.bulletin-rose .ski-risque-3 { fill: #ff9900; }
+.bulletin-rose .ski-risque-4, .bulletin-rose .ski-risque-5 { fill: #ff0000; }
+.bulletin-rose-centre { fill: var(--surface); }
+.bulletin-rose text { fill: var(--texte-2); font: 700 10px var(--police); text-anchor: middle; dominant-baseline: middle; }
+.bulletin-orientations-textes { display: grid; gap: 2px; }
+.bulletin-orientations-textes strong { font-size: 13px; }
+.bulletin-orientations-textes span { color: var(--texte-2); font-size: 12px; }
+.bulletin-problemes { display: grid; gap: 6px; }
+.bulletin-probleme { display: grid; gap: 3px; padding: 8px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.bulletin-probleme strong { font-size: 13px; }
+.bulletin-probleme span { color: var(--texte-2); font-size: 12px; }
+.bulletin-probleme p, .bulletin-texte p { margin: 0; color: var(--texte); font-size: 13px; line-height: 1.5; }
+.bulletin-neige { display: grid; gap: 6px; }
+.bulletin-neige-chiffres { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.bulletin-neige-case { display: grid; gap: 2px; padding: 6px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); text-align: center; }
+.bulletin-neige-case strong { font-size: 14px; }
+.bulletin-neige-case span { color: var(--texte-2); font-size: 11px; }
+.bulletin-texte { display: grid; gap: 5px; }
+.bulletin-tendance-seule { margin: 0; color: var(--texte); font-size: 13px; }
+.bulletin-texte .bulletin-puce { position: relative; padding-left: 14px; }
+.bulletin-texte .bulletin-puce::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.bulletin-texte .bulletin-intertitre { margin-top: 4px; font-weight: 700; }
