@@ -1,0 +1,76 @@
+{
+ "note": "Bulletin de Météo-France du 10 février 2026, massif du Mont-Blanc (via l’EAWS), pour les captures",
+ "bulletins": [
+  {
+   "avalancheActivity": {
+    "comment": "Début d'un long épisode neigeux, risque en hausse au fil de la semaine\n\nDéclenchements provoqués :\n* plaques friables dans la neige fraîche, de plus en plus nombreuses au fil de la journée, au-dessus de 1700 m. Facilement déclenchable. Elles se situent principalement dans les zones exposées au vent de sud-ouest (soufflant à partir de lundi soir). Taille 1 à 2 (petite à moyenne). \n* avalanche de neige humide (départ en poire), partant sous les skis, sous la pluie (sous 1300/1400 m le matin et 1600/1700 m l’après-midi). Facile à déclencher. Taille 1 (petite) le matin, voire 2 (moyenne) en fin de journée/soirée.\n* rares plaques sur sous-couche fragile persistante enfouie, dans les versants ouest/nord/est au-dessus de 1800 m. Difficile à déclencher par un.e skieur.e. Une petite avalanche (cf plaques ci-dessus) ou une chute de corniche peuvent les déclencher. Taille 2 à 3 (moyenne à grande) avec des cassures de 60/80 cm d’épais.\n\nDéparts spontanés :\n* avalanches de neige humide, sous la pluie (sous 1300/1400 m le matin et 1600/1700 m l’après-midi), de plus en plus nombreuses au fil de la journée. Taille 1 (petite) le matin, voire 2 (moyenne) en fin de journée/soirée.\n* avalanches de neige fraîche, pendant les chutes de neige, très rares le matin, un peu plus nombreuses en fin de journée/soirée. Tailles 1 à 2 (petites à moyenne). Une avalanche de taille 3 n’est pas exclue en fin de journée dans les versants ouest/nord/est au-dessus de 1800 m (due à une sous-couche fragile persistante enfouie). "
+   },
+   "bulletinID": "FR-03_2026-02-09T16:00:00+01:00",
+   "customData": {
+    "MeteoFrance": {
+     "avalancheProneLocation": {
+      "aspects": [
+       "N",
+       "NE",
+       "E",
+       "W",
+       "NW"
+      ]
+     }
+    },
+    "ALBINA": {
+     "mainDate": "2026-02-10"
+    }
+   },
+   "dangerRatings": [
+    {
+     "mainValue": "moderate",
+     "aspects": [
+      "N",
+      "NE",
+      "E",
+      "W",
+      "NW"
+     ],
+     "elevation": {
+      "upperBound": "1700"
+     },
+     "validTimePeriod": "all_day"
+    },
+    {
+     "mainValue": "considerable",
+     "aspects": [
+      "N",
+      "NE",
+      "E",
+      "W",
+      "NW"
+     ],
+     "elevation": {
+      "lowerBound": "1700"
+     },
+     "validTimePeriod": "all_day"
+    }
+   ],
+   "publicationTime": "2026-02-09T16:00:00+01:00",
+   "regions": [
+    {
+     "regionID": "FR-03"
+    }
+   ],
+   "snowpackStructure": {
+    "comment": "Enneigement : Pour la saison, l’enneigement est déficitaire. \nOn peut chausser les skis vers 1200/1400 m. Pas de sous-couche sous 1500 m ou sur les crêtes, des cailloux sont cachés sous la neige récente. Les crêtes et les arêtes sont dégarnies de neige. Grosses corniches. \n\nQualité de la neige ce mardi matin : \nEn début de matinée, 1/3 cm de neige fraîche reposant sur :\n* de la neige dure, sous 1600/1700 m ;\n* une fine croûte de regel cassante sous la neige fraîche, dans les versants sud, sous 2300 m ;\n* sur 15/25 cm de neige encore froide et assez légère sur un fond dur, ailleurs. \nAu fil de la journée, la quantité et l’humidité de la neige fraîche augmentent."
+   },
+   "source": {
+    "provider": {
+     "name": "Meteo France",
+     "website": "https://meteofrance.com/meteo-montagne"
+    }
+   },
+   "validTime": {
+    "startTime": "2026-02-09T16:00:00+01:00",
+    "endTime": "2026-02-10T18:00:00+01:00"
+   }
+  }
+ ]
+}

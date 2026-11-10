@@ -1,6 +1,6 @@
 // Tuile de pente ou d'orientation calculée depuis les tuiles de relief (Terrain Tiles, celles de la 3D
 // et des zones hors ligne). Utilisé par le travailleur de pentes-travail.js, ou directement en repli.
-import { altitudesTerrarium, celluleMercator, grillePentes, pixelsTuile } from './pente-calcul.js';
+import { altitudesTerrarium, celluleMercator, exposee, grillePentes, pixelsTuile } from './pente-calcul.js';
 
 const MODELE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 // Relief au zoom 13 (environ 13 m par pixel dans les Alpes), le plus fin des zones hors ligne ;
@@ -44,7 +44,7 @@ export function altitudesTuile(z, x, y) {
 }
 
 // Pixels de la tuile z/x/y calculés depuis le relief au zoom zr
-async function calculerTuile(zr, z, x, y, genre, annulee) {
+async function calculerTuile(zr, z, x, y, genre, annulee, zones) {
   const cote = 256 * 2 ** (zr - z); // cellules de relief sur un côté de la tuile (128 à 512)
   const x0 = x * cote;
   const y0 = y * cote;
@@ -81,14 +81,20 @@ async function calculerTuile(zr, z, x, y, genre, annulee) {
     altitude,
     cellule: celluleMercator(y0, zr),
   });
+  // Pentes exposées : celles du bulletin, aux couleurs des pentes
+  if (genre === 'exposees') {
+    const garder = (k) => exposee(zones, orientations[k], pentes[k], altitude(k % cote, Math.floor(k / cote)));
+    return pixelsTuile({ pentes, orientations, cote, genre: 'pentes', garder });
+  }
   return pixelsTuile({ pentes, orientations, cote, genre });
 }
 
-export async function tuile(z, x, y, genre, annulee) {
+// `zones` : pour le genre « exposees », les zones du bulletin (pente-calcul.js)
+export async function tuile(z, x, y, genre, annulee, zones = []) {
   let erreur;
   for (const zr of ZOOMS_RELIEF) {
     try {
-      return await calculerTuile(zr, z, x, y, genre, annulee);
+      return await calculerTuile(zr, z, x, y, genre, annulee, zones);
     } catch (e) {
       if (annulee?.()) throw e;
       erreur = e;

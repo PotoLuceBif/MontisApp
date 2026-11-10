@@ -28,7 +28,7 @@ Ces règles sont celles du propriétaire. Les respecter sans qu'il ait à les re
 **Comportement**
 - Activités exclusives : jamais deux activités actives en même temps (`exclusif: true` dans `menu.js`). Météo et Carte s'ouvrent par-dessus l'activité sans l'arrêter ; sur téléphone, le panneau de l'activité est masqué le temps qu'un panneau Météo ou Carte est ouvert, puis revient.
 - La météo affichée (radar, analyse du vent, météo locale) reste sur la carte quand on ouvre le menu, le panneau Carte ou une activité. Elle ne se retire que quand un outil d'activité prend la carte : Créer un parcours, Rechercher ici, recherche de stations ou de bike parks (zone ou nom), Portée de vol. Ces outils appellent `annoncerOutilActivite()` (`outil-activite.js`) ; un nouvel outil de ce genre doit faire de même.
-- Quatre activités, chacune avec ses pratiques : Randonnée (randonnée, puis trail, raquettes), Vélo (VTT, gravel, route), Ski (piste, puis ski de rando, hors-piste), Vol libre (parapente, puis deltaplane, paramoteur, speed riding). Une nouvelle pratique s'ajoute dans son activité, pas comme une nouvelle activité. Le choix de pratique n'apparaît qu'à partir de deux pratiques.
+- Quatre activités, chacune avec ses pratiques : Randonnée (randonnée, puis trail, raquettes), Vélo (VTT, gravel, route), Ski (piste, puis ski de rando, hors-piste), Vol libre (parapente, puis deltaplane, paramoteur, speed riding). Une nouvelle pratique s'ajoute dans son activité, pas comme une nouvelle activité. Le choix de pratique n’apparaît qu’à partir de deux pratiques : en tête du panneau de l’activité, en boutons segmentés, comme Piste · Ski de rando (décision du propriétaire du 10 novembre 2026, `activite-ski.js`) ; Vélo garde le sien dans l’éditeur de parcours.
 - Tous les réglages sont sauvegardés dans le localStorage et conservés après rafraîchissement. Passer par `lire` et `ecrire` de `reglages.js`.
 - 2D : inclinaison bloquée, rotation et déplacement autorisés. 3D : inclinaison autorisée, sans angle imposé au passage en 3D (`appliquerMode` dans `main.js`).
 - Les panneaux n'affichent que les options utiles au mode actuel : pas d'options grisées, on les masque (`data-seulement="2d"` ou `"3d"`, voir `relief.js`). Seule exception, déjà en place : hors ligne, les fonctions qui exigent Internet sont grisées.
@@ -118,6 +118,9 @@ Jamais pour un simple avancement.
 - **Ombre d'une sortie :** tant qu'elle est allumée, `etat.ombreSortie` fait passer en retrait l'ombre de Carte › Relief (`ombres.js`) et l'ombrage fixe de la 3D (`main.js`) ; à l'extinction, `sortie-ombre.js` rappelle `etat.majOmbres`.
 - **Heure d'une sortie :** jamais `heureCourte` ni `formatDate` seuls, qui donnent l'heure de l'appareil : passer par `heureSortie` et `dateSortie` (`traces-commun.js`), qui appliquent le fuseau du lieu (`decalage` de la sortie, lu dans le FIT, sinon celui de sa météo). Les instants restent en temps universel (soleil, météo).
 - **Lien partagé :** `partage.js` lit l'adresse dès son import (avant `style.load`) : la vue d'un lien remplace la dernière vue et l'ouverture sur sa position (`vueDemandee` dans `main.js`), puis `ouvrirLienRecu` ouvre point ou parcours une fois menu et fiches posés, et efface l'adresse. Un parcours reçu passe par la demande `parcours-partage-<activité>`. Tout ce qui vient d'un lien est vérifié (`deplierParcours`) : une voie inconnue ferait échouer le dessin du tracé (`VOIES_CONNUES` doit suivre `VOIES` de `parcours-analyse.js`). En lecture, la ligne d'état de l'éditeur est masquée : les messages passent par la bulle `annoncer`.
+- **Ski de rando :** c'est une pratique de l'activité `ski`, avec ses propres parcours (`activite: 'skirando'`, `montis.skirando-parcours`). `montis:ouvrir-module` traduit `module: 'skirando'` en `ski`, et `activite-ski.js` choisit la pratique quand une demande `…-skirando` attend (`enAttente` de `demandes.js`). Une pratique peut router elle-même un tronçon (`tronconLocal`, source `skitour`) avant BRouter. Les pentes se règlent par `etat.pentes` (`pentes-panneau.js`), sans import ; `skirando-pentes-auto` retient que c'est la pratique qui les a allumées.
+- **Pentes du bulletin :** genre `exposees` du protocole `montis-pente://exposees/<zones>/z/x/y` (`zonesVersTexte` de `pente-calcul.js`), couche `pentes-exposees` posée par `afficherPentesExposees` (`pentes-couche.js`). Elles masquent les pentes de Carte › Relief (`etat.pentes`) et les rétablissent à l’extinction.
+- **Profils BRouter :** sous Windows, les `.brf` sont extraits en CRLF : `profilMontis` découpe sur `\r?\n`, sinon les commentaires restent.
 - **Parcours modifiés ailleurs :** un parcours renommé, supprimé ou enregistré émet `montis:parcours-modifies` ; les listes de Rando, Vélo et Mes traces › Parcours se redessinent. Un parcours touché dans Mes traces s'ouvre dans son activité par la demande `ouvrir-parcours-<activité>`.
 
 ## Arborescence
@@ -227,7 +230,7 @@ src/                    Tout le code (détail ci-dessous)
 | `parcours-routage.js` | BRouter, puis Valhalla en secours |
 | `parcours-preferences.js`, `profils-brouter/` | Préférences de routage (« Privilégier », bouton filtre de l'éditeur) : profils BRouter standard complétés de variables `montis_*`, envoyés une fois par session (`/brouter/profile`) puis réglés par l'adresse ; options Valhalla équivalentes (testé). Profils copiés de brouter.de (`profiles2/`), à recopier si BRouter les fait évoluer |
 | `parcours-analyse.js`, `parcours-profil.js` | Pentes, durée, surfaces, difficulté ; profil coloré |
-| `parcours-decouverte.js` | Repères après « Rechercher ici » |
+| `parcours-decouverte.js` | Repères après « Rechercher ici » (Rando, Vélo ; ski de rando par `poser`, avec ses tracés déjà connus) |
 | `parcours-itineraires.js` | Grands itinéraires en tronçons (EuroVelo, GR) |
 | `parcours-gpx.js`, `parcours-stockage.js` | Lecture GPX ; « Mes parcours » |
 | `rando-api.js`, `rando-profil.js` | API Waymarked Trails ; altitudes, dénivelé, export GPX |
@@ -239,6 +242,10 @@ src/                    Tout le code (détail ci-dessous)
 | `activite-ski.js`, `ski-conditions.js` | Stations ; enneigement et risque d'avalanche |
 | `zone-lieux.js`, `fiche-lieu.js` | Recherche par nom ou zone et repères groupés ; fiche commune aux stations et bike parks |
 | `visite-station.js` | Visite 3D d'une station ou d'un bike park |
+| `activite-skirando.js` | Pratique Ski de rando : configuration du menu commun (`activite-parcours.js`), pratique de routage, bloc Avalanches ici |
+| `skirando-itineraires.js`, `skirando-avalanches.js` | « Rechercher ici » : itinéraires `piste:type=skitour` des carrés de la vue (`/data/skitour`) sur la carte et en liste, réseau donné au routage ; niveau d'avalanche du massif au centre de la carte |
+| `bulletin-detaille.js`, `bulletin-calcul.js` | Bulletin d'avalanche détaillé (CAAML de l'EAWS : niveaux par altitude, rose, problèmes, textes du service) et neige récente (Open-Meteo) ; calculs purs : fichier d'un massif, lecture du bulletin, cumuls de neige, zones des pentes concernées (testés) |
+| `skirando-calcul.js` | Calculs purs : massif d'un point, niveaux du jour, carrés de la vue et lecture des itinéraires, plus court chemin sur leur réseau, durée (testés) |
 
 ## Données locales
 
@@ -250,6 +257,8 @@ Fichiers générés par `scripts/`, à relancer seulement pour rafraîchir les d
 | `public/data/bike-parks.json`, `bike-parks/` (38 fichiers) | 2,7 Mo | `node scripts/extraire-bike-parks.mjs` (OSM via Overpass) |
 | `public/data/refuges.json` | 1,9 Mo | `MONTIS_CONTACT_EMAIL=... node scripts/extraire-refuges.mjs` (Overpass) |
 | `src/fonds-zones.js`, `src/fonds-emprises.js` | 50 Ko | `node scripts/extraire-zones-fonds.mjs` (Natural Earth, domaine public) |
+| `public/data/skitour/` (6 446 itinéraires, 294 carrés de 1° et `index.json`) | 3,4 Mo | `node scripts/extraire-skitour.mjs` (OpenSkiData) ; hors du préchargement |
+| `public/data/avalanches/massifs.json` (627 massifs simplifiés) | 488 Ko | `node scripts/extraire-massifs-avalanche.mjs` (EAWS, CC BY 4.0) ; hors du préchargement, comme `pistes/` |
 
 Les caches `scripts/cache-*.json` sont ignorés par git : un clone neuf repart de zéro.
 
@@ -274,7 +283,8 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 | Itinéraires balisés, EuroVelo | Waymarked Trails | Écritures exactes (« GR5 » et « GR 5 » diffèrent) ; un itinéraire entier peut peser environ 10 Mo |
 | Routage | BRouter, puis Valhalla | BRouter abandonne au-delà de 3 s de calcul ; un tronçon non calculé apparaît en tireté |
 | Carte géologique | Vue détaillée : BRGM via la Géoplateforme (`data.geopf.fr/wmts`, `BRGM_SCAN_D_GEOL50`). Vue simple, roche et feuille au point : WMS du BRGM (`geoservices.brgm.fr/geologie`, `LITHO_1M_SIMPLIFIEE`, `SCAN_F_GEOL50_CATALOG`) | France seulement. WMS du BRGM lent (environ 1 s par tuile de 512 px), vide hors des échelles 1/25 000 à 1/10 000 000. Tuiles JPEG blanches hors couverture. La carte 1/50 000 n'est pas interrogeable : la fiche donne la roche dominante au 1/1 000 000 et la feuille. Notices en http seulement (`ficheinfoterre.brgm.fr`). Non téléchargeable (tuiles vues récemment gardées par le service worker) |
-| Avalanches | Bulletins EAWS (`static.avalanche.report`) | Selon la couverture des bulletins |
+| Avalanches | Bulletins EAWS (`static.avalanche.report` : niveaux `<date>.ratings.json`, bulletins CAAML `<date>-<service>[.<langue>].json`, liste du jour par la page du dossier) ; contours des massifs : `regions.avalanches.org` (générés en local) | Selon la couverture et la saison (presque vides en novembre). Textes dans la langue du service (Météo-France en français, Tyrol et Italie traduits). Avalanches observées : pas encore (data-avalanche.org sans accès public, LAWIS ouvert pour l’Autriche, Camptocamp derrière un relais) |
+| Itinéraires de ski de rando | OpenSkiData (usage `skitour`), rangés par carré de 1° dans `public/data/skitour/` | Pas Overpass (saturé, aucun résultat chez le propriétaire le 10 novembre 2026), ni Waymarked Trails (ne les a pas), ni les tuiles d'OpenSkiMap (réservées à leur site). BRouter ignore ceux sans `highway` (la plupart) : Montis route lui-même sur leur réseau |
 
 ## État actuel et prochaines étapes
 
@@ -307,6 +317,8 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Préférences de routage (lot 3.0) : bouton filtre de l'éditeur de parcours, bloc « Privilégier » à choix multiples (Rando : sentiers, chemins blancs, itinéraires balisés, petites routes ; Vélo : pistes cyclables et véloroutes, petites routes, chemins blancs, single tracks), rien de coché par défaut. Préférence, jamais interdiction : profil BRouter Montis (`parcours-preferences.js`). Écrans `parcours-preferences-*` dans les captures.
 
 - Partage par lien (lot 4.5) : « Partager cette vue » en bas du menu, « Partager ce point » dans la fiche du point, icône de partage à côté de GPX dans l'éditeur de parcours. Tout dans l'adresse après « # » (`#vue=zoom/lat/lng/cap/inclinaison&3d=1&fond=…`, `#point=lat/lng&z=14`, `#parcours=<tracé compressé>`), aucun serveur. Feuille de partage du téléphone, sinon lien copié (bulle `annoncer` de `partage.js`). Un parcours reçu s'ouvre dans son activité avec tout son tracé, sans recalcul ni enregistrement ; simplifié au-delà de 8 000 caractères. Écrans `partage-*` dans les captures.
+
+- Ski de rando (lot 3.3) : choix Piste ou Ski de rando en tête du panneau Ski (premier sélecteur de pratique, `ski-pratique`). Menu de la Randonnée : créer un parcours, « Rechercher ici » (itinéraires `piste:type=skitour` d'OSM en pins de ski de rando regroupés comme ceux de la Randonnée, demande du propriétaire du 10 novembre 2026, et listés ; un appui en ouvre un dans l'éditeur), Mes parcours, GPX. Le routage suit les itinéraires chargés (chargés aussi sans bruit à « Créer un parcours »), BRouter au-delà ; durée pour 400 m/h à la montée ; montées raides au-delà de 30 %. Bloc « Avalanches ici » : niveau du jour du massif au centre de la carte (EAWS), suivi au déplacement ; « Bulletin détaillé » à déplier (demande du propriétaire du 10 novembre 2026, inspirée de l’appli ARVA) : niveaux par altitude et moment de la journée, rose des pentes les plus exposées, problèmes d’avalanche, neige récente 24, 48, 72 h et au sol, textes du service officiel dans sa langue (activité, manteau, météo, tendance) ; « Voir ces pentes sur la carte » : pentes de 30° et plus aux orientations et altitudes du bulletin, avec la pastille « Pentes du bulletin », à la place des pentes de Carte › Relief le temps de leur affichage. Écrans `ski-rando-bulletin*` (bulletin d’hiver de Météo-France simulé, option `bulletin` d’un écran). Pentes allumées avec la pratique, éteintes en la quittant si c'est elle qui les a allumées. Parcours dans Mes traces, la sauvegarde et les liens. Écrans `ski-rando*` dans les captures.
 
 **Points ouverts constatés**
 - Au démarrage : 315 Ko de code Montis (partage par lien compris) (100 Ko compressé), en deux fichiers : le code (176 Ko, dont 17 Ko pour le catalogue et le panneau des fonds du lot 3.10) et les deux fichiers de langue (135 Ko) ; MapLibre (1,1 Mo) à part. Les contours des pays (50 Ko) se chargent à la demande.

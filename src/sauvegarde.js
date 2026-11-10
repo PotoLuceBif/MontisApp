@@ -1,5 +1,5 @@
 // Sauvegarde dans un fichier .json : réglages (thème, unités, langue, panneaux…) et
-// « Mes parcours » Rando et Vélo, et les sorties de Mes traces (IndexedDB, lues à la demande).
+// « Mes parcours » Rando, Vélo et Ski de rando, et les sorties de Mes traces (IndexedDB, lues à la demande).
 // Les zones de carte hors ligne n'y sont pas : trop lourdes.
 import { toutLire, toutRemplacer } from './reglages.js';
 import { t } from './i18n.js';
@@ -7,7 +7,7 @@ import { t } from './i18n.js';
 export const FORMAT = 'montis-sauvegarde';
 // Version 2 : ajout des sorties (une sauvegarde de version 1 n'en a pas)
 export const VERSION = 2;
-const ACTIVITES = ['rando', 'velo'];
+const ACTIVITES = ['rando', 'velo', 'skirando'];
 const CLE_FINESSE = 'montis.finesse';
 const TAILLE_MAX = 100 * 1024 * 1024;
 // Propres à cet appareil ou recalculées : inutiles dans une sauvegarde
@@ -198,6 +198,9 @@ export function resumerSauvegarde(sauvegarde, idsSorties = new Set()) {
     velo: sauvegarde.parcours.velo.length,
     nouveauxRando: nouveaux('rando'),
     nouveauxVelo: nouveaux('velo'),
+    skirando: sauvegarde.parcours.skirando.length,
+    nouveauxSkirando: nouveaux('skirando'),
+    actuelsSkirando: actuels.skirando.length,
     actuelsRando: actuels.rando.length,
     actuelsVelo: actuels.velo.length,
     sorties: sauvegarde.sorties.length,

@@ -4,6 +4,7 @@ import { REPERE_CALQUES } from './style-montis.js';
 import { addProtocol } from 'maplibre-gl';
 import { lire, ecrire } from './reglages.js';
 import { etat } from './options-carte.js';
+import { zonesDepuisTexte, zonesVersTexte } from './pente-calcul.js';
 
 const PROTOCOLE = 'montis-pente';
 export const ZOOM_MIN_PENTES = 12; // plus loin, le relief est trop lissé : les pentes seraient sous-estimées
@@ -16,9 +17,9 @@ let repli = typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefin
 let suivant = 0;
 const enAttente = new Map(); // id → { resolve, reject, demande }
 
-function calculerSurLaPage({ z, x, y, genre, soleil }, signal) {
+function calculerSurLaPage({ z, x, y, genre, soleil, zones }, signal) {
   if (genre === 'ombre') return import('./ombre-tuile.js').then((m) => m.tuileOmbre(z, x, y, soleil, () => signal.aborted));
-  return import('./pentes-tuile.js').then((m) => m.tuile(z, x, y, genre, () => signal.aborted));
+  return import('./pentes-tuile.js').then((m) => m.tuile(z, x, y, genre, () => signal.aborted, zones));
 }
 
 function passerEnRepli(erreur) {
@@ -64,8 +65,9 @@ function ajouterProtocole() {
   if (protocoleAjoute) return;
   protocoleAjoute = true;
   addProtocol(PROTOCOLE, async ({ url }, controleur) => {
-    const [, genre, z, x, y] = url.match(/^[\w-]+:\/\/(\w+)\/(\d+)\/(\d+)\/(\d+)/);
-    const pixels = await calculer({ z: Number(z), x: Number(x), y: Number(y), genre }, controleur.signal);
+    // Pentes exposées : les zones du bulletin entre le genre et z/x/y
+    const [, genre, zones, z, x, y] = url.match(/^[\w-]+:\/\/(\w+)\/(?:([\dx_-]+)\/)?(\d+)\/(\d+)\/(\d+)/);
+    const pixels = await calculer({ z: Number(z), x: Number(x), y: Number(y), genre, zones: zonesDepuisTexte(zones) }, controleur.signal);
     return { data: await createImageBitmap(new ImageData(pixels, 256, 256)) };
   });
 }
@@ -123,4 +125,25 @@ export function initCouchePentes(map) {
     // Une tuile en échec appartient-elle à ces couches ?
     estSource: (id) => GENRES.some((genre) => idCouche(genre) === id),
   };
+}
+
+// Pentes exposées selon le bulletin d'avalanche du jour (ski de rando) : une couche à part,
+// recréée quand les zones changent ; `zones` vide ou null la retire
+const EXPOSEES = 'pentes-exposees';
+export function afficherPentesExposees(map, zones) {
+  if (map.getLayer(EXPOSEES)) map.removeLayer(EXPOSEES);
+  if (map.getSource(EXPOSEES)) map.removeSource(EXPOSEES);
+  if (!zones?.length) return;
+  ajouterProtocole();
+  map.addSource(EXPOSEES, {
+    type: 'raster',
+    tiles: [`${PROTOCOLE}://exposees/${zonesVersTexte(zones)}/{z}/{x}/{y}`],
+    tileSize: 256,
+    minzoom: ZOOM_MIN_PENTES,
+    maxzoom: 13,
+  });
+  map.addLayer(
+    { id: EXPOSEES, type: 'raster', source: EXPOSEES, minzoom: ZOOM_MIN_PENTES, paint: { 'raster-opacity': lire('pentes-opacite', 0.6), 'raster-fade-duration': 0 } },
+    AVANT.find((id) => map.getLayer(id)),
+  );
 }

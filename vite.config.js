@@ -3,8 +3,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { defineConfig } from 'vite';
 
-// Les pistes se chargent station par station : elles n'ont pas à être gardées d'office
-const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/', '/data/bike-parks/'];
+// Pistes, massifs d’avalanche et itinéraires de ski de rando se chargent à la demande : pas à garder d’office
+const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/', '/data/bike-parks/', '/data/avalanches/', '/data/skitour/'];
 
 function fichiersPublics(dossier, racine = dossier) {
   return readdirSync(dossier).flatMap((nom) => {

@@ -14,6 +14,15 @@ describe('lireSauvegarde', () => {
     const lue = await lireSauvegarde(fichier(sauvegarde([parcours([etape(6, 45), etape(6.1, 45.1, [[6, 45], [6.1, 45.1]])])])));
     expect(lue.parcours.rando).toHaveLength(1);
     expect(lue.date).toBe(Date.parse('2026-11-09T10:00:00Z'));
+    // Fichier d'avant le ski de rando : aucun parcours de ski de rando, pas d'erreur
+    expect(lue.parcours.skirando).toEqual([]);
+  });
+
+  it('lit les parcours de ski de rando', async () => {
+    const donnees = sauvegarde([]);
+    donnees.parcours.skirando = [parcours([etape(7, 46), etape(7.01, 46.01, [[7, 46], [7.01, 46.01]])])];
+    const lue = await lireSauvegarde(fichier(donnees));
+    expect(lue.parcours.skirando).toHaveLength(1);
   });
 
   it('refuse un fichier illisible ou d’un autre format', async () => {

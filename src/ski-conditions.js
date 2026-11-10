@@ -146,6 +146,9 @@ export function creerBlocNeige({ points, jours, duHaut }) {
 }
 
 // ---------- Risque d'avalanche ----------
+// Niveaux du jour de tous les massifs couverts par l'EAWS
+export const chargerNiveauxDuJour = () => chargerNiveaux(dateLocale());
+
 async function chargerNiveaux(date) {
   if (!cacheRisques.has(date)) {
     const demande = requeteReseau(`${URL_RISQUES}/${date}/${date}.ratings.json`)

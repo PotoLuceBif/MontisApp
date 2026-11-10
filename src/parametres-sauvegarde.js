@@ -127,6 +127,8 @@ export function creerSectionSauvegarde(section) {
       [t('sauv.reglages'), t('sauv.reglages-detail', { theme: libelleTheme(resume.theme), unites: libelleUnites(resume.unites), langue: libelleLangue(resume.langue) }), String(resume.nombreReglages)],
       [t('sauv.parcours-rando'), precisionParcours(resume.rando, resume.nouveauxRando, resume.actuelsRando), String(resume.rando)],
       [t('sauv.parcours-velo'), precisionParcours(resume.velo, resume.nouveauxVelo, resume.actuelsVelo), String(resume.velo)],
+      // Ligne absente tant qu'aucun parcours de ski de rando n'existe, ni ici ni dans le fichier
+      ...(resume.skirando || resume.actuelsSkirando ? [[t('sauv.parcours-skirando'), precisionParcours(resume.skirando, resume.nouveauxSkirando, resume.actuelsSkirando), String(resume.skirando)]] : []),
       [t('sauv.sorties'), precisionParcours(resume.sorties, resume.nouvellesSorties, resume.actuellesSorties, SORTIES), String(resume.sorties)],
     ];
     contenu.replaceChildren(...lignes.flatMap(([titre, precision, valeur]) => {

@@ -69,7 +69,8 @@ function ancrer(trace, limites, centre) {
   return coordonnees;
 }
 
-export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => false, nomPluriel = 'velo.pluriel' }) {
+// `pinDe(route)` : nom du pin d'un itinéraire ; `poser` reçoit des tracés déjà connus (ski de rando)
+export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () => false, nomPluriel = 'velo.pluriel', pinDe = (route) => (route.carte === 'hiking' ? 'rando' : 'route') }) {
   let actif = false;
   let entrees = [];
   let marqueurs = [];
@@ -208,7 +209,7 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
     element.type = 'button';
     element.setAttribute('aria-label', t('decouverte.resume-aria', { nom: titreDe(route) }));
     element.title = t('decouverte.resume-aide');
-    element.append(imagePin(route.carte === 'hiking' ? 'rando' : 'route'), el('span', 'rando-repere-nom', titreDe(route)));
+    element.append(imagePin(pinDe(route)), el('span', 'rando-repere-nom', titreDe(route)));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherResume(entree);
     });
@@ -383,6 +384,17 @@ export function creerDecouverte(map, { clients, ouvrirRoute, masque = () => fals
       actif = false;
       map.off('moveend', actualiser);
       retirer();
+    },
+    // Itinéraires dont le tracé est déjà là : [{ route, trace: { chaine, lignes } }]
+    poser(liste) {
+      retirer();
+      const limites = map.getBounds();
+      const centre = map.getCenter().toArray();
+      entrees = liste
+        .map(({ route, trace }) => ({ route, trace, coordonnees: ancrer(trace, limites, centre) }))
+        .filter(({ coordonnees }) => coordonnees);
+      actualiser();
+      return entrees.length;
     },
     // Rend le nombre de repères posés, ou null si une autre recherche a pris la main
     async charger(routes, progression = () => {}) {

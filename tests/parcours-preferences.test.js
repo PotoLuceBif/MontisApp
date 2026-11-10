@@ -15,6 +15,8 @@ describe('préférences de routage', () => {
   it('règle le profil Montis par l’adresse', () => {
     expect(parametresBrouter(['sentiers', 'balises'])).toEqual({ 'profile:montis_sentiers': '1', 'profile:montis_balises': '1' });
     expect(parametresBrouter([])).toEqual({});
+    // Réglage propre au ski de rando, envoyé avec la pratique ; un réglage inconnu est ignoré
+    expect(parametresBrouter([], ['skitour', 'inconnu'])).toEqual({ 'profile:montis_skitour': '1' });
   });
 
   it('oriente Valhalla sans perdre les options de la pratique', () => {
@@ -34,7 +36,8 @@ describe('profil BRouter de Montis', () => {
     const way = texte.slice(texte.indexOf('---context:way'), texte.indexOf('---context:node'));
     // Un seul costfactor final, multiplié par le facteur des préférences
     expect(way.match(/assign\s+costfactor\b/g)).toHaveLength(1);
-    expect(way).toMatch(/assign costfactor if greater montis_cf 9997 then montis_cf else multiply montis_cf montis_facteur/);
+    expect(way).toMatch(/assign costfactor if and montis_skitour montis_tour then 0.7 else if greater montis_cf 9997 then montis_cf else multiply montis_cf montis_facteur/);
+    expect(global).toMatch(/assign montis_skitour 0/);
     expect(way.indexOf('assign montis_facteur')).toBeLessThan(way.indexOf('assign costfactor'));
   });
 
