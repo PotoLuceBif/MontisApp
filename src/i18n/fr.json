@@ -1460,5 +1460,14 @@
   "reseau.hors-ligne": "pas de réseau.",
   "reseau.trop-long": "le service met trop de temps à répondre.",
   "reseau.service": "le service ne répond pas pour l’instant.",
-  "reseau.trop-demandes": "trop de demandes au service, nouvel essai possible dans une minute."
+  "reseau.trop-demandes": "trop de demandes au service, nouvel essai possible dans une minute.",
+  "partage.vue": "Partager cette vue",
+  "partage.point": "Partager ce point",
+  "partage.parcours": "Partager le parcours",
+  "partage.copie": "Lien copié : colle-le où tu veux.",
+  "partage.copier-main": "Copie ce lien :",
+  "partage.illisible": "Lien de parcours illisible : il a peut-être été coupé en route.",
+  "partage.trop-long": "Parcours trop long pour tenir dans un lien : exporte-le en GPX.",
+  "partage.simplifie": "Tracé un peu simplifié pour tenir dans le lien.",
+  "partage.parcours-recu": "Parcours reçu par lien : touche Enregistrer pour le garder dans Mes parcours."
 }

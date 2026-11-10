@@ -1460,5 +1460,14 @@
   "reseau.hors-ligne": "no network.",
   "reseau.trop-long": "the service is taking too long to respond.",
   "reseau.service": "the service isn’t responding right now.",
-  "reseau.trop-demandes": "too many requests to the service, try again in a minute."
+  "reseau.trop-demandes": "too many requests to the service, try again in a minute.",
+  "partage.vue": "Share this view",
+  "partage.point": "Share this place",
+  "partage.parcours": "Share route",
+  "partage.copie": "Link copied: paste it anywhere.",
+  "partage.copier-main": "Copy this link:",
+  "partage.illisible": "Unreadable route link: it may have been cut off on the way.",
+  "partage.trop-long": "Route too long to fit in a link: export it as GPX.",
+  "partage.simplifie": "Track slightly simplified to fit in the link.",
+  "partage.parcours-recu": "Route received by link: tap Save to keep it in My routes."
 }

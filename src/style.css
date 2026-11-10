@@ -2965,7 +2965,10 @@ button.parcours-alerte { cursor: pointer; }
 .parcours-stats-park { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .parcours-stats-park .parcours-stat strong { font-size: 18px; }
 .bf-bikepark .parcours-source { line-height: 1.4; }
-.parcours-pied { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.parcours-pied { display: flex; gap: 6px; }
+.parcours-pied > .para-bouton { flex: 1 1 0; min-width: 0; }
+.parcours-pied > .parcours-partager { flex: 0 0 44px; display: grid; place-items: center; padding: 0; }
+.parcours-partager svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .bf-parcours-lecture .parcours-commandes, .bf-parcours-lecture .parcours-pratiques-panneau, .bf-parcours-lecture .parcours-etat { display: none; }
 .bf-parcours-lecture.bf-parcours-ensemble .parcours-etat { display: block; }
 .bf-parcours-ensemble :is(.parcours-pied, .parcours-nom) { display: none; }
@@ -3689,3 +3692,18 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Fiche réduite : seulement l'heure, pour voir l'ombre bouger sans rouvrir la fiche */
 :is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure) { display: none; }
 .ombres-details > .soleil-reglage { display: contents; }
+
+/* Partage par lien (lot 4.5) */
+.menu-partage { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--bord); }
+.menu-partage .menu-ligne { display: flex; align-items: center; gap: 10px; }
+.menu-partage .menu-ligne > svg { flex: none; width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.point-partager { margin-top: 10px; }
+.montis-annonce {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 60;
+  max-width: min(420px, calc(100vw - 32px)); transform: translateX(-50%);
+  padding: 11px 16px; border: 1px solid var(--accent); border-radius: 12px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte);
+  font: 600 14px var(--police); text-align: center; pointer-events: none;
+}
+.montis-annonce.erreur { border-color: #e5484d; }
+.montis-annonce[hidden] { display: none; }

@@ -12,6 +12,8 @@ import { calculerTroncon, tronconLibre } from './parcours-routage.js';
 import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
 import { creerProfilParcours } from './parcours-profil.js';
 import { compacter } from './parcours-stockage.js';
+import { fragmentParcours } from './partage-calcul.js';
+import { ICONE_PARTAGE, annoncer, partagerLien } from './partage.js';
 import { formatAltitude, formatDistance, formatLongueur, uniteAllure, uniteDistance, valeurDistance, versAllure, depuisAllure } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poser, poserAttribut, t, ta, ti, tt } from './i18n.js';
@@ -141,6 +143,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <button type="button" class="para-bouton parcours-terminer">${t('editeur.terminer')}</button>
       <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer" ${ti('editeur.enregistrer')}>${t('editeur.enregistrer')}</button>
       <button type="button" class="para-bouton parcours-gpx" disabled>GPX</button>
+      <button type="button" class="para-bouton parcours-partager" disabled ${ta('aria-label', 'partage.parcours')} ${ta('title', 'partage.parcours')}>${ICONE_PARTAGE}</button>
     </div>
     <div class="pc-infos" hidden></div>
     <p class="parcours-source" hidden></p>
@@ -162,6 +165,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const selecteurCouleur = $('.parcours-couleur select');
   const boutonTerminer = $('.parcours-terminer');
   const boutonGpx = $('.parcours-gpx');
+  const boutonPartager = $('.parcours-partager');
   const boutonEnregistrer = $('.parcours-enregistrer');
   const champNom = $('.parcours-nom input');
   const source = $('.parcours-source');
@@ -496,6 +500,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       else stockage.effacerBrouillon();
     }
     boutonEnregistrer.disabled = etapes.length < 2;
+    boutonPartager.disabled = etapes.length < 2;
     panneau.definirResume({ detail: total ? km(total) : t('editeur.touchez-carte'), valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
     rendre();
   }
@@ -579,6 +584,18 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       stockage.effacerBrouillon();
       onEnregistre();
     }
+  }
+
+  // Tout le tracé va dans le lien : il s'ouvre sans recalcul, même hors ligne
+  async function partager() {
+    if (etapes.length < 2) return;
+    const resultat = await fragmentParcours({ activite: activite.id, pratique: pratique.id, nom, etapes });
+    // En lecture, la ligne d'état du panneau est masquée : l'annonce passe par la bulle
+    if (!resultat) {
+      annoncer(t('partage.trop-long'), true, 6000);
+      return;
+    }
+    partagerLien(resultat.fragment, nom, resultat.simplifie ? t('partage.simplifie') : '');
   }
 
   // Tout le détail du tracé, avec l'altitude du profil au même endroit
@@ -784,6 +801,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
   boutonGpx.addEventListener('click', exporterGpx);
+  boutonPartager.addEventListener('click', partager);
   boutonEnregistrer.addEventListener('click', enregistrer);
   champNom.addEventListener('input', () => definirNom(champNom.value.trim() || t('editeur.sans-nom')));
   commande('annuler').addEventListener('click', () => restaurer(passe, futur));
@@ -890,7 +908,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       cadrer(chaine);
     },
     // Un parcours enregistré se rouvre tel quel : son tracé n'a pas à être recalculé
-    ouvrirEnregistre(parcours) {
+    ouvrirEnregistre(parcours, { recu = false } = {}) {
       controleur?.abort();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
@@ -910,6 +928,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       definirEdition(false);
       recalculer();
       cadrer(etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []));
+      if (recu) annoncer(t('partage.parcours-recu'), false, 7000);
     },
     // Nouveau parcours de `depart` à `arrivee` ([lng, lat]), depuis la fiche d'un point (« Y aller »)
     ouvrirVers({ depart, arrivee, nom, onRetour: retour = null }) {
