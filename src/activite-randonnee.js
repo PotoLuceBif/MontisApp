@@ -56,7 +56,7 @@ export function creerActiviteRandonnee(map, outils) {
     },
     pratiqueDefaut: 'rando',
     preferences: [['sentiers', 'preference.sentiers'], ['chemins', 'preference.chemins'], ['balises', 'preference.balises'], ['routes', 'preference.routes']],
-    preferencesDefaut: ['sentiers'],
+    preferencesDefaut: [],
     difficulte: { titre: 'rando.difficulte', note: 'rando.echelle', ...ECHELLE_SAC, texteTechnique: 'rando.technique' },
     portage: false,
     allure: true,
