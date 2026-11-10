@@ -91,7 +91,7 @@ Puis **4.5 Partage par lien** (voir phase 4), avancé ici : fait le 10 novembre 
 Chaque lot ajoute des pratiques à une activité existante (voir « Structure de l'appli ») et réutilise les briques des phases 1 et 2. Le choix de pratique apparaît avec la première pratique ajoutée à une activité. Ordre validé le 9 novembre 2026.
 
 - [x] **3.0 Itinéraire de randonnée.** Fait le 10 novembre 2026 (préférences de routage, Rando et Vélo ; détail dans `docs/historique.md`). Le calcul de « Créer un parcours » privilégie les sentiers et les pistes plutôt que les routes. Même brique que le Vélo (`parcours-routage.js`), avec un autre profil : aujourd'hui BRouter `hiking-mountain`, puis Valhalla `pedestrian` en secours. Pistes : un profil BRouter personnalisé (pénalité forte sur les routes revêtues, bonus aux `path` et `track`, prise en compte de `sac_scale`), ou OpenRouteService `foot-hiking` (clé via le relais). Comparer sur quelques parcours connus avant de choisir. Prérequis du trail et des raquettes.
-- [ ] **3.3 Ski de rando.** Pentes, orientation, bulletin d'avalanche et trace réunis ; itinéraires d'OSM (`piste:type=skitour`) ; routage de montée.
+- [x] **3.3 Ski de rando** (10 novembre 2026). Choix Piste ou Ski de rando en tête du panneau Ski ; menu de la Randonnée (créer un parcours, rechercher ici, Mes parcours, GPX) ; itinéraires d'OSM (`piste:type=skitour`, Overpass) sur la carte, que le routage suit (Montis calcule lui-même sur leur réseau : BRouter ignore les traces sans chemin) ; bloc « Avalanches ici » pour le massif au centre de la carte (EAWS) ; pentes allumées avec la pratique. Pas de routage qui évite les pentes à avalanche : à envisager. Détail dans `docs/historique.md`.
 - [ ] **3.5 Thermiques et plafond.** Base des nuages, gradient, CAPE ; fiche de décollage avec feu vert, orange ou rouge.
 - [ ] **3.11 Plus de balises de vent, et leur nouveau style** (ancien P.2). Montis n'affiche que des sources ouvertes (OpenWindMap, fichiers de la FFVL), surtout en France. SpotAir ne se réutilise pas (licence limitée à son propre affichage, vérifié le 8 novembre 2026). À vérifier une par une (licence, crédit, CORS ou relais) : MétéoSuisse (SwissMetNet) et Météo-France (stations d'observation, Licence Ouverte) d'abord, qui n'exigent l'accord de personne ; puis Holfuy (API sur demande), MADIS de la NOAA (États-Unis). Chaque réseau s'ajoute dans `BALISES` (`balises-sources.js`), sans doublon (`fusionnerReseaux`), OpenWindMap restant à part (sa licence interdit de mêler ses mesures à des capteurs non ouverts). Nouveau dessin des manches à air et des pastilles, sur un dessin du propriétaire, qui distingue le réseau de chaque balise.
 - [ ] **3.6 Espaces aériens.** OpenAIP (clé via le relais, à monter dans ce lot), affichés aussi sur la portée de vol. Indispensable avant le paramoteur.
@@ -125,7 +125,7 @@ Décidée le 2 novembre 2026. Elle évite que les nouvelles pratiques se chevauc
 |---|---|---|
 | Randonnée | Randonnée, Trail, Raquettes | Randonnée en place |
 | Vélo | VTT, Gravel, Route | En place |
-| Ski | Piste, Ski de rando, Hors-piste | Piste en place |
+| Ski | Piste, Ski de rando, Hors-piste | Piste et Ski de rando en place |
 | Vol libre | Parapente, Deltaplane, Paramoteur, Speed riding | Parapente en place |
 | *Cinquième activité* | *Escalade, via ferrata, alpinisme, canyon* | *Après la 1.0* |
 
