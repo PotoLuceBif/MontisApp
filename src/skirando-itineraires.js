@@ -1,22 +1,18 @@
 // « Rechercher ici » du ski de rando : itinéraires d'OSM (`piste:type=skitour`) de la vue, lus dans
 // /data/skitour (un fichier par carré de 1°, d'après OpenSkiData : Overpass est trop souvent saturé),
-// dessinés sur la carte et listés dans le panneau. Un appui ouvre l'itinéraire dans l'éditeur de
+// posés sur la carte en pins de ski de rando, regroupés quand ils se touchent (comme la Randonnée),
+// et listés dans le panneau. Un appui ouvre l'itinéraire dans l'éditeur de
 // parcours, comme une trace importée (profil, pentes, durée, export GPX).
 import { carresDeLaVue, lireCarresSkitour } from './skirando-calcul.js';
 import { messageErreur } from './requete.js';
 import { annoncerOutilActivite } from './outil-activite.js';
-import { fichesBloquees } from './fiche.js';
+import { creerDecouverte } from './parcours-decouverte.js';
 import { formatDistance } from './unites.js';
 import { surLangue, t } from './i18n.js';
 
-const SOURCE = 'skirando-itineraires';
-const COUCHE_HALO = 'skirando-itineraires-halo';
-const COUCHE = 'skirando-itineraires-ligne';
 const DOSSIER = '/data/skitour';
 const ZOOM_MIN = 9;
 const MAX_LISTE = 40;
-const COULEUR = '#8fd3ff';
-const TOLERANCE_CLIC = 8;
 
 function lireJson(adresse) {
   return fetch(adresse).then((reponse) => {
@@ -58,52 +54,26 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
     afficherMessage(cle ? t(cle, variables) : '');
   };
 
-  function poserCouches() {
-    const donnees = {
-      type: 'FeatureCollection',
-      features: itineraires.map((itineraire, i) => ({
-        type: 'Feature',
-        id: i,
-        properties: { i },
-        geometry: { type: 'MultiLineString', coordinates: itineraire.lignes },
-      })),
-    };
-    if (map.getSource(SOURCE)) {
-      map.getSource(SOURCE).setData(donnees);
-      return;
-    }
-    map.addSource(SOURCE, { type: 'geojson', data: donnees });
-    // Sous le tracé de l'éditeur, s'il est déjà là
-    const dessous = map.getLayer('skirando-trace-contour') ? 'skirando-trace-contour' : undefined;
-    map.addLayer({
-      id: COUCHE_HALO,
-      type: 'line',
-      source: SOURCE,
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#0b1a2a', 'line-opacity': 0.55, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3.5, 15, 7] },
-    }, dessous);
-    map.addLayer({
-      id: COUCHE,
-      type: 'line',
-      source: SOURCE,
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: {
-        'line-color': COULEUR,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.6, 15, 3.5],
-        'line-dasharray': [2, 1.4],
-      },
-    }, dessous);
-  }
+  // OpenSkiData réunit parfois plusieurs noms (« A, B, C ») : le premier suffit
+  const nomDe = (itineraire) => itineraire.nom.split(', ')[0] || t('skirando.sans-nom');
 
-  function retirerCouches() {
-    [COUCHE, COUCHE_HALO].forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
-    if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+  // Un pin par itinéraire ; un appui l'ouvre, l'appui long ou le survol en donne le résumé
+  const decouverte = creerDecouverte(map, {
+    ouvrirRoute: (route) => ouvrir(route.itineraire),
+    masque: () => editeur.ouvert,
+    nomPluriel: 'skirando.pluriel',
+    pinDe: () => 'skirando',
+  });
+  function poserReperes() {
+    decouverte.poser(itineraires.map((itineraire) => ({
+      route: { id: itineraire.id, name: nomDe(itineraire), itineraire },
+      trace: { chaine: itineraire.lignes.flat(), lignes: itineraire.lignes },
+    })));
   }
-
-  const nomDe = (itineraire) => itineraire.nom || t('skirando.sans-nom');
 
   function ouvrir(itineraire) {
     fermerMenu();
+    decouverte.masquer();
     editeur.ouvrirTrace({
       nom: nomDe(itineraire),
       chaine: itineraire.lignes.flat(),
@@ -144,7 +114,7 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
   function vider() {
     itineraires = [];
     rendre();
-    retirerCouches();
+    decouverte.retirer();
     surItineraires([]);
   }
 
@@ -175,7 +145,7 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
     }
     if (ici !== numero || !actif) return;
     itineraires = lireCarresSkitour(listes, boite);
-    poserCouches();
+    poserReperes();
     rendre();
     surItineraires(itineraires);
     const nombre = itineraires.length;
@@ -187,28 +157,24 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
     rendre();
   });
 
-  // Un appui sur un tracé l'ouvre, sauf si un outil a déjà pris les clics (éditeur ouvert…)
-  map.on('click', (event) => {
-    if (!actif || !map.getLayer(COUCHE) || fichesBloquees()) return;
-    const { x, y } = event.point;
-    const [touche] = map.queryRenderedFeatures([[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]], { layers: [COUCHE] });
-    const itineraire = touche && itineraires[touche.properties.i];
-    if (itineraire) ouvrir(itineraire);
-  });
-
   return {
     chercher: () => chercher(),
     // Avant de tracer : les itinéraires de la vue, si aucun n'est encore chargé
     preparer() {
       if (!itineraires.length) void chercher({ discret: true });
     },
+    // Repères masqués pendant qu'un tracé est ouvert, rétablis à sa fermeture
+    masquer: () => decouverte.masquer(),
+    actualiser: () => decouverte.actualiser(),
     activer() {
       actif = true;
+      decouverte.activer();
     },
     desactiver() {
       actif = false;
       numero += 1;
       vider();
+      decouverte.desactiver();
       annoncer(null);
     },
   };

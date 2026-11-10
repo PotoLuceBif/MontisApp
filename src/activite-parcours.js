@@ -94,6 +94,13 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     itineraires.fermer();
     editeur.fermer();
     decouverte.actualiser();
+    zone?.actualiser?.();
+  }
+
+  // Repères de « Rechercher ici » cachés le temps d'un tracé
+  function masquerReperes() {
+    decouverte.masquer();
+    zone?.masquer?.();
   }
 
   const editeur = creerEditeurParcours(map, {
@@ -314,7 +321,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     ouvrir.addEventListener('click', () => {
       fermerMenu();
       itineraires.fermer();
-      decouverte.masquer();
+      masquerReperes();
       editeur.ouvrirEnregistre(parcours);
     });
     const renommer = document.createElement('button');
@@ -376,7 +383,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       afficherMessage('');
       fermerMenu();
       itineraires.fermer();
-      decouverte.masquer();
+      masquerReperes();
       editeur.ouvrirTrace({ nom, chaine: trace.chaine, lignes: trace.lignes, meta: t('parcours.trace-importee') });
     } catch (erreur) {
       console.warn('Import GPX :', erreur);
@@ -408,7 +415,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     annoncerOutilActivite();
     fermerMenu();
     itineraires.fermer();
-    decouverte.masquer();
+    masquerReperes();
     activite.avantCreation?.();
     editeur.ouvrirCreation();
   });
@@ -455,7 +462,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     annoncerOutilActivite();
     fermerMenu();
     itineraires.fermer();
-    decouverte.masquer();
+    masquerReperes();
     const { retour, ...trajet } = demande;
     editeur.ouvrirVers({
       ...trajet,
@@ -480,7 +487,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (!parcours) return;
     fermerMenu();
     itineraires.fermer();
-    decouverte.masquer();
+    masquerReperes();
     editeur.ouvrirEnregistre(parcours);
   }
   // Parcours reçu par lien (partage.js) : ouvert sans être enregistré, « Enregistrer » le garde
@@ -490,7 +497,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     if (!parcours) return;
     fermerMenu();
     itineraires.fermer();
-    decouverte.masquer();
+    masquerReperes();
     editeur.ouvrirEnregistre({ ...parcours, id: null }, { recu: true });
   }
   window.addEventListener('montis:demande', (event) => {
