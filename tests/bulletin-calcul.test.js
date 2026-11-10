@@ -136,3 +136,19 @@ describe('pentes concernées', () => {
     expect(zonesExposees(null)).toEqual([]);
   });
 });
+
+describe('texte collé des bulletins', () => {
+  it('remet l’espace après le point et sépare les puces collées', () => {
+    // Extrait du bulletin de Météo-France du 10 novembre 2026 (Chablais)
+    const brut = 'Enneigement très faible, peu propice à la pratique du ski.On trouve un peu de neige à partir de 2100/2300 m, sans sous-couche. Au total : 15/20 cm en versants N à 2500 m.Qualité de la neige ce mardi :* En dessous de 2200 m : rares patchs de neige.* Au-dessus de 2200 m : neige humide.';
+    expect(texteBrut(brut)).toEqual([
+      'Enneigement très faible, peu propice à la pratique du ski. On trouve un peu de neige à partir de 2100/2300 m, sans sous-couche. Au total : 15/20 cm en versants N à 2500 m. Qualité de la neige ce mardi :',
+      '* En dessous de 2200 m : rares patchs de neige.',
+      '* Au-dessus de 2200 m : neige humide.',
+    ]);
+  });
+
+  it('ne touche ni aux nombres, ni aux sigles, ni aux adresses', () => {
+    expect(texteBrut('Taille 1.5 sur meteofrance.com, voir le B.R.A. demain.')).toEqual(['Taille 1.5 sur meteofrance.com, voir le B.R.A. demain.']);
+  });
+});

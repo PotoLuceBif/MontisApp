@@ -36,7 +36,11 @@ export function texteBrut(valeur) {
   const texte = valeur
     .replace(/<\s*(br|\/p|\/h\d|\/li)\s*\/?>/gi, '\n')
     .replace(/<[^>]*>/g, '')
-    .replace(/&(#\d+|[a-z]+);/gi, (tout, code) => (code[0] === '#' ? String.fromCharCode(Number(code.slice(1))) : ENTITES[code.toLowerCase()] ?? tout));
+    .replace(/&(#\d+|[a-z]+);/gi, (tout, code) => (code[0] === '#' ? String.fromCharCode(Number(code.slice(1))) : ENTITES[code.toLowerCase()] ?? tout))
+    // Textes saisis à la volée (Météo-France) : puce collée à la phrase d'avant (« :* En dessous »),
+    // phrase collée au point (« du ski.On trouve ») ; un nombre (« 1.5 ») ou un sigle n'est pas touché
+    .replace(/([.!?:;])\s*\*\s*/g, '$1\n* ')
+    .replace(/([a-zà-ÿ\d)%][.!?;:])(?=[A-ZÀ-ÖØ-Þ«])/g, '$1 ');
   return texte.split(/\n\s*\n|\n/).map((ligne) => ligne.replace(/\s+/g, ' ').trim()).filter(Boolean);
 }
 
