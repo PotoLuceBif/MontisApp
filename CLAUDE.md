@@ -118,7 +118,7 @@ Jamais pour un simple avancement.
 - **Ombre d'une sortie :** tant qu'elle est allumée, `etat.ombreSortie` fait passer en retrait l'ombre de Carte › Relief (`ombres.js`) et l'ombrage fixe de la 3D (`main.js`) ; à l'extinction, `sortie-ombre.js` rappelle `etat.majOmbres`.
 - **Heure d'une sortie :** jamais `heureCourte` ni `formatDate` seuls, qui donnent l'heure de l'appareil : passer par `heureSortie` et `dateSortie` (`traces-commun.js`), qui appliquent le fuseau du lieu (`decalage` de la sortie, lu dans le FIT, sinon celui de sa météo). Les instants restent en temps universel (soleil, météo).
 - **Lien partagé :** `partage.js` lit l'adresse dès son import (avant `style.load`) : la vue d'un lien remplace la dernière vue et l'ouverture sur sa position (`vueDemandee` dans `main.js`), puis `ouvrirLienRecu` ouvre point ou parcours une fois menu et fiches posés, et efface l'adresse. Un parcours reçu passe par la demande `parcours-partage-<activité>`. Tout ce qui vient d'un lien est vérifié (`deplierParcours`) : une voie inconnue ferait échouer le dessin du tracé (`VOIES_CONNUES` doit suivre `VOIES` de `parcours-analyse.js`). En lecture, la ligne d'état de l'éditeur est masquée : les messages passent par la bulle `annoncer`.
-- **Ski de rando :** c'est une pratique de l'activité `ski`, avec ses propres parcours (`activite: 'skirando'`, `montis.skirando-parcours`). `montis:ouvrir-module` traduit `module: 'skirando'` en `ski`, et `activite-ski.js` choisit la pratique quand une demande `…-skirando` attend (`enAttente` de `demandes.js`). Une pratique peut router elle-même un tronçon (`tronconLocal`, source `skitour`) avant BRouter. Les pentes se règlent par `etat.pentes` (`pentes-panneau.js`), sans import ; `skirando-pentes-auto` retient que c'est la pratique qui les a allumées. Captures des itinéraires : option `skitour` d'un écran (`scripts/skitour-simule.json`), Overpass étant souvent saturé.
+- **Ski de rando :** c'est une pratique de l'activité `ski`, avec ses propres parcours (`activite: 'skirando'`, `montis.skirando-parcours`). `montis:ouvrir-module` traduit `module: 'skirando'` en `ski`, et `activite-ski.js` choisit la pratique quand une demande `…-skirando` attend (`enAttente` de `demandes.js`). Une pratique peut router elle-même un tronçon (`tronconLocal`, source `skitour`) avant BRouter. Les pentes se règlent par `etat.pentes` (`pentes-panneau.js`), sans import ; `skirando-pentes-auto` retient que c'est la pratique qui les a allumées.
 - **Profils BRouter :** sous Windows, les `.brf` sont extraits en CRLF : `profilMontis` découpe sur `\r?\n`, sinon les commentaires restent.
 - **Parcours modifiés ailleurs :** un parcours renommé, supprimé ou enregistré émet `montis:parcours-modifies` ; les listes de Rando, Vélo et Mes traces › Parcours se redessinent. Un parcours touché dans Mes traces s'ouvre dans son activité par la demande `ouvrir-parcours-<activité>`.
 
@@ -242,8 +242,8 @@ src/                    Tout le code (détail ci-dessous)
 | `zone-lieux.js`, `fiche-lieu.js` | Recherche par nom ou zone et repères groupés ; fiche commune aux stations et bike parks |
 | `visite-station.js` | Visite 3D d'une station ou d'un bike park |
 | `activite-skirando.js` | Pratique Ski de rando : configuration du menu commun (`activite-parcours.js`), pratique de routage, bloc Avalanches ici |
-| `skirando-itineraires.js`, `skirando-avalanches.js` | « Rechercher ici » : itinéraires `piste:type=skitour` d'Overpass sur la carte et en liste, réseau donné au routage ; niveau d'avalanche du massif au centre de la carte |
-| `skirando-calcul.js` | Calculs purs : massif d'un point, niveaux du jour, lecture des itinéraires d'Overpass, plus court chemin sur leur réseau, durée (testés) |
+| `skirando-itineraires.js`, `skirando-avalanches.js` | « Rechercher ici » : itinéraires `piste:type=skitour` des carrés de la vue (`/data/skitour`) sur la carte et en liste, réseau donné au routage ; niveau d'avalanche du massif au centre de la carte |
+| `skirando-calcul.js` | Calculs purs : massif d'un point, niveaux du jour, carrés de la vue et lecture des itinéraires, plus court chemin sur leur réseau, durée (testés) |
 
 ## Données locales
 
@@ -255,6 +255,7 @@ Fichiers générés par `scripts/`, à relancer seulement pour rafraîchir les d
 | `public/data/bike-parks.json`, `bike-parks/` (38 fichiers) | 2,7 Mo | `node scripts/extraire-bike-parks.mjs` (OSM via Overpass) |
 | `public/data/refuges.json` | 1,9 Mo | `MONTIS_CONTACT_EMAIL=... node scripts/extraire-refuges.mjs` (Overpass) |
 | `src/fonds-zones.js`, `src/fonds-emprises.js` | 50 Ko | `node scripts/extraire-zones-fonds.mjs` (Natural Earth, domaine public) |
+| `public/data/skitour/` (6 446 itinéraires, 294 carrés de 1° et `index.json`) | 3,4 Mo | `node scripts/extraire-skitour.mjs` (OpenSkiData) ; hors du préchargement |
 | `public/data/avalanches/massifs.json` (627 massifs simplifiés) | 488 Ko | `node scripts/extraire-massifs-avalanche.mjs` (EAWS, CC BY 4.0) ; hors du préchargement, comme `pistes/` |
 
 Les caches `scripts/cache-*.json` sont ignorés par git : un clone neuf repart de zéro.
@@ -281,7 +282,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 | Routage | BRouter, puis Valhalla | BRouter abandonne au-delà de 3 s de calcul ; un tronçon non calculé apparaît en tireté |
 | Carte géologique | Vue détaillée : BRGM via la Géoplateforme (`data.geopf.fr/wmts`, `BRGM_SCAN_D_GEOL50`). Vue simple, roche et feuille au point : WMS du BRGM (`geoservices.brgm.fr/geologie`, `LITHO_1M_SIMPLIFIEE`, `SCAN_F_GEOL50_CATALOG`) | France seulement. WMS du BRGM lent (environ 1 s par tuile de 512 px), vide hors des échelles 1/25 000 à 1/10 000 000. Tuiles JPEG blanches hors couverture. La carte 1/50 000 n'est pas interrogeable : la fiche donne la roche dominante au 1/1 000 000 et la feuille. Notices en http seulement (`ficheinfoterre.brgm.fr`). Non téléchargeable (tuiles vues récemment gardées par le service worker) |
 | Avalanches | Bulletins EAWS (`static.avalanche.report`) ; contours des massifs : `regions.avalanches.org` (générés en local) | Selon la couverture des bulletins. Niveau maximal du massif seulement (pas encore les problèmes ni les orientations) |
-| Itinéraires de ski de rando | Overpass (`piste:type=skitour`) | Souvent saturé : échec affiché. Waymarked Trails ne les a pas. BRouter ignore ceux sans `highway` (la plupart) : Montis route lui-même sur leur réseau |
+| Itinéraires de ski de rando | OpenSkiData (usage `skitour`), rangés par carré de 1° dans `public/data/skitour/` | Pas Overpass (saturé, aucun résultat chez le propriétaire le 10 novembre 2026), ni Waymarked Trails (ne les a pas), ni les tuiles d'OpenSkiMap (réservées à leur site). BRouter ignore ceux sans `highway` (la plupart) : Montis route lui-même sur leur réseau |
 
 ## État actuel et prochaines étapes
 

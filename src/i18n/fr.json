@@ -1491,7 +1491,7 @@
   "skirando.recherche": "Recherche des itinéraires de ski de rando…",
   "skirando.zoomer": "Rapproche-toi pour chercher les itinéraires de ski de rando.",
   "skirando.erreur": "Itinéraires indisponibles : {raison}",
-  "skirando.aucun": "Aucun itinéraire de ski de rando dans OpenStreetMap pour cette zone. Tu peux créer ton parcours.",
+  "skirando.aucun": "Aucun itinéraire de ski de rando connu d’OpenStreetMap dans cette zone. Tu peux créer ton parcours.",
   "skirando.trouves": {
     "un": "{n} itinéraire dans cette zone.",
     "autre": "{n} itinéraires dans cette zone."
@@ -1507,6 +1507,6 @@
   "skirando.difficulte-advanced": "Difficile",
   "skirando.difficulte-expert": "Très difficile",
   "skirando.difficulte-freeride": "Freeride",
-  "skirando.a-propos": "<p class=\"note\">Le tracé suit en priorité les itinéraires de ski de rando d’OpenStreetMap, puis les sentiers et chemins (BRouter, Valhalla en secours). Il ne tient compte ni de la neige, ni des pentes à avalanche, ni du bulletin : choisis ton itinéraire avec la carte des pentes et le bulletin du jour. Durée estimée pour 400 m/h à la montée.<br>Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles.<br>Itinéraires : © contributeurs OpenStreetMap (ODbL). Massifs et niveaux de risque : EAWS (CC BY 4.0).</p>",
+  "skirando.a-propos": "<p class=\"note\">Le tracé suit en priorité les itinéraires de ski de rando d’OpenStreetMap, puis les sentiers et chemins (BRouter, Valhalla en secours). Il ne tient compte ni de la neige, ni des pentes à avalanche, ni du bulletin : choisis ton itinéraire avec la carte des pentes et le bulletin du jour. Durée estimée pour 400 m/h à la montée.<br>Montis aide à préparer, il ne décide pas à ta place. Pente, météo et distances sont des estimations : vérifie sur le terrain et auprès des sources officielles.<br>Itinéraires : OpenSkiData, © contributeurs OpenStreetMap (ODbL). Massifs et niveaux de risque : EAWS (CC BY 4.0).</p>",
   "sauv.parcours-skirando": "Parcours Ski de rando"
 }

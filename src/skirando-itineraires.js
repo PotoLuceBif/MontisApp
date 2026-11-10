@@ -1,28 +1,56 @@
-// « Rechercher ici » du ski de rando : itinéraires d'OSM (`piste:type=skitour`) de la vue, via
-// Overpass, dessinés sur la carte et listés dans le panneau. Un appui ouvre l'itinéraire dans
-// l'éditeur de parcours, comme une trace importée (profil, pentes, durée, export GPX).
-import { interroger } from './overpass.js';
-import { lireItinerairesSkitour, requeteSkitour } from './skirando-calcul.js';
+// « Rechercher ici » du ski de rando : itinéraires d'OSM (`piste:type=skitour`) de la vue, lus dans
+// /data/skitour (un fichier par carré de 1°, d'après OpenSkiData : Overpass est trop souvent saturé),
+// dessinés sur la carte et listés dans le panneau. Un appui ouvre l'itinéraire dans l'éditeur de
+// parcours, comme une trace importée (profil, pentes, durée, export GPX).
+import { carresDeLaVue, lireCarresSkitour } from './skirando-calcul.js';
 import { messageErreur } from './requete.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 import { fichesBloquees } from './fiche.js';
 import { formatDistance } from './unites.js';
-import { langue } from './preferences.js';
 import { surLangue, t } from './i18n.js';
 
 const SOURCE = 'skirando-itineraires';
 const COUCHE_HALO = 'skirando-itineraires-halo';
 const COUCHE = 'skirando-itineraires-ligne';
-const ZOOM_MIN = 10;
-const DELAI_SERVEUR_MS = 15000;
+const DOSSIER = '/data/skitour';
+const ZOOM_MIN = 9;
 const MAX_LISTE = 40;
 const COULEUR = '#8fd3ff';
 const TOLERANCE_CLIC = 8;
 
+function lireJson(adresse) {
+  return fetch(adresse).then((reponse) => {
+    if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+    return reponse.json();
+  });
+}
+
+// Carrés qui ont des itinéraires : un carré absent n'est jamais demandé
+let chargementIndex = null;
+function chargerIndex() {
+  chargementIndex ??= lireJson(`${DOSSIER}/index.json`)
+    .then((json) => new Set(json.carres ?? []))
+    .catch((erreur) => {
+      chargementIndex = null;
+      throw erreur;
+    });
+  return chargementIndex;
+}
+
+const carres = new Map();
+function chargerCarre(cle) {
+  if (!carres.has(cle)) {
+    const promesse = lireJson(`${DOSSIER}/${cle}.json`);
+    promesse.catch(() => carres.delete(cle));
+    carres.set(cle, promesse);
+  }
+  return carres.get(cle);
+}
+
 // `surItineraires` reçoit les itinéraires chargés (le routage les suit), une liste vide quand ils partent
 export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, liste, surItineraires = () => {} }) {
   let itineraires = [];
-  let controleur = null;
+  let numero = 0;
   let actif = false;
   let message = null; // [clé, variables] du dernier message, réécrit au changement de langue
   const annoncer = (cle, variables) => {
@@ -76,14 +104,13 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
 
   function ouvrir(itineraire) {
     fermerMenu();
-    const infos = [{ texte: t('skirando.voir-osm'), lien: `https://www.openstreetmap.org/${itineraire.id}` }];
     editeur.ouvrirTrace({
       nom: nomDe(itineraire),
       chaine: itineraire.lignes.flat(),
       lignes: itineraire.lignes,
       avecSauts: itineraire.lignes.length > 1,
       meta: [t('skirando.itineraire'), itineraire.difficulte ? t(`skirando.difficulte-${itineraire.difficulte}`) : ''].filter(Boolean).join(' · '),
-      infos,
+      infos: itineraire.osm ? [{ texte: t('skirando.voir-osm'), lien: `https://www.openstreetmap.org/${itineraire.osm}` }] : [],
     });
   }
 
@@ -114,35 +141,40 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
     liste.replaceChildren(...affiches.map(ligne));
   }
 
+  function vider() {
+    itineraires = [];
+    rendre();
+    retirerCouches();
+    surItineraires([]);
+  }
+
   // `discret` : chargement pour le routage à l'ouverture de l'éditeur, sans message dans le panneau
   async function chercher({ discret = false } = {}) {
     if (!discret) annoncerOutilActivite();
-    controleur?.abort();
-    if (map.getZoom() < ZOOM_MIN) {
-      itineraires = [];
-      rendre();
-      retirerCouches();
-      surItineraires([]);
+    const ici = ++numero;
+    const limites = map.getBounds();
+    const boite = [limites.getWest(), limites.getSouth(), limites.getEast(), limites.getNorth()];
+    if (map.getZoom() < ZOOM_MIN || !carresDeLaVue(boite)) {
+      vider();
       if (!discret) annoncer('skirando.zoomer');
       return;
     }
-    const requete = new AbortController();
-    controleur = requete;
-    const limites = map.getBounds();
     if (!discret) {
       annoncer('skirando.recherche');
       liste.hidden = true;
     }
+    let listes;
     try {
-      const json = await interroger(requeteSkitour([limites.getWest(), limites.getSouth(), limites.getEast(), limites.getNorth()]), requete.signal, { delaiParServeur: DELAI_SERVEUR_MS });
-      if (requete.signal.aborted || !actif) return;
-      itineraires = lireItinerairesSkitour(json, langue());
+      const disponibles = await chargerIndex();
+      listes = await Promise.all(carresDeLaVue(boite, disponibles).map(chargerCarre));
     } catch (erreur) {
-      if (requete.signal.aborted) return;
+      if (ici !== numero || !actif) return;
       console.warn('Itinéraires de ski de rando :', erreur);
       if (!discret) annoncer('skirando.erreur', { get raison() { return messageErreur(erreur); } });
       return;
     }
+    if (ici !== numero || !actif) return;
+    itineraires = lireCarresSkitour(listes, boite);
     poserCouches();
     rendre();
     surItineraires(itineraires);
@@ -168,18 +200,15 @@ export function creerZoneSkitour(map, { editeur, fermerMenu, afficherMessage, li
     chercher: () => chercher(),
     // Avant de tracer : les itinéraires de la vue, si aucun n'est encore chargé
     preparer() {
-      if (!itineraires.length && map.getZoom() >= ZOOM_MIN) void chercher({ discret: true });
+      if (!itineraires.length) void chercher({ discret: true });
     },
     activer() {
       actif = true;
     },
     desactiver() {
       actif = false;
-      controleur?.abort();
-      itineraires = [];
-      retirerCouches();
-      rendre();
-      surItineraires([]);
+      numero += 1;
+      vider();
       annoncer(null);
     },
   };

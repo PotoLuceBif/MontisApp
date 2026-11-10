@@ -1,5 +1,5 @@
-// Calculs purs du ski de rando : massif d'avalanche d'un point, itinéraires d'OSM
-// (`piste:type=skitour`) lus dans une réponse Overpass, durée estimée.
+// Calculs purs du ski de rando : massif d’avalanche d’un point, itinéraires d’OSM
+// (`piste:type=skitour`, rangés par carré de 1°), plus court chemin sur leur réseau, durée estimée.
 
 // ---------- Massif d'avalanche ----------
 function dansAnneau([lng, lat], anneau) {
@@ -37,12 +37,9 @@ export function risqueDuMassif(niveaux, id) {
 }
 
 // ---------- Itinéraires d'OSM ----------
+// Rangés par carré de 1° dans /data/skitour (scripts/extraire-skitour.mjs, d'après OpenSkiData)
 export const DIFFICULTES_SKITOUR = ['novice', 'easy', 'intermediate', 'advanced', 'expert', 'freeride'];
-
-export function requeteSkitour([ouest, sud, est, nord]) {
-  const boite = [sud, ouest, nord, est].map((v) => v.toFixed(4)).join(',');
-  return `[out:json][timeout:25];(way["piste:type"="skitour"](${boite});relation["piste:type"="skitour"](${boite}););out geom;`;
-}
+export const MAX_CARRES = 9;
 
 const RAYON_TERRE = 6371008.8;
 function ecart([lng1, lat1], [lng2, lat2]) {
@@ -59,71 +56,38 @@ export function longueurLignes(lignes) {
   return total;
 }
 
-const ligneDe = (geometrie) => (Array.isArray(geometrie) ? geometrie.filter((p) => Number.isFinite(p?.lon) && Number.isFinite(p?.lat)).map(({ lon, lat }) => [lon, lat]) : []);
+// Carrés de 1° qui couvrent la vue [ouest, sud, est, nord] ; null si la vue en demande trop
+export function carresDeLaVue([ouest, sud, est, nord], disponibles = null) {
+  const cles = [];
+  for (let x = Math.floor(ouest); x <= Math.floor(est); x += 1) {
+    for (let y = Math.floor(sud); y <= Math.floor(nord); y += 1) cles.push(`${x}_${y}`);
+  }
+  if (cles.length > MAX_CARRES) return null;
+  return disponibles ? cles.filter((cle) => disponibles.has(cle)) : cles;
+}
 
-// Bouts qui se suivent (fin de l'un = début de l'autre, à quelques mètres près) : une seule ligne
-export function raccorder(lignes, tolerance = 15) {
-  const restantes = lignes.filter((ligne) => ligne.length >= 2).map((ligne) => [...ligne]);
-  const resultat = [];
-  while (restantes.length) {
-    let courante = restantes.shift();
-    let prolongee = true;
-    while (prolongee) {
-      prolongee = false;
-      for (let i = 0; i < restantes.length; i += 1) {
-        const autre = restantes[i];
-        const debut = courante[0];
-        const fin = courante[courante.length - 1];
-        if (ecart(fin, autre[0]) <= tolerance) courante = [...courante, ...autre.slice(1)];
-        else if (ecart(fin, autre[autre.length - 1]) <= tolerance) courante = [...courante, ...[...autre].reverse().slice(1)];
-        else if (ecart(debut, autre[autre.length - 1]) <= tolerance) courante = [...autre, ...courante.slice(1)];
-        else if (ecart(debut, autre[0]) <= tolerance) courante = [...[...autre].reverse(), ...courante.slice(1)];
-        else continue;
-        restantes.splice(i, 1);
-        prolongee = true;
-        break;
-      }
+const dansBoite = ([lng, lat], [ouest, sud, est, nord]) => lng >= ouest && lng <= est && lat >= sud && lat <= nord;
+
+// Carrés chargés → itinéraires de la vue : un itinéraire à cheval sur deux carrés n'apparaît qu'une fois
+export function lireCarresSkitour(listes, boite) {
+  const vus = new Map();
+  for (const liste of listes ?? []) {
+    if (!Array.isArray(liste)) continue;
+    for (const brut of liste) {
+      if (!brut?.i || vus.has(brut.i) || !Array.isArray(brut.l)) continue;
+      const lignes = brut.l.filter((ligne) => Array.isArray(ligne) && ligne.length >= 2 && ligne.every((p) => Number.isFinite(p?.[0]) && Number.isFinite(p?.[1])));
+      if (!lignes.length || !lignes.some((ligne) => ligne.some((p) => dansBoite(p, boite)))) continue;
+      vus.set(brut.i, {
+        id: brut.i,
+        nom: typeof brut.n === 'string' ? brut.n : '',
+        difficulte: DIFFICULTES_SKITOUR.includes(brut.d) ? brut.d : null,
+        osm: /^(way|relation)\/\d+$/.test(brut.o ?? '') ? brut.o : null,
+        lignes,
+      });
     }
-    resultat.push(courante);
   }
-  return resultat;
-}
-
-function difficulteDe(tags) {
-  const i = DIFFICULTES_SKITOUR.indexOf(tags?.['piste:difficulty']);
-  return i >= 0 ? DIFFICULTES_SKITOUR[i] : null;
-}
-
-const nomDe = (tags, langue) => (tags?.[`name:${langue}`] || tags?.name || tags?.['piste:name'] || '').trim();
-
-// Réponse Overpass → itinéraires : une relation est un itinéraire ; les voies hors relation
-// portant le même nom n'en font qu'un ; une voie sans nom reste seule (« Sans nom » à l'affichage)
-export function lireItinerairesSkitour(json, langue = 'fr') {
-  const elements = Array.isArray(json?.elements) ? json.elements : [];
-  const dansRelation = new Set();
-  const itineraires = [];
-  for (const relation of elements.filter((e) => e.type === 'relation')) {
-    const voies = (relation.members ?? []).filter((m) => m.type === 'way');
-    voies.forEach((m) => dansRelation.add(m.ref));
-    const lignes = raccorder(voies.map((m) => ligneDe(m.geometry)));
-    if (!lignes.length) continue;
-    itineraires.push({ id: `relation/${relation.id}`, nom: nomDe(relation.tags, langue), difficulte: difficulteDe(relation.tags), lignes });
-  }
-  const parNom = new Map();
-  for (const voie of elements.filter((e) => e.type === 'way' && !dansRelation.has(e.id))) {
-    const ligne = ligneDe(voie.geometry);
-    if (ligne.length < 2) continue;
-    const nom = nomDe(voie.tags, langue);
-    const cle = nom ? `nom:${nom.toLowerCase()}` : `way:${voie.id}`;
-    if (!parNom.has(cle)) parNom.set(cle, { id: `way/${voie.id}`, nom, difficulte: difficulteDe(voie.tags), morceaux: [] });
-    const entree = parNom.get(cle);
-    entree.morceaux.push(ligne);
-    entree.difficulte ??= difficulteDe(voie.tags);
-  }
-  for (const { morceaux, ...entree } of parNom.values()) itineraires.push({ ...entree, lignes: raccorder(morceaux) });
-  return itineraires
+  return [...vus.values()]
     .map((itineraire) => ({ ...itineraire, longueur: longueurLignes(itineraire.lignes) }))
-    .filter(({ longueur }) => longueur > 0)
     // Les itinéraires nommés d'abord, les plus longs en tête
     .sort((a, b) => Number(!a.nom) - Number(!b.nom) || b.longueur - a.longueur);
 }

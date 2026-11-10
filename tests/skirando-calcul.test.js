@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cheminSurReseau, creerReseau, dansMassif, dureeSkiRando, lireItinerairesSkitour, massifAuPoint, nomMassif, raccorder, requeteSkitour, risqueDuMassif } from '../src/skirando-calcul.js';
+import { carresDeLaVue, cheminSurReseau, creerReseau, dansMassif, dureeSkiRando, lireCarresSkitour, massifAuPoint, nomMassif, risqueDuMassif } from '../src/skirando-calcul.js';
 
 const carre = (id, x0, y0, x1, y1, extra = {}) => ({
   id,
@@ -46,42 +46,33 @@ describe('massif d’un point', () => {
 });
 
 describe('itinéraires de ski de rando', () => {
-  it('demande voies et relations dans la vue, dans l’ordre sud, ouest, nord, est', () => {
-    const requete = requeteSkitour([6.8, 45.9, 7, 46]);
-    expect(requete).toContain('way["piste:type"="skitour"](45.9000,6.8000,46.0000,7.0000)');
-    expect(requete).toContain('out geom');
+  it('donne les carrés de 1° de la vue, seulement ceux qui existent, et renonce à une vue trop large', () => {
+    expect(carresDeLaVue([6.8, 45.9, 7.1, 46.05])).toEqual(['6_45', '6_46', '7_45', '7_46']);
+    expect(carresDeLaVue([6.8, 45.9, 7.1, 46.05], new Set(['6_45', '7_46']))).toEqual(['6_45', '7_46']);
+    expect(carresDeLaVue([-1.2, 44.5, 0.2, 45.2])).toEqual(['-2_44', '-2_45', '-1_44', '-1_45', '0_44', '0_45']);
+    expect(carresDeLaVue([5, 44, 9, 47])).toBeNull();
   });
 
-  it('raccorde les bouts qui se suivent, même retournés', () => {
-    const lignes = raccorder([[[0, 0], [0.01, 0]], [[0.02, 0], [0.01, 0]], [[1, 1], [1.01, 1]]]);
-    expect(lignes).toHaveLength(2);
-    expect(lignes[0]).toEqual([[0, 0], [0.01, 0], [0.02, 0]]);
+  it('garde les itinéraires de la vue, une seule fois, nommés et longs d’abord', () => {
+    const ligne = (x) => [[x, 45.95], [x + 0.01, 45.95]];
+    const carreA = [
+      { i: 'a', n: 'Col du Passon', d: 'advanced', o: 'relation/12', l: [ligne(6.9)] },
+      { i: 'b', l: [ligne(6.95), ligne(6.97)] },
+      { i: 'loin', n: 'Ailleurs', l: [ligne(6.1)] },
+      { i: 'mauvais', l: [[[6.9, 'x'], [6.91, 45.95]]] },
+    ];
+    const carreB = [{ i: 'a', n: 'Col du Passon', l: [ligne(6.9)] }, { i: 'c', n: 'Petit', d: 'pas une difficulté', o: 'javascript:alert(1)', l: [[[6.92, 45.95], [6.921, 45.95]]] }];
+    const itineraires = lireCarresSkitour([carreA, carreB, null], [6.8, 45.9, 7.1, 46]);
+    expect(itineraires.map(({ id }) => id)).toEqual(['a', 'c', 'b']);
+    expect(itineraires[0]).toMatchObject({ nom: 'Col du Passon', difficulte: 'advanced', osm: 'relation/12' });
+    expect(itineraires[1]).toMatchObject({ difficulte: null, osm: null });
+    expect(itineraires[2].lignes).toHaveLength(2);
+    expect(itineraires[0].longueur).toBeGreaterThan(700);
   });
 
-  it('fait un itinéraire par relation, par nom, et garde seules les voies sans nom', () => {
-    const geom = (x) => [{ lon: x, lat: 45 }, { lon: x + 0.01, lat: 45 }];
-    const json = {
-      elements: [
-        { type: 'relation', id: 1, tags: { name: 'Tour du Buet', 'piste:difficulty': 'advanced' }, members: [{ type: 'way', ref: 10, geometry: geom(0) }, { type: 'way', ref: 11, geometry: geom(0.01) }, { type: 'way', ref: 12, geometry: geom(0.02) }] },
-        { type: 'way', id: 10, tags: { 'piste:type': 'skitour' }, geometry: geom(0) },
-        { type: 'way', id: 20, tags: { name: 'Col du Passon' }, geometry: geom(1) },
-        { type: 'way', id: 21, tags: { name: 'col du passon' }, geometry: geom(1.01) },
-        { type: 'way', id: 30, tags: { 'piste:difficulty': 'nimporte' }, geometry: geom(2) },
-        { type: 'way', id: 31, tags: {}, geometry: [{ lon: 3, lat: 45 }] },
-      ],
-    };
-    const itineraires = lireItinerairesSkitour(json);
-    expect(itineraires.map(({ id }) => id)).toEqual(['relation/1', 'way/20', 'way/30']);
-    expect(itineraires[0]).toMatchObject({ nom: 'Tour du Buet', difficulte: 'advanced' });
-    expect(itineraires[0].lignes).toHaveLength(1);
-    expect(itineraires[0].longueur).toBeGreaterThan(1500);
-    expect(itineraires[1].lignes).toHaveLength(1);
-    expect(itineraires[2]).toMatchObject({ nom: '', difficulte: null });
-  });
-
-  it('supporte une réponse vide ou cassée', () => {
-    expect(lireItinerairesSkitour(null)).toEqual([]);
-    expect(lireItinerairesSkitour({ elements: 'x' })).toEqual([]);
+  it('supporte des fichiers vides ou cassés', () => {
+    expect(lireCarresSkitour(null, [0, 0, 1, 1])).toEqual([]);
+    expect(lireCarresSkitour(['x', [{}], [{ i: 'z', l: 'x' }]], [0, 0, 1, 1])).toEqual([]);
   });
 });
 

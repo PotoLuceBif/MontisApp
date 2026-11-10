@@ -7,7 +7,7 @@
 // Résultat dans captures/ (ignoré par git) : une image par écran et par format, et rapport.txt
 // avec les erreurs JavaScript et les textes restés en français après le passage en anglais.
 // Exige Playwright et Chromium, déjà installés dans les sessions cloud.
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
@@ -64,7 +64,6 @@ const appuiLong = (x, y) => async (page) => {
 // Sans rien renvoyer : Playwright tenterait de copier toute la carte
 const vue = (options) => (page) => page.evaluate((o) => { window.map.jumpTo(o); }, options);
 const AIGUILLES = { center: [6.93, 45.9], zoom: 13.4, bearing: 0, pitch: 0 };
-const SKITOUR_SIMULE = readFileSync(new URL('./skitour-simule.json', import.meta.url), 'utf8');
 const ARGENTIERE = { center: [7.0, 45.97], zoom: 12.6, bearing: 0, pitch: 0 };
 const PASSON = { center: [6.98, 45.962], zoom: 13.6, bearing: 0, pitch: 0 };
 // Clic sur la carte à une position donnée (l'éditeur de parcours écoute les clics de MapLibre)
@@ -236,13 +235,13 @@ const ECRANS = [
   { nom: 'ski', actions: [module('ski')] },
   // Ski de rando (lot 3.3) : choix de la pratique, pentes allumées d'office, bulletin du massif au centre
   { nom: 'ski-rando', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(4000)] },
-  // Itinéraires d'OSM (piste:type=skitour) par Overpass, souvent lent : on lui laisse le temps
-  { nom: 'ski-rando-itineraires', skitour: true, actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500)] },
-  { nom: 'ski-rando-itineraires-carte', skitour: true, actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
+  // Itinéraires d'OSM (piste:type=skitour), lus dans /data/skitour
+  { nom: 'ski-rando-itineraires', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500)] },
+  { nom: 'ski-rando-itineraires-carte', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // Un itinéraire touché dans la liste s'ouvre dans l'éditeur, comme une trace importée
-  { nom: 'ski-rando-trace', skitour: true, actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'ski-rando-trace', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000)] },
   // Routage de montée : deux points posés sur la trace du col du Passon, le tracé la suit
-  { nom: 'ski-rando-routage', skitour: true, actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500), clicCarte([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), clicCarte([6.97771, 45.96735]), (p) => p.waitForTimeout(6000)] },
+  { nom: 'ski-rando-routage', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500), clicCarte([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), clicCarte([6.97771, 45.96735]), (p) => p.waitForTimeout(6000)] },
   { nom: 'ski-rando-ferme', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1500), clic('#menu-fermer'), (p) => p.waitForTimeout(3000)] },
   { nom: 'ski-rando-creer', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-creer'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500)] },
   // Retour à la piste : les pentes allumées par le ski de rando s'éteignent
@@ -525,10 +524,6 @@ async function main() {
         if (ecran.simuler) {
           await page.route(/api\.open-meteo\.com\/v1\/forecast/, (route) => route.fulfill({ json: previsionsSimulees(route.request().url()) }));
           await page.route(/archive-api\.open-meteo\.com\/v1\/archive/, (route) => route.fulfill({ json: archiveSimulee(route.request().url()) }));
-        }
-        // Itinéraires de ski de rando d'Argentière (scripts/skitour-simule.json) : Overpass est souvent saturé
-        if (ecran.skitour) {
-          await page.route(/overpass[^/]*\/api\/interpreter/, (route) => route.fulfill({ body: SKITOUR_SIMULE, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' } }));
         }
 
         await page.goto(`${adresse}${ecran.lien ?? ''}`, { waitUntil: 'load' });
