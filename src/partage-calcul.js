@@ -195,7 +195,7 @@ export function deplierParcours(compact) {
           difficulte: Number.isFinite(difficulte) ? difficulte : null,
           marches: marches === 1,
         })),
-        source: ['brouter', 'valhalla', 'libre', 'trace'].includes(troncon.s) ? troncon.s : 'trace',
+        source: ['brouter', 'valhalla', 'libre', 'trace', 'skitour'].includes(troncon.s) ? troncon.s : 'trace',
         ...(typeof troncon.p === 'string' ? { pratique: troncon.p } : {}),
       };
     }

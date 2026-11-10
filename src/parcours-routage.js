@@ -96,7 +96,8 @@ function profilEnvoye(nom, signal) {
 const attendre = (ms) => new Promise((resoudre) => { setTimeout(resoudre, ms); });
 
 async function appelerBrouter(de, vers, pratique, signal, preferences = [], essais = { reprise: true, renvoi: true }) {
-  const personnalise = preferences.length > 0;
+  const reglages = pratique.reglages ?? [];
+  const personnalise = preferences.length > 0 || reglages.length > 0;
   let profil = pratique.brouter;
   if (personnalise) {
     try {
@@ -105,7 +106,7 @@ async function appelerBrouter(de, vers, pratique, signal, preferences = [], essa
       if (erreur.name === 'AbortError') throw erreur;
       // Sans profil Montis, le profil standard vaut mieux que Valhalla : il garde surfaces et difficulté
       console.warn('Préférences de routage ignorées :', erreur);
-      return appelerBrouter(de, vers, pratique, signal, [], essais);
+      return appelerBrouter(de, vers, { ...pratique, reglages: [] }, signal, [], essais);
     }
   }
   const params = new URLSearchParams({
@@ -113,7 +114,7 @@ async function appelerBrouter(de, vers, pratique, signal, preferences = [], essa
     profile: profil,
     alternativeidx: '0',
     format: 'geojson',
-    ...(personnalise ? parametresBrouter(preferences) : {}),
+    ...(personnalise ? parametresBrouter(preferences, reglages) : {}),
   });
   const reponse = await requeteReseau(`${URL_BROUTER}?${params}`, { signal }, DELAI_BROUTER);
   if (reponse.status === 403 && essais.reprise) {
@@ -153,6 +154,9 @@ async function appelerValhalla(de, vers, pratique, signal, preferences = []) {
 
 export async function calculerTroncon(de, vers, pratique, signal, preferences = []) {
   const choisies = nettoyerPreferences(preferences);
+  // Ski de rando : les itinéraires d'OSM chargés passent avant BRouter, qui ne les connaît pas tous
+  const local = pratique.tronconLocal?.(de, vers);
+  if (local) return { geom: local, troncons: [{ longueur: longueurLigne(local), voie: 'inconnu', difficulte: null, marches: false }], source: 'skitour' };
   try {
     return await appelerBrouter(de, vers, pratique, signal, choisies);
   } catch (erreur) {
