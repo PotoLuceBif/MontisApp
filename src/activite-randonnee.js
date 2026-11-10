@@ -55,6 +55,8 @@ export function creerActiviteRandonnee(map, outils) {
       rando: { id: 'rando', cle: 'rando.pratique', brouter: 'hiking-mountain', valhalla: { costing: 'pedestrian' }, echelle: 'sac', couleur: '#4debd4', duree: dureeEstimee, seuilRaide: 35 },
     },
     pratiqueDefaut: 'rando',
+    preferences: [['sentiers', 'preference.sentiers'], ['chemins', 'preference.chemins'], ['balises', 'preference.balises'], ['routes', 'preference.routes']],
+    preferencesDefaut: [],
     difficulte: { titre: 'rando.difficulte', note: 'rando.echelle', ...ECHELLE_SAC, texteTechnique: 'rando.technique' },
     portage: false,
     allure: true,

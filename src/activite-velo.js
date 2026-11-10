@@ -66,6 +66,9 @@ export function creerActiviteVelo(map, outils) {
     placeholder: 'velo.placeholder',
     pratiques: PRATIQUES,
     pratiqueDefaut: 'vtt',
+    // Rien par défaut : le profil de chaque pratique suffit, ces choix l'orientent
+    preferences: [['cyclables', 'preference.cyclables'], ['routes', 'preference.routes'], ['chemins', 'preference.chemins'], ['sentiers', 'preference.single']],
+    preferencesDefaut: [],
     difficulte: { titre: 'velo.difficulte', note: 'velo.echelle', ...ECHELLE_VTT, texteTechnique: 'velo.technique' },
     portage: true,
     filtres: [

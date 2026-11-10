@@ -2797,7 +2797,26 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .parcours-pratiques button:focus-visible, .parcours-commandes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bf-parcours { width: 372px; }
 .bf-parcours .bf-corps { gap: 11px; }
-.parcours-commandes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+.parcours-commandes { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 5px; }
+.parcours-bouton-preferences { position: relative; }
+.parcours-commandes .parcours-bouton-preferences.actif { border-color: var(--accent); color: var(--accent); }
+.parcours-commandes .parcours-bouton-preferences[aria-expanded='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.parcours-preferences-nombre {
+  position: absolute; top: 3px; right: 3px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  background: var(--accent); color: var(--accent-texte); font: 750 10px/15px var(--police); text-align: center;
+}
+.parcours-preferences-nombre[hidden] { display: none; }
+.parcours-preferences { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.parcours-preferences[hidden] { display: none; }
+.parcours-preferences h4 { margin: 0; color: var(--texte-2); font: 700 11px var(--police); letter-spacing: .06em; text-transform: uppercase; }
+.parcours-preferences-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.parcours-preferences-choix button {
+  min-height: 34px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 17px; background: var(--surface);
+  color: var(--texte-2); font: 650 12.5px var(--police); cursor: pointer;
+}
+.parcours-preferences-choix button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.parcours-preferences-choix button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.parcours-preferences-note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; }
 .parcours-commandes button {
   display: grid; place-items: center; min-height: 40px; padding: 0; border: 1px solid var(--bord); border-radius: 8px;
   background: var(--surface-2); color: var(--texte); cursor: pointer;
@@ -2969,7 +2988,7 @@ button.parcours-alerte { cursor: pointer; }
 .parcours-pied > .para-bouton { flex: 1 1 0; min-width: 0; }
 .parcours-pied > .parcours-partager { flex: 0 0 44px; display: grid; place-items: center; padding: 0; }
 .parcours-partager svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.bf-parcours-lecture .parcours-commandes, .bf-parcours-lecture .parcours-pratiques-panneau, .bf-parcours-lecture .parcours-etat { display: none; }
+.bf-parcours-lecture .parcours-commandes, .bf-parcours-lecture .parcours-pratiques-panneau, .bf-parcours-lecture .parcours-etat, .bf-parcours-lecture .parcours-preferences { display: none; }
 .bf-parcours-lecture.bf-parcours-ensemble .parcours-etat { display: block; }
 .bf-parcours-ensemble :is(.parcours-pied, .parcours-nom) { display: none; }
 .parcours-etape {
