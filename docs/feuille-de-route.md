@@ -58,7 +58,8 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 - **Phase 0, fondations :** 0.1 Ménage · 0.2 Découpage du bundle · 0.2 bis Activités chargées à la demande · 0.3 Tests automatiques · 0.4 Captures automatiques · 0.5 Activités et pratiques · 0.7 Robustesse.
 - **Phase 1, le point et le terrain :** 1.1 Soleil · 1.2 Fiche universelle du point · 1.3 Pentes et orientation · 1.3 bis Pastilles Météo · 1.4 Ombre du relief · 1.4 bis Soleil en 3D et ombre dans les visites · 1.5 Frise météo commune · 1.6 Ouverture sur sa position.
-- **Hors phase :** 2.0 Balises et terrains FFVL · 3.9 Géologie · 3.10 Fonds topo.
+- **Phase 2, revoir ses sorties :** 2.1 Import et Mes traces · 2.2 Vue d'une sortie · 2.3 Curseur et lecture · 2.4 Le contexte de la sortie.
+- **Hors phase :** 2.0 Balises et terrains FFVL · 3.9 Géologie · 3.10 Fonds topo · 4.5 Partage par lien.
 
 - [x] **0.7 Robustesse** (9 novembre 2026, demandée par le propriétaire). Relecture de toute l'appli et essais « réseau coupé » et « réseau qui traîne ». Interface posée dès que le style est prêt, plus après les premières tuiles (avant : plus d'une minute sans menu ni recherche sur un réseau lent). Délai maximal sur chaque requête de service (recherche, radar, itinéraire, balises, neige, avalanches, Waymarked Trails, portée, zones hors ligne), messages d'échec lisibles, zone hors ligne surtout vide comptée comme un échec, sauvegarde vérifiée étape par étape, textes au tutoiement, MapLibre 6.17. Détail dans `docs/historique.md`.
 
@@ -83,7 +84,7 @@ Revue avec le propriétaire le 9 novembre 2026. Les gens enregistrent leurs sort
 
 Pour plus tard : comparer une sortie au parcours prévu, exporter une vidéo du replay. **Sécurité** (mode urgence, 112, heure de retour), **pack sortie hors ligne** et **position et cap sur la carte** : à revoir avec le propriétaire, sans date.
 
-Puis **4.5 Partage par lien** (voir phase 4), avancé ici : simple, et utile à tout le reste.
+Puis **4.5 Partage par lien** (voir phase 4), avancé ici : fait le 10 novembre 2026. La phase 2 et le partage complets, `developpement` est prêt pour la 1.0 beta, sur demande du propriétaire.
 
 ### Phase 3 : nouvelles pratiques
 
@@ -105,7 +106,7 @@ Chaque lot ajoute des pratiques à une activité existante (voir « Structure de
 - [ ] **4.2 Où aller ce week-end ?** Suggestions selon l'activité, le niveau, la météo et la distance, à partir des données déjà présentes.
 - [ ] **4.3 Check-list de matériel.** Générée selon la sortie : altitude, saison, durée, activité, météo.
 - [ ] **4.4 Webcams.** Calque « Webcams » dans Carte › Éléments de la carte : pin, dernière image en aperçu, fiche (image, heure de la prise de vue, lien vers la source). Source : API Windy Webcams (clé via le relais, attribution Windy visible). Webcams proches dans la fiche du point ; dans la fiche d'une station, raccourci « Webcams », sinon lien vers Skaping, Roundshot ou Viewsurf. Une image trop ancienne est datée, jamais présentée comme actuelle.
-- [ ] **4.5 Partage par lien.** Un lien ouvre la vue, un parcours ou un point, sans compte (tout dans l'URL). Prévu juste après la phase 2.
+- [x] **4.5 Partage par lien** (10 novembre 2026). « Partager cette vue » dans le menu, « Partager ce point » dans la fiche du point, partage d'un parcours dans l'éditeur ; tout dans l'adresse après « # », parcours compressé avec tout son tracé, ouvert sans recalcul ni enregistrement. Feuille de partage du téléphone, sinon lien copié. Détail dans `docs/historique.md`.
 
 ## En réflexion, sans date
 
