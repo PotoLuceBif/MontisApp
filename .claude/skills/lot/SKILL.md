@@ -32,7 +32,7 @@ Pour chaque partie :
 S'arrêter et demander pour un changement visible non prévu par le lot.
 
 ## 4. Pousser et vérifier
-- `npm test`, `npm run build` et `npm run captures` complet : aucune erreur dans le rapport.
+- `npm test`, `npm run build` et `npm run captures -- <écrans du lot> accueil menu` : aucune erreur dans le rapport. Pas de série complète (plus d'une heure) : seulement avant une version ou après une refonte de `style.css`, `main.js` ou `menu.js` qui touche tous les écrans.
 - Pousser sur la branche de la session et ouvrir la PR **vers `developpement`**, jamais vers `main`.
 - Cocher le lot dans `docs/feuille-de-route.md` et noter ce qui a changé de plan.
 - Mettre à jour CLAUDE.md : « État actuel », arborescence, pièges découverts.
