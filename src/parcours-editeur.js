@@ -9,6 +9,7 @@ import { telechargerGpx } from './rando-profil.js';
 import { formaterDuree } from './rando-profil.js';
 import { paletteInterface } from './vent-cadran.js';
 import { calculerTroncon, tronconLibre } from './parcours-routage.js';
+import { nettoyerPreferences } from './parcours-preferences.js';
 import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
 import { creerProfilParcours } from './parcours-profil.js';
 import { compacter } from './parcours-stockage.js';
@@ -36,6 +37,8 @@ const COMMANDES = [
   ['allerRetour', 'editeur.aller-retour', '<path d="M4 8h14l-4-4"/><path d="M20 16H6l4 4"/>'],
   ['effacer', 'editeur.effacer', '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'],
 ];
+
+const DESSIN_FILTRE = '<path d="M4 5h16l-6 7.500V19l-4 2v-8.500z"/>';
 
 const km = formatDistance;
 const copier = (etapes) => etapes.map((etape) => ({ ...etape }));
@@ -81,6 +84,9 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const { niveaux: DIFFICULTES } = echelle;
   // Le choix de pratique ne pilote que le routage : il vit ici, pas dans le menu
   let pratique = pratiques[lire(`${activite.id}-pratique`, activite.pratiqueDefaut)] ?? pratiques[activite.pratiqueDefaut];
+  const choixPreferences = activite.preferences ?? [];
+  const idsPreferences = choixPreferences.map(([id]) => id);
+  let preferences = nettoyerPreferences(lire(`${activite.id}-preferences`, activite.preferencesDefaut ?? []), idsPreferences);
   let retourCourant = onRetour;
   let onAnalyse = null;
   let etapes = []; // { lng, lat, mode: 'route' | 'libre' | 'fixe', troncon } ; troncon : ce qui y mène
@@ -113,7 +119,16 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     </div>
     <div class="parcours-commandes" role="group" ${ta('aria-label', 'editeur.modifier-parcours')}>
       ${COMMANDES.map(([id, cle, dessin]) => `<button type="button" data-commande="${id}" ${ta('aria-label', cle)} ${ta('title', cle)}><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
+      ${choixPreferences.length ? `<button type="button" class="parcours-bouton-preferences" aria-expanded="false" ${ta('aria-label', 'preference.titre')} ${ta('title', 'preference.titre')}><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_FILTRE}</svg><span class="parcours-preferences-nombre" hidden></span></button>` : ''}
     </div>
+    ${choixPreferences.length ? `<div class="parcours-preferences" hidden>
+      <h4 ${ti('preference.titre')}>${t('preference.titre')}</h4>
+      <div class="parcours-preferences-choix" role="group" ${ta('aria-label', 'preference.titre')}>
+        <button type="button" data-preference="" aria-pressed="false" ${ti('preference.aucune')}>${t('preference.aucune')}</button>
+        ${choixPreferences.map(([id, cle]) => `<button type="button" data-preference="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
+      </div>
+      <p class="parcours-preferences-note" ${ti('preference.note')}>${t('preference.note')}</p>
+    </div>` : ''}
     <p class="parcours-etat" role="status" aria-live="polite"></p>
     <div class="parcours-analyse" hidden>
       <div class="parcours-stats">
@@ -160,6 +175,9 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const commande = (id) => $(`[data-commande="${id}"]`);
   const message = $('.parcours-etat');
   const boutonsPratique = [...panneau.corps.querySelectorAll('[data-pratique]')];
+  const boutonPreferences = panneau.corps.querySelector('.parcours-bouton-preferences');
+  const blocPreferences = panneau.corps.querySelector('.parcours-preferences');
+  const boutonsPreference = [...panneau.corps.querySelectorAll('[data-preference]')];
   const blocAnalyse = $('.parcours-analyse');
   const lecture = $('.parcours-lecture');
   const selecteurCouleur = $('.parcours-couleur select');
@@ -464,7 +482,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         poser(message, 'editeur.calcul');
         try {
           if (estHorsLigne()) throw new Error('hors ligne');
-          const troncon = await calculerTroncon(de, vers, pratique, requete.signal);
+          const troncon = await calculerTroncon(de, vers, pratique, requete.signal, preferences);
           if (requete.signal.aborted) return;
           etape.troncon = { ...troncon, pratique: pratique.id };
           if (troncon.source === 'valhalla') secours = true;
@@ -764,6 +782,16 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     commande('boucle').disabled = etapes.length < 2;
     commande('allerRetour').disabled = etapes.length < 2;
     commande('effacer').disabled = !etapes.length;
+    boutonsPreference.forEach((bouton) => {
+      const id = bouton.dataset.preference;
+      bouton.setAttribute('aria-pressed', String(id ? preferences.includes(id) : !preferences.length));
+    });
+    if (boutonPreferences) {
+      const nombre = boutonPreferences.querySelector('.parcours-preferences-nombre');
+      nombre.hidden = !preferences.length;
+      nombre.textContent = String(preferences.length);
+      boutonPreferences.classList.toggle('actif', preferences.length > 0);
+    }
     panneau.element.style.setProperty('--vent-couleur', pratique.couleur);
   }
 
@@ -823,6 +851,25 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     bouton.addEventListener('click', () => {
       pratique = pratiques[bouton.dataset.pratique];
       ecrire(`${activite.id}-pratique`, pratique.id);
+      recalculer();
+    });
+  });
+  boutonPreferences?.addEventListener('click', () => {
+    const ouvrir = blocPreferences.hidden;
+    blocPreferences.hidden = !ouvrir;
+    boutonPreferences.setAttribute('aria-expanded', String(ouvrir));
+  });
+  boutonsPreference.forEach((bouton) => {
+    bouton.addEventListener('click', () => {
+      const id = bouton.dataset.preference;
+      const choisies = new Set(preferences);
+      if (!id) choisies.clear();
+      else if (choisies.has(id)) choisies.delete(id);
+      else choisies.add(id);
+      preferences = nettoyerPreferences([...choisies], idsPreferences);
+      ecrire(`${activite.id}-preferences`, preferences);
+      // Les tronçons calculés reprennent les nouvelles préférences ; tracé libre et tronçons figés restent
+      etapes.forEach((etape) => { if (etape.mode !== 'libre' && etape.mode !== 'fixe') etape.troncon = null; });
       recalculer();
     });
   });

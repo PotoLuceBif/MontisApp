@@ -373,6 +373,9 @@ const ECRANS = [
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
+  // Préférences de routage (lot 3.0) : bouton filtre de l'éditeur, choix multiples
+  { nom: 'parcours-preferences-rando', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences')] },
+  { nom: 'parcours-preferences-velo', actions: [module('velo'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences'), clicVisible('[data-preference="cyclables"]'), clicVisible('[data-preference="routes"]')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
   // L'analyse du vent par-dessus une visite de station : la visite continue, la station reste visible
   {

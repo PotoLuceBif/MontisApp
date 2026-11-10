@@ -2,6 +2,7 @@
 // difficulté. Valhalla en secours : BRouter abandonne au-delà de 3 s de calcul (longues distances).
 import { ORDRE_SAC, distance } from './rando-api.js';
 import { requete as requeteReseau } from './requete.js';
+import { nettoyerPreferences, optionsValhalla, parametresBrouter, profilMontis } from './parcours-preferences.js';
 
 export function decoderPolyligne6(polyligne) {
   if (typeof polyligne !== 'string') throw new Error('Le service a renvoyé un tracé invalide.');
@@ -71,17 +72,58 @@ export function tronconLibre(de, vers) {
   return { geom, troncons: [{ longueur: longueurLigne(geom), voie: 'inconnu', difficulte: null, marches: false }], source: 'libre' };
 }
 
-async function appelerBrouter(de, vers, pratique, signal, reprise = true) {
+// Profils BRouter de Montis : envoyés une fois par session et par profil standard, puis
+// réglés par l'adresse de chaque requête. Le serveur finit par les oublier : on renvoie alors.
+const PROFILS = import.meta.glob('./profils-brouter/*.brf', { query: '?raw', import: 'default' });
+const profilsEnvoyes = new Map();
+
+function profilEnvoye(nom, signal) {
+  if (!profilsEnvoyes.has(nom)) {
+    const envoi = (async () => {
+      const charger = PROFILS[`./profils-brouter/${nom}.brf`];
+      if (!charger) throw new Error(`Profil BRouter inconnu : ${nom}`);
+      const reponse = await requeteReseau(`${URL_BROUTER}/profile`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: profilMontis(await charger()), signal }, DELAI_BROUTER);
+      const { profileid: id, error: erreur } = await reponse.json();
+      if (!reponse.ok || erreur || !id) throw new Error(`BRouter : profil refusé (${erreur ?? reponse.status})`);
+      return id;
+    })();
+    envoi.catch(() => profilsEnvoyes.delete(nom));
+    profilsEnvoyes.set(nom, envoi);
+  }
+  return profilsEnvoyes.get(nom);
+}
+
+const attendre = (ms) => new Promise((resoudre) => { setTimeout(resoudre, ms); });
+
+async function appelerBrouter(de, vers, pratique, signal, preferences = [], essais = { reprise: true, renvoi: true }) {
+  const personnalise = preferences.length > 0;
+  let profil = pratique.brouter;
+  if (personnalise) {
+    try {
+      profil = await profilEnvoye(pratique.brouter, signal);
+    } catch (erreur) {
+      if (erreur.name === 'AbortError') throw erreur;
+      // Sans profil Montis, le profil standard vaut mieux que Valhalla : il garde surfaces et difficulté
+      console.warn('Préférences de routage ignorées :', erreur);
+      return appelerBrouter(de, vers, pratique, signal, [], essais);
+    }
+  }
   const params = new URLSearchParams({
     lonlats: `${de[0].toFixed(6)},${de[1].toFixed(6)}|${vers[0].toFixed(6)},${vers[1].toFixed(6)}`,
-    profile: pratique.brouter,
+    profile: profil,
     alternativeidx: '0',
     format: 'geojson',
+    ...(personnalise ? parametresBrouter(preferences) : {}),
   });
   const reponse = await requeteReseau(`${URL_BROUTER}?${params}`, { signal }, DELAI_BROUTER);
-  if (reponse.status === 403 && reprise) {
-    await new Promise((resoudre) => { setTimeout(resoudre, ATTENTE_REPRISE); });
-    return appelerBrouter(de, vers, pratique, signal, false);
+  if (reponse.status === 403 && essais.reprise) {
+    await attendre(ATTENTE_REPRISE);
+    return appelerBrouter(de, vers, pratique, signal, preferences, { ...essais, reprise: false });
+  }
+  if (!reponse.ok && personnalise && essais.renvoi && reponse.status !== 403) {
+    // Profil oublié par le serveur : on le renvoie une fois
+    profilsEnvoyes.delete(pratique.brouter);
+    return appelerBrouter(de, vers, pratique, signal, preferences, { ...essais, renvoi: false });
   }
   if (!reponse.ok) throw new Error(`BRouter : statut ${reponse.status}`);
   const { features } = await reponse.json();
@@ -95,10 +137,10 @@ async function appelerBrouter(de, vers, pratique, signal, reprise = true) {
   return { geom, troncons, source: 'brouter' };
 }
 
-async function appelerValhalla(de, vers, pratique, signal) {
+async function appelerValhalla(de, vers, pratique, signal, preferences = []) {
   const requete = {
     locations: [{ lon: de[0], lat: de[1] }, { lon: vers[0], lat: vers[1] }],
-    ...pratique.valhalla,
+    ...optionsValhalla(pratique.valhalla, preferences),
     units: 'kilometers',
   };
   const reponse = await requeteReseau(`${URL_VALHALLA}?json=${encodeURIComponent(JSON.stringify(requete))}`, { signal }, DELAI_VALHALLA);
@@ -109,12 +151,13 @@ async function appelerValhalla(de, vers, pratique, signal) {
   return { geom, troncons: [{ longueur: longueurLigne(geom), voie: 'inconnu', difficulte: null, marches: false }], source: 'valhalla' };
 }
 
-export async function calculerTroncon(de, vers, pratique, signal) {
+export async function calculerTroncon(de, vers, pratique, signal, preferences = []) {
+  const choisies = nettoyerPreferences(preferences);
   try {
-    return await appelerBrouter(de, vers, pratique, signal);
+    return await appelerBrouter(de, vers, pratique, signal, choisies);
   } catch (erreur) {
     if (erreur.name === 'AbortError') throw erreur;
     console.warn('Routage, passage au secours :', erreur);
-    return appelerValhalla(de, vers, pratique, signal);
+    return appelerValhalla(de, vers, pratique, signal, choisies);
   }
 }
