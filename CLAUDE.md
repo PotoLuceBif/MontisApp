@@ -225,6 +225,7 @@ src/                    Tout le code (détail ci-dessous)
 | `activite-randonnee.js`, `activite-velo.js` | Configuration de chaque activité |
 | `parcours-editeur.js` | Tracé sur la carte : points déplaçables, routage, annuler et rétablir |
 | `parcours-routage.js` | BRouter, puis Valhalla en secours |
+| `parcours-preferences.js`, `profils-brouter/` | Préférences de routage (« Privilégier », bouton filtre de l'éditeur) : profils BRouter standard complétés de variables `montis_*`, envoyés une fois par session (`/brouter/profile`) puis réglés par l'adresse ; options Valhalla équivalentes (testé). Profils copiés de brouter.de (`profiles2/`), à recopier si BRouter les fait évoluer |
 | `parcours-analyse.js`, `parcours-profil.js` | Pentes, durée, surfaces, difficulté ; profil coloré |
 | `parcours-decouverte.js` | Repères après « Rechercher ici » |
 | `parcours-itineraires.js` | Grands itinéraires en tronçons (EuroVelo, GR) |
