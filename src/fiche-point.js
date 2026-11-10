@@ -18,6 +18,8 @@ import { indicesHeures } from './frise-calcul.js';
 import { ecrire, lire } from './reglages.js';
 import { COUCHES_BRGM, WMS_BRGM, adresseInfoBrgm, geologieDuPoint, lireInfoBrgm } from './geologie-calcul.js';
 import { familleDuCode } from './geologie-familles.js';
+import { fragmentPoint } from './partage-calcul.js';
+import { ICONE_PARTAGE, partagerLien } from './partage.js';
 
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const RAYON_REFUGE = 30000;
@@ -588,6 +590,13 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
         ligne(t('point.eau'), valeurEau()),
         ligne(t('point.geologie'), valeurGeologie())
       );
+      const partage = document.createElement('button');
+      partage.type = 'button';
+      partage.className = 'point-lien point-partager';
+      partage.innerHTML = `${ICONE_PARTAGE.replace('<svg', '<svg class="point-lien-icone"')}<span></span>`;
+      partage.querySelector('span').textContent = t('partage.point');
+      partage.addEventListener('click', () => partagerLien(fragmentPoint({ lng, lat }), t('point.titre')));
+      corps.append(partage);
       const prudence = document.createElement('div');
       prudence.className = 'point-prudence';
       prudence.textContent = t('prudence.courte');

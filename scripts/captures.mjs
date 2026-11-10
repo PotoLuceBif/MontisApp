@@ -12,6 +12,7 @@ import { createRequire } from 'node:module';
 import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
+import { fragmentParcours } from '../src/partage-calcul.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -188,6 +189,18 @@ const toucherFriseSortie = (fraction) => async (page) => {
   await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
 };
 
+// Lien d'un parcours partagé (lot 4.5) : une boucle au-dessus de Chamonix
+const tracePartage = Array.from({ length: 60 }, (_, i) => [6.84 + Math.sin(i / 9.5) * 0.008, 45.93 + (1 - Math.cos(i / 9.5)) * 0.005]);
+const { fragment: LIEN_PARCOURS } = await fragmentParcours({
+  activite: 'rando',
+  pratique: 'rando',
+  nom: 'Tour du Brévent',
+  etapes: [
+    { lng: tracePartage[0][0], lat: tracePartage[0][1], mode: 'route', troncon: null },
+    { lng: tracePartage[59][0], lat: tracePartage[59][1], mode: 'fixe', troncon: { geom: tracePartage, troncons: [{ longueur: 3600, voie: 'chemin', difficulte: 2, marches: false }], source: 'trace' } },
+  ],
+});
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
@@ -350,6 +363,14 @@ const ECRANS = [
   { nom: 'point', simuler: true, actions: [appuiLong(0.5, 0.42)] },
   { nom: 'point-geologie', simuler: true, actions: [vue(MATIN), appuiLong(0.5, 0.42), (p) => p.waitForTimeout(3000), defiler('.point-prudence')] },
   { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
+  // Partage par lien (lot 4.5) : boutons, lien copié, liens reçus
+  { nom: 'partage-menu', actions: [clic('#menu-bouton'), defiler('.menu-partage'), clic('.menu-partage .menu-ligne')] },
+  { nom: 'partage-point', simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-partager'), defiler('.point-partager'), clic('.point-partager')] },
+  { nom: 'partage-lien-point', simuler: true, lien: '#point=45.92/6.87&z=14', actions: [attendre('.point-partager')] },
+  { nom: 'partage-lien-vue', lien: '#vue=13.5/45.9/6.88/40/60&3d=1', actions: [] },
+  { nom: 'partage-lien-parcours', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])')] },
+  { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
+  { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
@@ -453,7 +474,9 @@ async function main() {
   try {
     for (const [format, options] of Object.entries(FORMATS)) {
       for (const ecran of ecrans) {
-        const contexte = await navigateur.newContext({ ...options, locale: 'fr-FR' });
+        const contexte = await navigateur.newContext({ ...options, locale: 'fr-FR', permissions: ['clipboard-read', 'clipboard-write'] });
+        // Pas de feuille de partage du système : le lien est copié, ce qui se voit sur la capture
+        await contexte.addInitScript(() => { delete Navigator.prototype.share; });
         await contexte.addInitScript(() => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr' })));
         const page = await contexte.newPage();
         const erreurs = [];
@@ -479,7 +502,7 @@ async function main() {
           await page.route(/archive-api\.open-meteo\.com\/v1\/archive/, (route) => route.fulfill({ json: archiveSimulee(route.request().url()) }));
         }
 
-        await page.goto(adresse, { waitUntil: 'load' });
+        await page.goto(`${adresse}${ecran.lien ?? ''}`, { waitUntil: 'load' });
         await page.waitForTimeout(ATTENTE_CHARGEMENT);
         for (const action of ecran.actions) {
           await action(page);

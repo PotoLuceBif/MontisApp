@@ -7,6 +7,7 @@ import { initMenu } from './menu.js';
 import { etat, majCourbes } from './options-carte.js';
 import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
+import { ouvrirLienRecu, vueDemandee } from './partage.js';
 import { retablirFond } from './fond-de-carte.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
@@ -148,7 +149,15 @@ const vueSauveeValide =
   (vueSauvee.pitch ?? 0) >= 0 &&
   (vueSauvee.pitch ?? 0) <= 85;
 
-if (vueSauveeValide) {
+// Lien partagé (vue ou point) : il passe avant la dernière vue et la position
+const lien = vueDemandee();
+if (lien) {
+  map.jumpTo({ center: [lien.lng, lien.lat], zoom: lien.zoom, bearing: lien.bearing ?? 0, pitch: lien.pitch ?? 0 });
+  if (lien.type === 'vue') {
+    ecrire('mode3D', lien.mode3D);
+    if (lien.fond) ecrire('fond', lien.fond);
+  }
+} else if (vueSauveeValide) {
   map.jumpTo({
     center: [vueSauvee.lng, vueSauvee.lat],
     zoom: vueSauvee.zoom,
@@ -182,7 +191,7 @@ function centrerSurPosition() {
 }
 
 const noterVisite = () => ecrire('derniere-visite', Date.now());
-if (doitCentrerSurPosition({ vueSauvee: vueSauveeValide ? vueSauvee : null, derniereVisite: lire('derniere-visite', null), maintenant: Date.now() })) {
+if (!lien && doitCentrerSurPosition({ vueSauvee: vueSauveeValide ? vueSauvee : null, derniereVisite: lire('derniere-visite', null), maintenant: Date.now() })) {
   centrerSurPosition();
 }
 noterVisite();
@@ -347,6 +356,7 @@ map.once('style.load', () => {
   initRecherche(map);
   initFiches(map);
   initHorsLigne(map);
+  ouvrirLienRecu(map);
 
   map.once('idle', () => retablirFond(map)); // second passage une fois la carte au repos
 

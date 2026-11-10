@@ -10,6 +10,9 @@ import { differer, facade, immediat } from './module-differe.js';
 import { OUTIL_ACTIVITE } from './outil-activite.js';
 import { creerPastilleCouche } from './couches-actives.js';
 import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
+import { etat as etatCarte } from './options-carte.js';
+import { fragmentVue } from './partage-calcul.js';
+import { partagerLien } from './partage.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -24,6 +27,7 @@ const ICONES_MENU = {
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
   reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  partage: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
   'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
   sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
   parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
@@ -579,4 +583,27 @@ export function initMenu(map) {
       }
     }
   }
+
+  // ---------- Partager la vue (lot 4.5) : position, angle, 2D ou 3D et fond, dans un lien ----------
+  const partage = document.createElement('section');
+  partage.className = 'menu-vue menu-partage';
+  const lignePartage = document.createElement('button');
+  lignePartage.type = 'button';
+  lignePartage.className = 'menu-ligne';
+  lignePartage.innerHTML = `${creerIconeMenu('partage')}<span></span>`;
+  poser(lignePartage.querySelector('span'), 'partage.vue');
+  lignePartage.addEventListener('click', () => {
+    const centre = map.getCenter();
+    partagerLien(fragmentVue({
+      lng: centre.lng,
+      lat: centre.lat,
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch(),
+      mode3D: Boolean(etatCarte.mode3D),
+      fond: lire('fond', 'montis'),
+    }), 'Montis');
+  });
+  partage.append(lignePartage);
+  corps.appendChild(partage);
 }

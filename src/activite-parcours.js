@@ -480,6 +480,19 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     decouverte.masquer();
     editeur.ouvrirEnregistre(parcours);
   }
+  // Parcours reçu par lien (partage.js) : ouvert sans être enregistré, « Enregistrer » le garde
+  const clePartage = `parcours-partage-${activite.id}`;
+  function reprendrePartage() {
+    const parcours = actif && reprendre(clePartage);
+    if (!parcours) return;
+    fermerMenu();
+    itineraires.fermer();
+    decouverte.masquer();
+    editeur.ouvrirEnregistre({ ...parcours, id: null }, { recu: true });
+  }
+  window.addEventListener('montis:demande', (event) => {
+    if (event.detail === clePartage) reprendrePartage();
+  });
   // Renommé ou supprimé depuis Mes traces
   window.addEventListener('montis:parcours-modifies', rendreMesParcours);
 
@@ -495,6 +508,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       crochets.activer?.();
       reprendreItineraire();
       reprendreParcours();
+      reprendrePartage();
     },
     desactiver() {
       actif = false;
