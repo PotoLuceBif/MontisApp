@@ -249,6 +249,8 @@ const ECRANS = [
   // Bulletin détaillé déplié, avec le bulletin d'hiver de Météo-France (option bulletin)
   { nom: 'ski-rando-bulletin', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.skirando-bulletin-bouton')] },
   { nom: 'ski-rando-bulletin-suite', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.bulletin-texte')] },
+  // Pentes du bulletin sur la carte : orientations et altitudes du bulletin d'hiver, panneau fermé
+  { nom: 'ski-rando-bulletin-carte', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), attendre('.bulletin-carte'), clic('.bulletin-carte'), (p) => p.waitForTimeout(1000), clic('#menu-fermer'), (p) => p.waitForTimeout(6000)] },
   { nom: 'ski-rando-piste', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1000), clic('.ski-pratiques [data-pratique="piste"]'), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },

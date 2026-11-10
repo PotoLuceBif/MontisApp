@@ -112,3 +112,29 @@ export function cumulsNeige(heures, maintenant = Date.now()) {
   if (!vues) return null;
   return Object.fromEntries(Object.entries(cumuls).map(([cle, v]) => [cle, Math.round(v)]));
 }
+
+// ---------- Pentes concernées ----------
+// Zones à montrer sur la carte (pente-calcul.js, `exposee`) : orientations et altitudes de chaque
+// problème d'avalanche ; sans problème décrit (Météo-France), les orientations à risque, à l'altitude
+// du niveau le plus fort quand le niveau change avec l'altitude
+const SANS_ZONE = new Set(['no_distinct_avalanche_problem', 'favourable_situation']);
+const masqueDe = (liste) => liste.reduce((masque, o) => masque | (1 << ORIENTATIONS.indexOf(o)), 0);
+
+export function zonesExposees(bulletin) {
+  if (!bulletin) return [];
+  const zones = bulletin.problemes
+    .filter(({ type, orientations }) => !SANS_ZONE.has(type) && orientations.length)
+    .map(({ orientations, min, max }) => ({ masque: masqueDe(orientations), min, max }));
+  if (!zones.length && bulletin.orientations.length) {
+    const fort = bulletin.niveaux.reduce((meilleur, n) => (!meilleur || n.niveau > meilleur.niveau ? n : meilleur), null);
+    const parAltitude = new Set(bulletin.niveaux.map(({ niveau }) => niveau)).size > 1 && fort && (fort.min != null || fort.max != null);
+    zones.push({ masque: masqueDe(bulletin.orientations), min: parAltitude ? fort.min : null, max: parAltitude ? fort.max : null });
+  }
+  // Mêmes altitudes : une seule zone, orientations réunies
+  const parTranche = new Map();
+  for (const zone of zones) {
+    const cle = `${zone.min}/${zone.max}`;
+    parTranche.set(cle, { ...zone, masque: (parTranche.get(cle)?.masque ?? 0) | zone.masque });
+  }
+  return [...parTranche.values()];
+}

@@ -8,6 +8,9 @@ import {
   grillePentes,
   latitudePixel,
   pixelsTuile,
+  exposee,
+  zonesDepuisTexte,
+  zonesVersTexte,
   pourcentagePente,
   secteur,
 } from '../src/pente-calcul.js';
@@ -150,5 +153,33 @@ describe('pixels d’une tuile', () => {
       taille: 2,
     });
     for (let i = 0; i < 4; i += 1) expect(pixels[i * 4 + 3]).toBe(255);
+  });
+});
+
+describe('pentes exposées selon le bulletin', () => {
+  const zones = [{ masque: 0b10000011, min: 1700, max: null }]; // N, NE, NO au-dessus de 1 700 m
+
+  it('retient une pente raide, bien orientée, à la bonne altitude', () => {
+    expect(exposee(zones, 10, 35, 2200)).toBe(true); // nord
+    expect(exposee(zones, 315, 32, 1800)).toBe(true); // nord-ouest
+    expect(exposee(zones, 180, 35, 2200)).toBe(false); // sud
+    expect(exposee(zones, 10, 25, 2200)).toBe(false); // moins de 30°
+    expect(exposee(zones, 10, 35, 1500)).toBe(false); // trop bas
+    expect(exposee(zones, Number.NaN, 35, 2200)).toBe(false);
+    expect(exposee([{ masque: 255, min: null, max: 1800 }], 90, 40, 1200)).toBe(true);
+  });
+
+  it('écrit et relit les zones dans l’adresse des tuiles', () => {
+    const texte = zonesVersTexte([...zones, { masque: 16, min: null, max: 2400 }]);
+    expect(texte).toBe('131-1700-x_16-x-2400');
+    expect(zonesDepuisTexte(texte)).toEqual([{ masque: 131, min: 1700, max: null }, { masque: 16, min: null, max: 2400 }]);
+    expect(zonesDepuisTexte('pas-une-zone_1-2')).toEqual([]);
+    expect(zonesDepuisTexte(undefined)).toEqual([]);
+  });
+
+  it('ne peint que les cellules retenues', () => {
+    const pentes = new Float32Array([40, 40, 40, 40]);
+    const pixels = pixelsTuile({ pentes, orientations: new Float32Array(4), cote: 2, genre: 'pentes', taille: 2, garder: (k) => k === 3 });
+    expect([pixels[3], pixels[7], pixels[11], pixels[15]]).toEqual([0, 0, 0, 255]);
   });
 });

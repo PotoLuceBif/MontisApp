@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cumulsNeige, fichierDuMassif, fichiersDuJour, lireBulletin, texteBrut } from '../src/bulletin-calcul.js';
+import { cumulsNeige, fichierDuMassif, fichiersDuJour, lireBulletin, texteBrut, zonesExposees } from '../src/bulletin-calcul.js';
 
 describe('fichiers des bulletins', () => {
   const page = `<a href="./2026-02-10-FR.json">x</a><a href="./2026-02-10-FR.ratings.json"></a>
@@ -108,5 +108,31 @@ describe('neige récente', () => {
   it('ne dit rien sans données', () => {
     expect(cumulsNeige(null)).toBeNull();
     expect(cumulsNeige({ time: ['x'], snowfall: [1] })).toBeNull();
+  });
+});
+
+describe('pentes concernées', () => {
+  const base = { niveaux: [], problemes: [], orientations: [] };
+
+  it('prend orientations et altitudes de chaque problème, réunies par tranche', () => {
+    const zones = zonesExposees({
+      ...base,
+      problemes: [
+        { type: 'wind_slab', orientations: ['N', 'NE'], min: 2000, max: null },
+        { type: 'new_snow', orientations: ['E'], min: 2000, max: null },
+        { type: 'wet_snow', orientations: ['S'], min: null, max: 1800 },
+        { type: 'favourable_situation', orientations: ['W'], min: null, max: null },
+        { type: 'gliding_snow', orientations: [], min: null, max: null },
+      ],
+    });
+    expect(zones).toEqual([{ masque: 0b111, min: 2000, max: null }, { masque: 0b10000, min: null, max: 1800 }]);
+  });
+
+  it('sans problème, garde les orientations de Météo-France à l’altitude du niveau le plus fort', () => {
+    const niveaux = [{ niveau: 2, min: null, max: 1700 }, { niveau: 3, min: 1700, max: null }];
+    expect(zonesExposees({ ...base, niveaux, orientations: ['N', 'NW'] })).toEqual([{ masque: 0b10000001, min: 1700, max: null }]);
+    expect(zonesExposees({ ...base, niveaux: [{ niveau: 2, min: null, max: null }], orientations: ['S'] })).toEqual([{ masque: 0b10000, min: null, max: null }]);
+    expect(zonesExposees({ ...base })).toEqual([]);
+    expect(zonesExposees(null)).toEqual([]);
   });
 });

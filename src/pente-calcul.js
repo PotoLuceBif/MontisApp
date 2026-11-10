@@ -93,7 +93,8 @@ export function couleurOrientation(orientation, pente) {
 // Pixels RGBA d'une tuile de `taille` px, depuis une grille de `cote` cellules de côté couvrant la tuile.
 // Une grille plus fine que la tuile (zoom inférieur) : chaque pixel prend la pente la plus forte
 // de ses cellules, pour ne jamais adoucir une pente raide. Une grille plus grossière : la cellule sous le pixel.
-export function pixelsTuile({ pentes, orientations, cote, genre, taille = 256 }) {
+// `garder(k)` : seules les cellules retenues sont peintes (pentes exposées du bulletin)
+export function pixelsTuile({ pentes, orientations, cote, genre, taille = 256, garder = null }) {
   const pixels = new Uint8ClampedArray(taille * taille * 4);
   const pas = cote / taille;
   for (let py = 0; py < taille; py += 1) {
@@ -106,6 +107,7 @@ export function pixelsTuile({ pentes, orientations, cote, genre, taille = 256 })
       for (let l = l0; l < l1; l += 1) {
         for (let c = c0; c < c1; c += 1) if (pentes[l * cote + c] > pentes[k]) k = l * cote + c;
       }
+      if (garder && !garder(k)) continue;
       const couleur = genre === 'orientation' ? couleurOrientation(orientations[k], pentes[k]) : couleurPente(pentes[k]);
       if (!couleur) continue;
       const i = (py * taille + px) * 4;
@@ -116,4 +118,24 @@ export function pixelsTuile({ pentes, orientations, cote, genre, taille = 256 })
     }
   }
   return pixels;
+}
+
+// ---------- Pentes exposées selon le bulletin d'avalanche ----------
+// Zone du bulletin : { masque (un bit par secteur, du nord dans le sens horaire), min, max } en mètres,
+// min ou max à null quand le bulletin ne borne pas l'altitude
+export function exposee(zones, orientation, pente, altitude) {
+  if (!(pente >= SEUILS_PENTE[0]) || !Number.isFinite(orientation)) return false;
+  const bit = 1 << secteur(orientation);
+  return zones.some(({ masque, min, max }) => (masque & bit) !== 0
+    && (min == null || altitude >= min) && (max == null || altitude <= max));
+}
+
+// Zones écrites dans l'adresse des tuiles : « 7-1700-x_224-x-2400 » (x : pas de borne)
+export const zonesVersTexte = (zones) => zones.map(({ masque, min, max }) => [masque, min ?? 'x', max ?? 'x'].join('-')).join('_');
+
+export function zonesDepuisTexte(texte) {
+  const borne = (v) => (v === 'x' ? null : Number(v));
+  return String(texte ?? '').split('_').map((zone) => zone.split('-'))
+    .filter((parts) => parts.length === 3 && /^\d+$/.test(parts[0]) && parts.slice(1).every((v) => v === 'x' || /^\d+$/.test(v)))
+    .map(([masque, min, max]) => ({ masque: Number(masque) & 255, min: borne(min), max: borne(max) }));
 }

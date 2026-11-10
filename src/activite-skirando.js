@@ -10,7 +10,7 @@ import { creerAvalanchesIci } from './skirando-avalanches.js';
 export const COULEUR_SKIRANDO = '#8fd3ff';
 
 export function creerSkiRando(map, outils) {
-  const avalanches = creerAvalanchesIci(map);
+  const avalanches = creerAvalanchesIci(map, outils);
   let reseau = null;
   let zone = null;
   return creerActiviteParcours(map, {

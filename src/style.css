@@ -3781,3 +3781,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .bulletin-texte .bulletin-puce { position: relative; padding-left: 14px; }
 .bulletin-texte .bulletin-puce::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 .bulletin-texte .bulletin-intertitre { margin-top: 4px; font-weight: 700; }
+.bulletin-carte {
+  justify-self: start; margin-top: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--accent); border-radius: 9px;
+  background: transparent; color: var(--accent); font: 650 12px/1.2 var(--police); cursor: pointer;
+}
+.bulletin-carte[aria-pressed="true"] { background: var(--accent); color: var(--accent-texte); }

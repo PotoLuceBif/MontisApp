@@ -119,7 +119,8 @@ function section(titre, paragraphes) {
   return bloc;
 }
 
-export function creerBulletinDetaille(bulletin, neige) {
+// `carte` : { actif, basculer() } pour le bouton « Voir sur la carte » des pentes concernées
+export function creerBulletinDetaille(bulletin, neige, carte = null) {
   const bloc = el('div', 'bulletin-detaille');
 
   const entete = el('p', 'bulletin-date');
@@ -156,6 +157,13 @@ export function creerBulletinDetaille(bulletin, neige) {
     orientations.innerHTML = rose(bulletin.orientations, bulletin.max);
     const texte = el('div', 'bulletin-orientations-textes');
     texte.append(el('strong', null, t('bulletin.orientations')), el('span', null, bulletin.orientations.map((o) => cardinal(o)).join(', ')));
+    if (carte) {
+      const bouton = el('button', 'bulletin-carte', t(carte.actif ? 'bulletin.carte-masquer' : 'bulletin.carte-voir'));
+      bouton.type = 'button';
+      bouton.setAttribute('aria-pressed', String(carte.actif));
+      bouton.addEventListener('click', carte.basculer);
+      texte.append(bouton);
+    }
     orientations.append(texte);
     bloc.append(orientations);
   }

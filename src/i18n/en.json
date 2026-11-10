@@ -1548,5 +1548,8 @@
   "bulletin.publie": "published {date}",
   "bulletin.valable": "valid until {date}",
   "bulletin.pied": "Text from the official service, in its own language. This bulletin describes the area, not your slope: Montis helps you prepare; it doesn’t decide for you.",
-  "bulletin.lire-officiel": "Read the official bulletin"
+  "bulletin.lire-officiel": "Read the official bulletin",
+  "bulletin.carte-voir": "Show these slopes on the map",
+  "bulletin.carte-masquer": "Remove these slopes from the map",
+  "bulletin.pastille": "Bulletin slopes"
 }

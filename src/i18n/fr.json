@@ -1548,5 +1548,8 @@
   "bulletin.publie": "publié {date}",
   "bulletin.valable": "valable jusqu’à {date}",
   "bulletin.pied": "Textes du service officiel, dans sa langue. Ce bulletin décrit le massif, pas ta pente : Montis aide à préparer, il ne décide pas à ta place.",
-  "bulletin.lire-officiel": "Lire le bulletin officiel"
+  "bulletin.lire-officiel": "Lire le bulletin officiel",
+  "bulletin.carte-voir": "Voir ces pentes sur la carte",
+  "bulletin.carte-masquer": "Retirer ces pentes de la carte",
+  "bulletin.pastille": "Pentes du bulletin"
 }

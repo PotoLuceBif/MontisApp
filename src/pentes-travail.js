@@ -10,10 +10,10 @@ self.onmessage = async ({ data }) => {
     annulees.add(data.annuler);
     return;
   }
-  const { id, z, x, y, genre, soleil } = data;
+  const { id, z, x, y, genre, soleil, zones } = data;
   const annulee = () => annulees.has(id);
   try {
-    const pixels = genre === 'ombre' ? await tuileOmbre(z, x, y, soleil, annulee) : await tuile(z, x, y, genre, annulee);
+    const pixels = genre === 'ombre' ? await tuileOmbre(z, x, y, soleil, annulee) : await tuile(z, x, y, genre, annulee, zones);
     self.postMessage({ id, pixels }, [pixels.buffer]);
   } catch (e) {
     self.postMessage({ id, erreur: e?.message || String(e) });

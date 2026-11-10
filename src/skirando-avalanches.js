@@ -4,6 +4,11 @@
 import { chargerNiveauxDuJour, creerBlocRisque } from './ski-conditions.js';
 import { massifAuPoint, nomMassif, risqueDuMassif } from './skirando-calcul.js';
 import { chargerBulletin, chargerNeigeRecente, creerBulletinDetaille } from './bulletin-detaille.js';
+import { zonesExposees } from './bulletin-calcul.js';
+import { afficherPentesExposees, ZOOM_MIN_PENTES } from './pentes-couche.js';
+import { COULEURS_PENTE, SEUILS_PENTE, zonesVersTexte } from './pente-calcul.js';
+import { creerPastilleCouche } from './couches-actives.js';
+import { etat } from './options-carte.js';
 import { messageErreur } from './requete.js';
 import { lire, ecrire } from './reglages.js';
 import { langue, surPreferences } from './preferences.js';
@@ -11,6 +16,7 @@ import { poser, t } from './i18n.js';
 
 const URL_MASSIFS = '/data/avalanches/massifs.json';
 const ATTENTE_MS = 400;
+const MINI_PENTES = `<span class="mini-pentes">${SEUILS_PENTE.map((s) => `<i style="background: rgb(${COULEURS_PENTE[s].join(', ')})"></i>`).join('')}</span>`;
 const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
 let chargementMassifs = null;
@@ -44,7 +50,7 @@ function message(texte) {
   return bloc;
 }
 
-export function creerAvalanchesIci(map) {
+export function creerAvalanchesIci(map, { ouvrirMenu = () => {} } = {}) {
   const section = document.createElement('section');
   section.className = 'skirando-avalanches';
   section.innerHTML = `<h3></h3><div class="skirando-avalanches-contenu"></div>
@@ -64,6 +70,68 @@ export function creerAvalanchesIci(map) {
   let detailRendu = null; // massif du bulletin détaillé affiché
   let ouvert = !!lire('skirando-bulletin-ouvert', false);
 
+  // ---------- Pentes concernées sur la carte ----------
+  // Pentes de 30° et plus aux orientations et altitudes du bulletin ; elles remplacent les pentes
+  // de Carte › Relief le temps qu'elles sont affichées
+  let exposeesVoulues = !!lire('skirando-exposees', false);
+  let bulletinCourant = null; // { id, bulletin } du massif au centre, quand il est chargé
+  let zonesAffichees = '';
+  let pentesMasquees = false;
+  const pastille = creerPastilleCouche({
+    ordre: 0,
+    nom: () => t(map.getZoom() < ZOOM_MIN_PENTES ? 'pentes.trop-loin' : 'bulletin.pastille'),
+    legende: () => MINI_PENTES,
+    onOuvrir: () => ouvrirMenu(),
+    onRetirer: () => basculerExposees(false),
+  });
+
+  function appliquerExposees() {
+    const zones = actif && exposeesVoulues && bulletinCourant?.id === massifCourant?.id ? zonesExposees(bulletinCourant.bulletin) : [];
+    const texte = zonesVersTexte(zones);
+    if (texte !== zonesAffichees) {
+      zonesAffichees = texte;
+      afficherPentesExposees(map, zones);
+    }
+    if (zones.length && etat.pentes?.choix() === 'pentes') {
+      pentesMasquees = true;
+      etat.pentes.choisir('aucune');
+    } else if (!(actif && exposeesVoulues) && pentesMasquees) {
+      // Rétablies seulement à l'extinction : pas pendant le chargement du bulletin d'un autre massif
+      pentesMasquees = false;
+      if (etat.pentes?.choix() === 'aucune') etat.pentes.choisir('pentes');
+    }
+    pastille.montrer(zones.length > 0);
+    majPastille();
+  }
+
+  function majPastille() {
+    if (!pastille.visible) return;
+    const loin = map.getZoom() < ZOOM_MIN_PENTES;
+    pastille.action(loin ? 'pentes.zoomer' : null, () => map.easeTo({ zoom: ZOOM_MIN_PENTES + 0.5, duration: 900 }));
+    pastille.maj();
+  }
+  map.on('zoomend', majPastille);
+
+  function basculerExposees(voulu = !exposeesVoulues) {
+    exposeesVoulues = voulu;
+    ecrire('skirando-exposees', voulu);
+    appliquerExposees();
+    if (voulu) void chargerBulletinCourant();
+    detailRendu = null;
+    void rendreDetail();
+  }
+
+  async function chargerBulletinCourant() {
+    const massif = massifCourant;
+    if (!massif || bulletinCourant?.id === massif.id) return bulletinCourant?.bulletin ?? null;
+    const bulletin = await chargerBulletin(massif.id, langue());
+    if (massifCourant?.id === massif.id) {
+      bulletinCourant = { id: massif.id, bulletin };
+      appliquerExposees();
+    }
+    return bulletin;
+  }
+
   // ---------- Bulletin détaillé ----------
   async function rendreDetail() {
     detail.hidden = !ouvert || !massifCourant;
@@ -74,7 +142,7 @@ export function creerAvalanchesIci(map) {
     detailRendu = cle;
     detail.replaceChildren(attente('bulletin.chargement'));
     const { lng, lat } = map.getCenter();
-    const [bulletin, neige] = await Promise.allSettled([chargerBulletin(massif.id, langue()), chargerNeigeRecente([lng, lat])]);
+    const [bulletin, neige] = await Promise.allSettled([chargerBulletinCourant(), chargerNeigeRecente([lng, lat])]);
     if (detailRendu !== cle) return;
     const neigeLue = neige.status === 'fulfilled' ? neige.value : null;
     if (bulletin.status === 'rejected') {
@@ -89,7 +157,8 @@ export function creerAvalanchesIci(map) {
       if (neigeLue) detail.append(creerBulletinDetaille({ niveaux: [], orientations: [], problemes: [], activite: [], manteau: [], meteo: [], tendance: { type: null, texte: [] }, max: 0 }, neigeLue));
       return;
     }
-    detail.replaceChildren(creerBulletinDetaille(bulletin.value, neigeLue));
+    const carte = zonesExposees(bulletin.value).length ? { actif: exposeesVoulues, basculer: () => basculerExposees() } : null;
+    detail.replaceChildren(creerBulletinDetaille(bulletin.value, neigeLue, carte));
   }
 
   bouton.addEventListener('click', () => {
@@ -122,6 +191,8 @@ export function creerAvalanchesIci(map) {
     const massif = massifAuPoint(massifs, [lng, lat], niveaux);
     massifCourant = massif;
     bouton.hidden = !massif;
+    appliquerExposees();
+    if (massif && exposeesVoulues) chargerBulletinCourant().catch((erreur) => console.warn('Pentes concernées :', erreur));
     if (!massif) {
       detail.hidden = true;
       if (dernier?.id === null) return;
@@ -150,6 +221,7 @@ export function creerAvalanchesIci(map) {
   surPreferences(() => {
     dernier = null;
     detailRendu = null;
+    bulletinCourant = null; // les textes suivent la langue
     if (actif) void actualiser();
   });
 
@@ -163,6 +235,7 @@ export function creerAvalanchesIci(map) {
       actif = false;
       numero += 1;
       clearTimeout(minuteur);
+      appliquerExposees();
     },
   };
 }
