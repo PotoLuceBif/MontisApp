@@ -181,6 +181,8 @@ export function creerOptionPentes(map) {
     couche.afficher(genre);
     majChoix();
   }
+  // Pour une pratique qui les allume par défaut (ski de rando), sans importer ce module
+  etat.pentes = { choix: () => couche.choix, choisir };
   boutons.forEach((b) => b.addEventListener('click', () => {
     choisir(b.dataset.genre === couche.choix ? 'aucune' : b.dataset.genre);
   }));

@@ -9,6 +9,9 @@ import { locale, langue, surPreferences } from './preferences.js';
 import { t, ta, ti, poser } from './i18n.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 import { requete as requeteReseau } from './requete.js';
+import { creerSkiRando } from './activite-skirando.js';
+import { etat } from './options-carte.js';
+import { enAttente } from './demandes.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -99,7 +102,7 @@ function estStationPhoton(feature) {
   );
 }
 
-export function creerActiviteSki(map) {
+function creerSkiPiste(map) {
   let actif = false;
   let ecouteurPose = false;
   let chargement = null;
@@ -558,6 +561,99 @@ export function creerActiviteSki(map) {
       conditions = {};
       reperes.retirer();
       rendreZone();
+    },
+  };
+}
+
+// ---------- Pratiques : Piste, Ski de rando ----------
+const PRATIQUES = [['piste', 'ski.pratique-piste'], ['skirando', 'skirando.pratique']];
+// Demandes adressées au ski de rando (Mes traces, lien partagé, « Y aller ») : elles le choisissent
+const DEMANDES_RANDO = ['ouvrir-parcours-skirando', 'parcours-partage-skirando', 'itineraire-skirando'];
+const CLE_PENTES_AUTO = 'skirando-pentes-auto';
+
+export function creerActiviteSki(map, outils) {
+  const piste = creerSkiPiste(map);
+  const rando = creerSkiRando(map, outils);
+  let pratique = PRATIQUES.some(([id]) => id === lire('ski-pratique', 'piste')) ? lire('ski-pratique', 'piste') : 'piste';
+  let actif = false;
+
+  const panneau = el('div', 'ski-activite');
+  const choix = el('div', 'segments ski-pratiques');
+  choix.setAttribute('role', 'group');
+  choix.setAttribute('aria-label', t('ski.pratique'));
+  for (const [id, cle] of PRATIQUES) {
+    const bouton = el('button', null);
+    bouton.type = 'button';
+    bouton.dataset.pratique = id;
+    poser(bouton, cle);
+    bouton.addEventListener('click', () => choisir(id));
+    choix.append(bouton);
+  }
+  panneau.append(choix, piste.panneau, rando.panneau);
+  const courant = () => (pratique === 'skirando' ? rando : piste);
+
+  function afficher() {
+    piste.panneau.hidden = pratique !== 'piste';
+    rando.panneau.hidden = pratique !== 'skirando';
+    choix.querySelectorAll('button').forEach((bouton) => {
+      const choisi = bouton.dataset.pratique === pratique;
+      bouton.classList.toggle('actif', choisi);
+      bouton.setAttribute('aria-pressed', String(choisi));
+    });
+  }
+
+  // Les pentes s'allument avec le ski de rando, et s'éteignent en le quittant si c'est lui qui les a allumées
+  function allumerPentes() {
+    if (etat.pentes?.choix() !== 'aucune') return;
+    etat.pentes.choisir('pentes');
+    ecrire(CLE_PENTES_AUTO, true);
+  }
+  function rendrePentes() {
+    if (!lire(CLE_PENTES_AUTO, false)) return;
+    ecrire(CLE_PENTES_AUTO, false);
+    if (etat.pentes?.choix() === 'pentes') etat.pentes.choisir('aucune');
+  }
+
+  function demarrer() {
+    courant().activer();
+    if (pratique === 'skirando') allumerPentes();
+  }
+  function arreter() {
+    courant().desactiver();
+    if (pratique === 'skirando') rendrePentes();
+  }
+
+  function choisir(id) {
+    if (id === pratique) return;
+    if (actif) arreter();
+    pratique = id;
+    ecrire('ski-pratique', id);
+    afficher();
+    if (actif) demarrer();
+  }
+
+  window.addEventListener('montis:demande', (event) => {
+    if (actif && DEMANDES_RANDO.includes(event.detail)) choisir('skirando');
+  });
+
+  afficher();
+  return {
+    id: 'ski',
+    labelCle: 'ski.titre',
+    icone: 'ski',
+    panneau,
+    activer() {
+      actif = true;
+      if (DEMANDES_RANDO.some(enAttente)) {
+        pratique = 'skirando';
+        ecrire('ski-pratique', pratique);
+        afficher();
+      }
+      demarrer();
+    },
+    desactiver() {
+      actif = false;
+      arreter();
     },
   };
 }

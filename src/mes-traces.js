@@ -14,7 +14,7 @@ import { dateCourte, detailSortie, iconeType, nomSortie, svg, typeDe } from './t
 import { creerVueSortie } from './sortie-vue.js';
 
 const TAILLE_MAX = 60 * 1024 * 1024;
-const ACTIVITES_PARCOURS = ['rando', 'velo'];
+const ACTIVITES_PARCOURS = ['rando', 'velo', 'skirando'];
 const DESSINS = {
   importer: '<path d="M12 15V3m0 0L7.500 7.500M12 3l4.500 4.500"/><path d="M5 13v6h14v-6"/>',
   renommer: '<path d="M4 20h4L19 9l-4-4L4 16v4ZM13 7l4 4"/>',
@@ -240,7 +240,7 @@ export function creerParcoursTraces(map, { fermerMenu = () => {} } = {}) {
       .sort((a, b) => (b.date ?? 0) - (a.date ?? 0));
     vide.hidden = tous.length > 0;
     liste.replaceChildren(...tous.map((parcours) => ligneListe({
-      icone: iconeType(parcours.activite),
+      icone: iconeType(parcours.activite === 'skirando' ? 'ski' : parcours.activite),
       nom: parcours.nom,
       detail: [
         Number.isFinite(parcours.total) ? formatDistance(parcours.total) : null,

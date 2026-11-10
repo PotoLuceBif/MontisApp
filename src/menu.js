@@ -226,7 +226,7 @@ export function initMenu(map) {
           import('./activite-velo.js').then((m) => m.creerActiviteVelo(map, { fermerMenu, ouvrirMenu }))
         ),
         differer({ id: 'ski', labelCle: 'ski.titre', icone: 'ski' }, () =>
-          import('./activite-ski.js').then((m) => m.creerActiviteSki(map))
+          import('./activite-ski.js').then((m) => m.creerActiviteSki(map, { fermerMenu, ouvrirMenu }))
         ),
       ],
       emplacement: 'menu',
@@ -415,7 +415,9 @@ export function initMenu(map) {
 
   // Raccourci depuis une fiche : ouvre une activité, ou un panneau flottant sur l'un de ses modules (Météo › Conditions locales)
   window.addEventListener('montis:ouvrir-module', (event) => {
-    const { categorie, module, retour } = event.detail || {};
+    const { categorie, retour } = event.detail || {};
+    // Une pratique qui a ses propres parcours s'ouvre par son activité (le ski de rando par le Ski)
+    const module = event.detail?.module === 'skirando' ? 'ski' : event.detail?.module;
     const panneau = panneauxFlottants.get(categorie);
     const etat = etatsParCategorie.get(categorie)?.find((e) => e.def.id === module);
     if (!etat) return;

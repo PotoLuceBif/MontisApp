@@ -3726,3 +3726,11 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 }
 .montis-annonce.erreur { border-color: #e5484d; }
 .montis-annonce[hidden] { display: none; }
+
+/* ---------- Ski : choix de la pratique, ski de rando ---------- */
+.ski-pratiques { margin: 0 0 12px; }
+.ski-pratiques button { min-height: 44px; font-weight: 650; }
+.ski-activite > [hidden] { display: none; }
+.skirando-avalanches { display: grid; gap: 7px; }
+.skirando-avalanches h3 { margin: 2px 0 0; color: var(--texte); font-size: 13px; font-weight: 650; text-transform: none; letter-spacing: 0; }
+.rando-badge.skirando-badge { background: #2b6c8f; }

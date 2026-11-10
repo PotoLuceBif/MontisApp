@@ -43,7 +43,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
         <input type="file" class="rando-fichier parcours-fichier" accept=".gpx,application/gpx+xml,application/xml,text/xml">
       </label>
     </div>
-    <div class="pc-recherche">
+    <div class="pc-recherche"${activite.sansRecherche ? ' hidden' : ''}>
       <input type="text" class="rando-champ parcours-recherche" ${ta('placeholder', activite.placeholder)} autocomplete="off" spellcheck="false" inputmode="search" ${ta('aria-label', activite.placeholder)}>
       ${activite.filtres.length > 1 ? `
         <button type="button" class="pc-filtre-actif" hidden><span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
@@ -409,9 +409,10 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     fermerMenu();
     itineraires.fermer();
     decouverte.masquer();
+    activite.avantCreation?.();
     editeur.ouvrirCreation();
   });
-  $('.parcours-zone').addEventListener('click', chercherDansLaZone);
+  $('.parcours-zone').addEventListener('click', () => (zone ? zone.chercher() : chercherDansLaZone()));
   champRecherche.addEventListener('input', () => {
     clearTimeout(minuteurRecherche);
     minuteurRecherche = setTimeout(chercherTexte, 350);
@@ -434,6 +435,8 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
   const options = activite.options?.(map, outils);
   if (options) $('.pc-options').append(options);
   const crochets = activite.crochets?.(map, outils) ?? {};
+  // « Rechercher ici » propre à l'activité (itinéraires de ski de rando d'OSM), à la place de Waymarked Trails
+  const zone = activite.zone?.(map, { ...outils, afficherMessage, liste }) ?? null;
 
   rendreFiltres();
   rendreMesParcours();
@@ -506,6 +509,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       appliquerCalque();
       decouverte.activer();
       crochets.activer?.();
+      zone?.activer?.();
       reprendreItineraire();
       reprendreParcours();
       reprendrePartage();
@@ -515,6 +519,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       appliquerCalque();
       controleurListe?.abort();
       crochets.desactiver?.();
+      zone?.desactiver();
       decouverte.desactiver();
       fermerTout();
     },
