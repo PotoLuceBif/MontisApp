@@ -1,10 +1,11 @@
-// Relais Vercel de la carte des plafonds : pour une heure (UTC), télécharge chez la NOAA la hauteur de
-// couche limite et le relief de GFS (0,25°, toute la Terre), et renvoie une maille par octet, compressée.
+// Relais Vercel de la carte des plafonds : pour une heure (UTC), télécharge chez la NOAA l'épaisseur de la
+// couche limite de GFS (0,25°, toute la Terre) et renvoie une maille par octet, compressée. L'appli y ajoute
+// elle-même le relief fin.
 // La réponse est gardée une heure par le réseau de Vercel : un seul téléchargement par heure, pour tous.
 // Appel : /api/plafonds?t=AAAA-MM-JJTHH (heure de validité, UTC). En-tête X-Montis-Grille : la grille.
 import { gzipSync } from 'node:zlib';
 import { lireGrib2 } from './_lib/grib2.js';
-import { encoderPlafonds } from '../src/plafonds-calcul.js';
+import { encoderEpaisseurs } from '../src/plafonds-calcul.js';
 
 const FILTRE = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl';
 const DELAI = 20000;
@@ -12,9 +13,8 @@ const ECHEANCE_MAX = 120; // heures : GFS est horaire jusque-là
 const HEURE = 3600000;
 
 const deux = (n) => String(n).padStart(2, '0');
-let reliefEnMemoire = null; // le relief ne change pas d'un calcul à l'autre
 
-async function telecharger(run, echeance, avecRelief) {
+async function telecharger(run, echeance) {
   const jour = `${run.getUTCFullYear()}${deux(run.getUTCMonth() + 1)}${deux(run.getUTCDate())}`;
   const heure = deux(run.getUTCHours());
   const params = new URLSearchParams({
@@ -23,7 +23,6 @@ async function telecharger(run, echeance, avecRelief) {
     var_HPBL: 'on',
     lev_surface: 'on',
   });
-  if (avecRelief) params.set('var_HGT', 'on');
   const reponse = await fetch(`${FILTRE}?${params}`, { signal: AbortSignal.timeout(DELAI), headers: { 'User-Agent': 'Montis (relais plafonds)' } });
   if (!reponse.ok) return null;
   const octets = new Uint8Array(await reponse.arrayBuffer());
@@ -39,16 +38,13 @@ export async function calculerPlafonds(valide, maintenant = Date.now()) {
     const run = new Date(dernier - essai * 6 * HEURE);
     const echeance = Math.round((valide - run.getTime()) / HEURE);
     if (echeance < 0 || echeance > ECHEANCE_MAX) continue;
-    const messages = await telecharger(run, echeance, !reliefEnMemoire);
-    if (!messages) continue;
-    const couche = messages.find((m) => m.categorie === 3 && m.numero === 196);
-    const relief = messages.find((m) => m.categorie === 3 && m.numero === 5);
-    if (relief) reliefEnMemoire = relief;
-    if (!couche || !reliefEnMemoire) continue;
+    const messages = await telecharger(run, echeance);
+    const couche = messages?.find((m) => m.categorie === 3 && m.numero === 196);
+    if (!couche) continue;
     const { ni, nj, lat1, lon1, lat2, lon2 } = couche;
     return {
       grille: { ni, nj, lat1, lon1, lat2, lon2, run: run.toISOString(), valide: new Date(valide).toISOString(), source: 'GFS 0,25° (NOAA)' },
-      codes: encoderPlafonds(couche.valeurs, reliefEnMemoire.valeurs),
+      codes: encoderEpaisseurs(couche.valeurs),
     };
   }
   return null;

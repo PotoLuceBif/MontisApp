@@ -1,25 +1,30 @@
 // Carte des plafonds de Vol libre, sur le modèle de Meteo-Parapente : une seule demande par heure au
-// relais /api/plafonds, qui sert la carte de toute la Terre déjà calculée (GFS de la NOAA, 0,25°) ;
-// l'appli la dessine en tranches de 500 m, quel que soit le zoom.
+// relais /api/plafonds, qui sert l'épaisseur de la couche limite sur toute la Terre (GFS de la NOAA, 0,25°).
+// Chaque tuile de la carte la lisse et l'ajoute au relief fin (tuiles de relief des pentes) : tranches de
+// 500 m qui suivent crêtes et vallées, du globe jusqu'au zoom 12.
+import { addProtocol } from 'maplibre-gl';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 import { REPERE_CALQUES } from './style-montis.js';
 import {
-  COULEURS_PLAFOND, COULEUR_SANS, EMPRISE_MONDE, PALIERS_PLAFOND, SANS_THERMIQUE, plafondAu, rasteriserMonde,
+  COULEURS_PLAFOND, COULEUR_SANS, PALIERS_PLAFOND, SANS_THERMIQUE, epaisseurAu, pixelsPlafond, plafondFin,
 } from './plafonds-calcul.js';
+import { altitudesTuile } from './pentes-tuile.js';
+import { altitudeRelief } from './relief-donnees.js';
 import { formatAltitude, uniteAltitude, valeurAltitude } from './unites.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { messageErreur, requete } from './requete.js';
 import { surPreferences } from './preferences.js';
 import { heureCourte, nomJour, poser, t, ta, ti, tt } from './i18n.js';
 
-const RELAIS = '/api/plafonds';
+const RELAIS = '/api/plafonds?v=2'; // v : format de la réponse, pour ne pas relire une ancienne en cache
 const SOURCE = 'plafonds';
 const ECHEANCE_MAX = 48;
 const DELAI_CURSEUR = 250;
 const DELAI_REQUETE = 30000;
-const LARGEUR_IMAGE = 1440; // une colonne par maille de 0,25°
+const PROTOCOLE = 'montis-plafond';
+const ZOOM_MAX = 12; // relief d'environ 30 m : au-delà, la tuile est agrandie
 const HEURES_GARDEES = 8;
 const OPACITE = 0.6;
 const HEURE = 3600000;
@@ -90,7 +95,16 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
   let demande = 0;
   let minuteur = null;
   let erreur = false;
-  const canvas = document.createElement('canvas');
+  let cleAffichee = null;
+
+  // Tuile montis-plafond://<heure>/z/x/y : épaisseur lissée + relief de la même tuile
+  addProtocol(PROTOCOLE, async ({ url }) => {
+    const [, cle, z, x, y] = url.match(/^[\w-]+:\/\/([\dT-]+)\/(\d+)\/(\d+)\/(\d+)/);
+    const { grille, codes } = await chargerCarte(cle);
+    const altitudes = await altitudesTuile(Number(z), Number(x), Number(y));
+    const pixels = pixelsPlafond(grille, codes, altitudes, Number(z), Number(x), Number(y));
+    return { data: await createImageBitmap(new ImageData(pixels, 256, 256)) };
+  });
 
   const pastille = creerPastilleCouche({
     ordre: 4,
@@ -121,7 +135,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
   function chargerCarte(cle) {
     if (!cartes.has(cle)) {
       const promesse = (async () => {
-        const reponse = await requete(`${RELAIS}?t=${cle}`, {}, DELAI_REQUETE);
+        const reponse = await requete(`${RELAIS}&t=${cle}`, {}, DELAI_REQUETE);
         if (!reponse.ok) {
           const corpsErreur = await reponse.json().catch(() => null);
           throw Object.assign(new Error(corpsErreur?.erreur ?? `HTTP ${reponse.status}`), { statut: reponse.status });
@@ -129,11 +143,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
         const grille = JSON.parse(reponse.headers.get('X-Montis-Grille') ?? 'null');
         const codes = new Uint8Array(await reponse.arrayBuffer());
         if (!grille || codes.length !== grille.ni * grille.nj) throw new Error('Carte des plafonds incomplète');
-        const hauteur = LARGEUR_IMAGE; // le monde en Mercator est carré
-        canvas.width = LARGEUR_IMAGE;
-        canvas.height = hauteur;
-        canvas.getContext('2d').putImageData(new ImageData(rasteriserMonde(grille, codes, LARGEUR_IMAGE, hauteur), LARGEUR_IMAGE, hauteur), 0, 0);
-        return { grille, codes, url: canvas.toDataURL('image/png') };
+        return { grille, codes };
       })();
       promesse.catch(() => cartes.delete(cle));
       cartes.set(cle, promesse);
@@ -142,13 +152,15 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     return cartes.get(cle);
   }
 
-  function poserImage(url) {
+  function poserCouche(cle) {
+    cleAffichee = cle;
+    const tiles = [`${PROTOCOLE}://${cle}/{z}/{x}/{y}`];
     const source = map.getSource(SOURCE);
-    if (source) source.updateImage({ url, coordinates: EMPRISE_MONDE });
+    if (source) source.setTiles(tiles);
     else {
-      map.addSource(SOURCE, { type: 'image', url, coordinates: EMPRISE_MONDE });
+      map.addSource(SOURCE, { type: 'raster', tiles, tileSize: 256, maxzoom: ZOOM_MAX });
       map.addLayer(
-        { id: SOURCE, type: 'raster', source: SOURCE, paint: { 'raster-opacity': OPACITE, 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
+        { id: SOURCE, type: 'raster', source: SOURCE, paint: { 'raster-opacity': OPACITE, 'raster-fade-duration': 0 } },
         map.getLayer(REPERE_CALQUES) ? REPERE_CALQUES : undefined,
       );
     }
@@ -170,7 +182,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
       const carte = await chargerCarte(cle);
       if (ici !== demande || !actif) return;
       affichee = carte;
-      poserImage(carte.url);
+      poserCouche(cle);
       statut.textContent = '';
       delete statut.dataset.i18n;
       majLecture();
@@ -195,13 +207,18 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     panneau.definirResume({ nom: t('plafonds.titre'), detail: heureTexte.textContent });
   }
 
-  function majLecture() {
+  let lectureDemandee = 0;
+  async function majLecture() {
+    const ici = ++lectureDemandee;
     if (!affichee) {
       lecture.textContent = '';
       return;
     }
     const { lng, lat } = map.getCenter();
-    const valeur = plafondAu(affichee.grille, affichee.codes, lng, lat);
+    const epaisseur = epaisseurAu(affichee.grille, affichee.codes, lng, lat);
+    const sol = await altitudeRelief(lng, lat).catch(() => null);
+    if (ici !== lectureDemandee) return;
+    const valeur = plafondFin(epaisseur, sol);
     if (valeur === null) lecture.textContent = '';
     else if (valeur === SANS_THERMIQUE) lecture.textContent = t('plafonds.centre-sans');
     else lecture.textContent = t('plafonds.centre', { altitude: formatAltitude(valeur, { pas: 50 }) });
@@ -217,7 +234,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     if (actif) majLecture();
   });
   map.on('style.load', () => {
-    if (actif && affichee) poserImage(affichee.url);
+    if (actif && cleAffichee) poserCouche(cleAffichee);
   });
   surPreferences(() => {
     majLegende();
@@ -242,6 +259,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
       panneau.masquer();
       pastille.montrer(false);
       affichee = null;
+      cleAffichee = null;
       retirerCouche();
     },
   };
