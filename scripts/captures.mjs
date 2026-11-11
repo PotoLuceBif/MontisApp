@@ -405,6 +405,17 @@ const ECRANS = [
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
+  // Plafonds des thermiques (lot 3.5) : grille de la vue, prévisions simulées
+  { nom: 'parapente-plafonds', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(3000), async (page) => {
+    // 14 h, aujourd'hui ou demain : l'heure des thermiques
+    await page.evaluate(() => {
+      const curseur = document.querySelector('.plafonds .vent-temps-curseur');
+      const heure = new Date().getHours();
+      curseur.value = String(heure < 13 ? 13 - heure : 37 - heure);
+      curseur.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }, (p) => p.waitForTimeout(2000)] },
+  { nom: 'parapente-plafonds-menu', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]')] },
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   // Préférences de routage (lot 3.0) : bouton filtre de l'éditeur, choix multiples
   { nom: 'parcours-preferences-rando', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences')] },
