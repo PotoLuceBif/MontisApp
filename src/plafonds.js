@@ -8,8 +8,9 @@ import { creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 import { REPERE_CALQUES } from './style-montis.js';
 import {
-  COULEURS_PLAFOND, COULEUR_SANS, PALIERS_PLAFOND, SANS_THERMIQUE, epaisseurAu, pixelsPlafond, plafondFin,
+  COULEUR_SANS, ECHELLES_PLAFOND, REFERENCES_PLAFOND, SANS_THERMIQUE, epaisseurAu, pixelsPlafond, plafondSelon,
 } from './plafonds-calcul.js';
+import { lire, ecrire } from './reglages.js';
 import { altitudesTuile } from './pentes-tuile.js';
 import { altitudeRelief } from './relief-donnees.js';
 import { formatAltitude, uniteAltitude, valeurAltitude } from './unites.js';
@@ -30,7 +31,7 @@ const OPACITE = 0.6;
 const HEURE = 3600000;
 
 const rgb = (c) => `rgb(${c.join(', ')})`;
-const MINI = () => `<span class="mini-plafonds">${COULEURS_PLAFOND.slice(1, 6).map((c) => `<i style="background: ${rgb(c)}"></i>`).join('')}</span>`;
+const MINI = () => `<span class="mini-plafonds">${ECHELLES_PLAFOND.sol.couleurs.slice(0, 5).map((c) => `<i style="background: ${rgb(c)}"></i>`).join('')}</span>`;
 const deux = (n) => String(n).padStart(2, '0');
 const cleHeure = (instant) => {
   const d = new Date(instant);
@@ -59,6 +60,9 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
   poser(panneau.titre, 'plafonds.titre');
   panneau.corps.innerHTML = `
     <div class="plafonds">
+      <div class="segments plafonds-reference" role="group" ${ta('aria-label', 'plafonds.reference')}>
+        ${REFERENCES_PLAFOND.map((ref) => `<button type="button" data-reference="${ref}" ${ti(`plafonds.reference-${ref}`)}>${t(`plafonds.reference-${ref}`)}</button>`).join('')}
+      </div>
       <div class="vent-temps">
         <div class="vent-temps-heure"><strong data-plafonds-heure>—</strong><span data-plafonds-ecart></span></div>
         <input class="vent-temps-curseur" type="range" min="0" max="${ECHEANCE_MAX}" step="1" value="0" ${ta('aria-label', 'vent.echeance')}>
@@ -96,13 +100,16 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
   let minuteur = null;
   let erreur = false;
   let cleAffichee = null;
+  // Au-dessus du sol par défaut (décision du propriétaire du 11 novembre 2026)
+  let reference = REFERENCES_PLAFOND.includes(lire('plafonds-reference', 'sol')) ? lire('plafonds-reference', 'sol') : 'sol';
+  const boutonsReference = [...corps.querySelectorAll('[data-reference]')];
 
-  // Tuile montis-plafond://<heure>/z/x/y : épaisseur lissée + relief de la même tuile
+  // Tuile montis-plafond://<sol|mer>/<heure>/z/x/y : épaisseur lissée, plus le relief de la tuile au-dessus de la mer
   addProtocol(PROTOCOLE, async ({ url }) => {
-    const [, cle, z, x, y] = url.match(/^[\w-]+:\/\/([\dT-]+)\/(\d+)\/(\d+)\/(\d+)/);
+    const [, ref, cle, z, x, y] = url.match(/^[\w-]+:\/\/(\w+)\/([\dT-]+)\/(\d+)\/(\d+)\/(\d+)/);
     const { grille, codes } = await chargerCarte(cle);
-    const altitudes = await altitudesTuile(Number(z), Number(x), Number(y));
-    const pixels = pixelsPlafond(grille, codes, altitudes, Number(z), Number(x), Number(y));
+    const altitudes = ref === 'mer' ? await altitudesTuile(Number(z), Number(x), Number(y)) : null;
+    const pixels = pixelsPlafond(grille, codes, altitudes, Number(z), Number(x), Number(y), { reference: ref });
     return { data: await createImageBitmap(new ImageData(pixels, 256, 256)) };
   });
 
@@ -117,14 +124,35 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     onRetirer: () => panneau.demanderFermeture(),
   });
 
+  // Une case par tranche ; seules les bornes de `etiquettes` sont écrites, pour rester lisible sur téléphone
   function majLegende() {
-    titreLegende.textContent = t('plafonds.legende-titre', { unite: uniteAltitude() });
-    const bornes = PALIERS_PLAFOND.map((palier) => valeurAltitude(palier, { pas: 100 }));
-    paliers.innerHTML = COULEURS_PLAFOND.map((couleur, i) => {
-      const texte = i === 0 ? `< ${bornes[0]}` : i === bornes.length ? `${bornes.at(-1)} +` : `${bornes[i - 1]}`;
+    const { paliers: bornes, couleurs, etiquettes } = ECHELLES_PLAFOND[reference];
+    titreLegende.textContent = t(`plafonds.legende-${reference}`, { unite: uniteAltitude() });
+    const nombre = (m) => valeurAltitude(m, { pas: 100 });
+    paliers.innerHTML = couleurs.map((couleur, i) => {
+      const bas = i === 0 ? (reference === 'sol' ? etiquettes[0] : null) : bornes[i - 1];
+      let texte = '';
+      if (i === 0 && bas === null) texte = `< ${nombre(bornes[0])}`;
+      else if (i === couleurs.length - 1) texte = `${nombre(bas)} +`;
+      else if (etiquettes.includes(bas)) texte = String(nombre(bas));
       return `<span style="background: ${rgb(couleur)}">${texte}</span>`;
     }).join('');
+    boutonsReference.forEach((bouton) => {
+      const choisi = bouton.dataset.reference === reference;
+      bouton.classList.toggle('actif', choisi);
+      bouton.setAttribute('aria-pressed', String(choisi));
+    });
   }
+
+  function choisirReference(nouvelle) {
+    if (nouvelle === reference) return;
+    reference = nouvelle;
+    ecrire('plafonds-reference', reference);
+    majLegende();
+    if (cleAffichee) poserCouche(cleAffichee);
+    majLecture();
+  }
+  boutonsReference.forEach((bouton) => bouton.addEventListener('click', () => choisirReference(bouton.dataset.reference)));
 
   // Échéance 0 : la prochaine heure entière
   function instantAffiche() {
@@ -154,7 +182,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
 
   function poserCouche(cle) {
     cleAffichee = cle;
-    const tiles = [`${PROTOCOLE}://${cle}/{z}/{x}/{y}`];
+    const tiles = [`${PROTOCOLE}://${reference}/${cle}/{z}/{x}/{y}`];
     const source = map.getSource(SOURCE);
     if (source) source.setTiles(tiles);
     else {
@@ -216,12 +244,12 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     }
     const { lng, lat } = map.getCenter();
     const epaisseur = epaisseurAu(affichee.grille, affichee.codes, lng, lat);
-    const sol = await altitudeRelief(lng, lat).catch(() => null);
+    const sol = reference === 'mer' ? await altitudeRelief(lng, lat).catch(() => null) : 0;
     if (ici !== lectureDemandee) return;
-    const valeur = plafondFin(epaisseur, sol);
+    const valeur = plafondSelon(reference, epaisseur, sol);
     if (valeur === null) lecture.textContent = '';
     else if (valeur === SANS_THERMIQUE) lecture.textContent = t('plafonds.centre-sans');
-    else lecture.textContent = t('plafonds.centre', { altitude: formatAltitude(valeur, { pas: 50 }) });
+    else lecture.textContent = t(`plafonds.centre-${reference}`, { altitude: formatAltitude(valeur, { pas: 50 }) });
   }
 
   // Pendant un glissé du curseur, l'heure s'affiche tout de suite ; la carte attend que le doigt ralentisse

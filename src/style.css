@@ -3262,10 +3262,14 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 }
 .pt-echelle { display: flex; justify-content: space-between; gap: 6px; color: var(--texte-2); font-size: 11px; }
 .plafonds { display: grid; gap: 10px; }
+.plafonds-reference button { min-height: 40px; font-size: 13px; }
 .plafonds-legende { display: grid; gap: 4px; }
 .plafonds-legende-titre { color: var(--texte-2); font-size: 11px; }
 .plafonds-paliers { display: flex; overflow: hidden; border-radius: 7px; }
 .plafonds-paliers span { flex: 1; min-width: 0; padding: 3px 0; color: #10141a; font-size: 10.5px; font-weight: 700; text-align: center; white-space: nowrap; }
+/* Les bords : la première et la dernière étiquette débordent de leur case vers l'intérieur */
+.plafonds-paliers span:first-child { padding-left: 5px; text-align: left; }
+.plafonds-paliers span:last-child { display: flex; justify-content: flex-end; padding-right: 5px; }
 .plafonds-sans { display: flex; align-items: center; gap: 6px; color: var(--texte-2); font-size: 10.5px; }
 .plafonds-sans i { width: 14px; height: 10px; border-radius: 3px; opacity: 0.6; }
 .plafonds-lecture { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 600; }

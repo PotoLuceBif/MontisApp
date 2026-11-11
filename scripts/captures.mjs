@@ -421,6 +421,7 @@ const ECRANS = [
   { nom: 'parapente-plafonds-europe', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [8, 46], zoom: 4.3 }), (p) => p.waitForTimeout(4000)] },
   { nom: 'parapente-plafonds-monde', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [10, 35], zoom: 1.6 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'parapente-plafonds-relief', actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [-106.5, 39.3], zoom: 8.5 }), (p) => p.waitForTimeout(8000)] },
+  { nom: 'parapente-plafonds-relief-mer', actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), clic('.plafonds-reference [data-reference="mer"]'), vue({ center: [-106.5, 39.3], zoom: 8.5 }), (p) => p.waitForTimeout(8000)] },
   { nom: 'parapente-plafonds-menu', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]')] },
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   // Préférences de routage (lot 3.0) : bouton filtre de l'éditeur, choix multiples

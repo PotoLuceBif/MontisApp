@@ -6,16 +6,40 @@
 //
 // Codage d'une maille sur un octet : 0 sans donnée, puis 1 + épaisseur / 25 m.
 
-export const PALIERS_PLAFOND = [1000, 1500, 2000, 2500, 3000, 3500];
-export const COULEURS_PLAFOND = [
-  [62, 96, 190], // sous 1 000 m
-  [38, 150, 200],
-  [46, 184, 140],
-  [120, 200, 70],
-  [235, 210, 60],
-  [245, 140, 50],
-  [225, 60, 90], // 3 500 m et plus
-];
+// Deux échelles (décision du propriétaire du 11 novembre 2026) : au-dessus du sol par défaut, l'épaisseur
+// de la couche ; au-dessus de la mer, l'altitude du plafond, par tranches de 500 m jusqu'à 5 000 m.
+// `paliers` : bornes entre les couleurs ; `etiquettes` : bornes écrites dans la légende.
+export const ECHELLES_PLAFOND = {
+  sol: {
+    paliers: [600, 1000, 1500, 2000, 2500],
+    etiquettes: [300, 600, 1000, 1500, 2000, 2500],
+    couleurs: [
+      [62, 96, 190], // 300 à 600 m
+      [38, 150, 200],
+      [46, 184, 140],
+      [150, 205, 70],
+      [240, 190, 50],
+      [230, 80, 80], // 2 500 m et plus
+    ],
+  },
+  mer: {
+    paliers: [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000],
+    etiquettes: [2000, 3000, 4000, 5000], // « < 1 000 » occupe déjà la première case
+    couleurs: [
+      [62, 96, 190], // sous 1 000 m
+      [40, 135, 205],
+      [38, 170, 185],
+      [46, 184, 140],
+      [110, 198, 80],
+      [190, 210, 60],
+      [240, 190, 50],
+      [245, 140, 50],
+      [230, 80, 80],
+      [190, 70, 170], // 5 000 m et plus
+    ],
+  },
+};
+export const REFERENCES_PLAFOND = ['sol', 'mer'];
 export const COULEUR_SANS = [120, 128, 140];
 export const SANS_THERMIQUE = 0; // plafond d'un endroit sans thermique exploitable
 export const EPAISSEUR_UTILE = 300; // m au-dessus du sol : en dessous, pas exploitable
@@ -67,15 +91,20 @@ export function plafondFin(epaisseur, sol) {
   return Math.max(0, Number.isFinite(sol) ? sol : 0) + epaisseur;
 }
 
-export function couleurPlafond(valeur) {
+// Plafond d'un endroit selon la référence : au-dessus du sol, l'épaisseur ; au-dessus de la mer, sol + épaisseur
+export const plafondSelon = (reference, epaisseur, sol) => (reference === 'sol' ? plafondFin(epaisseur, 0) : plafondFin(epaisseur, sol));
+
+export function couleurPlafond(valeur, reference = 'mer') {
   if (valeur === SANS_THERMIQUE) return COULEUR_SANS;
   if (!Number.isFinite(valeur)) return null;
-  const tranche = PALIERS_PLAFOND.findIndex((palier) => valeur < palier);
-  return COULEURS_PLAFOND[tranche < 0 ? PALIERS_PLAFOND.length : tranche];
+  const { paliers, couleurs } = ECHELLES_PLAFOND[reference];
+  const tranche = paliers.findIndex((palier) => valeur < palier);
+  return couleurs[tranche < 0 ? paliers.length : tranche];
 }
 
-// Pixels RGBA d'une tuile z/x/y de 256 px : `altitudes` est la tuile de relief de même z/x/y (ou null)
-export function pixelsPlafond(grille, codes, altitudes, z, x, y, { opacite = 255, opaciteSans = OPACITE_SANS } = {}) {
+// Pixels RGBA d'une tuile z/x/y de 256 px : `altitudes` est la tuile de relief de même z/x/y
+// (inutile au-dessus du sol)
+export function pixelsPlafond(grille, codes, altitudes, z, x, y, { reference = 'mer', opacite = 255, opaciteSans = OPACITE_SANS } = {}) {
   const pixels = new Uint8ClampedArray(256 * 256 * 4);
   const monde = 256 * 2 ** z;
   // L'épaisseur varie lentement : calculée sur un pas de 8 px, puis interpolée
@@ -101,8 +130,8 @@ export function pixelsPlafond(grille, codes, altitudes, z, x, y, { opacite = 255
       const c = epaisseurs[(gy + 1) * cotes + gx];
       const d = epaisseurs[(gy + 1) * cotes + gx + 1];
       const epaisseur = (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
-      const valeur = plafondFin(epaisseur, altitudes ? altitudes[py * 256 + px] : 0);
-      const couleur = couleurPlafond(valeur);
+      const valeur = plafondSelon(reference, epaisseur, altitudes ? altitudes[py * 256 + px] : 0);
+      const couleur = couleurPlafond(valeur, reference);
       if (!couleur) continue;
       const o = (py * 256 + px) * 4;
       pixels[o] = couleur[0];
