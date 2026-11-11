@@ -1951,7 +1951,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-zone-alerte button:disabled { opacity: 0.55; cursor: wait; }
 .vent-zone-alerte button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vent-volume-plafonds {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px;
   min-width: 0; margin: 0; padding: 0; border: 0;
 }
 .vent-volume-plafonds legend { margin-bottom: 5px; color: var(--texte-2); font-size: 11px; }

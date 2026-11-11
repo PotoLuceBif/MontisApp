@@ -30,10 +30,7 @@ export const VARIABLES_VENT_HAUTS = NIVEAUX_HAUTS.flatMap((p) => [
 // Hauteurs (au-dessus du sol) des couches du volume 3D selon sa hauteur : au plus neuf couches,
 // plus espacées en altitude, pour que les flèches ne se cachent pas les unes les autres
 const COUCHES_VOLUME = {
-  3000: [10, 200, 500, 1000, 1500, 2000, 3000],
-  4000: [10, 500, 1000, 1500, 2000, 3000, 4000],
   5000: [10, 500, 1000, 2000, 3000, 4000, 5000],
-  8000: [10, 1000, 2000, 3000, 4000, 5000, 6500, 8000],
   10000: [10, 1000, 2000, 3000, 4000, 5000, 6500, 8000, 10000],
 };
 export function couchesVolume(plafond) {

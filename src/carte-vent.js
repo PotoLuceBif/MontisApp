@@ -19,7 +19,7 @@ import { creerProfilVertical } from './vent-profil.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { MINI_VENT, creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, iconeVent, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, nombre, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { nomJour, t, ta, ti, tt, poser } from './i18n.js';
@@ -37,7 +37,7 @@ const DUREE_VALIDITE = 60 * 60 * 1000; // au-delà, on propose de recharger les 
 const DELAI_CURSEUR = 120; // ms entre deux mises à jour pendant que le curseur glisse
 const ECHEANCE_MAX = 48;
 const MESSAGE_LIMITE = 'vent.limite';
-const PLAFONDS_VOLUME = [500, 1000, 2000, 3000, 4000, 5000, 8000, 10000];
+const PLAFONDS_VOLUME = [500, 1000, 2000, 5000, 10000];
 const ETENDUES_VOLUME = [5000, 10000, 20000, 40000]; // demi-côté du bloc, en mètres
 const NOEUDS_VOLUME = 6; // par côté : le vent est interpolé entre ces points
 const MAILLE_RELIEF = 36;
@@ -145,11 +145,6 @@ function formaterHeure(iso) {
 }
 
 // Longueur fixe : dans la légende, seule la couleur distingue les paliers
-function iconeLegende(palier) {
-  const longueur = 22;
-  const fleche = `<path d="M2 7 H${longueur - 8}"/><path class="pointe" d="M${longueur - 2} 7 L${longueur - 10} 2.5 V11.5 Z"/>`;
-  return `<svg data-palier="${palier}" width="${longueur}" height="14" viewBox="0 0 ${longueur} 14" aria-hidden="true"><g class="cerne">${fleche}</g><g class="teinte">${fleche}</g></svg>`;
-}
 
 export function creerCarteVent(map) {
   const panneauCarte = creerPanneauCarte({
@@ -195,7 +190,7 @@ export function creerCarteVent(map) {
         ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
       </select></label>
       <div class="vent-carte-legende" ${ta('aria-label', 'vent.intensite')}>
-        ${libellesPaliersVent().map((libelle, index) => `<span>${iconeLegende(index)} <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
+        ${libellesPaliersVent().map((libelle, index) => `<span>${iconeVent(index)} <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
       </div>
       <p class="vent-carte-statut" role="status" aria-live="polite"></p>
     </section>

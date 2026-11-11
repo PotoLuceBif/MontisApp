@@ -3,9 +3,9 @@
 // pluie. Calculs dans profil-calcul.js ; même modèle que la carte du vent (Météo-France).
 import { Marker } from 'maplibre-gl';
 import { VARIABLES_PROFIL, profilJour } from './profil-calcul.js';
-import { couleurInterface } from './vent-cadran.js';
+import { VENT_TRES_FORT, couleurInterface, iconeVent, libellesPaliersVent, paletteInterface } from './vent-cadran.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
-import { formatAltitude, formatPluie, formatVent, imperial, nombre, valeurAltitude, valeurVent } from './unites.js';
+import { formatAltitude, formatPluie, formatVent, imperial, libelleVent, nombre, valeurAltitude, valeurVent } from './unites.js';
 import { dateHorsLigne, estHorsLigne } from './hors-ligne.js';
 import { erreurHttp, messageErreur, requete } from './requete.js';
 import { nomJour, poser, t, ta, ti, tt } from './i18n.js';
@@ -26,11 +26,14 @@ const distanceM = (a, b) => {
   return Math.hypot((a.lng - b.lng) * k, a.lat - b.lat) * 111320;
 };
 
+// Flèche vers le haut, tournée dans le sens du vent ; au-delà de 70 km/h, deux pointes
 function fleche(x, y, vent) {
   if (!vent) return '';
-  const longueur = 7 + Math.min(1, vent.vitesse / 40) * 3;
-  return `<path class="vent-profil-fleche" d="M0 ${-longueur} L4.2 ${-longueur + 6} L1.4 ${-longueur + 5} L1.4 ${longueur} L-1.4 ${longueur} L-1.4 ${-longueur + 5} L-4.2 ${-longueur + 6} Z"
-    transform="translate(${x} ${y}) rotate(${vent.flux.toFixed(0)})" fill="${couleurInterface(vent.vitesse)}"/>`;
+  const l = 7 + Math.min(1, vent.vitesse / 40) * 3;
+  const d = vent.vitesse >= VENT_TRES_FORT
+    ? `M0 ${-l} L4.2 ${-l + 5} L1.4 ${-l + 4.2} L4.2 ${-l + 9} L1.4 ${-l + 8.2} L1.4 ${l} L-1.4 ${l} L-1.4 ${-l + 8.2} L-4.2 ${-l + 9} L-1.4 ${-l + 4.2} L-4.2 ${-l + 5} Z`
+    : `M0 ${-l} L4.2 ${-l + 6} L1.4 ${-l + 5} L1.4 ${l} L-1.4 ${l} L-1.4 ${-l + 5} L-4.2 ${-l + 6} Z`;
+  return `<path class="vent-profil-fleche" d="${d}" transform="translate(${x} ${y}) rotate(${vent.flux.toFixed(0)})" fill="${couleurInterface(vent.vitesse)}"/>`;
 }
 
 export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => {} } = {}) {
@@ -44,6 +47,7 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
     </div>
     <div class="vent-profil-grille" role="img" ${ta('aria-label', 'vent.profil-aria')}></div>
     <p class="vent-profil-lecture" aria-live="polite"></p>
+    <div class="vent-carte-legende vent-profil-vents" ${ta('aria-label', 'vent.intensite')}></div>
     <div class="vent-profil-legende">
       <span><i class="vent-profil-pastille" style="background: ${COULEURS_THERMIQUE[1]}"></i><i class="vent-profil-pastille" style="background: ${COULEURS_THERMIQUE[3]}"></i>${tt('vent.profil-thermiques')}</span>
       <span><i class="vent-profil-pastille vent-profil-pastille-nuage"></i>${tt('vent.profil-nuages')}</span>
@@ -56,6 +60,13 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
   const lecture = element.querySelector('.vent-profil-lecture');
   const lieu = element.querySelector('[data-profil-lieu]');
   const statut = element.querySelector('.vent-profil-statut');
+  // L'échelle des vents, rappelée sous la grille (unités et thème suivis par redessiner)
+  const legendeVents = element.querySelector('.vent-profil-vents');
+  function majLegendeVents() {
+    const couleurs = paletteInterface();
+    legendeVents.innerHTML = libellesPaliersVent().map((libelle, i) => `<span style="--vent-couleur: ${couleurs[i]}">${iconeVent(i)} <b>${libelle}</b></span>`).join('')
+      + `<span>${libelleVent()}</span>`;
+  }
   // Jusqu'à 4 000 m par défaut ; l'option monte jusqu'à 10 000 m (choix gardé)
   const boutonHaut = element.querySelector('.vent-profil-haut');
   let haut = Boolean(lire('vent-profil-haut', false));
@@ -165,6 +176,7 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
   }
 
   function dessiner() {
+    majLegendeVents();
     if (!donnees) return;
     const heures = donnees.hourly.time;
     const cible = heureCible && heures.includes(heureCible) ? heureCible : heures.find((h) => h >= new Date().toISOString().slice(0, 13)) ?? heures[0];

@@ -5,17 +5,19 @@ import { heureCourte, t } from './i18n.js';
 export { heureCourte };
 import { valeurVent } from './unites.js';
 
-// Force du vent, de calme à fort, en km/h : une seule échelle pour le vent prévu et les balises
-export const PALIERS_VENT = [10, 20, 30, 40];
+// Force du vent, de calme à très fort, en km/h : une seule échelle pour le vent prévu et les balises.
+// Au-delà de 70 km/h (courant-jet en altitude), la flèche a une double pointe (demande du propriétaire)
+export const PALIERS_VENT = [10, 20, 30, 40, 70];
+export const VENT_TRES_FORT = PALIERS_VENT.at(-1);
 
 // Sur la carte : vives et cernées de sombre pour rester lisibles sur tous les fonds,
 // quel que soit le thème de l'application
-export const PALETTE_CARTE = ['#2ef2b4', '#ffe94d', '#ff9a2e', '#ff5580', '#b98bff'];
+export const PALETTE_CARTE = ['#2ef2b4', '#ffe94d', '#ff9a2e', '#ff5580', '#b98bff', '#f6f2ff'];
 
 const PALETTES_INTERFACE = {
-  clair: ['#248a4b', '#c68b00', '#df6718', '#c93636', '#7c3aed'],
-  sombre: ['#43c98b', '#edc653', '#f28a50', '#ff647c', '#b98bff'],
-  cyberpunk: ['#4debd4', '#ffe45c', '#ff9b45', '#ff5da2', '#c77dff'],
+  clair: ['#248a4b', '#c68b00', '#df6718', '#c93636', '#7c3aed', '#2e1065'],
+  sombre: ['#43c98b', '#edc653', '#f28a50', '#ff647c', '#b98bff', '#f1eaff'],
+  cyberpunk: ['#4debd4', '#ffe45c', '#ff9b45', '#ff5da2', '#c77dff', '#ffffff'],
 };
 
 export const palierVent = (vitesse) => {
@@ -27,6 +29,17 @@ export const paletteInterface = () =>
   PALETTES_INTERFACE[document.documentElement.dataset.theme] || PALETTES_INTERFACE.clair;
 
 export const couleurInterface = (vitesse) => paletteInterface()[palierVent(vitesse)];
+
+// Flèche de légende d'un palier (couleur par --vent-couleur, cerne sombre) ; double pointe pour le dernier
+export function iconeVent(palier) {
+  const double = palier >= PALIERS_VENT.length;
+  const longueur = double ? 26 : 22;
+  const pointes = double
+    ? `<path class="pointe" d="M${longueur - 2} 7 L${longueur - 10} 2.5 V11.5 Z"/><path class="pointe" d="M${longueur - 9} 7 L${longueur - 17} 2.5 V11.5 Z"/>`
+    : `<path class="pointe" d="M${longueur - 2} 7 L${longueur - 10} 2.5 V11.5 Z"/>`;
+  const fleche = `<path d="M2 7 H${longueur - (double ? 15 : 8)}"/>${pointes}`;
+  return `<svg data-palier="${palier}" width="${longueur}" height="14" viewBox="0 0 ${longueur} 14" aria-hidden="true"><g class="cerne">${fleche}</g><g class="teinte">${fleche}</g></svg>`;
+}
 
 // La flèche montre où va le vent. `angle` : rotation de la vue en degrés, à donner
 // seulement si le cadran doit suivre une vue tournée (0 : le nord reste en haut).

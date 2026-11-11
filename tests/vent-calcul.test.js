@@ -35,7 +35,7 @@ describe('volume 3D jusqu’à 10 000 m', () => {
   });
 
   it('espace les couches au-delà, sans dépasser la hauteur choisie', () => {
-    for (const plafond of [3000, 4000, 5000, 8000, 10000]) {
+    for (const plafond of [5000, 10000]) {
       const couches = couchesVolume(plafond);
       expect(couches.at(-1)).toBe(plafond);
       expect(couches.length).toBeLessThanOrEqual(9);
@@ -55,5 +55,17 @@ describe('volume 3D jusqu’à 10 000 m', () => {
     const colonne = colonneVent(hourly, 0, 1000);
     expect(colonne.at(-1).hauteur).toBe(9400);
     expect(Math.hypot(...Object.values(ventAHauteur(colonne, 9000)))).toBeCloseTo(120, 6);
+  });
+});
+
+describe('échelle des vents', () => {
+  it('a un palier 40–70 et un palier au-delà de 70 km/h', async () => {
+    const { PALIERS_VENT, PALETTE_CARTE, palierVent, VENT_TRES_FORT, iconeVent } = await import('../src/vent-cadran.js');
+    expect(PALIERS_VENT).toEqual([10, 20, 30, 40, 70]);
+    expect(PALETTE_CARTE).toHaveLength(PALIERS_VENT.length + 1);
+    expect([5, 35, 55, 69, 70, 140].map(palierVent)).toEqual([0, 3, 4, 4, 5, 5]);
+    expect(VENT_TRES_FORT).toBe(70);
+    expect((iconeVent(5).match(/class="pointe"/g) || []).length).toBe(4); // deux pointes, cerne et teinte
+    expect((iconeVent(2).match(/class="pointe"/g) || []).length).toBe(2);
   });
 });
