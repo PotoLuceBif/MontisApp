@@ -67,6 +67,13 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 ## À faire, dans l'ordre
 
+### Avant la 1.0 beta
+
+- [ ] **0.8 Performance et déploiement** (demandé par le propriétaire le 11 novembre 2026, à faire avant la 1.0 beta). Suite du 0.7 Robustesse.
+  - **Mesurer d'abord :** temps de démarrage (chargement, menu visible, carte utilisable) sur un téléphone moyen simulé en 4G lente, fluidité de la carte avec plusieurs couches allumées (pentes, ombre, vent), mémoire sur téléphone. Rapport chiffré avant et après, dans `docs/historique.md`.
+  - **Alléger :** ne charger au démarrage que la langue choisie (les deux fichiers font 135 Ko) ; repérer le code chargé au démarrage sans en avoir besoin ; garder en cache les réponses lentes (Overpass, avalanches, balises) plutôt que de les redemander à chaque ouverture ; vérifier que les mises à jour du service worker arrivent bien chez les utilisateurs.
+  - **Déployer en une commande :** `npm run deployer` lance les tests et le build, publie la preview Vercel, pose l'alias `montisapp-git-<branche>` et donne le lien ; il s'arrête au premier échec.
+
 ### Phase 1 : fin
 
 - [x] **1.4 bis Soleil en 3D et ombre dans les visites** (9 novembre 2026). Soleil dessiné dans le ciel en 3D quand l'ombre du soleil est allumée, pâli derrière le relief ; hors du champ, petit soleil au bord de l'écran avec une flèche, dans sa direction sur le sol (comme le cadran), écarté des boutons et panneaux. Bouton « Ombre du soleil » dans les visites de stations et de bike parks, avec jour, curseur d'heure et position du soleil (fiche réduite : l'heure seule). Détail dans `docs/historique.md`.
@@ -84,7 +91,7 @@ Revue avec le propriétaire le 9 novembre 2026. Les gens enregistrent leurs sort
 
 Pour plus tard : comparer une sortie au parcours prévu, exporter une vidéo du replay. **Sécurité** (mode urgence, 112, heure de retour), **pack sortie hors ligne** et **position et cap sur la carte** : à revoir avec le propriétaire, sans date.
 
-Puis **4.5 Partage par lien** (voir phase 4), avancé ici : fait le 10 novembre 2026. La phase 2 et le partage complets, `developpement` est prêt pour la 1.0 beta, sur demande du propriétaire.
+Puis **4.5 Partage par lien** (voir phase 4), avancé ici : fait le 10 novembre 2026. La phase 2 et le partage complets, `developpement` sera prêt pour la 1.0 beta après le lot 0.8 (Performance et déploiement), sur demande du propriétaire.
 
 ### Phase 3 : nouvelles pratiques
 
@@ -158,7 +165,7 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 |---|---|
 | 1.0.0-alpha.1 | L'état de `main` au 2 novembre 2026 (sans tag) |
 | 1.0 alpha suivantes | Phases 0 et 1 |
-| 1.0 beta | Phase 2 et le partage par lien |
+| 1.0 beta | Phase 2, le partage par lien et le lot 0.8 (performance et déploiement) |
 | 1.0 | Stable, testée sur le terrain |
 | 1.1, 1.2… | Une nouvelle pratique ou un effet « waouh » par version |
 
