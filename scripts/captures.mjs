@@ -264,6 +264,9 @@ const ECRANS = [
   { nom: 'meteo-frise-jour', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.meteo-jour:nth-child(3)'), defiler('.meteo-horaire')] },
   { nom: 'meteo-radar', actions: [module('radar')] },
   { nom: 'meteo-vent', actions: [module('vent')] },
+  // Profil heure par heure (lot 3.5) : vent par altitude, thermiques, cumulus (prévisions simulées)
+  { nom: 'meteo-vent-profil', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'meteo-vent-profil-heure', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), (p) => p.evaluate(() => { const zones = document.querySelectorAll('.vent-profil-zone'); zones[Math.min(7, zones.length - 1)].dispatchEvent(new MouseEvent('click', { bubbles: true })); }), (p) => p.waitForTimeout(1500), defiler('.vent-profil-grille')] },
   // Pastilles météo : le radar reste panneau Météo fermé ; le vent, panneau Carte ouvert par-dessus (téléphone)
   { nom: 'meteo-radar-pastille', actions: [module('radar'), (p) => p.waitForTimeout(1500), clic('#outil-rapide-panneau-meteo .outil-rapide-fermer')] },
   { nom: 'meteo-vent-pastille', actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief')] },

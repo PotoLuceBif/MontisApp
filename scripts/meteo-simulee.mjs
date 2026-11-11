@@ -49,8 +49,39 @@ function serieHoraire(champ, jour, heure) {
       return serieHoraire('temperature_2m', jour, heure) - 2;
     case 'wind_speed_10m_max':
       return 0;
+    case 'dew_point_2m':
+      return serieHoraire('temperature_2m', jour, heure) - (orageJour ? 2 + apresMidi * 5 : 3 + apresMidi * 7);
+    case 'shortwave_radiation':
+      return heure >= 8 && heure <= 17 ? Math.round(Math.max(0, Math.sin(((heure - 7) / 11) * Math.PI)) * (neigeJour ? 120 : 620)) : 0;
     default:
-      return 0;
+      return niveauPression(champ, jour, heure, apresMidi) ?? 0;
+  }
+}
+
+// Niveaux de pression (profil vertical de l'analyse du vent) : atmosphère standard, réchauffée
+// l'après-midi dans les basses couches, sol à 1 035 m comme `elevation`
+const HAUTEURS_NIVEAUX = { 1000: 110, 950: 540, 925: 760, 900: 990, 850: 1460, 800: 1950, 750: 2470, 700: 3010, 650: 3590, 600: 4200, 550: 4850, 500: 5570 };
+function niveauPression(champ, jour, heure, apresMidi) {
+  const lu = /^(temperature|relative_humidity|wind_speed|wind_direction|geopotential_height)_(\d+)hPa$/.exec(champ);
+  if (!lu) return null;
+  const hauteur = HAUTEURS_NIVEAUX[lu[2]];
+  if (hauteur === undefined) return null;
+  const dessus = Math.max(0, hauteur - 1035);
+  switch (lu[1]) {
+    case 'geopotential_height':
+      return hauteur;
+    case 'temperature':
+      return Math.round((3 - jour * 2 + apresMidi * 6 * Math.max(0, 1 - dessus / 2200) - 0.0065 * dessus) * 10) / 10;
+    case 'relative_humidity':
+      if (jour === 0 && heure >= 14 && heure <= 18) return hauteur > 2500 ? 97 : 80;
+      if (heure < 10 && jour < 2 && hauteur < 1600) return 96;
+      return hauteur > 4000 ? 88 : 55;
+    case 'wind_speed':
+      return Math.round(8 + dessus / 120 + jour * 4 + apresMidi * 4);
+    case 'wind_direction':
+      return Math.round(220 + Math.min(60, dessus / 60) + jour * 15) % 360;
+    default:
+      return null;
   }
 }
 

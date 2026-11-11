@@ -1873,7 +1873,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-carte { display: grid; gap: 12px; }
 .vent-volume { display: grid; gap: 10px; }
 .vent-vues {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;
   padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2);
 }
 .vent-vues [role='tab'] {
@@ -2006,6 +2006,33 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-volume-legende i { width: 8px; height: 3px; flex: none; border-radius: 3px; background: var(--vent-couleur); }
 .vent-volume-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
 .vent-volume-statut.erreur { color: #e05b67; }
+.vent-profil { display: grid; gap: 8px; }
+.vent-profil-entete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.vent-profil-entete strong { color: var(--texte); font-size: 13px; font-weight: 650; }
+.vent-profil-entete span { color: var(--texte-2); font-size: 11px; }
+.vent-profil-grille { overflow-x: auto; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); }
+.vent-profil-grille:empty { display: none; }
+.vent-profil-grille svg { display: block; width: 100%; min-width: 300px; height: auto; font-family: var(--police); }
+.vent-profil-axe, .vent-profil-heure { fill: var(--texte-2); font-size: 9.5px; }
+.vent-profil-heure { font-weight: 650; }
+.vent-profil-pied { font-size: 9.5px; font-weight: 700; }
+.vent-profil-pluie { fill: #5aa9ff; }
+.vent-profil-nuage { fill: #b8c2cc; }
+.vent-profil-fleche { stroke: rgba(0, 0, 0, 0.55); stroke-width: 0.6; }
+.vent-profil-base { stroke: var(--texte); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.vent-profil-cible { fill: none; stroke: var(--accent); stroke-width: 1.5; pointer-events: none; }
+.vent-profil-zone { fill: transparent; cursor: pointer; }
+.vent-profil-lecture { margin: 0; color: var(--texte); font-size: 12px; line-height: 1.45; }
+.vent-profil-lecture:empty { display: none; }
+.vent-profil-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--texte-2); font-size: 10.5px; }
+.vent-profil-legende span { display: flex; align-items: center; gap: 4px; }
+.vent-profil-pastille { width: 12px; height: 10px; border-radius: 2px; }
+.vent-profil-pastille-nuage { background: rgba(184, 194, 204, 0.6); }
+.vent-profil-pastille-base { height: 0; border-top: 2px dashed var(--texte); border-radius: 0; }
+.vent-profil-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
+.vent-profil-statut:empty { display: none; }
+.vent-profil-statut.erreur { color: #e05b67; }
+.vent-profil-note { margin: 0; }
 .vent-carte-popup { color: var(--texte); font: 12px/1.45 var(--police); }
 .vent-carte-popup p { margin: 4px 0 0; }
 .vent-carte-popup strong { font-size: 13px; }

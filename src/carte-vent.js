@@ -12,6 +12,7 @@ import {
 } from './vent-calcul.js';
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
+import { creerProfilVertical } from './vent-profil.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { MINI_VENT, creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
@@ -167,6 +168,7 @@ export function creerCarteVent(map) {
     <div class="vent-vues" role="tablist" ${ta('aria-label', 'vent.vues')}>
       <button type="button" role="tab" id="vent-vue-carte-onglet" aria-selected="true" aria-controls="vent-vue-carte" ${ti('vent.carte')}>${t('vent.carte')}</button>
       <button type="button" role="tab" id="vent-vue-volume-onglet" aria-selected="false" aria-controls="vent-vue-volume" tabindex="-1" ${ti('vent.volume')}>${t('vent.volume')}</button>
+      <button type="button" role="tab" id="vent-vue-profil-onglet" aria-selected="false" aria-controls="vent-vue-profil" tabindex="-1" ${ti('vent.profil')}>${t('vent.profil')}</button>
     </div>
     <div class="vent-temps">
       <div class="vent-temps-heure"><strong data-temps-heure>—</strong><span data-temps-ecart></span></div>
@@ -225,6 +227,7 @@ export function creerCarteVent(map) {
         <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
     </section>
+    <section class="vent-vue-contenu" id="vent-vue-profil" role="tabpanel" aria-labelledby="vent-vue-profil-onglet" hidden></section>
     <p class="vent-source" data-i18n-html="vent.source">${t('vent.source')}</p>
     <details class="rando-outils vent-apropos">
       <summary ${ti('vent.lire')}>${t('vent.lire')}</summary>
@@ -279,7 +282,7 @@ export function creerCarteVent(map) {
   const pastille = creerPastilleCouche({
     ordre: 4,
     nom: () => {
-      if (vueActive !== 'volume' && statut.classList.contains('erreur')) return t('vent.court-erreur');
+      if (vueActive === 'carte' && statut.classList.contains('erreur')) return t('vent.court-erreur');
       return heurePastille ? t('vent.court-heure', { heure: heurePastille }) : t('vent.court');
     },
     legende: () => MINI_VENT,
@@ -296,7 +299,28 @@ export function creerCarteVent(map) {
   let flecheChoisie = null;
   let zoneVolumeCapturee = null;
   let zoneCarteCapturee = null;
-  let vueActive = lire('vent-vue', 'carte') === 'volume' ? 'volume' : 'carte';
+  let vueActive = ['volume', 'profil'].includes(lire('vent-vue', 'carte')) ? lire('vent-vue', 'carte') : 'carte';
+  // Profil vertical : son point, son chargement et son pin à lui ; un appui sur une heure place le curseur
+  const profil = creerProfilVertical(map, {
+    // Données reçues (ou échec) : l'échéance du curseur s'y applique, la bande « Actualiser » se met à jour
+    onCharge() {
+      if (vueActive !== 'profil') return;
+      if (profil.reponses()) appliquerEcheance();
+      mettreAJourAlerte();
+    },
+    onHeure(heure) {
+      const reponses = profil.reponses();
+      if (!reponses) return;
+      const heures = reponses[0].hourly.time;
+      const base = heures.indexOf(heureEcheance(reponses)) - echeance();
+      const ecart = heures.indexOf(heure) - base;
+      if (ecart < 0 || ecart > Number(curseurTemps.max)) return;
+      curseurTemps.value = String(ecart);
+      ecrire('vent-echeance', ecart);
+      afficherEcheance();
+    },
+  });
+  panneau.querySelector('#vent-vue-profil').append(profil.element);
   let emplacementVolume = null;
   let emplacementTemps = null;
   let emplacementAlerte = null;
@@ -354,7 +378,11 @@ export function creerCarteVent(map) {
   // ---------- Échéance, commune à la carte et au volume ----------
   const echeance = () => Number(curseurTemps.value);
 
-  const reponsesVue = () => (vueActive === 'volume' ? zoneVolumeCapturee?.reponses : donneesVentCourantes?.reponses);
+  const reponsesVue = () => {
+    if (vueActive === 'volume') return zoneVolumeCapturee?.reponses;
+    if (vueActive === 'profil') return profil.reponses();
+    return donneesVentCourantes?.reponses;
+  };
 
   function heureEcheance(reponses) {
     const heures = reponses[0].hourly.time;
@@ -402,6 +430,9 @@ export function creerCarteVent(map) {
     afficherEcheance();
     if (vueActive === 'volume') {
       construireCouches();
+    } else if (vueActive === 'profil') {
+      const reponses = profil.reponses();
+      if (reponses) profil.definirHeure(heureEcheance(reponses));
     } else if (donneesVentCourantes) {
       const { reponses, positions, grille } = donneesVentCourantes;
       const heure = heureEcheance(reponses);
@@ -574,6 +605,7 @@ export function creerCarteVent(map) {
   // Le bouton n'apparaît que si le rechargement apporte quelque chose : l'échéance,
   // elle, s'applique sans réseau car les prévisions de la zone sont déjà là.
   function raisonActualiser() {
+    if (vueActive === 'profil') return profil.raison(DUREE_VALIDITE);
     if (vueActive === 'volume') {
       if (erreurVolume) return t('vent.echec-volume');
       if (!zoneVolumeCapturee) return '';
@@ -598,7 +630,7 @@ export function creerCarteVent(map) {
   }
 
   function mettreAJourAlerte() {
-    const enCours = vueActive === 'volume' ? controleurProfil : controleur;
+    const enCours = vueActive === 'volume' ? controleurProfil : vueActive === 'profil' ? profil.enCours() : controleur;
     const message = actif && !enCours ? raisonActualiser() : '';
     messageZone.textContent = message;
     alerteZone.hidden = !message;
@@ -725,14 +757,21 @@ export function creerCarteVent(map) {
       if (focus && actifOnglet) onglet.focus();
       contenusVue[index].hidden = !actifOnglet;
     });
-    coucheVent.definirAnimation(nom !== 'volume');
+    coucheVent.definirAnimation(nom === 'carte');
+    if (nom === 'profil') {
+      controleur?.abort();
+      controleur = null;
+      controleurProfil?.abort();
+      controleurProfil = null;
+      if (actif) profil.afficher();
+    } else profil.masquer();
     if (nom === 'volume') {
       if (controleur) {
         controleur.abort();
         controleur = null;
       }
       if (actif && !zoneVolumeCapturee) void chargerProfilVolume();
-    } else {
+    } else if (nom === 'carte') {
       if (controleurProfil) {
         controleurProfil.abort();
         controleurProfil = null;
@@ -752,6 +791,7 @@ export function creerCarteVent(map) {
     });
     afficherResume(resumeVentCourant);
     volume.actualiserTheme();
+    profil.redessiner();
   }
 
   function assurerCouche() {
@@ -907,7 +947,7 @@ export function creerCarteVent(map) {
   });
   ongletsVue.forEach((onglet, index) => {
     onglet.addEventListener('click', () => {
-      selectionnerVue(['carte', 'volume'][index]);
+      selectionnerVue(['carte', 'volume', 'profil'][index]);
     });
   });
   panneau.querySelector('.vent-vues').addEventListener('keydown', (event) => {
@@ -917,7 +957,7 @@ export function creerCarteVent(map) {
     const prochain = event.key === 'Home' ? 0
       : event.key === 'End' ? ongletsVue.length - 1
         : (index + (event.key === 'ArrowRight' ? 1 : -1) + ongletsVue.length) % ongletsVue.length;
-    selectionnerVue(['carte', 'volume'][prochain], true);
+    selectionnerVue(['carte', 'volume', 'profil'][prochain], true);
   });
   selecteurCouche.addEventListener('change', () => {
     ecrire('vent-volume-couche', selecteurCouche.value);
@@ -943,13 +983,14 @@ export function creerCarteVent(map) {
   });
   actualiserZone.addEventListener('click', () => {
     if (vueActive === 'volume') void chargerProfilVolume();
+    else if (vueActive === 'profil') profil.recharger();
     else void chargerVent();
   });
   map.on('moveend', mettreAJourAlerte);
   map.on('style.load', () => {
     if (!actif) return;
     assurerCouche();
-    if (vueActive !== 'volume') void chargerVent();
+    if (vueActive === 'carte') void chargerVent();
   });
   const observateurTheme = new MutationObserver(appliquerPalette);
   observateurTheme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -979,6 +1020,7 @@ export function creerCarteVent(map) {
     mettreAJourAlerte();
     afficherResume(resumeVentCourant);
     afficherEcheance();
+    profil.redessiner();
     if (vueActive === 'volume' && zoneVolumeCapturee) {
       zoneVolume.textContent = `±${formatDistance(zoneVolumeCapturee.demi)}`;
       construireCouches();
@@ -1003,9 +1045,11 @@ export function creerCarteVent(map) {
       pastille.montrer(true);
       assurerCouche();
       coucheVent.definirVisible(true);
-      coucheVent.definirAnimation(vueActive !== 'volume');
+      coucheVent.definirAnimation(vueActive === 'carte');
       if (vueActive === 'volume') {
         if (!zoneVolumeCapturee) void chargerProfilVolume();
+      } else if (vueActive === 'profil') {
+        profil.afficher();
       } else if (!donneesVentCourantes) {
         void chargerVent();
       }
@@ -1024,6 +1068,7 @@ export function creerCarteVent(map) {
       controleur?.abort();
       controleurProfil?.abort();
       controleurProfil = null;
+      profil.masquer();
       coucheVent.definirVisible(false);
       if (map.getLayer(COUCHE_VENT)) map.setLayoutProperty(COUCHE_VENT, 'visibility', 'none');
     },
