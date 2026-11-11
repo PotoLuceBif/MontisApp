@@ -109,6 +109,7 @@ function previsionsPoint(adresseUrl, indexPoint) {
   const { elevation, chauffe } = variantePoint(indexPoint);
   const valeurPoint = (champ, jour, h) => {
     const brute = serieHoraire(champ, jour, h);
+    if (champ === 'surface_pressure') return Math.round(1013.25 * Math.exp(-elevation / 8434) * 10) / 10;
     if (champ === 'temperature_2m' || champ === 'dew_point_2m') {
       const apresMidi = Math.max(0, Math.sin(((h - 9) / 12) * Math.PI));
       return brute - 0.0065 * (elevation - 1035) + (champ === 'temperature_2m' ? chauffe * apresMidi : 0);

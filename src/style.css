@@ -280,7 +280,8 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .couche-pastille-legende[hidden] { display: none; }
 .mini-pentes { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
 .mini-pentes i { flex: 1; }
-.mini-plafonds { display: block; width: 22px; height: 10px; border-radius: 3px; }
+.mini-plafonds { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
+.mini-plafonds i { flex: 1; }
 .mini-rose { width: 18px; height: 18px; }
 .mini-icone { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .couche-pastille-action {
@@ -3262,10 +3263,11 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .pt-echelle { display: flex; justify-content: space-between; gap: 6px; color: var(--texte-2); font-size: 11px; }
 .plafonds { display: grid; gap: 10px; }
 .plafonds-legende { display: grid; gap: 4px; }
-.plafonds-degrade { height: 9px; border-radius: 8px; opacity: 0.85; }
-.plafonds-echelle { display: flex; justify-content: space-between; gap: 4px; color: var(--texte-2); font-size: 10.5px; }
+.plafonds-legende-titre { color: var(--texte-2); font-size: 11px; }
+.plafonds-paliers { display: flex; overflow: hidden; border-radius: 7px; }
+.plafonds-paliers span { flex: 1; min-width: 0; padding: 3px 0; color: #10141a; font-size: 10.5px; font-weight: 700; text-align: center; white-space: nowrap; }
 .plafonds-sans { display: flex; align-items: center; gap: 6px; color: var(--texte-2); font-size: 10.5px; }
-.plafonds-sans i { width: 14px; height: 9px; border: 1px dashed var(--bord); border-radius: 3px; }
+.plafonds-sans i { width: 14px; height: 10px; border-radius: 3px; opacity: 0.6; }
 .plafonds-lecture { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 600; }
 .plafonds-lecture:empty { display: none; }
 .plafonds-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
