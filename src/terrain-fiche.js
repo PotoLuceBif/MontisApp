@@ -3,7 +3,7 @@
 import { creerPanneauCarte } from './panneau-carte.js';
 import { ecrire } from './reglages.js';
 import { etatStation, texteAge } from './balises-sources.js';
-import { SECTEURS, accordVent, baliseSurPlace, pinTerrain } from './terrains-calcul.js';
+import { SECTEURS, accordVent, pinTerrain } from './terrains-calcul.js';
 import { couleurInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
@@ -141,11 +141,9 @@ export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {
     return bloc;
   }
 
-  // Sans balise sur le terrain même, le vent prévu par Montis à cet endroit (pas pour un terrain fermé)
+  // Le vent prévu par Montis à cet endroit, profil compris (pas pour un terrain fermé)
   function boutonAnalyseVent() {
-    const proche = baliseProche(terrain.lon, terrain.lat, RAYON_BALISE);
     if (!analyserVent || terrain.statut === 'interdit' || terrain.statut === 'ferme') return null;
-    if (proche && baliseSurPlace(proche.distance, terrain.altitude, proche.station.altitude)) return null;
     const bouton = document.createElement('button');
     bouton.type = 'button';
     bouton.className = 'point-lien';

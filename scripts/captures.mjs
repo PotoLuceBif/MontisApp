@@ -231,6 +231,9 @@ const ECRANS = [
   { nom: 'parapente-terrain-autorisation', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.0605, 45.6437], zoom: 13, bearing: 0, pitch: 0 }), toucherObjet('terrains-ffvl-autorisations', 'autorisation', 'true')] },
   { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
   { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },
+  // Raccourcis de la fiche d'une balise (lot 3.5) : Analyser le vent ici et Prévisions ici, puis le profil au pied de la balise
+  { nom: 'parapente-balise-raccourcis', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-'), attendre('.bf-raccourcis .point-lien'), defiler('.bf-raccourcis')] },
+  { nom: 'parapente-balise-profil', simuler: true, actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-'), attendre('.bf-raccourcis .point-lien'), clicVisible('.bf-raccourcis .point-lien'), attendre('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(1500), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
   { nom: 'randonnee', actions: [module('rando')] },
   { nom: 'velo', actions: [module('velo')] },
   { nom: 'ski', actions: [module('ski')] },
@@ -264,6 +267,12 @@ const ECRANS = [
   { nom: 'meteo-frise-jour', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), clic('.meteo-jour:nth-child(3)'), defiler('.meteo-horaire')] },
   { nom: 'meteo-radar', actions: [module('radar')] },
   { nom: 'meteo-vent', actions: [module('vent')] },
+  // Profil heure par heure (lot 3.5) : vent par altitude, thermiques, cumulus (prévisions simulées)
+  { nom: 'meteo-vent-profil', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
+  // Volume 3D jusqu'à 10 000 m et profil jusqu'à 10 000 m
+  { nom: 'meteo-vent-volume-10000', simuler: true, actions: [module('vent'), attendre('#vent-vue-volume-onglet'), clic('#vent-vue-volume-onglet'), (p) => p.waitForTimeout(2000), clic('input[name="vent-volume-plafond"][value="10000"]'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'meteo-vent-profil-haut', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), clic('.vent-profil-haut'), (p) => p.waitForTimeout(1500), defiler('.vent-profil-entete')] },
+  { nom: 'meteo-vent-profil-heure', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), (p) => p.evaluate(() => { const zones = document.querySelectorAll('.vent-profil-zone'); zones[Math.min(7, zones.length - 1)].dispatchEvent(new MouseEvent('click', { bubbles: true })); }), (p) => p.waitForTimeout(1500), defiler('.vent-profil-grille')] },
   // Pastilles météo : le radar reste panneau Météo fermé ; le vent, panneau Carte ouvert par-dessus (téléphone)
   { nom: 'meteo-radar-pastille', actions: [module('radar'), (p) => p.waitForTimeout(1500), clic('#outil-rapide-panneau-meteo .outil-rapide-fermer')] },
   { nom: 'meteo-vent-pastille', actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief')] },
@@ -402,6 +411,21 @@ const ECRANS = [
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
   // Météo et Carte s'ouvrent par-dessus une activité sans l'arrêter
+  // Plafonds des thermiques (lot 3.5) : grille de la vue, prévisions simulées
+  { nom: 'parapente-plafonds', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(3000), async (page) => {
+    // 14 h, aujourd'hui ou demain : l'heure des thermiques
+    await page.evaluate(() => {
+      const curseur = document.querySelector('.plafonds .vent-temps-curseur');
+      const heure = new Date().getHours();
+      curseur.value = String(heure < 13 ? 13 - heure : 37 - heure);
+      curseur.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }, (p) => p.waitForTimeout(2000)] },
+  { nom: 'parapente-plafonds-europe', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [8, 46], zoom: 4.3 }), (p) => p.waitForTimeout(4000)] },
+  { nom: 'parapente-plafonds-monde', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [10, 35], zoom: 1.6 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'parapente-plafonds-relief', actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), vue({ center: [-106.5, 39.3], zoom: 8.5 }), (p) => p.waitForTimeout(8000)] },
+  { nom: 'parapente-plafonds-relief-mer', actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), (p) => p.waitForTimeout(1500), clic('.plafonds-reference [data-reference="mer"]'), vue({ center: [-106.5, 39.3], zoom: 8.5 }), (p) => p.waitForTimeout(8000)] },
+  { nom: 'parapente-plafonds-menu', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]')] },
   { nom: 'combine-portee-meteo', actions: [module('parapente'), clic('[data-para-vue="portee"]'), clic('#outil-rapide-bouton-meteo')] },
   // Préférences de routage (lot 3.0) : bouton filtre de l'éditeur, choix multiples
   { nom: 'parcours-preferences-rando', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences')] },

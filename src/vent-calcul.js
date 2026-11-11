@@ -7,6 +7,10 @@ export const HAUTEURS_VENT = [10, 100, 200, 500, 1000, 1500, 2000];
 
 const HAUTEURS_SOL = [10, 100, 200];
 const NIVEAUX_PRESSION = [900, 850, 800, 700, 600, 500];
+// Niveaux hauts (environ 7 000, 9 000 et 10 500 m), demandés seulement pour un volume au-delà de 3 000 m :
+// au-delà de 10 variables, Open-Meteo compte une requête pour plusieurs appels
+const NIVEAUX_HAUTS = [400, 300, 250];
+export const PLAFOND_SANS_NIVEAUX_HAUTS = 3000;
 
 export const VARIABLES_VENT = [
   ...HAUTEURS_SOL.flatMap((h) => [`wind_speed_${h}m`, `wind_direction_${h}m`]),
@@ -16,6 +20,24 @@ export const VARIABLES_VENT = [
     `geopotential_height_${p}hPa`,
   ]),
 ];
+
+export const VARIABLES_VENT_HAUTS = NIVEAUX_HAUTS.flatMap((p) => [
+  `wind_speed_${p}hPa`,
+  `wind_direction_${p}hPa`,
+  `geopotential_height_${p}hPa`,
+]);
+
+// Hauteurs (au-dessus du sol) des couches du volume 3D selon sa hauteur : au plus neuf couches,
+// plus espacées en altitude, pour que les flèches ne se cachent pas les unes les autres
+const COUCHES_VOLUME = {
+  5000: [10, 500, 1000, 2000, 3000, 4000, 5000],
+  10000: [10, 1000, 2000, 3000, 4000, 5000, 6500, 8000, 10000],
+};
+export function couchesVolume(plafond) {
+  if (COUCHES_VOLUME[plafond]) return COUCHES_VOLUME[plafond];
+  const hauteurs = HAUTEURS_VENT.filter((hauteur) => hauteur <= plafond);
+  return hauteurs.length > 6 ? hauteurs.filter((hauteur) => hauteur !== 100) : hauteurs; // 100 m : trop serrée
+}
 
 export function composantes(vitesse, provenance) {
   const radians = (provenance * Math.PI) / 180;
@@ -40,7 +62,7 @@ export function colonneVent(hourly, index, elevation) {
       colonne.push({ hauteur, ...composantes(vitesse, direction) });
     }
   });
-  NIVEAUX_PRESSION.forEach((pression) => {
+  [...NIVEAUX_PRESSION, ...NIVEAUX_HAUTS].forEach((pression) => {
     const hauteur = hourly[`geopotential_height_${pression}hPa`]?.[index] - elevation;
     const vitesse = hourly[`wind_speed_${pression}hPa`]?.[index];
     const direction = hourly[`wind_direction_${pression}hPa`]?.[index];

@@ -1,5 +1,6 @@
 import { initParapente } from './parapente.js';
 import { initPortee } from './portee.js';
+import { initPlafonds } from './plafonds.js';
 import * as maplibregl from 'maplibre-gl';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { pinTerrain } from './terrains-calcul.js';
@@ -26,6 +27,10 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="vent" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/></svg>
         ${tt('para.vent')}
+      </button>
+      <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="plafonds" aria-pressed="false">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 17a4 4 0 0 1 .5-8 5.5 5.5 0 0 1 10.4 1.6A3.3 3.3 0 0 1 17.5 17Z"/><path d="M12 21v-4M9.5 19.5 12 17l2.5 2.5"/></svg>
+        ${tt('para.plafonds')}
       </button>
       <button type="button" class="rando-action-principale para-vue-bouton" data-para-vue="sites" aria-pressed="false">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
@@ -81,7 +86,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   const caseSites = panneau.querySelector('[data-para-layer-sites]');
   let actif = false;
   const vueLue = lire('para-vue', null);
-  let vueActive = ['portee', 'vent', 'sites'].includes(vueLue) ? vueLue : null;
+  let vueActive = ['portee', 'vent', 'plafonds', 'sites'].includes(vueLue) ? vueLue : null;
 
   const coche = (nom, defaut) => lire(nom, defaut) !== false;
   caseBalises.checked = coche('balises-visibles', true);
@@ -144,6 +149,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     analyserVent,
   });
   const portee = initPortee(map, { onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
+  const plafonds = initPlafonds(map, { onFermer: () => choisirVue(null), onRetour: ouvrirMenu });
 
   // Chaque onglet montre sa propre couche : balises et flèches de vent se gêneraient,
   // et un clic ouvrirait deux détails à la fois
@@ -182,7 +188,8 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     pinVent?.remove();
     pinVent = null;
   }
-  function analyserVent(terrain, retour) {
+  // `nomPin` : le pin qui marque le lieu le temps de l'analyse (celui du terrain, par défaut)
+  function analyserVent(terrain, retour, nomPin = pinTerrain(terrain)) {
     const ouvrirVent = () => {
       retourVent = () => {
         retourVent = null;
@@ -190,7 +197,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
         retour();
       };
       retirerPinVent();
-      pinVent = new maplibregl.Marker({ element: creerPinSeul(pinTerrain(terrain)).element, anchor: 'bottom', offset: DECALAGE_PIN })
+      pinVent = new maplibregl.Marker({ element: creerPinSeul(nomPin).element, anchor: 'bottom', offset: DECALAGE_PIN })
         .setLngLat([terrain.lon, terrain.lat])
         .addTo(map);
       if (vueActive === 'vent') {
@@ -207,6 +214,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
   function ouvrirOutil() {
     if (vueActive === 'vent') analyseVent.activer({ onFermer: () => choisirVue(null), onRetour: () => (retourVent ?? ouvrirMenu)() });
     else if (vueActive === 'portee') portee.ouvrir();
+    else if (vueActive === 'plafonds') plafonds.ouvrir();
   }
 
   function afficherVue() {
@@ -228,6 +236,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     }
     if (vueActive === 'vent') analyseVent.desactiver();
     if (vueActive === 'portee') portee.fermer();
+    if (vueActive === 'plafonds') plafonds.fermer();
     vueActive = nom;
     ecrire('para-vue', nom);
     afficherVue();
@@ -235,7 +244,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     rendreBalises();
     if (!actif) return;
     ouvrirOutil();
-    if (nom === 'vent' || nom === 'portee') fermerMenu?.();
+    if (nom === 'vent' || nom === 'portee' || nom === 'plafonds') fermerMenu?.();
   }
 
   afficherVue();
@@ -269,6 +278,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
       synchroniserCarte();
       if (vueActive === 'vent') analyseVent.desactiver();
       if (vueActive === 'portee') portee.fermer();
+      if (vueActive === 'plafonds') plafonds.fermer();
       retirerPinVent();
     },
   };

@@ -10,6 +10,8 @@ import { formatAltitude, formatTemp, libelleVent, valeurVent } from './unites.js
 import { surPreferences } from './preferences.js';
 import { t, ta, ti, tt, poser } from './i18n.js';
 
+const CLE_LIEU_METEO = 'meteo-position';
+
 const PERIODES = [3, 6, 12, 24];
 const DUREE_CACHE_HISTORIQUE = 5 * 60 * 1000;
 const COUVERTURE_TOLEREE = 15 * 60 * 1000; // en dessous, on ne signale pas de manque
@@ -18,7 +20,7 @@ const LIBELLES_ETAT = { actif: 'bf.direct', ancien: 'bf.ancien', hs: 'bf.hs' };
 
 const kmh = (valeur) => (Number.isFinite(valeur) ? valeurVent(valeur) : '—');
 
-export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, onApercu = () => {} } = {}) {
+export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, onApercu = () => {}, analyserVent = null } = {}) {
   const panneau = creerPanneauCarte({
     cle: 'balise-fiche-reduite',
     libelle: 'panneau.balise',
@@ -67,6 +69,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     <p class="bf-note bf-sans-historique" ${ti('bf.sans-historique')} hidden>${t('bf.sans-historique')}</p>
     <p class="bf-description" hidden></p>
     <p class="bf-voisine" hidden></p>
+    <div class="bf-raccourcis"></div>
     <p class="bf-source"></p>
   `;
 
@@ -270,6 +273,39 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     }
   }
 
+  // Raccourcis vers la météo du lieu : Prévisions ici et Analyser le vent ici ; leur flèche ramène à la balise
+  let retourCourant = null;
+  function lienPoint(cle, icone, action) {
+    const bouton = document.createElement('button');
+    bouton.type = 'button';
+    bouton.className = 'point-lien';
+    bouton.innerHTML = `<svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true">${icone}</svg><span></span>
+      <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+    poser(bouton.querySelector('span'), cle);
+    bouton.addEventListener('click', action);
+    return bouton;
+  }
+  function rendreRaccourcis() {
+    const ici = { station, source, retour: retourCourant };
+    const revenir = () => ouvrirFiche(ici.station, ici.source, { retour: ici.retour });
+    const liens = [lienPoint('point.previsions', '<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>', () => {
+      const lieu = { longitude: ici.station.lon, latitude: ici.station.lat };
+      ecrire(CLE_LIEU_METEO, lieu);
+      window.dispatchEvent(new CustomEvent('montis:meteo-ici', { detail: lieu }));
+      fermer();
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', {
+        detail: { categorie: 'meteo', module: 'meteo-locale', retour: revenir },
+      }));
+    })];
+    if (analyserVent) {
+      liens.unshift(lienPoint('tf.analyser-vent', '<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 12h16a3 3 0 1 1-3 3"/><path d="M3 16h7"/>', () => {
+        fermer();
+        analyserVent({ lon: ici.station.lon, lat: ici.station.lat }, revenir, 'parapente');
+      }));
+    }
+    $('.bf-raccourcis').replaceChildren(...liens);
+  }
+
   function fermer() {
     if (!panneau.ouvert) return;
     panneau.masquer();
@@ -304,19 +340,7 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     },
     // `retour` : où mène la flèche retour (le terrain d'où l'on vient), sinon au menu.
     // `periode` : la durée montrée cette fois-ci, sans changer le choix enregistré.
-    ouvrir(nouvelleStation, nouvelleSource, { retour = null, periode: periodeDemandee = null } = {}) {
-      station = nouvelleStation;
-      source = nouvelleSource;
-      panneau.definirRetour(retour ?? onRetour);
-      if (PERIODES.includes(periodeDemandee)) periode = periodeDemandee;
-      panneau.afficher();
-      rendreMaintenant();
-      void afficherAltitude();
-      void chargerHistorique();
-      garderBaliseVisible();
-      clearInterval(minuteurAge);
-      minuteurAge = setInterval(rendreAge, 30000);
-    },
+    ouvrir: ouvrirFiche,
     // Nouveaux relevés pendant que la fiche est ouverte
     actualiser(nouvelleStation) {
       if (!station || nouvelleStation.id !== station.id) return;
@@ -328,4 +352,20 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
     },
     fermer,
   };
+
+  function ouvrirFiche(nouvelleStation, nouvelleSource, { retour = null, periode: periodeDemandee = null } = {}) {
+      station = nouvelleStation;
+      source = nouvelleSource;
+      retourCourant = retour;
+      panneau.definirRetour(retour ?? onRetour);
+      rendreRaccourcis();
+      if (PERIODES.includes(periodeDemandee)) periode = periodeDemandee;
+      panneau.afficher();
+      rendreMaintenant();
+      void afficherAltitude();
+      void chargerHistorique();
+      garderBaliseVisible();
+      clearInterval(minuteurAge);
+      minuteurAge = setInterval(rendreAge, 30000);
+  }
 }

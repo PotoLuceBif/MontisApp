@@ -47,7 +47,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let terrainsRecus = 0;
   let terrainsEnregistres = null;
   const source = BALISES;
-  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche });
+  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche, analyserVent });
   const ficheTerrain = creerFicheTerrain(map, {
     onOuvrir: (terrain) => marquerTerrain(terrain.id),
     onFermer: () => marquerTerrain(null),

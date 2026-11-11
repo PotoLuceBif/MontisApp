@@ -49,13 +49,73 @@ function serieHoraire(champ, jour, heure) {
       return serieHoraire('temperature_2m', jour, heure) - 2;
     case 'wind_speed_10m_max':
       return 0;
+    case 'dew_point_2m':
+      return serieHoraire('temperature_2m', jour, heure) - (orageJour ? 2 + apresMidi * 5 : 3 + apresMidi * 7);
+    case 'shortwave_radiation':
+      return heure >= 8 && heure <= 17 ? Math.round(Math.max(0, Math.sin(((heure - 7) / 11) * Math.PI)) * (neigeJour ? 120 : 620)) : 0;
     default:
-      return 0;
+      return niveauPression(champ, jour, heure, apresMidi) ?? 0;
   }
 }
 
+// Niveaux de pression (profil vertical de l'analyse du vent) : atmosphère standard, réchauffée
+// l'après-midi dans les basses couches, sol à 1 035 m comme `elevation`
+const HAUTEURS_NIVEAUX = { 1000: 110, 950: 540, 925: 760, 900: 990, 850: 1460, 800: 1950, 750: 2470, 700: 3010, 650: 3590, 600: 4200, 550: 4850, 500: 5570, 400: 7200, 300: 9150, 250: 10350 };
+function niveauPression(champ, jour, heure, apresMidi) {
+  const lu = /^(temperature|relative_humidity|wind_speed|wind_direction|geopotential_height)_(\d+)hPa$/.exec(champ);
+  if (!lu) return null;
+  const hauteur = HAUTEURS_NIVEAUX[lu[2]];
+  if (hauteur === undefined) return null;
+  const dessus = Math.max(0, hauteur - 1035);
+  switch (lu[1]) {
+    case 'geopotential_height':
+      return hauteur;
+    case 'temperature':
+      return Math.round((3 - jour * 2 + apresMidi * 6 * Math.max(0, 1 - dessus / 2200) - 0.0065 * dessus) * 10) / 10;
+    case 'relative_humidity':
+      if (jour === 0 && heure >= 14 && heure <= 18) return hauteur > 2500 ? 97 : 80;
+      if (heure < 10 && jour < 2 && hauteur < 1600) return 96;
+      return hauteur > 4000 ? 88 : 55;
+    case 'wind_speed':
+      return Math.round(8 + dessus / 120 + jour * 4 + apresMidi * 4);
+    case 'wind_direction':
+      return Math.round(220 + Math.min(60, dessus / 60) + jour * 15) % 360;
+    default:
+      return null;
+  }
+}
+
+// Plusieurs points (analyse du vent, plafonds) : un tableau, chaque point un peu différent
 export function previsionsSimulees(url) {
   const params = new URL(url).searchParams;
+  const latitudes = (params.get('latitude') || '').split(',');
+  if (latitudes.length > 1) {
+    const longitudes = (params.get('longitude') || '').split(',');
+    return latitudes.map((lat, i) => {
+      const adresse = new URL(url);
+      adresse.searchParams.set('latitude', lat);
+      adresse.searchParams.set('longitude', longitudes[i] ?? longitudes[0]);
+      return previsionsPoint(adresse, i);
+    });
+  }
+  return previsionsPoint(new URL(url), null);
+}
+
+// Variante d'un point de grille : relief et chauffage du sol qui changent d'un point à l'autre
+const variantePoint = (i) => (i === null ? { elevation: 1035, chauffe: 0 } : { elevation: 700 + ((i * 37) % 11) * 110, chauffe: ((i * 13) % 7) - 3 });
+
+function previsionsPoint(adresseUrl, indexPoint) {
+  const params = adresseUrl.searchParams;
+  const { elevation, chauffe } = variantePoint(indexPoint);
+  const valeurPoint = (champ, jour, h) => {
+    const brute = serieHoraire(champ, jour, h);
+    if (champ === 'surface_pressure') return Math.round(1013.25 * Math.exp(-elevation / 8434) * 10) / 10;
+    if (champ === 'temperature_2m' || champ === 'dew_point_2m') {
+      const apresMidi = Math.max(0, Math.sin(((h - 9) / 12) * Math.PI));
+      return brute - 0.0065 * (elevation - 1035) + (champ === 'temperature_2m' ? chauffe * apresMidi : 0);
+    }
+    return brute;
+  };
   const jours = Number(params.get('forecast_days') || 5);
   const debut = new Date();
   debut.setHours(0, 0, 0, 0);
@@ -68,13 +128,13 @@ export function previsionsSimulees(url) {
   for (let h = 0; h < jours * 24; h += 1) {
     const date = new Date(debut.getTime() + h * 3600 * 1000);
     hourly.time.push(texteHeure(date));
-    champsHoraires.forEach((champ) => hourly[champ].push(serieHoraire(champ, Math.floor(h / 24), h % 24)));
+    champsHoraires.forEach((champ) => hourly[champ].push(valeurPoint(champ, Math.floor(h / 24), h % 24)));
   }
 
   const maintenant = new Date();
   const heure = maintenant.getHours();
   const current = { time: texteHeure(maintenant) };
-  champsActuels.forEach((champ) => { current[champ] = serieHoraire(champ, 0, heure); });
+  champsActuels.forEach((champ) => { current[champ] = valeurPoint(champ, 0, heure); });
 
   const daily = { time: [] };
   champsJour.forEach((champ) => { daily[champ] = []; });
@@ -98,7 +158,7 @@ export function previsionsSimulees(url) {
   return {
     latitude: Number(params.get('latitude')),
     longitude: Number(params.get('longitude')),
-    elevation: 1035,
+    elevation,
     utc_offset_seconds: -maintenant.getTimezoneOffset() * 60,
     timezone: 'GMT',
     current,

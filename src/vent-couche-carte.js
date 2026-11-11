@@ -1,5 +1,6 @@
 import { MercatorCoordinate } from 'maplibre-gl';
 import { depuisComposantes, lireChamp } from './vent-calcul.js';
+import { VENT_TRES_FORT } from './vent-cadran.js';
 
 const ESPACEMENT_MIN = 84; // px entre deux flèches, jamais plus du double
 const MAX_FLECHES = 500;
@@ -106,19 +107,24 @@ export function creerCoucheVent(map, { couleur, onFleches = () => {} }) {
 
   function dessinerFleches() {
     const tracer = (fleche) => {
-      const { x, y, dx, dy, longueur } = fleche;
+      const { x, y, dx, dy, longueur, vitesse } = fleche;
       const pointeX = x + dx * longueur / 2;
       const pointeY = y + dy * longueur / 2;
-      const baseX = pointeX - dx * 10;
-      const baseY = pointeY - dy * 10;
+      const pointe = new Path2D();
+      const tete = (tx, ty) => {
+        pointe.moveTo(tx, ty);
+        pointe.lineTo(tx - dx * 10 - dy * 5.5, ty - dy * 10 + dx * 5.5);
+        pointe.lineTo(tx - dx * 10 + dy * 5.5, ty - dy * 10 - dx * 5.5);
+        pointe.closePath();
+      };
+      tete(pointeX, pointeY);
+      // Vent très fort : une seconde pointe derrière la première
+      const double = vitesse >= VENT_TRES_FORT;
+      if (double) tete(pointeX - dx * 7, pointeY - dy * 7);
+      const recul = double ? 17 : 10;
       const chemin = new Path2D();
       chemin.moveTo(x - dx * longueur / 2, y - dy * longueur / 2);
-      chemin.lineTo(baseX, baseY);
-      const pointe = new Path2D();
-      pointe.moveTo(pointeX, pointeY);
-      pointe.lineTo(baseX - dy * 5.5, baseY + dx * 5.5);
-      pointe.lineTo(baseX + dy * 5.5, baseY - dx * 5.5);
-      pointe.closePath();
+      chemin.lineTo(pointeX - dx * recul, pointeY - dy * recul);
       return { chemin, pointe };
     };
     ctx.lineCap = 'round';

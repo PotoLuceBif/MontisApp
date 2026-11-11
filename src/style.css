@@ -280,6 +280,8 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .couche-pastille-legende[hidden] { display: none; }
 .mini-pentes { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
 .mini-pentes i { flex: 1; }
+.mini-plafonds { display: flex; overflow: hidden; width: 22px; height: 10px; border-radius: 3px; }
+.mini-plafonds i { flex: 1; }
 .mini-rose { width: 18px; height: 18px; }
 .mini-icone { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .couche-pastille-action {
@@ -1873,7 +1875,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-carte { display: grid; gap: 12px; }
 .vent-volume { display: grid; gap: 10px; }
 .vent-vues {
-  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px;
   padding: 3px; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2);
 }
 .vent-vues [role='tab'] {
@@ -2006,6 +2008,38 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .vent-volume-legende i { width: 8px; height: 3px; flex: none; border-radius: 3px; background: var(--vent-couleur); }
 .vent-volume-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
 .vent-volume-statut.erreur { color: #e05b67; }
+.vent-profil { display: grid; gap: 8px; }
+.vent-profil-entete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.vent-profil-entete strong { color: var(--texte); font-size: 13px; font-weight: 650; }
+.vent-profil-entete span { color: var(--texte-2); font-size: 11px; }
+.vent-profil-haut {
+  min-height: 32px; padding: 4px 10px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface-2); color: var(--texte-2); font: 650 11.5px var(--police); cursor: pointer;
+}
+.vent-profil-haut[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.vent-profil-grille { overflow-x: auto; border: 1px solid var(--bord); border-radius: 9px; background: var(--surface-2); }
+.vent-profil-grille:empty { display: none; }
+.vent-profil-grille svg { display: block; width: 100%; min-width: 300px; height: auto; font-family: var(--police); }
+.vent-profil-axe, .vent-profil-heure { fill: var(--texte-2); font-size: 9.5px; }
+.vent-profil-heure { font-weight: 650; }
+.vent-profil-pied { font-size: 9.5px; font-weight: 700; }
+.vent-profil-pluie { fill: #5aa9ff; }
+.vent-profil-nuage { fill: #b8c2cc; }
+.vent-profil-fleche { stroke: rgba(0, 0, 0, 0.55); stroke-width: 0.6; }
+.vent-profil-base { stroke: var(--texte); stroke-width: 1.6; stroke-dasharray: 3 2; }
+.vent-profil-cible { fill: none; stroke: var(--accent); stroke-width: 1.5; pointer-events: none; }
+.vent-profil-zone { fill: transparent; cursor: pointer; }
+.vent-profil-lecture { margin: 0; color: var(--texte); font-size: 12px; line-height: 1.45; }
+.vent-profil-lecture:empty { display: none; }
+.vent-profil-legende { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--texte-2); font-size: 10.5px; }
+.vent-profil-legende span { display: flex; align-items: center; gap: 4px; }
+.vent-profil-pastille { width: 12px; height: 10px; border-radius: 2px; }
+.vent-profil-pastille-nuage { background: rgba(184, 194, 204, 0.6); }
+.vent-profil-pastille-base { height: 0; border-top: 2px dashed var(--texte); border-radius: 0; }
+.vent-profil-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
+.vent-profil-statut:empty { display: none; }
+.vent-profil-statut.erreur { color: #e05b67; }
+.vent-profil-note { margin: 0; }
 .vent-carte-popup { color: var(--texte); font: 12px/1.45 var(--police); }
 .vent-carte-popup p { margin: 4px 0 0; }
 .vent-carte-popup strong { font-size: 13px; }
@@ -2611,7 +2645,7 @@ body:has(#menu-tiroir.ouvert) #menu-bouton { visibility: hidden; pointer-events:
 
 /* ===== Activité parapente (mêmes boutons d'action que la randonnée) ===== */
 .parapente { display: grid; gap: 12px; min-width: 0; }
-.parapente .rando-actions-principales { margin: 0; }
+.parapente .rando-actions-principales { margin: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .parapente .rando-outils { margin-top: 0; }
 .para-vue-bouton[aria-pressed='true'] {
   border-color: var(--accent);
@@ -3125,6 +3159,8 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .bf-note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; }
 .bf-note[hidden], .bf-description[hidden] { display: none; }
 .bf-description { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.bf-raccourcis { display: grid; gap: 6px; }
+.bf-raccourcis:empty { display: none; }
 .bf-source { margin: 0; color: var(--texte-2); font-size: 11.5px; }
 .bf-source a { color: var(--accent); font-weight: 650; }
 @media (max-width: 640px) {
@@ -3230,6 +3266,23 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   background: linear-gradient(90deg, #e53935 0%, #fb8c00 8%, #fdd835 25%, #26a69a 50%, #1e5bd8 100%);
 }
 .pt-echelle { display: flex; justify-content: space-between; gap: 6px; color: var(--texte-2); font-size: 11px; }
+.plafonds { display: grid; gap: 10px; }
+.plafonds-reference button { min-height: 40px; font-size: 13px; }
+.plafonds-legende { display: grid; gap: 4px; }
+.plafonds-legende-titre { color: var(--texte-2); font-size: 11px; }
+.plafonds-paliers { display: flex; overflow: hidden; border-radius: 7px; }
+.plafonds-paliers span { flex: 1; min-width: 0; padding: 3px 0; color: #10141a; font-size: 10.5px; font-weight: 700; text-align: center; white-space: nowrap; }
+/* Les bords : la première et la dernière étiquette débordent de leur case vers l'intérieur */
+.plafonds-paliers span:first-child { padding-left: 5px; text-align: left; }
+.plafonds-paliers span:last-child { display: flex; justify-content: flex-end; padding-right: 5px; }
+.plafonds-sans { display: flex; align-items: center; gap: 6px; color: var(--texte-2); font-size: 10.5px; }
+.plafonds-sans i { width: 14px; height: 10px; border-radius: 3px; opacity: 0.6; }
+.plafonds-lecture { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 600; }
+.plafonds-lecture:empty { display: none; }
+.plafonds-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.45; }
+.plafonds-statut:empty { display: none; }
+.plafonds-statut.erreur { color: #e05b67; }
+.plafonds .vent-source { margin: 0; }
 .pt-infobulle {
   position: fixed; z-index: 40; display: none; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 8px;
   background: var(--surface); box-shadow: var(--ombre); color: var(--texte);

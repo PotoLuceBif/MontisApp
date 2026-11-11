@@ -4,6 +4,7 @@
 // découle de la projection, il reste donc juste quels que soient l'angle et le zoom.
 import { depuisAltitude, formatAltitude, imperial, valeurAltitude } from './unites.js';
 import { t } from './i18n.js';
+import { VENT_TRES_FORT } from './vent-cadran.js';
 
 const ELEVATION_DEFAUT = 32;
 const ELEVATION_REFERENCE = (35 * Math.PI) / 180; // pour une échelle stable quand on incline
@@ -197,12 +198,21 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
     const [queue, pointe, gauche, droite, baseTete] = fleche.ecran;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    const tete2 = (contexte) => {
+      if (!fleche.tete2) return;
+      const [p2, g2, d2] = fleche.tete2;
+      contexte.moveTo(p2[0], p2[1]);
+      contexte.lineTo(g2[0], g2[1]);
+      contexte.lineTo(d2[0], d2[1]);
+      contexte.closePath();
+    };
     ctx.beginPath();
     dessinerSegment(queue, baseTete);
     ctx.moveTo(pointe[0], pointe[1]);
     ctx.lineTo(gauche[0], gauche[1]);
     ctx.lineTo(droite[0], droite[1]);
     ctx.closePath();
+    tete2(ctx);
     ctx.strokeStyle = couleurs.halo;
     ctx.lineWidth = 2.8;
     ctx.stroke();
@@ -223,6 +233,7 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
       ctx.lineTo(bas[0], bas[1]);
       ctx.closePath();
     }
+    tete2(ctx);
     ctx.fillStyle = couleurFleche;
     ctx.fill();
   }
@@ -332,7 +343,17 @@ export function creerVolume3D(canvas, { couleur, rotationInitiale = 28, onRotati
         const demiTete = tete * 0.4;
         const gauche = projeter(baseX - dy * demiTete, baseY + dx * demiTete, z);
         const droite = projeter(baseX + dy * demiTete, baseY - dx * demiTete, z);
-        const baseTete = projeter(baseX, baseY, z);
+        let baseTete = projeter(baseX, baseY, z);
+        // Vent très fort : une seconde pointe juste derrière la première, la hampe s'arrête derrière elle
+        element.tete2 = null;
+        if (element.vitesse >= VENT_TRES_FORT) {
+          const recul = tete * 0.7;
+          const pointe2 = projeter(x + dx * (moitie - recul), y + dy * (moitie - recul), z);
+          const b2x = baseX - dx * recul;
+          const b2y = baseY - dy * recul;
+          element.tete2 = [pointe2, projeter(b2x - dy * demiTete, b2y + dx * demiTete, z), projeter(b2x + dy * demiTete, b2y - dx * demiTete, z)];
+          baseTete = projeter(b2x, b2y, z);
+        }
         // Vue rasante : une tête à plat se réduit à un trait, on l'épaissit à la verticale
         // pour que le sens reste lisible, et rien ne change au-delà de 20° d'inclinaison
         const rasant = Math.max(0, 1 - elevation / 20);

@@ -3,7 +3,10 @@ import { Popup } from 'maplibre-gl';
 import { altitude as altitudeDem, preparerTuiles } from './portee.js';
 import {
   HAUTEURS_VENT,
+  PLAFOND_SANS_NIVEAUX_HAUTS,
   VARIABLES_VENT,
+  VARIABLES_VENT_HAUTS,
+  couchesVolume,
   colonneVent,
   creerChamp,
   depuisComposantes,
@@ -12,10 +15,11 @@ import {
 } from './vent-calcul.js';
 import { creerCoucheVent, longueurFleche } from './vent-couche-carte.js';
 import { creerVolume3D } from './vent-volume-3d.js';
+import { creerProfilVertical } from './vent-profil.js';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { MINI_VENT, creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
-import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
+import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, iconeVent, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, nombre, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { nomJour, t, ta, ti, tt, poser } from './i18n.js';
@@ -33,7 +37,7 @@ const DUREE_VALIDITE = 60 * 60 * 1000; // au-delà, on propose de recharger les 
 const DELAI_CURSEUR = 120; // ms entre deux mises à jour pendant que le curseur glisse
 const ECHEANCE_MAX = 48;
 const MESSAGE_LIMITE = 'vent.limite';
-const PLAFONDS_VOLUME = [500, 1000, 2000];
+const PLAFONDS_VOLUME = [500, 1000, 2000, 5000, 10000];
 const ETENDUES_VOLUME = [5000, 10000, 20000, 40000]; // demi-côté du bloc, en mètres
 const NOEUDS_VOLUME = 6; // par côté : le vent est interpolé entre ces points
 const MAILLE_RELIEF = 36;
@@ -141,11 +145,6 @@ function formaterHeure(iso) {
 }
 
 // Longueur fixe : dans la légende, seule la couleur distingue les paliers
-function iconeLegende(palier) {
-  const longueur = 22;
-  const fleche = `<path d="M2 7 H${longueur - 8}"/><path class="pointe" d="M${longueur - 2} 7 L${longueur - 10} 2.5 V11.5 Z"/>`;
-  return `<svg data-palier="${palier}" width="${longueur}" height="14" viewBox="0 0 ${longueur} 14" aria-hidden="true"><g class="cerne">${fleche}</g><g class="teinte">${fleche}</g></svg>`;
-}
 
 export function creerCarteVent(map) {
   const panneauCarte = creerPanneauCarte({
@@ -167,6 +166,7 @@ export function creerCarteVent(map) {
     <div class="vent-vues" role="tablist" ${ta('aria-label', 'vent.vues')}>
       <button type="button" role="tab" id="vent-vue-carte-onglet" aria-selected="true" aria-controls="vent-vue-carte" ${ti('vent.carte')}>${t('vent.carte')}</button>
       <button type="button" role="tab" id="vent-vue-volume-onglet" aria-selected="false" aria-controls="vent-vue-volume" tabindex="-1" ${ti('vent.volume')}>${t('vent.volume')}</button>
+      <button type="button" role="tab" id="vent-vue-profil-onglet" aria-selected="false" aria-controls="vent-vue-profil" tabindex="-1" ${ti('vent.profil')}>${t('vent.profil')}</button>
     </div>
     <div class="vent-temps">
       <div class="vent-temps-heure"><strong data-temps-heure>—</strong><span data-temps-ecart></span></div>
@@ -190,7 +190,7 @@ export function creerCarteVent(map) {
         ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
       </select></label>
       <div class="vent-carte-legende" ${ta('aria-label', 'vent.intensite')}>
-        ${libellesPaliersVent().map((libelle, index) => `<span>${iconeLegende(index)} <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
+        ${libellesPaliersVent().map((libelle, index) => `<span>${iconeVent(index)} <b data-palier-libelle>${libelle}</b></span>`).join('')}<span data-unite-vent>${libelleVent()}</span>
       </div>
       <p class="vent-carte-statut" role="status" aria-live="polite"></p>
     </section>
@@ -208,7 +208,6 @@ export function creerCarteVent(map) {
           </fieldset>
           <label class="vent-volume-couche">${tt('vent.couches')}<select ${ta('aria-label', 'vent.couche-aria')}>
             <option value="toutes" ${ti('vent.toutes')}>${t('vent.toutes')}</option>
-            ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
           </select></label>
         </div>
         <div class="vent-volume-scene">
@@ -225,6 +224,7 @@ export function creerCarteVent(map) {
         <p class="vent-volume-statut" role="status" aria-live="polite"></p>
       </section>
     </section>
+    <section class="vent-vue-contenu" id="vent-vue-profil" role="tabpanel" aria-labelledby="vent-vue-profil-onglet" hidden></section>
     <p class="vent-source" data-i18n-html="vent.source">${t('vent.source')}</p>
     <details class="rando-outils vent-apropos">
       <summary ${ti('vent.lire')}>${t('vent.lire')}</summary>
@@ -279,7 +279,7 @@ export function creerCarteVent(map) {
   const pastille = creerPastilleCouche({
     ordre: 4,
     nom: () => {
-      if (vueActive !== 'volume' && statut.classList.contains('erreur')) return t('vent.court-erreur');
+      if (vueActive === 'carte' && statut.classList.contains('erreur')) return t('vent.court-erreur');
       return heurePastille ? t('vent.court-heure', { heure: heurePastille }) : t('vent.court');
     },
     legende: () => MINI_VENT,
@@ -296,7 +296,28 @@ export function creerCarteVent(map) {
   let flecheChoisie = null;
   let zoneVolumeCapturee = null;
   let zoneCarteCapturee = null;
-  let vueActive = lire('vent-vue', 'carte') === 'volume' ? 'volume' : 'carte';
+  let vueActive = ['volume', 'profil'].includes(lire('vent-vue', 'carte')) ? lire('vent-vue', 'carte') : 'carte';
+  // Profil vertical : son point, son chargement et son pin à lui ; un appui sur une heure place le curseur
+  const profil = creerProfilVertical(map, {
+    // Données reçues (ou échec) : l'échéance du curseur s'y applique, la bande « Actualiser » se met à jour
+    onCharge() {
+      if (vueActive !== 'profil') return;
+      if (profil.reponses()) appliquerEcheance();
+      mettreAJourAlerte();
+    },
+    onHeure(heure) {
+      const reponses = profil.reponses();
+      if (!reponses) return;
+      const heures = reponses[0].hourly.time;
+      const base = heures.indexOf(heureEcheance(reponses)) - echeance();
+      const ecart = heures.indexOf(heure) - base;
+      if (ecart < 0 || ecart > Number(curseurTemps.max)) return;
+      curseurTemps.value = String(ecart);
+      ecrire('vent-echeance', ecart);
+      afficherEcheance();
+    },
+  });
+  panneau.querySelector('#vent-vue-profil').append(profil.element);
   let emplacementVolume = null;
   let emplacementTemps = null;
   let emplacementAlerte = null;
@@ -312,8 +333,14 @@ export function creerCarteVent(map) {
   if (!HAUTEURS_VENT.includes(Number(selecteurNiveau.value))) selecteurNiveau.value = '10';
   const echeanceLue = Math.round(Number(lire('vent-echeance', 0)));
   curseurTemps.value = String(Number.isFinite(echeanceLue) ? Math.max(0, Math.min(ECHEANCE_MAX, echeanceLue)) : 0);
-  const coucheLue = String(lire('vent-volume-couche', 'toutes'));
-  selecteurCouche.value = coucheLue === 'toutes' || HAUTEURS_VENT.includes(Number(coucheLue)) ? coucheLue : 'toutes';
+  // Les couches proposées suivent la hauteur du volume
+  function majOptionsCouche(voulue = selecteurCouche.value) {
+    const hauteurs = couchesVolume(plafondVolume);
+    selecteurCouche.querySelectorAll('option[value]:not([value="toutes"])').forEach((option) => option.remove());
+    selecteurCouche.append(...hauteurs.map((hauteur) => Object.assign(document.createElement('option'), { value: String(hauteur), textContent: LIBELLE_HAUTEUR(hauteur) })));
+    selecteurCouche.value = hauteurs.includes(Number(voulue)) ? String(voulue) : 'toutes';
+  }
+  majOptionsCouche(String(lire('vent-volume-couche', 'toutes')));
   panneau.querySelectorAll('.vent-carte-legende [data-palier]').forEach((pastille, index) => {
     pastille.style.setProperty('--vent-couleur', PALETTE_CARTE[index]);
   });
@@ -354,7 +381,11 @@ export function creerCarteVent(map) {
   // ---------- Échéance, commune à la carte et au volume ----------
   const echeance = () => Number(curseurTemps.value);
 
-  const reponsesVue = () => (vueActive === 'volume' ? zoneVolumeCapturee?.reponses : donneesVentCourantes?.reponses);
+  const reponsesVue = () => {
+    if (vueActive === 'volume') return zoneVolumeCapturee?.reponses;
+    if (vueActive === 'profil') return profil.reponses();
+    return donneesVentCourantes?.reponses;
+  };
 
   function heureEcheance(reponses) {
     const heures = reponses[0].hourly.time;
@@ -402,6 +433,9 @@ export function creerCarteVent(map) {
     afficherEcheance();
     if (vueActive === 'volume') {
       construireCouches();
+    } else if (vueActive === 'profil') {
+      const reponses = profil.reponses();
+      if (reponses) profil.definirHeure(heureEcheance(reponses));
     } else if (donneesVentCourantes) {
       const { reponses, positions, grille } = donneesVentCourantes;
       const heure = heureEcheance(reponses);
@@ -479,12 +513,8 @@ export function creerCarteVent(map) {
       return index < 0 ? [] : colonneVent(donnees.hourly, index, donnees.elevation);
     });
     const coucheChoisie = selecteurCouche.value === 'toutes' ? null : Number(selecteurCouche.value);
-    let hauteurs = HAUTEURS_VENT.filter((hauteur) => hauteur <= plafondVolume);
-    if (coucheChoisie !== null) {
-      hauteurs = hauteurs.filter((hauteur) => hauteur === coucheChoisie);
-    } else if (hauteurs.length > 6) {
-      hauteurs = hauteurs.filter((hauteur) => hauteur !== 100); // trop serrée à cette échelle
-    }
+    let hauteurs = couchesVolume(plafondVolume);
+    if (coucheChoisie !== null) hauteurs = hauteurs.filter((hauteur) => hauteur === coucheChoisie);
     const parCote = coucheChoisie !== null ? FLECHES_PAR_COTE_COUCHE_SEULE : FLECHES_PAR_COTE;
     const cellule = (2 * demi) / parCote;
     const kLng = metresParDegreLng(centre.lat);
@@ -574,6 +604,7 @@ export function creerCarteVent(map) {
   // Le bouton n'apparaît que si le rechargement apporte quelque chose : l'échéance,
   // elle, s'applique sans réseau car les prévisions de la zone sont déjà là.
   function raisonActualiser() {
+    if (vueActive === 'profil') return profil.raison(DUREE_VALIDITE);
     if (vueActive === 'volume') {
       if (erreurVolume) return t('vent.echec-volume');
       if (!zoneVolumeCapturee) return '';
@@ -598,7 +629,7 @@ export function creerCarteVent(map) {
   }
 
   function mettreAJourAlerte() {
-    const enCours = vueActive === 'volume' ? controleurProfil : controleur;
+    const enCours = vueActive === 'volume' ? controleurProfil : vueActive === 'profil' ? profil.enCours() : controleur;
     const message = actif && !enCours ? raisonActualiser() : '';
     messageZone.textContent = message;
     alerteZone.hidden = !message;
@@ -606,18 +637,19 @@ export function creerCarteVent(map) {
 
   // Demande à Open-Meteo les points absents du cache. Une seule requête et un seul
   // modèle pour toutes les vues : le sol et l'altitude restent cohérents.
-  async function chargerPointsManquants(positions, signal) {
+  // `hauts` : aussi les niveaux de 7 000 à 10 500 m (volume au-delà de 3 000 m)
+  async function chargerPointsManquants(positions, signal, hauts = false) {
     const maintenant = Date.now();
     const manquantes = positions.filter((position) => {
       const entree = cache.get(cleePosition(position));
-      return !entree || maintenant - entree.recue > DUREE_CACHE;
+      return !entree || maintenant - entree.recue > DUREE_CACHE || (hauts && !entree.hauts);
     });
     if (!manquantes.length) return;
     const params = new URLSearchParams({
       latitude: manquantes.map(({ latitude }) => latitude.toFixed(4)).join(','),
       longitude: manquantes.map(({ longitude }) => longitude.toFixed(4)).join(','),
       current: 'temperature_2m',
-      hourly: [...VARIABLES_VENT, 'wind_gusts_10m'].join(','),
+      hourly: [...VARIABLES_VENT, ...(hauts ? VARIABLES_VENT_HAUTS : []), 'wind_gusts_10m'].join(','),
       models: 'meteofrance_seamless',
       forecast_days: '3',
       timezone: 'auto',
@@ -638,6 +670,7 @@ export function creerCarteVent(map) {
       cache.set(cleePosition(manquantes[index]), {
         donnees: entree,
         recue: dateEnregistree ?? Date.now(),
+        hauts,
       });
     });
     while (cache.size > 400) cache.delete(cache.keys().next().value);
@@ -657,11 +690,12 @@ export function creerCarteVent(map) {
     poser(statutVolume, 'vent.volume-chargement');
     const minuteurDelai = setTimeout(() => requete.abort(), DELAI_CHARGEMENT);
     try {
-      await chargerPointsManquants(grille.positions, requete.signal);
+      const hauts = plafondVolume > PLAFOND_SANS_NIVEAUX_HAUTS;
+      await chargerPointsManquants(grille.positions, requete.signal, hauts);
       const reponses = grille.positions.map((position) => cache.get(cleePosition(position)).donnees);
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
-      zoneVolumeCapturee = { centre, demi, grille, reponses, recue: dateEnregistree ?? Date.now() };
+      zoneVolumeCapturee = { centre, demi, grille, reponses, hauts, recue: dateEnregistree ?? Date.now() };
       zoneVolume.textContent = `±${formatDistance(demi)}`;
       volume.definirRelief(relief);
       afficherEcheance();
@@ -725,14 +759,21 @@ export function creerCarteVent(map) {
       if (focus && actifOnglet) onglet.focus();
       contenusVue[index].hidden = !actifOnglet;
     });
-    coucheVent.definirAnimation(nom !== 'volume');
+    coucheVent.definirAnimation(nom === 'carte');
+    if (nom === 'profil') {
+      controleur?.abort();
+      controleur = null;
+      controleurProfil?.abort();
+      controleurProfil = null;
+      if (actif) profil.afficher();
+    } else profil.masquer();
     if (nom === 'volume') {
       if (controleur) {
         controleur.abort();
         controleur = null;
       }
       if (actif && !zoneVolumeCapturee) void chargerProfilVolume();
-    } else {
+    } else if (nom === 'carte') {
       if (controleurProfil) {
         controleurProfil.abort();
         controleurProfil = null;
@@ -752,6 +793,7 @@ export function creerCarteVent(map) {
     });
     afficherResume(resumeVentCourant);
     volume.actualiserTheme();
+    profil.redessiner();
   }
 
   function assurerCouche() {
@@ -907,7 +949,7 @@ export function creerCarteVent(map) {
   });
   ongletsVue.forEach((onglet, index) => {
     onglet.addEventListener('click', () => {
-      selectionnerVue(['carte', 'volume'][index]);
+      selectionnerVue(['carte', 'volume', 'profil'][index]);
     });
   });
   panneau.querySelector('.vent-vues').addEventListener('keydown', (event) => {
@@ -917,7 +959,7 @@ export function creerCarteVent(map) {
     const prochain = event.key === 'Home' ? 0
       : event.key === 'End' ? ongletsVue.length - 1
         : (index + (event.key === 'ArrowRight' ? 1 : -1) + ongletsVue.length) % ongletsVue.length;
-    selectionnerVue(['carte', 'volume'][prochain], true);
+    selectionnerVue(['carte', 'volume', 'profil'][prochain], true);
   });
   selecteurCouche.addEventListener('change', () => {
     ecrire('vent-volume-couche', selecteurCouche.value);
@@ -928,9 +970,13 @@ export function creerCarteVent(map) {
       if (!radio.checked) return;
       plafondVolume = Number(radio.value);
       ecrire('vent-volume-plafond', plafondVolume);
-      if (Number(selecteurCouche.value) > plafondVolume) {
-        selecteurCouche.value = 'toutes';
-        ecrire('vent-volume-couche', 'toutes');
+      majOptionsCouche();
+      ecrire('vent-volume-couche', selecteurCouche.value);
+      // Au-delà de 3 000 m, il faut les niveaux hauts : la zone se recharge si elle ne les a pas
+      if (plafondVolume > PLAFOND_SANS_NIVEAUX_HAUTS && zoneVolumeCapturee && !zoneVolumeCapturee.hauts) {
+        zoneVolumeCapturee = null;
+        void chargerProfilVolume();
+        return;
       }
       construireCouches();
     });
@@ -943,13 +989,14 @@ export function creerCarteVent(map) {
   });
   actualiserZone.addEventListener('click', () => {
     if (vueActive === 'volume') void chargerProfilVolume();
+    else if (vueActive === 'profil') profil.recharger();
     else void chargerVent();
   });
   map.on('moveend', mettreAJourAlerte);
   map.on('style.load', () => {
     if (!actif) return;
     assurerCouche();
-    if (vueActive !== 'volume') void chargerVent();
+    if (vueActive === 'carte') void chargerVent();
   });
   const observateurTheme = new MutationObserver(appliquerPalette);
   observateurTheme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -979,6 +1026,7 @@ export function creerCarteVent(map) {
     mettreAJourAlerte();
     afficherResume(resumeVentCourant);
     afficherEcheance();
+    profil.redessiner();
     if (vueActive === 'volume' && zoneVolumeCapturee) {
       zoneVolume.textContent = `±${formatDistance(zoneVolumeCapturee.demi)}`;
       construireCouches();
@@ -1003,9 +1051,11 @@ export function creerCarteVent(map) {
       pastille.montrer(true);
       assurerCouche();
       coucheVent.definirVisible(true);
-      coucheVent.definirAnimation(vueActive !== 'volume');
+      coucheVent.definirAnimation(vueActive === 'carte');
       if (vueActive === 'volume') {
         if (!zoneVolumeCapturee) void chargerProfilVolume();
+      } else if (vueActive === 'profil') {
+        profil.afficher();
       } else if (!donneesVentCourantes) {
         void chargerVent();
       }
@@ -1024,6 +1074,7 @@ export function creerCarteVent(map) {
       controleur?.abort();
       controleurProfil?.abort();
       controleurProfil = null;
+      profil.masquer();
       coucheVent.definirVisible(false);
       if (map.getLayer(COUCHE_VENT)) map.setLayoutProperty(COUCHE_VENT, 'visibility', 'none');
     },
