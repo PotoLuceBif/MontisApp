@@ -1,34 +1,36 @@
-// Carte des plafonds de Vol libre : altitude du sommet des thermiques (ou de la base des cumulus),
-// en tranches de 500 m sur la carte, avec le curseur des heures. Les points suivent un quadrillage fixe
-// sur la Terre, plus lâche au dézoom (jusqu'au globe) : un même endroit garde la même valeur, et les
-// points déjà reçus resservent pendant une heure. Même calcul que le profil de l'analyse du vent.
+// Carte des plafonds de Vol libre, sur le modèle de Meteo-Parapente : une seule demande par heure au
+// relais /api/plafonds, qui sert la carte de toute la Terre déjà calculée (GFS de la NOAA, 0,25°) ;
+// l'appli la dessine en tranches de 500 m, quel que soit le zoom.
 import { creerPanneauCarte } from './panneau-carte.js';
 import { creerPastilleCouche, montrerCarte } from './couches-actives.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 import { REPERE_CALQUES } from './style-montis.js';
 import {
-  COULEURS_PLAFOND, COULEUR_SANS, PALIERS_PLAFOND, SANS_THERMIQUE, VARIABLES_PLAFONDS, plafondAu, plafondsHoraires, quadrillage, rasteriser,
+  COULEURS_PLAFOND, COULEUR_SANS, EMPRISE_MONDE, PALIERS_PLAFOND, SANS_THERMIQUE, plafondAu, rasteriserMonde,
 } from './plafonds-calcul.js';
 import { formatAltitude, uniteAltitude, valeurAltitude } from './unites.js';
 import { estHorsLigne } from './hors-ligne.js';
-import { erreurHttp, messageErreur, requete } from './requete.js';
+import { messageErreur, requete } from './requete.js';
 import { surPreferences } from './preferences.js';
 import { heureCourte, nomJour, poser, t, ta, ti, tt } from './i18n.js';
 
-const API = 'https://api.open-meteo.com/v1/forecast';
+const RELAIS = '/api/plafonds';
 const SOURCE = 'plafonds';
 const ECHEANCE_MAX = 48;
-const DELAI_RECHARGE = 500;
-const DELAI_REQUETE = 25000;
-const DUREE_CACHE = 60 * 60 * 1000;
-const POINTS_PAR_REQUETE = 100;
-const PIXELS_PAR_MAILLE = 32;
-const TAILLE_MAX = 512;
+const DELAI_CURSEUR = 250;
+const DELAI_REQUETE = 30000;
+const LARGEUR_IMAGE = 1440; // une colonne par maille de 0,25°
+const HEURES_GARDEES = 8;
 const OPACITE = 0.6;
 const HEURE = 3600000;
 
 const rgb = (c) => `rgb(${c.join(', ')})`;
 const MINI = () => `<span class="mini-plafonds">${COULEURS_PLAFOND.slice(1, 6).map((c) => `<i style="background: ${rgb(c)}"></i>`).join('')}</span>`;
+const deux = (n) => String(n).padStart(2, '0');
+const cleHeure = (instant) => {
+  const d = new Date(instant);
+  return `${d.getUTCFullYear()}-${deux(d.getUTCMonth() + 1)}-${deux(d.getUTCDate())}T${deux(d.getUTCHours())}`;
+};
 
 function libelleHeure(instant) {
   const date = new Date(instant);
@@ -70,7 +72,7 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
           <p class="note" ${ti('plafonds.note')}>${t('plafonds.note')}</p>
         </div>
       </details>
-      <p class="vent-source" data-i18n-html="vent.source">${t('vent.source')}</p>
+      <p class="vent-source" ${ti('plafonds.source')}>${t('plafonds.source')}</p>
     </div>
   `;
   const corps = panneau.corps;
@@ -82,11 +84,10 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
   const lecture = corps.querySelector('.plafonds-lecture');
   const statut = corps.querySelector('.plafonds-statut');
 
-  const cache = new Map(); // clé du nœud → { debut, plafonds, recu }
+  const cartes = new Map(); // heure (UTC) → promesse de { grille, codes, url }
   let actif = false;
-  let grille = null; // quadrillage de la vue affichée
-  let valeurs = null; // plafonds de ses nœuds à l'heure affichée
-  let controleur = null;
+  let affichee = null; // carte dessinée
+  let demande = 0;
   let minuteur = null;
   let erreur = false;
   const canvas = document.createElement('canvas');
@@ -113,15 +114,44 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
 
   // Échéance 0 : la prochaine heure entière
   function instantAffiche() {
-    const prochaine = Math.ceil(Date.now() / HEURE) * HEURE;
-    return prochaine + Number(curseur.value) * HEURE;
+    return Math.ceil(Date.now() / HEURE) * HEURE + Number(curseur.value) * HEURE;
   }
 
-  function valeurNoeud(noeud, instant) {
-    const entree = cache.get(noeud.cle);
-    if (!entree) return null;
-    const index = Math.round((instant - entree.debut) / HEURE);
-    return entree.plafonds[index] ?? null;
+  // Une carte par heure, gardée pour revenir en arrière sur le curseur sans la redemander
+  function chargerCarte(cle) {
+    if (!cartes.has(cle)) {
+      const promesse = (async () => {
+        const reponse = await requete(`${RELAIS}?t=${cle}`, {}, DELAI_REQUETE);
+        if (!reponse.ok) {
+          const corpsErreur = await reponse.json().catch(() => null);
+          throw Object.assign(new Error(corpsErreur?.erreur ?? `HTTP ${reponse.status}`), { statut: reponse.status });
+        }
+        const grille = JSON.parse(reponse.headers.get('X-Montis-Grille') ?? 'null');
+        const codes = new Uint8Array(await reponse.arrayBuffer());
+        if (!grille || codes.length !== grille.ni * grille.nj) throw new Error('Carte des plafonds incomplète');
+        const hauteur = LARGEUR_IMAGE; // le monde en Mercator est carré
+        canvas.width = LARGEUR_IMAGE;
+        canvas.height = hauteur;
+        canvas.getContext('2d').putImageData(new ImageData(rasteriserMonde(grille, codes, LARGEUR_IMAGE, hauteur), LARGEUR_IMAGE, hauteur), 0, 0);
+        return { grille, codes, url: canvas.toDataURL('image/png') };
+      })();
+      promesse.catch(() => cartes.delete(cle));
+      cartes.set(cle, promesse);
+      while (cartes.size > HEURES_GARDEES) cartes.delete(cartes.keys().next().value);
+    }
+    return cartes.get(cle);
+  }
+
+  function poserImage(url) {
+    const source = map.getSource(SOURCE);
+    if (source) source.updateImage({ url, coordinates: EMPRISE_MONDE });
+    else {
+      map.addSource(SOURCE, { type: 'image', url, coordinates: EMPRISE_MONDE });
+      map.addLayer(
+        { id: SOURCE, type: 'raster', source: SOURCE, paint: { 'raster-opacity': OPACITE, 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
+        map.getLayer(REPERE_CALQUES) ? REPERE_CALQUES : undefined,
+      );
+    }
   }
 
   function retirerCouche() {
@@ -129,134 +159,70 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     if (map.getSource(SOURCE)) map.removeSource(SOURCE);
   }
 
-  function dessiner() {
-    if (!grille) return;
-    const instant = instantAffiche();
-    valeurs = grille.noeuds.map((noeud) => valeurNoeud(noeud, instant));
-    const largeur = Math.min(TAILLE_MAX, (grille.nx - 1) * PIXELS_PAR_MAILLE);
-    const hauteur = Math.min(TAILLE_MAX, (grille.ny - 1) * PIXELS_PAR_MAILLE);
-    canvas.width = largeur;
-    canvas.height = hauteur;
-    canvas.getContext('2d').putImageData(new ImageData(rasteriser(grille, valeurs, largeur, hauteur), largeur, hauteur), 0, 0);
-    const url = canvas.toDataURL('image/png');
-    const coordinates = [[grille.ouest, grille.nord], [grille.est, grille.nord], [grille.est, grille.sud], [grille.ouest, grille.sud]];
-    const source = map.getSource(SOURCE);
-    if (source) source.updateImage({ url, coordinates });
-    else {
-      map.addSource(SOURCE, { type: 'image', url, coordinates });
-      map.addLayer(
-        { id: SOURCE, type: 'raster', source: SOURCE, paint: { 'raster-opacity': OPACITE, 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
-        map.getLayer(REPERE_CALQUES) ? REPERE_CALQUES : undefined,
-      );
+  async function afficher() {
+    if (!actif) return;
+    const ici = ++demande;
+    const cle = cleHeure(instantAffiche());
+    erreur = false;
+    statut.classList.remove('erreur');
+    poser(statut, 'plafonds.chargement');
+    try {
+      const carte = await chargerCarte(cle);
+      if (ici !== demande || !actif) return;
+      affichee = carte;
+      poserImage(carte.url);
+      statut.textContent = '';
+      delete statut.dataset.i18n;
+      majLecture();
+    } catch (e) {
+      if (ici !== demande || !actif) return;
+      console.warn('Plafonds :', e);
+      erreur = true;
+      statut.classList.add('erreur');
+      if (estHorsLigne()) poser(statut, 'plafonds.hors-ligne');
+      else if (e.statut === 404) poser(statut, 'plafonds.absente');
+      else poser(statut, 'plafonds.erreur', { message: messageErreur(e) });
+    } finally {
+      if (pastille.visible) pastille.maj();
     }
-    majLecture();
   }
 
   function afficherEcheance() {
     const instant = instantAffiche();
     heureTexte.textContent = libelleHeure(instant).long;
     ecartTexte.textContent = Number(curseur.value) === 0 ? t('vent.prochaine-heure') : t('vent.dans-h', { n: Number(curseur.value) });
-    dessiner();
     if (pastille.visible) pastille.maj();
     panneau.definirResume({ nom: t('plafonds.titre'), detail: heureTexte.textContent });
   }
 
   function majLecture() {
-    if (!grille || !valeurs) {
+    if (!affichee) {
       lecture.textContent = '';
       return;
     }
     const { lng, lat } = map.getCenter();
-    const valeur = plafondAu(grille, valeurs, lng, lat);
+    const valeur = plafondAu(affichee.grille, affichee.codes, lng, lat);
     if (valeur === null) lecture.textContent = '';
     else if (valeur === SANS_THERMIQUE) lecture.textContent = t('plafonds.centre-sans');
     else lecture.textContent = t('plafonds.centre', { altitude: formatAltitude(valeur, { pas: 50 }) });
   }
 
-  function vueActuelle() {
-    const limites = map.getBounds();
-    return { ouest: limites.getWest(), sud: limites.getSouth(), est: limites.getEast(), nord: limites.getNorth() };
-  }
-
-  // Les nœuds sans prévisions récentes, par paquets de cent ; l'image se complète à chaque paquet
-  async function chargerManquants() {
-    if (!actif || !grille) return;
-    const maintenant = Date.now();
-    const vus = new Set();
-    const manquants = grille.noeuds.filter((noeud) => {
-      if (vus.has(noeud.cle)) return false;
-      vus.add(noeud.cle);
-      const entree = cache.get(noeud.cle);
-      return !entree || maintenant - entree.recu > DUREE_CACHE;
-    });
-    if (!manquants.length) {
-      if (!erreur) statut.textContent = '';
-      return;
-    }
-    controleur?.abort();
-    const ici = new AbortController();
-    controleur = ici;
-    erreur = false;
-    statut.classList.remove('erreur');
-    poser(statut, 'plafonds.chargement');
-    try {
-      for (let debut = 0; debut < manquants.length; debut += POINTS_PAR_REQUETE) {
-        const paquet = manquants.slice(debut, debut + POINTS_PAR_REQUETE);
-        const params = new URLSearchParams({
-          latitude: paquet.map((n) => n.latitude.toFixed(3)).join(','),
-          longitude: paquet.map((n) => n.longitude.toFixed(3)).join(','),
-          hourly: VARIABLES_PLAFONDS.join(','),
-          models: 'meteofrance_seamless',
-          forecast_days: '3',
-          timezone: 'GMT',
-        });
-        const reponse = await requete(`${API}?${params}`, { signal: ici.signal }, DELAI_REQUETE);
-        if (!reponse.ok) throw erreurHttp(reponse);
-        const json = await reponse.json();
-        if (controleur !== ici || !actif) return;
-        const reponses = Array.isArray(json) ? json : [json];
-        if (reponses.length !== paquet.length) throw new Error(t('vent.points-inattendus'));
-        const recu = Date.now();
-        reponses.forEach((donnees, i) => {
-          const premiere = donnees?.hourly?.time?.[0];
-          if (!premiere) return;
-          cache.set(paquet[i].cle, { debut: Date.parse(`${premiere}:00Z`), plafonds: plafondsHoraires(donnees), recu });
-        });
-        while (cache.size > 3000) cache.delete(cache.keys().next().value);
-        dessiner();
-      }
-      statut.textContent = '';
-      delete statut.dataset.i18n;
-    } catch (e) {
-      if (controleur !== ici || !actif) return;
-      console.warn('Plafonds :', e);
-      erreur = true;
-      statut.classList.add('erreur');
-      if (estHorsLigne()) poser(statut, 'plafonds.hors-ligne');
-      else poser(statut, 'plafonds.erreur', { message: messageErreur(e) });
-    } finally {
-      if (controleur === ici) controleur = null;
-      if (pastille.visible) pastille.maj();
-    }
-  }
-
-  // À chaque déplacement : l'image se redessine avec ce qui est déjà connu, puis les trous se remplissent
-  function suivreVue() {
-    if (!actif) return;
-    grille = quadrillage(vueActuelle());
-    dessiner();
+  // Pendant un glissé du curseur, l'heure s'affiche tout de suite ; la carte attend que le doigt ralentisse
+  curseur.addEventListener('input', () => {
+    afficherEcheance();
     clearTimeout(minuteur);
-    minuteur = setTimeout(() => void chargerManquants(), DELAI_RECHARGE);
-  }
-
-  curseur.addEventListener('input', afficherEcheance);
-  map.on('moveend', suivreVue);
+    minuteur = setTimeout(() => void afficher(), DELAI_CURSEUR);
+  });
+  map.on('moveend', () => {
+    if (actif) majLecture();
+  });
   map.on('style.load', () => {
-    if (actif) dessiner();
+    if (actif && affichee) poserImage(affichee.url);
   });
   surPreferences(() => {
     majLegende();
     afficherEcheance();
+    majLecture();
   });
   majLegende();
 
@@ -266,17 +232,16 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
       actif = true;
       panneau.afficher();
       pastille.montrer(true);
-      grille = quadrillage(vueActuelle());
       afficherEcheance();
-      void chargerManquants();
+      void afficher();
     },
     fermer() {
       actif = false;
+      demande += 1;
       clearTimeout(minuteur);
-      controleur?.abort();
-      controleur = null;
       panneau.masquer();
       pastille.montrer(false);
+      affichee = null;
       retirerCouche();
     },
   };

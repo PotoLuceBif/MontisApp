@@ -42,10 +42,36 @@ function serviceWorker() {
   };
 }
 
+// Les fonctions de api/ (relais) tournent sur Vercel ; en développement et en prévisualisation,
+// le serveur de Vite les sert lui-même, avec la même signature (requête et réponse Node)
+function relais() {
+  const brancher = (serveur, charger) => {
+    serveur.middlewares.use(async (req, res, suite) => {
+      const lu = /^\/api\/([a-z-]+)(?:\?|$)/.exec(req.url ?? '');
+      if (!lu) return suite();
+      try {
+        const module = await charger(`/api/${lu[1]}.js`);
+        await module.default(req, res);
+      } catch (erreur) {
+        suite(erreur);
+      }
+    });
+  };
+  return {
+    name: 'montis-relais',
+    configureServer(serveur) {
+      brancher(serveur, (chemin) => serveur.ssrLoadModule(chemin));
+    },
+    configurePreviewServer(serveur) {
+      brancher(serveur, (chemin) => import(new URL(`.${chemin}`, import.meta.url).href));
+    },
+  };
+}
+
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 
 export default defineConfig({
-  plugins: [serviceWorker()],
+  plugins: [serviceWorker(), relais()],
   // Version affichée dans les Paramètres
   define: { __VERSION_MONTIS__: JSON.stringify(version) },
   build: {
