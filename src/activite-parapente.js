@@ -188,7 +188,8 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
     pinVent?.remove();
     pinVent = null;
   }
-  function analyserVent(terrain, retour) {
+  // `nomPin` : le pin qui marque le lieu le temps de l'analyse (celui du terrain, par défaut)
+  function analyserVent(terrain, retour, nomPin = pinTerrain(terrain)) {
     const ouvrirVent = () => {
       retourVent = () => {
         retourVent = null;
@@ -196,7 +197,7 @@ export function creerActiviteParapente(map, { fermerMenu, ouvrirMenu, analyseVen
         retour();
       };
       retirerPinVent();
-      pinVent = new maplibregl.Marker({ element: creerPinSeul(pinTerrain(terrain)).element, anchor: 'bottom', offset: DECALAGE_PIN })
+      pinVent = new maplibregl.Marker({ element: creerPinSeul(nomPin).element, anchor: 'bottom', offset: DECALAGE_PIN })
         .setLngLat([terrain.lon, terrain.lat])
         .addTo(map);
       if (vueActive === 'vent') {

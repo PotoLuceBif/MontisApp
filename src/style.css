@@ -3153,6 +3153,8 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
 .bf-note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; }
 .bf-note[hidden], .bf-description[hidden] { display: none; }
 .bf-description { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.bf-raccourcis { display: grid; gap: 6px; }
+.bf-raccourcis:empty { display: none; }
 .bf-source { margin: 0; color: var(--texte-2); font-size: 11.5px; }
 .bf-source a { color: var(--accent); font-weight: 650; }
 @media (max-width: 640px) {

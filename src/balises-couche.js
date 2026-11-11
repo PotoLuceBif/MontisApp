@@ -89,7 +89,7 @@ function dessinerPastille(palier, moyenne) {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche } = {}) {
+export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche, analyserVent = null } = {}) {
   let stations = [];
   let source = null;
   let visible = false;
@@ -101,6 +101,7 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   const fiche = creerFicheBalise(map, {
     onFermer: () => marquerSelection(null),
     onRetour: onRetourFiche,
+    analyserVent,
     onApercu(point) {
       apercu = point;
       if (apercuPlanifie) return;

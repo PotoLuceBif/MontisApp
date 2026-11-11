@@ -231,6 +231,9 @@ const ECRANS = [
   { nom: 'parapente-terrain-autorisation', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.0605, 45.6437], zoom: 13, bearing: 0, pitch: 0 }), toucherObjet('terrains-ffvl-autorisations', 'autorisation', 'true')] },
   { nom: 'parapente-terrain-interdit', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.08, 45.62], zoom: 12 }), toucherObjet('terrains-ffvl-points', 'classe', 'interdit')] },
   { nom: 'parapente-balise-ffvl', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-')] },
+  // Raccourcis de la fiche d'une balise (lot 3.5) : Analyser le vent ici et Prévisions ici, puis le profil au pied de la balise
+  { nom: 'parapente-balise-raccourcis', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-'), attendre('.bf-raccourcis .point-lien'), defiler('.bf-raccourcis')] },
+  { nom: 'parapente-balise-profil', simuler: true, actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.6, 45.5], zoom: 9 }), toucherObjet('balises-vent-pastilles', 'id', 'ffvl-'), attendre('.bf-raccourcis .point-lien'), clicVisible('.bf-raccourcis .point-lien'), attendre('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(1500), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
   { nom: 'randonnee', actions: [module('rando')] },
   { nom: 'velo', actions: [module('velo')] },
   { nom: 'ski', actions: [module('ski')] },
