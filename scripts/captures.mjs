@@ -254,6 +254,9 @@ const ECRANS = [
   { nom: 'ski-rando-piste', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1000), clic('.ski-pratiques [data-pratique="piste"]'), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
+  // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
+  { nom: 'meteo-recherche', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'meteo-recherche-choisi', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), attendre('.meteo-recherche-liste .rando-item'), clic('.meteo-recherche-liste .rando-item'), (p) => p.waitForTimeout(3000)] },
   // Frise heure par heure : lecture d'une heure, choix des lignes, jour choisi
   { nom: 'meteo-frise', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire')] },
   { nom: 'meteo-frise-lecture', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(1500), defiler('.meteo-horaire'), lireFrise(0.3), (p) => p.waitForTimeout(800), defiler('.meteo-horaire')] },

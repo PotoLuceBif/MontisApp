@@ -3,7 +3,7 @@ import { Marker } from 'maplibre-gl';
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { formatAltitude, formatNeige, formatPluie, formatTemp, formatVent } from './unites.js';
-import { surPreferences } from './preferences.js';
+import { langue, surPreferences } from './preferences.js';
 import { formatDate, heureCourte, nomJour, surLangue, t, ta, ti, tt, poser } from './i18n.js';
 import { pointCardinal } from './vent-calcul.js';
 import { creerSectionSoleil } from './meteo-soleil.js';
@@ -399,6 +399,13 @@ export function creerConditionsLocales(map) {
   panneau.innerHTML = `
     <section class="meteo-emplacement" ${ta('aria-label', 'meteo.lieu')}>
       <p class="meteo-emplacement-titre" ${ti('meteo.lieu')}>${t('meteo.lieu')}</p>
+      <div class="meteo-recherche">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="text" class="meteo-recherche-champ" autocomplete="off" enterkeyhint="search" spellcheck="false"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="meteo-recherche-liste"
+          ${ta('placeholder', 'meteo.recherche')} ${ta('aria-label', 'meteo.recherche-aria')}>
+      </div>
+      <div class="meteo-recherche-liste rando-liste" id="meteo-recherche-liste" role="listbox" hidden></div>
       <div class="meteo-mode-lieu" role="group" ${ta('aria-label', 'meteo.lieu')}>
         <button type="button" class="meteo-mode-centre" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -451,6 +458,8 @@ export function creerConditionsLocales(map) {
   const titreHoraire = horaire.querySelector('h3');
   const heures = panneau.querySelector('.meteo-heures');
   const texteBoutonChoisir = boutonChoisir.querySelector('span');
+  const champRecherche = panneau.querySelector('.meteo-recherche-champ');
+  const listeRecherche = panneau.querySelector('.meteo-recherche-liste');
   const soleil = creerSectionSoleil();
   panneau.querySelector('.meteo-jours').after(soleil.section);
   // La frise montre l'évolution ; les cartes en dessous gardent le détail de chaque heure
@@ -959,6 +968,128 @@ export function creerConditionsLocales(map) {
     }
   }
 
+  // ---------- Recherche d'un lieu par son nom ----------
+  // Photon, limité aux lieux habités : la carte suit le lieu choisi, qui devient le point des prévisions
+  let minuteurRecherche = null;
+  let controleurRecherche = null;
+  let resultatsRecherche = [];
+
+  function fermerRecherche() {
+    clearTimeout(minuteurRecherche);
+    controleurRecherche?.abort();
+    controleurRecherche = null;
+    listeRecherche.hidden = true;
+    listeRecherche.replaceChildren();
+    champRecherche.setAttribute('aria-expanded', 'false');
+    resultatsRecherche = [];
+  }
+
+  function messageRecherche(texte, attente = false) {
+    const bloc = document.createElement('div');
+    bloc.className = 'rando-attente';
+    if (attente) {
+      const roue = document.createElement('span');
+      roue.className = 'rech-attente';
+      bloc.append(roue);
+    }
+    bloc.append(texte);
+    listeRecherche.replaceChildren(bloc);
+    listeRecherche.hidden = false;
+    champRecherche.setAttribute('aria-expanded', 'true');
+  }
+
+  function choisirLieu(feature) {
+    const [longitude, latitude] = feature.geometry.coordinates;
+    fermerRecherche();
+    champRecherche.value = '';
+    champRecherche.blur();
+    annulerSelection();
+    position = { longitude, latitude };
+    positionChoisie = true;
+    ecrire(METEO_LOCATION, position);
+    // Sur téléphone, le panneau couvre le bas de la carte : le repère se pose au milieu de ce qui reste visible
+    const carte = map.getContainer().getBoundingClientRect();
+    const haut = panneau.getBoundingClientRect().top;
+    const cache = haut > carte.top && haut < carte.bottom ? carte.bottom - haut : 0;
+    map.flyTo({ center: [longitude, latitude], offset: [0, -cache / 2], zoom: Math.max(map.getZoom(), 10), duration: 1200, essential: true });
+    chargerPrevisions();
+  }
+
+  function afficherResultats() {
+    if (!resultatsRecherche.length) {
+      messageRecherche(t('meteo.recherche-vide'));
+      return;
+    }
+    listeRecherche.replaceChildren(...resultatsRecherche.map((feature, i) => {
+      const p = feature.properties ?? {};
+      const ligne = document.createElement('div');
+      ligne.className = 'rando-item';
+      ligne.id = `meteo-lieu-${i}`;
+      ligne.setAttribute('role', 'option');
+      const textes = document.createElement('div');
+      textes.className = 'rando-item-textes';
+      const nom = document.createElement('div');
+      nom.className = 'rando-item-nom';
+      nom.textContent = p.name;
+      const sous = document.createElement('div');
+      sous.className = 'rando-item-sous';
+      sous.textContent = [p.postcode, p.county ?? p.state, p.country].filter(Boolean).join(' · ');
+      textes.append(nom, sous);
+      ligne.append(textes);
+      ligne.addEventListener('click', () => choisirLieu(feature));
+      return ligne;
+    }));
+    listeRecherche.hidden = false;
+    champRecherche.setAttribute('aria-expanded', 'true');
+  }
+
+  async function chercherLieu(texte) {
+    controleurRecherche?.abort();
+    const requete = new AbortController();
+    controleurRecherche = requete;
+    messageRecherche(t('meteo.recherche-attente'), true);
+    const centre = map.getCenter();
+    const params = new URLSearchParams({
+      q: texte,
+      limit: '6',
+      lang: langue(),
+      lat: centre.lat.toFixed(3),
+      lon: centre.lng.toFixed(3),
+      osm_tag: 'place',
+    });
+    try {
+      const reponse = await requeteReseau(`${API_RECHERCHE_GEOCODAGE}?${params}`, { signal: requete.signal });
+      if (!reponse.ok) throw erreurHttp(reponse);
+      const donnees = await reponse.json();
+      if (controleurRecherche !== requete) return;
+      resultatsRecherche = (donnees?.features ?? []).filter((f) => f?.properties?.name && f.geometry?.coordinates?.length === 2);
+      afficherResultats();
+    } catch (erreur) {
+      if (controleurRecherche !== requete) return;
+      console.warn('Recherche météo :', erreur);
+      messageRecherche(t('meteo.recherche-erreur', { message: messageErreur(erreur) }));
+    }
+  }
+
+  champRecherche.addEventListener('input', () => {
+    clearTimeout(minuteurRecherche);
+    const texte = champRecherche.value.trim();
+    if (texte.length < 2) {
+      fermerRecherche();
+      return;
+    }
+    minuteurRecherche = setTimeout(() => void chercherLieu(texte), 350);
+  });
+  champRecherche.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && resultatsRecherche.length) {
+      event.preventDefault();
+      choisirLieu(resultatsRecherche[0]);
+    } else if (event.key === 'Escape') {
+      fermerRecherche();
+      champRecherche.value = '';
+    }
+  });
+
   boutonChoisir.addEventListener('click', choisirSurCarte);
   boutonReessayer.addEventListener('click', () => void chargerPrevisions());
   const suivreCentre = () => {
@@ -1031,6 +1162,7 @@ export function creerConditionsLocales(map) {
       actif = false;
       clearInterval(minuteurSoleil);
       annulerSelection();
+      fermerRecherche();
       controleur?.abort();
       marqueur?.remove();
       marqueur = null;
