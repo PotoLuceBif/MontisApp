@@ -28,6 +28,7 @@ export function initCalquesOfficiels(map, { zones, surChangement }) {
       ordre: 40 + rang,
       nom: () => (couvreCentre(c) ? t(c.court) : t('calque.hors-zone', { nom: t(c.court) })),
       legende: () => MINI_CALQUE,
+      rubrique: 'fond',
       onOuvrir: () => ouvrirReglage('fond'),
       onRetirer: () => basculer(c.id, false),
     }));

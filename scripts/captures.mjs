@@ -323,8 +323,18 @@ const ECRANS = [
     nom: 'carte-pastilles',
     actions: [
       vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), module('elements'),
-      (p) => p.evaluate(() => document.querySelectorAll('#outil-rapide-panneau-carte .option-case input').forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
+      (p) => p.evaluate(() => [...document.querySelectorAll('#outil-rapide-panneau-carte .option-case input')].filter((c) => c.offsetParent !== null).forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
       clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+    ],
+  },
+  // Pastille d'une rubrique (deux couches ou plus) : un appui ouvre la rubrique
+  {
+    nom: 'carte-pastilles-rubrique',
+    actions: [
+      vue(AIGUILLES), module('elements'),
+      (p) => p.evaluate(() => [...document.querySelectorAll('#outil-rapide-panneau-carte .option-case input')].filter((c) => c.offsetParent !== null).forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
+      clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+      clic('.couche-pastille-rubrique:not([hidden]) .couche-pastille-corps'),
     ],
   },
   // Appui sur une pastille : le panneau Carte s'ouvre sur son réglage

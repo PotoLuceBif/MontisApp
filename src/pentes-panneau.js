@@ -126,6 +126,7 @@ export function creerOptionPentes(map) {
       return t(couche.choix === 'orientation' ? 'pentes.orientation' : 'pentes.pentes');
     },
     legende: () => (couche.choix === 'orientation' ? MINI_ROSE : MINI_PENTES),
+    rubrique: 'relief',
     onOuvrir: () => ouvrirReglage('relief'),
     onRetirer: () => choisir('aucune'),
   });

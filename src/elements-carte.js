@@ -94,6 +94,7 @@ export function creerElementsCarte(map) {
 
       // Pastille sur la carte tant que l'élément est affiché : ✕ l'enlève, un appui ouvre son onglet
       const pastille = creerPastilleCouche({
+        rubrique: 'elements',
         ordre: 10 + rang,
         nom: () => t(`elements.court-${c.cle}`),
         onOuvrir: () => {

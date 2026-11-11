@@ -3,7 +3,7 @@
 // pluie. Calculs dans profil-calcul.js ; même modèle que la carte du vent (Météo-France).
 import { Marker } from 'maplibre-gl';
 import { VARIABLES_PROFIL, profilJour } from './profil-calcul.js';
-import { VENT_TRES_FORT, couleurInterface, iconeVent, libellesPaliersVent, paletteInterface } from './vent-cadran.js';
+import { VENT_TRES_FORT, cadranVent, couleurInterface, iconeVent, libellesPaliersVent, paletteInterface } from './vent-cadran.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { formatAltitude, formatPluie, formatVent, imperial, libelleVent, nombre, valeurAltitude, valeurVent } from './unites.js';
 import { dateHorsLigne, estHorsLigne } from './hors-ligne.js';
@@ -41,9 +41,12 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
   element.className = 'vent-profil';
   element.innerHTML = `
     <div class="vent-profil-entete">
-      <strong ${ti('vent.profil-titre')}>${t('vent.profil-titre')}</strong>
-      <span data-profil-lieu></span>
-      <button type="button" class="vent-profil-haut" aria-pressed="false" ${ti('vent.profil-haut')}>${t('vent.profil-haut')}</button>
+      <div class="vent-profil-titres">
+        <strong ${ti('vent.profil-titre')}>${t('vent.profil-titre')}</strong>
+        <span data-profil-lieu></span>
+        <button type="button" class="vent-profil-haut" aria-pressed="false" ${ti('vent.profil-haut')}>${t('vent.profil-haut')}</button>
+      </div>
+      <div class="vent-profil-rose" data-profil-rose></div>
     </div>
     <div class="vent-profil-grille" role="img" ${ta('aria-label', 'vent.profil-aria')}></div>
     <p class="vent-profil-lecture" aria-live="polite"></p>
@@ -62,7 +65,10 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
   const statut = element.querySelector('.vent-profil-statut');
   // L'échelle des vents, rappelée sous la grille (unités et thème suivis par redessiner)
   const legendeVents = element.querySelector('.vent-profil-vents');
+  // Rose fixe, nord en haut : les flèches de la grille se lisent comme sur une carte
+  const rose = element.querySelector('[data-profil-rose]');
   function majLegendeVents() {
+    rose.innerHTML = cadranVent(null, 0, '', true);
     const couleurs = paletteInterface();
     legendeVents.innerHTML = libellesPaliersVent().map((libelle, i) => `<span style="--vent-couleur: ${couleurs[i]}">${iconeVent(i)} <b>${libelle}</b></span>`).join('')
       + `<span>${libelleVent()}</span>`;
