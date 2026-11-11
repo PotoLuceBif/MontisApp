@@ -73,6 +73,13 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
   - **Mesurer d'abord :** temps de démarrage (chargement, menu visible, carte utilisable) sur un téléphone moyen simulé en 4G lente, fluidité de la carte avec plusieurs couches allumées (pentes, ombre, vent), mémoire sur téléphone. Rapport chiffré avant et après, dans `docs/historique.md`.
   - **Alléger :** ne charger au démarrage que la langue choisie (les deux fichiers font 135 Ko) ; repérer le code chargé au démarrage sans en avoir besoin ; garder en cache les réponses lentes (Overpass, avalanches, balises) plutôt que de les redemander à chaque ouverture ; vérifier que les mises à jour du service worker arrivent bien chez les utilisateurs.
   - **Déployer en une commande :** `npm run deployer` lance les tests et le build, publie la preview Vercel, pose l'alias `montisapp-git-<branche>` et donne le lien ; il s'arrête au premier échec.
+- [ ] **0.9 Le fond Montis** (demandé par le propriétaire le 11 novembre 2026, « dans pas très longtemps » : ce qui doit démarquer Montis). Le fond « Montis · relief » est entièrement à nous : données OpenFreeMap (OSM, sans couleur), style écrit dans `style-montis.js`, ombrage et courbes calculés sur l'appareil depuis Terrain Tiles. Pistes, de la plus visible à la plus fine :
+  - **Version sombre** du fond, assortie aux thèmes sombre et cyberpunk (aujourd'hui la carte reste claire quand l'interface est sombre).
+  - **Caractère montagne** : rochers et éboulis, sable, zones humides (déjà dans les tuiles, pas dessinés) ; glaciers plus lisibles ; ombrage du relief travaillé (double éclairage, ombres teintées) ; teintes d'altitude, à la manière des cartes suisses.
+  - **Courbes** : maîtresses marquées, intermédiaires discrètes, cotes mieux placées.
+  - **Sentiers** : hiérarchie chemin carrossable, sentier, passage difficile, couleurs pensées pour la rando et le vélo.
+  - **Noms** : lacs, rivières, cols, glaciers, routes ; police plus élégante servie par Montis (fin de la dépendance au serveur de démonstration `demotiles.maplibre.org`).
+  - **À décider :** la direction visuelle, d'après des captures de cartes que le propriétaire aime (swisstopo, IGN, une appli…) ; l'ordre des pistes ou tout d'un coup.
 
 ### Phase 1 : fin
 
