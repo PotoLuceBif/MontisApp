@@ -84,6 +84,7 @@ export function initOmbres(map, { details, eteindre }) {
     ordre: 1,
     nom: () => t(nuit() ? 'ombres.pastille-nuit' : 'ombres.pastille', { heure: heureDuLieu(reglage.instant(), reglage.decalage()) }),
     legende: () => cadran('mini-cadran'),
+    rubrique: 'relief',
     onOuvrir: () => ouvrirReglage('relief'),
     onRetirer: () => eteindre(),
   });

@@ -137,6 +137,7 @@ export function initGeologie(map, { surEtat, eteindre }) {
     ordre: 5,
     nom: () => (['ok', 'incomplete'].includes(etatCouche) ? t('geologie.court') : t(`geologie.court-${etatCouche}`)),
     legende: () => MINI_GEOLOGIE,
+    rubrique: 'nature',
     onOuvrir: () => ouvrirReglage('nature'),
     onRetirer: () => eteindre(),
   });
