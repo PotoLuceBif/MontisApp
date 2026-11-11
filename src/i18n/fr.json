@@ -1537,6 +1537,7 @@
   "bulletin.neige-h72": "en 72 h",
   "bulletin.neige-sol": "au sol",
   "bulletin.neige-note": "Estimation du modèle Open-Meteo au centre de la carte (vers {altitude}), pas une mesure.",
+  "bulletin.neige-note-station": "Estimation du modèle Open-Meteo au point de la station (vers {altitude}), pas une mesure.",
   "bulletin.activite": "Activité avalancheuse",
   "bulletin.manteau": "Manteau neigeux",
   "bulletin.meteo": "Météo",

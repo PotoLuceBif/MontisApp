@@ -12,6 +12,9 @@ import { requete as requeteReseau } from './requete.js';
 import { creerSkiRando } from './activite-skirando.js';
 import { etat } from './options-carte.js';
 import { enAttente } from './demandes.js';
+import { chargerBulletin, chargerNeigeRecente, creerBulletinDetaille } from './bulletin-detaille.js';
+import { zonesExposees } from './bulletin-calcul.js';
+import { messageErreur } from './requete.js';
 
 const URL_STATIONS = '/data/stations-ski.json';
 const URL_PHOTON = 'https://photon.komoot.io/api/';
@@ -19,6 +22,10 @@ const MAX_RESULTATS = 25;
 const MAX_LISTE_ZONE = 30;
 const DISTANCE_DOUBLON_M = 5000;
 const DISTANCE_DOMAINE_PROCHE_M = 10000;
+const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+// Pas de bulletin publié : la neige récente s'affiche seule
+const NOTE_NEIGE = { noteNeige: 'bulletin.neige-note-station' };
+const BULLETIN_VIDE = { niveaux: [], orientations: [], problemes: [], activite: [], manteau: [], meteo: [], tendance: { type: null, texte: [] }, max: 0 };
 
 const ICONE_RECHERCHE = '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m16 16 4.5 4.5"/></svg>';
 const ICONE_ZONE = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><circle cx="12" cy="12" r="2.6"/></svg>';
@@ -114,6 +121,7 @@ function creerSkiPiste(map) {
   let stationsZone = [];
   let ongletFiche = 'domaine';
   let conditions = {}; // par onglet : { feature, statut : chargement | ok | erreur, donnees }
+  let bulletinOuvert = !!lire('ski-bulletin-ouvert', false);
   let filtre = lire('ski-filtre', 'tous');
   const favoris = creerFavoris('ski-favoris');
   const visite = creerVisiteStation(map);
@@ -322,6 +330,7 @@ function creerSkiPiste(map) {
     const etat = conditions.risque?.feature === fiche.choisi ? conditions.risque : null;
     if (!station.massif || etat?.statut === 'ok') {
       bloc.append(creerBlocRisque(station.massif ? etat.donnees : null, station));
+      if (station.massif) bloc.append(...creerBlocBulletin(fiche.choisi));
     } else if (etat?.statut === 'erreur') {
       bloc.append(el('div', 'rando-attente', t('ski.risque-erreur')));
     } else {
@@ -332,6 +341,74 @@ function creerSkiPiste(map) {
 
     bloc.append(el('p', 'ski-conditions-note', t('ski.pentes-note')));
     return bloc;
+  }
+
+  // ---------- Bulletin détaillé du massif de la station ----------
+  // Comme « Avalanches ici » du ski de rando ; pendant une visite, ses pentes s'affichent sur le décor.
+  // Mis à jour sur place : redessiner la fiche ferait sauter son défilement.
+  function chargerBulletinStation(feature) {
+    const cle = `${feature.properties.massif}/${langue()}`;
+    if (conditions.bulletin?.feature === feature && conditions.bulletin.cle === cle) return conditions.bulletin.promesse;
+    const promesse = Promise.allSettled([
+      chargerBulletin(feature.properties.massif, langue()),
+      chargerNeigeRecente(feature.geometry.coordinates),
+    ]).then(([bulletin, neige]) => {
+      if (bulletin.status === 'rejected') throw bulletin.reason;
+      return { bulletin: bulletin.value, neige: neige.status === 'fulfilled' ? neige.value : null };
+    });
+    conditions.bulletin = { feature, cle, promesse };
+    promesse.catch((erreur) => {
+      console.warn('Bulletin détaillé de la station :', erreur);
+      if (conditions.bulletin?.promesse === promesse) conditions.bulletin = null; // le prochain dépliage réessaie
+    });
+    return promesse;
+  }
+
+  function remplirBulletin(detail, feature) {
+    detail.hidden = !bulletinOuvert;
+    if (!bulletinOuvert || detail.dataset.rempli) return;
+    detail.dataset.rempli = '1';
+    const attente = el('div', 'rando-attente');
+    attente.append(el('span', 'rech-attente'), t('bulletin.chargement'));
+    detail.replaceChildren(attente);
+    chargerBulletinStation(feature).then(({ bulletin, neige }) => {
+      if (!bulletin) {
+        detail.replaceChildren(el('div', 'rando-attente', t('bulletin.absent')));
+        if (neige) detail.append(creerBulletinDetaille(BULLETIN_VIDE, neige, null, NOTE_NEIGE));
+        return;
+      }
+      const zones = zonesExposees(bulletin);
+      const carte = fiche.enVisite && zones.length ? {
+        actif: visite.pentesBulletinActives(),
+        basculer: (evenement) => {
+          const actif = !visite.pentesBulletinActives();
+          visite.pentesBulletin(actif ? zones : null);
+          evenement.currentTarget.setAttribute('aria-pressed', String(actif));
+          evenement.currentTarget.textContent = t(actif ? 'bulletin.carte-masquer' : 'bulletin.carte-voir');
+        },
+      } : null;
+      detail.replaceChildren(creerBulletinDetaille(bulletin, neige, carte, NOTE_NEIGE));
+    }, (erreur) => {
+      delete detail.dataset.rempli;
+      detail.replaceChildren(el('div', 'rando-attente', t('bulletin.erreur', { raison: messageErreur(erreur) })));
+    });
+  }
+
+  function creerBlocBulletin(feature) {
+    const bouton = el('button', 'skirando-bulletin-bouton');
+    bouton.type = 'button';
+    bouton.innerHTML = CHEVRON;
+    bouton.prepend(el('span', null, t('bulletin.detaille')));
+    bouton.setAttribute('aria-expanded', String(bulletinOuvert));
+    const detail = el('div', 'skirando-bulletin');
+    bouton.addEventListener('click', () => {
+      bulletinOuvert = !bulletinOuvert;
+      ecrire('ski-bulletin-ouvert', bulletinOuvert);
+      bouton.setAttribute('aria-expanded', String(bulletinOuvert));
+      remplirBulletin(detail, feature);
+    });
+    remplirBulletin(detail, feature);
+    return [bouton, detail];
   }
 
   // Les conditions ne se chargent qu'à l'ouverture de leur onglet, pour limiter les appels
