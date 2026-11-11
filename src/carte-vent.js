@@ -3,7 +3,10 @@ import { Popup } from 'maplibre-gl';
 import { altitude as altitudeDem, preparerTuiles } from './portee.js';
 import {
   HAUTEURS_VENT,
+  PLAFOND_SANS_NIVEAUX_HAUTS,
   VARIABLES_VENT,
+  VARIABLES_VENT_HAUTS,
+  couchesVolume,
   colonneVent,
   creerChamp,
   depuisComposantes,
@@ -34,7 +37,7 @@ const DUREE_VALIDITE = 60 * 60 * 1000; // au-delà, on propose de recharger les 
 const DELAI_CURSEUR = 120; // ms entre deux mises à jour pendant que le curseur glisse
 const ECHEANCE_MAX = 48;
 const MESSAGE_LIMITE = 'vent.limite';
-const PLAFONDS_VOLUME = [500, 1000, 2000];
+const PLAFONDS_VOLUME = [500, 1000, 2000, 3000, 4000, 5000, 8000, 10000];
 const ETENDUES_VOLUME = [5000, 10000, 20000, 40000]; // demi-côté du bloc, en mètres
 const NOEUDS_VOLUME = 6; // par côté : le vent est interpolé entre ces points
 const MAILLE_RELIEF = 36;
@@ -210,7 +213,6 @@ export function creerCarteVent(map) {
           </fieldset>
           <label class="vent-volume-couche">${tt('vent.couches')}<select ${ta('aria-label', 'vent.couche-aria')}>
             <option value="toutes" ${ti('vent.toutes')}>${t('vent.toutes')}</option>
-            ${HAUTEURS_VENT.map((hauteur) => `<option value="${hauteur}">${LIBELLE_HAUTEUR(hauteur)}</option>`).join('')}
           </select></label>
         </div>
         <div class="vent-volume-scene">
@@ -336,8 +338,14 @@ export function creerCarteVent(map) {
   if (!HAUTEURS_VENT.includes(Number(selecteurNiveau.value))) selecteurNiveau.value = '10';
   const echeanceLue = Math.round(Number(lire('vent-echeance', 0)));
   curseurTemps.value = String(Number.isFinite(echeanceLue) ? Math.max(0, Math.min(ECHEANCE_MAX, echeanceLue)) : 0);
-  const coucheLue = String(lire('vent-volume-couche', 'toutes'));
-  selecteurCouche.value = coucheLue === 'toutes' || HAUTEURS_VENT.includes(Number(coucheLue)) ? coucheLue : 'toutes';
+  // Les couches proposées suivent la hauteur du volume
+  function majOptionsCouche(voulue = selecteurCouche.value) {
+    const hauteurs = couchesVolume(plafondVolume);
+    selecteurCouche.querySelectorAll('option[value]:not([value="toutes"])').forEach((option) => option.remove());
+    selecteurCouche.append(...hauteurs.map((hauteur) => Object.assign(document.createElement('option'), { value: String(hauteur), textContent: LIBELLE_HAUTEUR(hauteur) })));
+    selecteurCouche.value = hauteurs.includes(Number(voulue)) ? String(voulue) : 'toutes';
+  }
+  majOptionsCouche(String(lire('vent-volume-couche', 'toutes')));
   panneau.querySelectorAll('.vent-carte-legende [data-palier]').forEach((pastille, index) => {
     pastille.style.setProperty('--vent-couleur', PALETTE_CARTE[index]);
   });
@@ -510,12 +518,8 @@ export function creerCarteVent(map) {
       return index < 0 ? [] : colonneVent(donnees.hourly, index, donnees.elevation);
     });
     const coucheChoisie = selecteurCouche.value === 'toutes' ? null : Number(selecteurCouche.value);
-    let hauteurs = HAUTEURS_VENT.filter((hauteur) => hauteur <= plafondVolume);
-    if (coucheChoisie !== null) {
-      hauteurs = hauteurs.filter((hauteur) => hauteur === coucheChoisie);
-    } else if (hauteurs.length > 6) {
-      hauteurs = hauteurs.filter((hauteur) => hauteur !== 100); // trop serrée à cette échelle
-    }
+    let hauteurs = couchesVolume(plafondVolume);
+    if (coucheChoisie !== null) hauteurs = hauteurs.filter((hauteur) => hauteur === coucheChoisie);
     const parCote = coucheChoisie !== null ? FLECHES_PAR_COTE_COUCHE_SEULE : FLECHES_PAR_COTE;
     const cellule = (2 * demi) / parCote;
     const kLng = metresParDegreLng(centre.lat);
@@ -638,18 +642,19 @@ export function creerCarteVent(map) {
 
   // Demande à Open-Meteo les points absents du cache. Une seule requête et un seul
   // modèle pour toutes les vues : le sol et l'altitude restent cohérents.
-  async function chargerPointsManquants(positions, signal) {
+  // `hauts` : aussi les niveaux de 7 000 à 10 500 m (volume au-delà de 3 000 m)
+  async function chargerPointsManquants(positions, signal, hauts = false) {
     const maintenant = Date.now();
     const manquantes = positions.filter((position) => {
       const entree = cache.get(cleePosition(position));
-      return !entree || maintenant - entree.recue > DUREE_CACHE;
+      return !entree || maintenant - entree.recue > DUREE_CACHE || (hauts && !entree.hauts);
     });
     if (!manquantes.length) return;
     const params = new URLSearchParams({
       latitude: manquantes.map(({ latitude }) => latitude.toFixed(4)).join(','),
       longitude: manquantes.map(({ longitude }) => longitude.toFixed(4)).join(','),
       current: 'temperature_2m',
-      hourly: [...VARIABLES_VENT, 'wind_gusts_10m'].join(','),
+      hourly: [...VARIABLES_VENT, ...(hauts ? VARIABLES_VENT_HAUTS : []), 'wind_gusts_10m'].join(','),
       models: 'meteofrance_seamless',
       forecast_days: '3',
       timezone: 'auto',
@@ -670,6 +675,7 @@ export function creerCarteVent(map) {
       cache.set(cleePosition(manquantes[index]), {
         donnees: entree,
         recue: dateEnregistree ?? Date.now(),
+        hauts,
       });
     });
     while (cache.size > 400) cache.delete(cache.keys().next().value);
@@ -689,11 +695,12 @@ export function creerCarteVent(map) {
     poser(statutVolume, 'vent.volume-chargement');
     const minuteurDelai = setTimeout(() => requete.abort(), DELAI_CHARGEMENT);
     try {
-      await chargerPointsManquants(grille.positions, requete.signal);
+      const hauts = plafondVolume > PLAFOND_SANS_NIVEAUX_HAUTS;
+      await chargerPointsManquants(grille.positions, requete.signal, hauts);
       const reponses = grille.positions.map((position) => cache.get(cleePosition(position)).donnees);
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
-      zoneVolumeCapturee = { centre, demi, grille, reponses, recue: dateEnregistree ?? Date.now() };
+      zoneVolumeCapturee = { centre, demi, grille, reponses, hauts, recue: dateEnregistree ?? Date.now() };
       zoneVolume.textContent = `±${formatDistance(demi)}`;
       volume.definirRelief(relief);
       afficherEcheance();
@@ -968,9 +975,13 @@ export function creerCarteVent(map) {
       if (!radio.checked) return;
       plafondVolume = Number(radio.value);
       ecrire('vent-volume-plafond', plafondVolume);
-      if (Number(selecteurCouche.value) > plafondVolume) {
-        selecteurCouche.value = 'toutes';
-        ecrire('vent-volume-couche', 'toutes');
+      majOptionsCouche();
+      ecrire('vent-volume-couche', selecteurCouche.value);
+      // Au-delà de 3 000 m, il faut les niveaux hauts : la zone se recharge si elle ne les a pas
+      if (plafondVolume > PLAFOND_SANS_NIVEAUX_HAUTS && zoneVolumeCapturee && !zoneVolumeCapturee.hauts) {
+        zoneVolumeCapturee = null;
+        void chargerProfilVolume();
+        return;
       }
       construireCouches();
     });

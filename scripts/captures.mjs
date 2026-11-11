@@ -269,6 +269,9 @@ const ECRANS = [
   { nom: 'meteo-vent', actions: [module('vent')] },
   // Profil heure par heure (lot 3.5) : vent par altitude, thermiques, cumulus (prévisions simulées)
   { nom: 'meteo-vent-profil', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
+  // Volume 3D jusqu'à 10 000 m et profil jusqu'à 10 000 m
+  { nom: 'meteo-vent-volume-10000', simuler: true, actions: [module('vent'), attendre('#vent-vue-volume-onglet'), clic('#vent-vue-volume-onglet'), (p) => p.waitForTimeout(2000), clic('input[name="vent-volume-plafond"][value="10000"]'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'meteo-vent-profil-haut', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), clic('.vent-profil-haut'), (p) => p.waitForTimeout(1500), defiler('.vent-profil-entete')] },
   { nom: 'meteo-vent-profil-heure', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), (p) => p.evaluate(() => { const zones = document.querySelectorAll('.vent-profil-zone'); zones[Math.min(7, zones.length - 1)].dispatchEvent(new MouseEvent('click', { bubbles: true })); }), (p) => p.waitForTimeout(1500), defiler('.vent-profil-grille')] },
   // Pastilles météo : le radar reste panneau Météo fermé ; le vent, panneau Carte ouvert par-dessus (téléphone)
   { nom: 'meteo-radar-pastille', actions: [module('radar'), (p) => p.waitForTimeout(1500), clic('#outil-rapide-panneau-meteo .outil-rapide-fermer')] },

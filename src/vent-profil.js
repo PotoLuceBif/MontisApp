@@ -9,6 +9,7 @@ import { formatAltitude, formatPluie, formatVent, imperial, nombre, valeurAltitu
 import { dateHorsLigne, estHorsLigne } from './hors-ligne.js';
 import { erreurHttp, messageErreur, requete } from './requete.js';
 import { nomJour, poser, t, ta, ti, tt } from './i18n.js';
+import { lire, ecrire } from './reglages.js';
 
 const API = 'https://api.open-meteo.com/v1/forecast';
 const DUREE_CACHE = 15 * 60 * 1000;
@@ -39,6 +40,7 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
     <div class="vent-profil-entete">
       <strong ${ti('vent.profil-titre')}>${t('vent.profil-titre')}</strong>
       <span data-profil-lieu></span>
+      <button type="button" class="vent-profil-haut" aria-pressed="false" ${ti('vent.profil-haut')}>${t('vent.profil-haut')}</button>
     </div>
     <div class="vent-profil-grille" role="img" ${ta('aria-label', 'vent.profil-aria')}></div>
     <p class="vent-profil-lecture" aria-live="polite"></p>
@@ -54,6 +56,16 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
   const lecture = element.querySelector('.vent-profil-lecture');
   const lieu = element.querySelector('[data-profil-lieu]');
   const statut = element.querySelector('.vent-profil-statut');
+  // Jusqu'à 4 000 m par défaut ; l'option monte jusqu'à 10 000 m (choix gardé)
+  const boutonHaut = element.querySelector('.vent-profil-haut');
+  let haut = Boolean(lire('vent-profil-haut', false));
+  boutonHaut.setAttribute('aria-pressed', String(haut));
+  boutonHaut.addEventListener('click', () => {
+    haut = !haut;
+    ecrire('vent-profil-haut', haut);
+    boutonHaut.setAttribute('aria-pressed', String(haut));
+    dessiner();
+  });
 
   const cache = new Map();
   let point = null; // { lng, lat }
@@ -157,7 +169,7 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
     const heures = donnees.hourly.time;
     const cible = heureCible && heures.includes(heureCible) ? heureCible : heures.find((h) => h >= new Date().toISOString().slice(0, 13)) ?? heures[0];
     const jour = cible.slice(0, 10);
-    const profil = profilJour(donnees, jour);
+    const profil = profilJour(donnees, jour, { max: haut ? 10000 : 4000 });
     const n = profil.heures.length;
     lieu.textContent = t('vent.profil-lieu', {
       jour: nomJour(new Date(`${jour}T12:00`)),

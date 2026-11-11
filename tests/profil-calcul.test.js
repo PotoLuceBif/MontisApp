@@ -69,6 +69,17 @@ describe('thermiques', () => {
     expect(thermique(colonne, 0)).toBeNull();
   });
 
+  it('un air instable jusqu’en haut donne un sommet très haut, pas « stable »', () => {
+    const colonne = [
+      { altitude: 500, temperature: 25, humidite: null, u: 0, v: 0 },
+      { altitude: 1000, temperature: 18, humidite: 60, u: 0, v: 0 },
+      { altitude: 12000, temperature: -90, humidite: 60, u: 0, v: 0 },
+    ];
+    const t = thermique(colonne, 20);
+    expect(t).not.toBeNull();
+    expect(t.sommet).toBeGreaterThan(9000);
+  });
+
   it('sans soleil, pas de thermique', () => {
     const colonne = colonneAir(heures(['2026-11-11T13:00']), 0, 500);
     expect(thermique(colonne, 0, 20)).toBeNull();
@@ -111,6 +122,9 @@ describe('profil d’une journée', () => {
 
   it('pose les lignes d’altitude au-dessus du sol', () => {
     expect(altitudesProfil(494).slice(0, 3)).toEqual([494, 750, 1000]);
+    const haut = altitudesProfil(494, { max: 10000 });
+    expect(haut.at(-1)).toBe(10000);
+    expect(haut.filter((a) => a > 4000).every((a) => a % 500 === 0)).toBe(true);
     expect(densiteNuage(80)).toBe(0);
     expect(densiteNuage(100)).toBe(1);
   });

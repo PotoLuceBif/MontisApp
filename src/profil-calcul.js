@@ -8,7 +8,7 @@
 // Sans soleil, pas de thermique.
 import { composantes, depuisComposantes } from './vent-calcul.js';
 
-export const NIVEAUX_PROFIL = [1000, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500];
+export const NIVEAUX_PROFIL = [1000, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 400, 300, 250];
 const CHAMPS_NIVEAU = ['temperature', 'relative_humidity', 'wind_speed', 'wind_direction', 'geopotential_height'];
 
 export const VARIABLES_PROFIL = [
@@ -22,7 +22,7 @@ const PAS_PARTICULE = 25; // m
 const DECLENCHEMENT = 1; // °C : l'air surchauffé au contact du sol
 const RAYONNEMENT_MIN = 50; // W/m² : en dessous, pas assez de soleil pour chauffer le sol
 const EPAISSEUR_MIN = 150; // en dessous, pas de thermique exploitable
-const ALTITUDE_MAX_CALCUL = 7000;
+const ALTITUDE_MAX_CALCUL = 12000;
 
 const nombre = (valeur) => (Number.isFinite(valeur) ? valeur : null);
 
@@ -95,7 +95,8 @@ export function thermique(colonne, rosee, rayonnement = null) {
     if (base === null || altitude <= base) return depart - ADIABATIQUE_SECHE * (altitude - sol.altitude);
     return depart - ADIABATIQUE_SECHE * (base - sol.altitude) - ADIABATIQUE_HUMIDE * (altitude - base);
   };
-  let sommet = null;
+  // Sans fin trouvée sous ALTITUDE_MAX_CALCUL (air instable jusqu'en haut, jour d'orage), le sommet est là
+  let sommet = ALTITUDE_MAX_CALCUL;
   for (let altitude = sol.altitude + PAS_PARTICULE; altitude <= ALTITUDE_MAX_CALCUL; altitude += PAS_PARTICULE) {
     const air = interpoler(colonne, altitude, 'temperature');
     if (air === null || particule(altitude) <= air) {
@@ -103,7 +104,7 @@ export function thermique(colonne, rosee, rayonnement = null) {
       break;
     }
   }
-  if (sommet === null || sommet - sol.altitude < EPAISSEUR_MIN) return null;
+  if (sommet - sol.altitude < EPAISSEUR_MIN) return null;
   const condense = base !== null && base < sommet;
   const plafond = condense ? base : sommet;
   const airPlafond = interpoler(colonne, plafond, 'temperature');
@@ -130,10 +131,13 @@ export function forceThermique(exces) {
 // Couche nuageuse d'après l'humidité : de 0 (sec) à 1 (saturé), à partir de 85 %
 export const densiteNuage = (humidite) => (Number.isFinite(humidite) ? Math.max(0, Math.min(1, (humidite - 85) / 15)) : 0);
 
-// Altitudes des lignes : le sol, puis tous les `pas` mètres jusqu'à `max`
+// Altitudes des lignes : le sol, puis tous les `pas` mètres jusqu'à 4 000 m, et deux fois plus espacées
+// au-delà (profil haut, jusqu'à 10 000 m)
 export function altitudesProfil(elevation, { pas = 250, max = 4000 } = {}) {
   const altitudes = [Math.round(elevation)];
-  for (let altitude = Math.ceil((elevation + pas * 0.4) / pas) * pas; altitude <= max; altitude += pas) altitudes.push(altitude);
+  for (let altitude = Math.ceil((elevation + pas * 0.4) / pas) * pas; altitude <= max; altitude += altitude < 4000 ? pas : 2 * pas) {
+    altitudes.push(altitude);
+  }
   return altitudes;
 }
 

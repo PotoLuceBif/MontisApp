@@ -735,6 +735,7 @@
   "vent.volume": "Volume 3D",
   "vent.profil": "Profil",
   "vent.profil-titre": "Profil heure par heure",
+  "vent.profil-haut": "Jusqu’à 10 000 m",
   "vent.profil-aria": "Profil vertical : vent à chaque altitude, thermiques et nuages, heure par heure",
   "vent.profil-lieu": "{jour} · repère, sol à {sol}",
   "vent.profil-thermiques": "Thermiques",

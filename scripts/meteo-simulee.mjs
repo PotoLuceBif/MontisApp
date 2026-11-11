@@ -60,7 +60,7 @@ function serieHoraire(champ, jour, heure) {
 
 // Niveaux de pression (profil vertical de l'analyse du vent) : atmosphère standard, réchauffée
 // l'après-midi dans les basses couches, sol à 1 035 m comme `elevation`
-const HAUTEURS_NIVEAUX = { 1000: 110, 950: 540, 925: 760, 900: 990, 850: 1460, 800: 1950, 750: 2470, 700: 3010, 650: 3590, 600: 4200, 550: 4850, 500: 5570 };
+const HAUTEURS_NIVEAUX = { 1000: 110, 950: 540, 925: 760, 900: 990, 850: 1460, 800: 1950, 750: 2470, 700: 3010, 650: 3590, 600: 4200, 550: 4850, 500: 5570, 400: 7200, 300: 9150, 250: 10350 };
 function niveauPression(champ, jour, heure, apresMidi) {
   const lu = /^(temperature|relative_humidity|wind_speed|wind_direction|geopotential_height)_(\d+)hPa$/.exec(champ);
   if (!lu) return null;
