@@ -2161,6 +2161,23 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   color: var(--accent);
 }
 .meteo-mode-lieu .meteo-choisir.en-cours { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+/* Recherche du lieu par son nom, au-dessus des deux modes (centre, point), plus discrets */
+.meteo-recherche { position: relative; display: flex; align-items: center; }
+.meteo-recherche svg {
+  position: absolute; left: 12px; width: 18px; height: 18px; fill: none; stroke: var(--texte-2);
+  stroke-width: 2; stroke-linecap: round; pointer-events: none;
+}
+.meteo-emplacement input.meteo-recherche-champ {
+  width: 100%; height: 44px; box-sizing: border-box; margin: 0; padding: 0 12px 0 40px;
+  border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte);
+  font: 15px var(--police);
+}
+.meteo-emplacement input.meteo-recherche-champ:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.meteo-recherche-liste { max-height: min(280px, 40vh); background: var(--surface); }
+.meteo-recherche-liste[hidden] { display: none; }
+.meteo-emplacement .meteo-mode-lieu { padding: 3px; }
+.meteo-emplacement .meteo-mode-lieu button { min-height: 38px; padding: 4px 8px; font-size: 11.5px; }
+.meteo-emplacement .meteo-mode-lieu svg { width: 15px; height: 15px; }
 .meteo-locale-statut { margin: 0; color: var(--texte-2); font-size: 11px; line-height: 1.5; }
 .meteo-locale-statut.erreur { color: #e05b67; }
 .meteo-reessayer {
