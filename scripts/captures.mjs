@@ -435,6 +435,37 @@ const ECRANS = [
       (page) => page.waitForTimeout(5000),
     ],
   },
+  // Bulletin détaillé du massif dans l'onglet Sécurité d'une station en visite, puis ses pentes sur le décor
+  ...['visite-bulletin', 'visite-bulletin-pentes'].map((nom) => ({
+    nom,
+    bulletin: true,
+    actions: [
+      module('ski'),
+      async (page) => {
+        await page.fill('.ski .rando-champ', 'Chamonix');
+        await page.waitForTimeout(1500);
+        await page.press('.ski .rando-champ', 'Enter');
+        await page.waitForTimeout(6000);
+      },
+      // Sur téléphone, la fiche de la visite s'ouvre réduite
+      async (page) => {
+        await page.waitForTimeout(3000);
+        if (await page.$('.fiche-reduite')) await page.click('.fiche-reduite .rando-fiche-reduire:not(.ski-fiche-chercher):not(.ski-fiche-favori)');
+        await page.locator('.ski-onglets [role="tab"]').nth(2).click();
+      },
+      attendre('.ski-securite .skirando-bulletin-bouton'),
+      clic('.ski-securite .skirando-bulletin-bouton'),
+      (p) => p.waitForTimeout(4000),
+      ...(nom === 'visite-bulletin'
+        ? [defiler('.ski-securite .skirando-bulletin-bouton')]
+        : [
+          attendre('.ski-securite .bulletin-carte'),
+          clic('.ski-securite .bulletin-carte'),
+          clic('.rando-fiche-reduire:not(.ski-fiche-chercher):not(.ski-fiche-favori)'),
+          (p) => p.waitForTimeout(6000),
+        ]),
+    ],
+  })),
   // Mes traces : sorties importées (fichiers fabriqués, scripts/sorties-demo.mjs), vue d'une sortie, parcours
   { nom: 'traces-sorties-vide', actions: [module('sorties'), attendre('.traces input[type="file"]')] },
   { nom: 'traces-sorties', actions: [module('sorties'), importerSorties(['rando.gpx', 'velo.tcx', 'vol.igc'])] },

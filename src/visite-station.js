@@ -11,6 +11,7 @@ import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
 import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE } from './ombre-couches.js';
 import { creerReglageSoleil } from './soleil-reglage.js';
 import { creerSoleilCiel } from './soleil-ciel.js';
+import { afficherPentesExposees, ZOOM_MIN_PENTES } from './pentes-couche.js';
 
 const SOURCE_PISTES = 'visite-pistes';
 const SOURCE_MASQUE = 'visite-masque';
@@ -83,6 +84,7 @@ const ZOOM_RAPPROCHE = 0.8; // l'inclinaison écrase le domaine : on peut cadrer
 const ZOOM_RAPPROCHE_ETROIT = 0.1; // sur un écran étroit, ce serait couper le domaine sur les côtés
 const ICONE_SOMMET = 'visite-sommet-icone';
 const SOURCE_PENTES = 'visite-pentes';
+const COUCHE_PENTES_BULLETIN = 'visite-pentes-bulletin';
 const OPACITE_PENTES = 0.62;
 const URL_PENTES =
   'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
@@ -515,6 +517,7 @@ export function creerVisiteStation(map, {
   let courbesVisibles = lire(CLES.courbes, true);
   let pentesVisibles = lire(CLES.pentes, false);
   let ombresVisibles = lire(CLES.ombres, false);
+  let zonesBulletin = null; // pentes du bulletin d'avalanche, le temps de la visite de cette station
   let adresseOmbre = null;
   let minuteurOmbre = null;
   let reglageSoleil = null; // créé au premier affichage des options, puis déplacé d'une fiche à l'autre
@@ -661,6 +664,7 @@ export function creerVisiteStation(map, {
     idsCalques = map.getStyle().layers.map(({ id }) => id).filter((id) => id.startsWith('visite-'));
     appliquerFondVisite();
     majOmbresVisite();
+    appliquerPentesBulletin();
   }
 
   function appliquerFondVisite() {
@@ -712,6 +716,7 @@ export function creerVisiteStation(map, {
   }
 
   function retirerCalques() {
+    afficherPentesExposees(map, null, { id: COUCHE_PENTES_BULLETIN });
     idsCalques.forEach((id) => { if (map.getLayer(id)) map.removeLayer(id); });
     idsCalques = [];
     const images = fonds.map(({ id }) => `visite-image-${id}`);
@@ -754,6 +759,7 @@ export function creerVisiteStation(map, {
     if (enCours) {
       fermerPopup();
       enCours.communes = communes;
+      zonesBulletin = null; // le bulletin était celui du massif de l'autre station
       retirerCalques();
       creerCalques(donnees, communes);
     } else {
@@ -835,6 +841,7 @@ export function creerVisiteStation(map, {
     if (!enCours) return;
     const { vue, etaitEn3D, calquesMasques } = enCours;
     enCours = null;
+    zonesBulletin = null;
     clearTimeout(minuteurMarge);
     ajusterMarge({ animer: false });
     fermerPopup();
@@ -866,8 +873,24 @@ export function creerVisiteStation(map, {
     pentesVisibles = visibles;
     ecrire(CLES.pentes, visibles);
     if (enCours && map.getLayer('visite-pentes')) {
-      map.setLayoutProperty('visite-pentes', 'visibility', visibles ? 'visible' : 'none');
+      map.setLayoutProperty('visite-pentes', 'visibility', visibles && !zonesBulletin ? 'visible' : 'none');
     }
+  }
+
+  // ---------- Pentes du bulletin d'avalanche ----------
+  // Pentes de 30° et plus aux orientations et altitudes du bulletin du massif (onglet Sécurité
+  // de la fiche) ; elles remplacent les pentes de la visite le temps de leur affichage
+  function appliquerPentesBulletin() {
+    if (!enCours || !map.getLayer('visite-pentes')) return;
+    afficherPentesExposees(map, zonesBulletin, { id: COUCHE_PENTES_BULLETIN, avant: 'visite-pentes' });
+    map.setLayoutProperty('visite-pentes', 'visibility', pentesVisibles && !zonesBulletin ? 'visible' : 'none');
+  }
+
+  function afficherPentesBulletin(zones) {
+    zonesBulletin = zones?.length ? zones : null;
+    appliquerPentesBulletin();
+    // Sur téléphone, la visite cadre souvent plus loin que le zoom de calcul des pentes
+    if (zonesBulletin && enCours && map.getZoom() < ZOOM_MIN_PENTES) map.easeTo({ zoom: ZOOM_MIN_PENTES + 0.3, duration: 900 });
   }
 
   // ---------- Ombre du soleil ----------
@@ -1004,5 +1027,7 @@ export function creerVisiteStation(map, {
     creerOptions,
     quitter,
     communes: () => enCours?.communes ?? [],
+    pentesBulletin: afficherPentesBulletin,
+    pentesBulletinActives: () => !!zonesBulletin,
   };
 }

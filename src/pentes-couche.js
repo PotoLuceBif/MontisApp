@@ -128,9 +128,9 @@ export function initCouchePentes(map) {
 }
 
 // Pentes exposées selon le bulletin d'avalanche du jour (ski de rando) : une couche à part,
-// recréée quand les zones changent ; `zones` vide ou null la retire
-const EXPOSEES = 'pentes-exposees';
-export function afficherPentesExposees(map, zones) {
+// recréée quand les zones changent ; `zones` vide ou null la retire.
+// La visite d'une station a la sienne (`id`, posée sous `avant`), au-dessus de son décor.
+export function afficherPentesExposees(map, zones, { id: EXPOSEES = 'pentes-exposees', avant = null } = {}) {
   if (map.getLayer(EXPOSEES)) map.removeLayer(EXPOSEES);
   if (map.getSource(EXPOSEES)) map.removeSource(EXPOSEES);
   if (!zones?.length) return;
@@ -144,6 +144,6 @@ export function afficherPentesExposees(map, zones) {
   });
   map.addLayer(
     { id: EXPOSEES, type: 'raster', source: EXPOSEES, minzoom: ZOOM_MIN_PENTES, paint: { 'raster-opacity': lire('pentes-opacite', 0.6), 'raster-fade-duration': 0 } },
-    AVANT.find((id) => map.getLayer(id)),
+    avant ?? AVANT.find((id) => map.getLayer(id)),
   );
 }

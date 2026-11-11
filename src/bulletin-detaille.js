@@ -119,8 +119,9 @@ function section(titre, paragraphes) {
   return bloc;
 }
 
-// `carte` : { actif, basculer() } pour le bouton « Voir sur la carte » des pentes concernées
-export function creerBulletinDetaille(bulletin, neige, carte = null) {
+// `carte` : { actif, basculer() } pour le bouton « Voir sur la carte » des pentes concernées ;
+// `noteNeige` : la clé qui dit où la neige est estimée
+export function creerBulletinDetaille(bulletin, neige, carte = null, { noteNeige = 'bulletin.neige-note' } = {}) {
   const bloc = el('div', 'bulletin-detaille');
 
   const entete = el('p', 'bulletin-date');
@@ -206,7 +207,7 @@ export function creerBulletinDetaille(bulletin, neige, carte = null) {
       chiffres.append(case_);
     }
     bloc2.append(chiffres);
-    bloc2.append(el('p', 'ski-conditions-note', t('bulletin.neige-note', { altitude: neige.altitude != null ? formatAltitude(neige.altitude) : '—' })));
+    bloc2.append(el('p', 'ski-conditions-note', t(noteNeige, { altitude: neige.altitude != null ? formatAltitude(neige.altitude) : '—' })));
     bloc.append(bloc2);
   }
 

@@ -1537,6 +1537,7 @@
   "bulletin.neige-h72": "in 72 h",
   "bulletin.neige-sol": "on the ground",
   "bulletin.neige-note": "Open-Meteo model estimate at the centre of the map (around {altitude}), not a measurement.",
+  "bulletin.neige-note-station": "Open-Meteo model estimate at the resort (around {altitude}), not a measurement.",
   "bulletin.activite": "Avalanche activity",
   "bulletin.manteau": "Snowpack",
   "bulletin.meteo": "Weather",
