@@ -39,6 +39,25 @@ export function initCiel(map) {
     return { bearing: map.getBearing(), pitch: map.getPitch(), fov: map.getVerticalFieldOfView(), largeur, hauteurEcran, padding: map.getPadding() };
   }
 
+  // Soleil à sa vraie direction : disque blanc chaud et halo (agrandi comme la Lune)
+  function dessinerSoleil(cam, { lng, lat }, maintenant) {
+    const soleil = getPosition(maintenant, lat, lng);
+    const point = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
+    if (!point) return;
+    const halo = contexte.createRadialGradient(point.x, point.y, 0, point.x, point.y, 60);
+    halo.addColorStop(0, 'rgba(255, 244, 214, 0.9)');
+    halo.addColorStop(0.2, 'rgba(255, 220, 150, 0.35)');
+    halo.addColorStop(1, 'rgba(255, 200, 120, 0)');
+    contexte.fillStyle = halo;
+    contexte.beginPath();
+    contexte.arc(point.x, point.y, 60, 0, Math.PI * 2);
+    contexte.fill();
+    contexte.fillStyle = 'rgb(255, 250, 235)';
+    contexte.beginPath();
+    contexte.arc(point.x, point.y, 11, 0, Math.PI * 2);
+    contexte.fill();
+  }
+
   function dessinerLune(cam, { lng, lat }, maintenant) {
     const lune = getMoonPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(lune.azimuth), hauteur: lune.altitude }, cam);
@@ -109,6 +128,7 @@ export function initCiel(map) {
       contexte.arc(point.x, point.y, rayon, 0, Math.PI * 2);
       contexte.fill();
     }
+    dessinerSoleil(cam, centre, maintenant);
     dessinerLune(cam, centre, maintenant);
     contexte.globalAlpha = 1;
   }
