@@ -322,6 +322,9 @@ const ECRANS = [
   { nom: 'globe-nuit', actions: [vue({ center: [15, 25], zoom: 1.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Centré sur la ligne jour-nuit du soir, quelle que soit l'heure de la capture (soleil : 15° par heure)
   { nom: 'globe-nuit-terminateur', actions: [(p) => vue({ center: [(((180 - (Date.now() / 3600000 % 24) * 15 - 75) % 360) + 540) % 360 - 180, 20], zoom: 1.6, bearing: 0, pitch: 0 })(p), (p) => p.waitForTimeout(6000)] },
+  // Pôle Sud, vu d'en haut en 2D, puis incliné en 3D (le globe ne va que jusqu'à 85° de latitude)
+  { nom: 'globe-pole-2d', actions: [vue({ center: [60, -78], zoom: 2.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
+  { nom: 'globe-pole-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [60, -80], zoom: 3, bearing: 0, pitch: 55 }), (p) => p.waitForTimeout(6000)] },
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {

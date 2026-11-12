@@ -5,6 +5,13 @@ const RAD = Math.PI / 180;
 const NUIT = -8; // ° : soleil sous l'horizon, nuit complète (fin du crépuscule nautique, à peu près)
 const JOUR = 1; // ° : au-dessus, plein jour ; entre les deux, la bande du crépuscule
 
+// Au-delà de 85°, MapLibre comble le pôle en étirant la dernière rangée de pixels : une image détaillée y fait
+// des rayons. Le bord se fond donc vers une couleur unie (glace le jour, nuit noire), à partir de 80°.
+const LAT_FONDU = 80;
+const LAT_BORD = 85.0511;
+const GLACE = [236, 241, 246];
+const NUIT_POLAIRE = [7, 9, 20];
+
 const normaliser = (degres) => ((((degres + 180) % 360) + 360) % 360) - 180;
 
 // Point de la Terre où le soleil est au zénith à l'instant `date` (formules de l'Almanach, à 0,1° près)
@@ -49,18 +56,27 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       parts[gy * cotes + gx] = partJour(hauteurSoleil(lat, lng, soleil));
     }
   }
+  const bordMonde = y === 0 || y === 2 ** z - 1; // seules les tuiles du haut et du bas touchent un pôle
   for (let py = 0; py < 256; py += 1) {
     const gy = Math.min(cotes - 2, Math.floor(py / PAS));
     const ty = (py - gy * PAS) / PAS;
+    let polaire = 0;
+    if (bordMonde) {
+      const lat = Math.abs(Math.atan(Math.sinh(Math.PI * (1 - (2 * (y * 256 + py + 0.5)) / monde))) / RAD);
+      const r = Math.min(1, Math.max(0, (lat - LAT_FONDU) / (LAT_BORD - 0.3 - LAT_FONDU)));
+      polaire = r * r * (3 - 2 * r);
+    }
     for (let px = 0; px < 256; px += 1) {
       const gx = Math.min(cotes - 2, Math.floor(px / PAS));
       const tx = (px - gx * PAS) / PAS;
       const w = (parts[gy * cotes + gx] * (1 - tx) + parts[gy * cotes + gx + 1] * tx) * (1 - ty)
         + (parts[(gy + 1) * cotes + gx] * (1 - tx) + parts[(gy + 1) * cotes + gx + 1] * tx) * ty;
       const o = (py * 256 + px) * 4;
-      pixels[o] = jour[o] * w + nuit[o] * (1 - w);
-      pixels[o + 1] = jour[o + 1] * w + nuit[o + 1] * (1 - w);
-      pixels[o + 2] = jour[o + 2] * w + nuit[o + 2] * (1 - w);
+      for (let c = 0; c < 3; c += 1) {
+        const image = jour[o + c] * w + nuit[o + c] * (1 - w);
+        const unie = GLACE[c] * w + NUIT_POLAIRE[c] * (1 - w);
+        pixels[o + c] = image * (1 - polaire) + unie * polaire;
+      }
       pixels[o + 3] = 255;
     }
   }

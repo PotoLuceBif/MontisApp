@@ -51,4 +51,15 @@ describe('jour, nuit et crépuscule', () => {
     expect(valeur(-165, 0)).toBe(10);
     expect(pixels[3]).toBe(255);
   });
+
+  it('fond le bord du monde en couleur unie, pour que le pôle n’ait pas de rayons', () => {
+    // Image du jour bariolée : une colonne sur deux noire, une sur deux blanche
+    const jour = new Uint8ClampedArray(256 * 256 * 4).map((_, k) => ((k >> 2) % 2 ? 255 : 0));
+    const nuit = new Uint8ClampedArray(256 * 256 * 4).fill(10);
+    const pixels = melangerTuile(jour, nuit, 1, 0, 1, { lat: -23, lng: 0 }); // tuile du bas : Antarctique en été
+    const derniere = 255 * 256 * 4;
+    expect(Math.abs(pixels[derniere] - pixels[derniere + 4])).toBeLessThan(15); // la rangée du bord est unie
+    const milieu = 128 * 256 * 4;
+    expect(Math.abs(pixels[milieu] - pixels[milieu + 4])).toBeGreaterThan(200); // ailleurs, l'image reste
+  });
 });
