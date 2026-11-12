@@ -17,6 +17,7 @@ import { STYLE_MONTIS } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
+import { initGlobeNuit } from './globe-nuit.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
 import { imperial, expressionAltitude, PIEDS } from './unites.js';
@@ -239,6 +240,24 @@ map.on('zoomend', () => {
   if (veut !== terrainActif) majTerrain();
 });
 
+// Près des pôles, les tuiles de relief sont très étirées : l'ombrage fixe de la 3D y fait des taches et des
+// traînées, que MapLibre étire encore jusqu'au pôle. Il s'efface de 70° à 78° de latitude (centre de la vue).
+const OMBRAGE_EXAGERATION = 0.5;
+let ombragePolaire = null;
+function majOmbragePolaire() {
+  const lat = Math.abs(map.getCenter().lat);
+  const facteur = Math.min(1, Math.max(0, (78 - lat) / 8));
+  const valeur = Math.round(OMBRAGE_EXAGERATION * facteur * 100) / 100;
+  if (valeur === ombragePolaire || !map.getLayer('ombrage')) return;
+  ombragePolaire = valeur;
+  map.setPaintProperty('ombrage', 'hillshade-exaggeration', valeur);
+}
+map.on('moveend', majOmbragePolaire);
+map.on('style.load', () => {
+  ombragePolaire = null;
+  majOmbragePolaire();
+});
+
 function appliquerMode(mode3D) {
   etat.mode3D = mode3D;
 
@@ -353,6 +372,7 @@ map.once('style.load', () => {
   // ---------- Menu (activités, météo, carte) ----------
   initMenu(map);
   retablirFond(map);
+  initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   initRecherche(map);
   initFiches(map);
   initHorsLigne(map);
