@@ -3861,3 +3861,7 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
   background: transparent; color: var(--accent); font: 650 12px/1.2 var(--police); cursor: pointer;
 }
 .bulletin-carte[aria-pressed="true"] { background: var(--accent); color: var(--accent-texte); }
+
+/* Ciel autour du globe (ciel.js) : derrière la carte, qui le laisse voir autour de la Terre */
+.ciel-etoiles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ciel-etoiles[hidden] { display: none; }

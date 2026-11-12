@@ -150,6 +150,7 @@ src/                    Tout le code (détail ci-dessous)
 | Fichier | Rôle |
 |---|---|
 | `main.js`, `ouverture-calcul.js` | Crée la carte, relief et courbes, globe, ciel, bascule 2D/3D, mémoire de la vue ; ouverture sur sa position après une absence (testé) |
+| `ciel.js`, `ciel-calcul.js` | Ciel autour du globe : étoiles (catalogue `public/data/ciel/etoiles.json`) et Lune avec sa phase, sur une toile derrière la carte, seulement au dézoom ; calculs purs : temps sidéral, direction d'une étoile, projection, éclat, couleur, catalogue (testés). Base des constellations |
 | `globe-nuit.js`, `globe-nuit-calcul.js` | Globe jour et nuit au dézoom (images de la NASA mélangées selon le soleil, `montis-globe://<instant>/z/x/y`) ; calculs purs : point subsolaire, hauteur du soleil, crépuscule, mélange d'une tuile (testés) |
 | `menu.js`, `module-differe.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules ; chargement à la première ouverture |
 | `reglages.js` | `lire`, `ecrire`, `quandPret`, `retourAZero` (localStorage `montis.reglages`) |
@@ -265,6 +266,7 @@ Fichiers générés par `scripts/`, à relancer seulement pour rafraîchir les d
 | `public/data/stations-ski.json`, `pistes/` (355 fichiers) | 2,3 Mo et 18 Mo | `node scripts/extraire-stations-ski.mjs` (OpenSkiData) |
 | `public/data/bike-parks.json`, `bike-parks/` (38 fichiers) | 2,7 Mo | `node scripts/extraire-bike-parks.mjs` (OSM via Overpass) |
 | `public/data/refuges.json` | 1,9 Mo | `MONTIS_CONTACT_EMAIL=... node scripts/extraire-refuges.mjs` (Overpass) |
+| `public/data/ciel/etoiles.json` (5 044 étoiles jusqu'à la magnitude 6) | 93 Ko | `node scripts/extraire-etoiles.mjs` (d3-celestial, BSD-3, Hipparcos ; à créditer) |
 | `src/fonds-zones.js`, `src/fonds-emprises.js` | 50 Ko | `node scripts/extraire-zones-fonds.mjs` (Natural Earth, domaine public) |
 | `public/data/skitour/` (6 446 itinéraires, 294 carrés de 1° et `index.json`) | 3,4 Mo | `node scripts/extraire-skitour.mjs` (OpenSkiData) ; hors du préchargement |
 | `public/data/avalanches/massifs.json` (627 massifs simplifiés) | 488 Ko | `node scripts/extraire-massifs-avalanche.mjs` (EAWS, CC BY 4.0) ; hors du préchargement, comme `pistes/` |
@@ -336,6 +338,8 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Échelle des vents (11 novembre 2026, demande du propriétaire) : paliers < 10, 10–20, 20–30, 30–40, 40–70 (violet) et 70+ km/h (blanc, flèche à double pointe : `VENT_TRES_FORT`, `iconeVent` de `vent-cadran.js`), communs au vent prévu, aux balises et aux légendes ; rappelée sous le profil.
 
 - Globe jour et nuit (12 novembre 2026, demande du propriétaire, d'après Plans d'Apple) : au dézoom, image du jour avec relief et fonds marins, et villes éclairées la nuit, mélangées selon la hauteur réelle du soleil (crépuscule de −8° à +1°), recalculées toutes les dix minutes ; plein jusqu'au zoom 4, effacé au zoom 6, au-dessus de tous les fonds (sous le repère des calques). Écrans `globe-nuit`, `globe-nuit-terminateur` (centré sur la ligne jour-nuit), `globe-nuit-fondu`.
+
+- Ciel du globe (12 novembre 2026, demande du propriétaire) : étoiles visibles à l'œil nu à leur vraie place et à l'heure réelle, couleur et éclat selon l'étoile, et Lune avec sa phase (côté éclairé vers le soleil, agrandie : 10 px de rayon), sur une toile derrière la carte (le globe les cache) ; même fondu que le globe jour et nuit (pleines jusqu'au zoom 4, effacées au zoom 6). Constellations : plus tard, sur la même base (tracés de d3-celestial). Écran `globe-ciel-lune` (la Terre cadrée pour voir la Lune près du bord).
 
 **Points ouverts constatés**
 - Au démarrage : 315 Ko de code Montis (partage par lien compris) (100 Ko compressé), en deux fichiers : le code (176 Ko, dont 17 Ko pour le catalogue et le panneau des fonds du lot 3.10) et les deux fichiers de langue (135 Ko) ; MapLibre (1,1 Mo) à part. Les contours des pays (50 Ko) se chargent à la demande.

@@ -13,6 +13,7 @@ import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 import { fragmentParcours } from '../src/partage-calcul.js';
+import { getMoonPosition } from 'suncalc';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -327,6 +328,24 @@ const ECRANS = [
   { nom: 'globe-pole-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [60, -80], zoom: 3, bearing: 0, pitch: 55 }), (p) => p.waitForTimeout(6000)] },
   // Tout près du pôle Sud en 3D, rasant (comme la capture du propriétaire) : l'ombrage fixe s'y efface
   { nom: 'globe-pole-proche', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [-60, -83.5], zoom: 5.5, bearing: 90, pitch: 75 }), (p) => p.waitForTimeout(7000)] },
+  // Ciel : la Terre cadrée pour que la Lune apparaisse près de son bord (vue d'un point d'où la Lune est 14° au-dessus du nadir)
+  {
+    nom: 'globe-ciel-lune',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            const ecart = Math.abs(getMoonPosition(maintenant, lat, lng).altitude + 76);
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 1.6, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(6000),
+    ],
+  },
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {

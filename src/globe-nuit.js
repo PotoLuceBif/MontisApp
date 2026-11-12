@@ -61,7 +61,7 @@ export function initGlobeNuit(map) {
       tiles: tuiles(),
       tileSize: 256,
       maxzoom: 8,
-      attribution: 'Globe : <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener">NASA GIBS</a>',
+      attribution: 'Globe : <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener">NASA GIBS</a> · étoiles : <a href="https://github.com/ofrohn/d3-celestial" target="_blank" rel="noopener">d3-celestial</a> (Hipparcos)',
     });
     map.addLayer(
       {
