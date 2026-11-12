@@ -17,6 +17,7 @@ import { STYLE_MONTIS } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
+import { initGlobeNuit } from './globe-nuit.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
 import { imperial, expressionAltitude, PIEDS } from './unites.js';
@@ -353,6 +354,7 @@ map.once('style.load', () => {
   // ---------- Menu (activités, météo, carte) ----------
   initMenu(map);
   retablirFond(map);
+  initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   initRecherche(map);
   initFiches(map);
   initHorsLigne(map);

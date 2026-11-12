@@ -318,6 +318,11 @@ const ECRANS = [
     nom: 'carte-pentes-rapprocher',
     actions: [vue({ ...AIGUILLES, zoom: 10 }), module('relief'), clic('.pentes-choix [data-genre="pentes"]'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), clic('.couche-pastille:not([hidden]) .couche-pastille-action'), (p) => p.waitForTimeout(4000)],
   },
+  // Globe jour et nuit au dézoom (images de la NASA, soleil de l'instant), puis le fondu vers la carte
+  { nom: 'globe-nuit', actions: [vue({ center: [15, 25], zoom: 1.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
+  // Centré sur la ligne jour-nuit du soir, quelle que soit l'heure de la capture (soleil : 15° par heure)
+  { nom: 'globe-nuit-terminateur', actions: [(p) => vue({ center: [(((180 - (Date.now() / 3600000 % 24) * 15 - 75) % 360) + 540) % 360 - 180, 20], zoom: 1.6, bearing: 0, pitch: 0 })(p), (p) => p.waitForTimeout(6000)] },
+  { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {
     nom: 'carte-pastilles',
