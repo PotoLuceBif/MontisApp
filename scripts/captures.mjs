@@ -325,6 +325,8 @@ const ECRANS = [
   // Pôle Sud, vu d'en haut en 2D, puis incliné en 3D (le globe ne va que jusqu'à 85° de latitude)
   { nom: 'globe-pole-2d', actions: [vue({ center: [60, -78], zoom: 2.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   { nom: 'globe-pole-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [60, -80], zoom: 3, bearing: 0, pitch: 55 }), (p) => p.waitForTimeout(6000)] },
+  // Tout près du pôle Sud en 3D, rasant (comme la capture du propriétaire) : l'ombrage fixe s'y efface
+  { nom: 'globe-pole-proche', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [-60, -83.5], zoom: 5.5, bearing: 90, pitch: 75 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {
