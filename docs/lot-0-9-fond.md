@@ -28,7 +28,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 12. *Pas dans les données :* falaises et barres rocheuses en trait. À chercher plus tard (calcul depuis le relief, sur l'appareil).
 
 ## C. Routes et chemins
-13. ★★★ **Routes.** Deux pistes à comparer en captures :
+13. ★★★ **Routes.** *Fait le 14 novembre 2026 : juste milieu entre les deux pistes (la hiérarchie de l'IGN en couleurs adoucies), cerne pour toutes les routes, largeur selon la classe, tunnels estompés ; versions IGN et moderne gardées dans `VERSIONS_ROUTES`.* Deux pistes à comparer en captures :
     - *IGN* : autoroutes rouges, nationales rouge-orangé, départementales jaunes, petites routes blanches cerclées ;
     - *Moderne* : routes blanches ou gris clair avec un fin liseré, seules les grandes en couleur douce (orange pâle).
 14. ★★★ **Sentiers.** *Fait le 14 novembre 2026 : tireté rouge sur liseré couleur papier, marches en tireté serré, trottoirs et allées en gris fin.* Le cœur de Montis. Pistes : tireté rouge-brun bien visible comme l'IGN, épaisseur selon le zoom, sentiers balisés (GR) mis en avant, marches et passages raides marqués. *Pas dans les données :* la difficulté des sentiers (`sac_scale`).

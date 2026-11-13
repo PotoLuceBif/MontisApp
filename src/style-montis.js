@@ -82,6 +82,46 @@ export function ajouterMotifsMontis(map) {
   }
 }
 
+// Routes : largeur par classe et par zoom, le cerne déborde du trait
+const CLASSES_ROUTES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
+const LARGEURS = {
+  //          zoom 5  8    10   12   14   17
+  motorway: [0.8, 1.4, 2, 3.2, 5.5, 13],
+  trunk: [0.6, 1.2, 1.8, 3, 5, 12],
+  primary: [0.4, 0.9, 1.5, 2.6, 4.5, 11],
+  secondary: [0, 0.5, 1.1, 2.2, 4, 10],
+  tertiary: [0, 0, 0.7, 1.7, 3.4, 9],
+  minor: [0, 0, 0.3, 1.1, 2.6, 7.5],
+  service: [0, 0, 0, 0.5, 1.4, 4],
+};
+const ZOOMS_ROUTES = [5, 8, 10, 12, 14, 17];
+function largeurRoute(cerne) {
+  const etapes = ZOOMS_ROUTES.flatMap((zoom, i) => {
+    const valeurs = Object.entries(LARGEURS).flatMap(([classe, l]) => [classe, l[i] && cerne ? l[i] + (zoom >= 12 ? 1.6 : 0.8) : l[i]]);
+    return [zoom, ['match', ['get', 'class'], ...valeurs, 0]];
+  });
+  return ['interpolate', ['exponential', 1.4], ['zoom'], ...etapes];
+}
+
+// Versions comparées pendant le lot 0.9 : couleurs franches de l'IGN, juste milieu, routes claires d'appli moderne
+const VERSIONS_ROUTES = {
+  ign: {
+    cerne: '#8f8377',
+    couleurs: { motorway: '#d9433a', trunk: '#d9433a', primary: '#ea7a3c', secondary: '#f3c24f', tertiary: '#fbe8a6', minor: '#ffffff', service: '#ffffff' },
+  },
+  // Juste milieu choisi par le propriétaire (14 novembre 2026) : la hiérarchie de l'IGN, en couleurs adoucies
+  milieu: {
+    cerne: '#a99f92',
+    couleurs: { motorway: '#df6656', trunk: '#e37d58', primary: '#eea466', secondary: '#f4cd7c', tertiary: '#faeac2', minor: '#ffffff', service: '#ffffff' },
+  },
+  moderne: {
+    cerne: '#cbc2b4',
+    couleurs: { motorway: '#f0a565', trunk: '#f3b878', primary: '#f7d398', secondary: '#ffffff', tertiary: '#ffffff', minor: '#ffffff', service: '#fbf9f5' },
+  },
+};
+export const VERSION_ROUTES = 'milieu';
+const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
+
 const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
 
 export const STYLE_MONTIS = {
@@ -222,10 +262,12 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(['motorway', 'trunk', 'primary', 'secondary', 'tertiary']),
+      filter: classes(CLASSES_ROUTES),
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': '#fffdf8',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 1, 12, 4.5, 16, 9],
+        'line-color': ROUTES.cerne,
+        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.35, 1],
+        'line-width': largeurRoute(true),
       },
     },
     {
@@ -233,18 +275,12 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']),
+      filter: classes(CLASSES_ROUTES),
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': [
-          'match',
-          ['get', 'class'],
-          ['motorway', 'trunk'],
-          '#d98e68',
-          ['primary', 'secondary'],
-          '#e6bd78',
-          '#f7f3e9',
-        ],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 12, 2.2, 16, 5],
+        'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
+        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1],
+        'line-width': largeurRoute(false),
       },
     },
     // Chemins carrossables : trait continu brun clair, entre la route et le sentier

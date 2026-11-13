@@ -224,6 +224,8 @@ const ECRANS = [
   { nom: 'fond-vallee', actions: [vue(MATIN), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-sentiers', actions: [vue({ center: [6.885, 45.975], zoom: 14.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-sentiers-proche', actions: [vue({ center: [6.872, 45.93], zoom: 15.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-routes', actions: [vue({ center: [6.66, 45.92], zoom: 11.2, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-routes-ville', actions: [vue({ center: [6.87, 45.923], zoom: 13.8, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
