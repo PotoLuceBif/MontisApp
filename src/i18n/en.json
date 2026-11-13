@@ -369,6 +369,8 @@
   },
   "editeur.marches": "Steps on the route: {longueur}",
   "editeur.technique": "{texte}: {longueur}",
+  "editeur.surface-inconnue": "Surface unknown on this route: it comes from a trail or a file, with no terrain details.",
+  "editeur.difficulte-inconnue": "Difficulty unknown on this route: it comes from a trail or a file, with no grading.",
   "editeur.non-cote": "Not graded",
   "editeur.waymarked": "Waymarked Trails page ↗",
   "editeur.osm": "© OpenStreetMap contributors",

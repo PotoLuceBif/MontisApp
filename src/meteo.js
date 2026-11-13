@@ -623,7 +623,20 @@ export function creerConditionsLocales(map) {
   }
 
   // Normal quand la météo suit le centre de la carte, sélectionné quand le point est posé ou en cours de choix
+  // Le pin n'a pas de pastille : sans le panneau Météo à l'écran, il ne dirait plus rien (demande du propriétaire du 13 novembre 2026).
+  // Réduit, le panneau reste là, le pin aussi.
+  let observateurPanneau = null;
+  function majVisibilitePin() {
+    const flottant = panneau.closest('.outil-rapide-panneau');
+    if (flottant && !observateurPanneau) {
+      observateurPanneau = new MutationObserver(majVisibilitePin);
+      observateurPanneau.observe(flottant, { attributes: true, attributeFilter: ['hidden'] });
+    }
+    if (marqueur) marqueur.getElement().style.visibility = flottant?.hidden ? 'hidden' : '';
+  }
+
   function majPin() {
+    majVisibilitePin();
     pin?.changerEtat(positionChoisie || selectionEnCours ? 'selected' : '');
   }
 
@@ -931,8 +944,8 @@ export function creerConditionsLocales(map) {
       pin = creerPinSeul('meteo');
       marqueur = new Marker({ element: pin.element, anchor: 'bottom', offset: DECALAGE_PIN });
     }
-    majPin();
     marqueur.setLngLat(marqueurPosition).addTo(map);
+    majPin();
 
     const params = new URLSearchParams({
       latitude: String(position.latitude),

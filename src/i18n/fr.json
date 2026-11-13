@@ -369,6 +369,8 @@
   },
   "editeur.marches": "Marches sur le tracé : {longueur}",
   "editeur.technique": "{texte} : {longueur}",
+  "editeur.surface-inconnue": "Surface inconnue sur ce tracé : il vient d’un itinéraire ou d’un fichier, sans détail du terrain.",
+  "editeur.difficulte-inconnue": "Difficulté inconnue sur ce tracé : il vient d’un itinéraire ou d’un fichier, sans cotation.",
   "editeur.non-cote": "Non coté",
   "editeur.waymarked": "Fiche sur Waymarked Trails ↗",
   "editeur.osm": "© contributeurs OpenStreetMap",
