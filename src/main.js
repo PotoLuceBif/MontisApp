@@ -4,7 +4,7 @@ import mlcontour from 'maplibre-contour';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import { initMenu } from './menu.js';
-import { etat, majCourbes, majOmbrage } from './options-carte.js';
+import { etat, majCourbes, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
@@ -290,9 +290,10 @@ function appliquerMode(mode3D) {
 
 etat.basculerMode = () => appliquerMode(!etat.mode3D);
 
-// Les courbes sont calculées dans l'unité affichée : des pieds ronds en impérial
-const SEUILS_METRES = { 9: [500, 1000], 10: [200, 1000], 11: [100, 500], 12: [20, 100], 13: [20, 100], 14: [10, 100] };
-const SEUILS_PIEDS = { 9: [2000, 4000], 10: [1000, 5000], 11: [500, 2000], 12: [100, 500], 13: [50, 250], 14: [40, 200] };
+// Les courbes sont calculées dans l'unité affichée : des pieds ronds en impérial.
+// [intermédiaire, maîtresse] : en montagne, une courbe tous les 20 m n'est lisible qu'à partir du zoom 13
+const SEUILS_METRES = { 9: [500, 1000], 10: [200, 1000], 11: [100, 500], 12: [50, 250], 13: [20, 100], 14: [20, 100], 15: [10, 50] };
+const SEUILS_PIEDS = { 9: [2000, 4000], 10: [1000, 5000], 11: [500, 2000], 12: [200, 1000], 13: [100, 500], 14: [50, 250], 15: [40, 200] };
 const urlCourbes = () =>
   demSource.contourProtocolUrl({
     multiplier: imperial() ? PIEDS : 1,
@@ -344,11 +345,8 @@ map.once('style.load', () => {
     type: 'line',
     source: 'courbes',
     'source-layer': 'contours',
-    paint: {
-      'line-color': '#8a5a2b',
-      'line-opacity': 0.6,
-      'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6],
-    },
+    layout: { 'line-join': 'round' },
+    paint: peintureCourbes(),
   });
 
   map.addLayer({
@@ -359,16 +357,13 @@ map.once('style.load', () => {
     filter: ['>=', ['get', 'level'], 1],
     layout: {
       'symbol-placement': 'line',
-      'symbol-spacing': 300,
+      'symbol-spacing': 420,
       'text-field': texteCourbe(),
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-      'text-size': 11,
+      'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9.5, 15, 11],
+      'text-padding': 12,
     },
-    paint: {
-      'text-color': '#6b4220',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 1.5,
-    },
+    paint: peintureCotes(),
   });
 
   // ---------- Menu (activités, météo, carte) ----------

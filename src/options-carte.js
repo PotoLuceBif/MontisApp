@@ -22,6 +22,23 @@ export function majOmbrage(map) {
   if (map.getLayer('ombrage')) map.setLayoutProperty('ombrage', 'visibility', fixe ? 'visible' : 'none');
 }
 
+// Courbes : maîtresses marquées, intermédiaires très fines. Sur une photo, tout passe en blanc.
+const MAITRESSE = ['>=', ['get', 'level'], 1];
+export function peintureCourbes(photo = false) {
+  return {
+    'line-color': photo ? '#ffffff' : ['case', MAITRESSE, '#86562c', '#a3805f'],
+    'line-opacity': photo ? ['case', MAITRESSE, 0.85, 0.55] : ['case', MAITRESSE, 0.75, 0.42],
+    'line-width': ['interpolate', ['linear'], ['zoom'], 10, ['case', MAITRESSE, 0.8, 0.4], 15, ['case', MAITRESSE, 1.4, 0.6]],
+  };
+}
+export function peintureCotes(photo = false) {
+  return {
+    'text-color': photo ? '#ffffff' : '#7a4f2a',
+    'text-halo-color': photo ? 'rgba(0, 0, 0, 0.75)' : 'rgba(244, 241, 234, 0.9)',
+    'text-halo-width': 1.4,
+  };
+}
+
 export function majCourbes(map) {
   if (etat.enVisite) return; // la visite a ses propres courbes, la carte normale reste coupée
   const visible = etat.courbes && !etat.mode3D;

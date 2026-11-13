@@ -2,7 +2,7 @@
 // (Ici, Monde, Pays, Anciennes), et calques officiels à superposer (calques-officiels.js).
 // Une carte nationale ne couvre que son pays : au-delà, le fond Montis complète la carte.
 import { lire, ecrire } from './reglages.js';
-import { etat, majOmbrage } from './options-carte.js';
+import { etat, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { CALQUES_MONTIS, REPERE_CALQUES } from './style-montis.js';
 import { surLangue, t, ti } from './i18n.js';
 import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
@@ -57,12 +57,10 @@ function appliquerFond(map, id) {
 
   // Sur une photo, les courbes de niveau passent en blanc pour rester lisibles
   if (map.getLayer('courbes')) {
-    map.setPaintProperty('courbes', 'line-color', choix.photo ? '#ffffff' : '#8a5a2b');
-    map.setPaintProperty('courbes', 'line-opacity', choix.photo ? 0.75 : 0.6);
+    for (const [nom, valeur] of Object.entries(peintureCourbes(choix.photo))) map.setPaintProperty('courbes', nom, valeur);
   }
   if (map.getLayer('courbes-altitude')) {
-    map.setPaintProperty('courbes-altitude', 'text-color', choix.photo ? '#ffffff' : '#6b4220');
-    map.setPaintProperty('courbes-altitude', 'text-halo-color', choix.photo ? '#000000' : '#ffffff');
+    for (const [nom, valeur] of Object.entries(peintureCotes(choix.photo))) map.setPaintProperty('courbes-altitude', nom, valeur);
   }
 }
 
