@@ -31,8 +31,8 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 13. ★★★ **Routes.** Deux pistes à comparer en captures :
     - *IGN* : autoroutes rouges, nationales rouge-orangé, départementales jaunes, petites routes blanches cerclées ;
     - *Moderne* : routes blanches ou gris clair avec un fin liseré, seules les grandes en couleur douce (orange pâle).
-14. ★★★ **Sentiers.** Le cœur de Montis. Pistes : tireté rouge-brun bien visible comme l'IGN, épaisseur selon le zoom, sentiers balisés (GR) mis en avant, marches et passages raides marqués. *Pas dans les données :* la difficulté des sentiers (`sac_scale`).
-15. ★★ **Pistes et chemins carrossables.** Trait continu fin ou double tireté, entre route et sentier.
+14. ★★★ **Sentiers.** *Fait le 14 novembre 2026 : tireté rouge sur liseré couleur papier, marches en tireté serré, trottoirs et allées en gris fin.* Le cœur de Montis. Pistes : tireté rouge-brun bien visible comme l'IGN, épaisseur selon le zoom, sentiers balisés (GR) mis en avant, marches et passages raides marqués. *Pas dans les données :* la difficulté des sentiers (`sac_scale`).
+15. ★★ **Pistes et chemins carrossables.** *Fait le 14 novembre 2026 : trait continu gris-brun, distinct des courbes.* Trait continu fin ou double tireté, entre route et sentier.
 16. ★★ **Remontées mécaniques.** Téléphériques et télésièges en trait fin noir avec pylônes, comme les cartes de ski. Le trait orange vers l'aiguille du Midi est à vérifier.
 17. ★ **Voies ferrées** (trait noir et blanc), **ponts et tunnels** (tunnels en tireté).
 

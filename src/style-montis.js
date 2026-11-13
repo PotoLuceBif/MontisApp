@@ -17,7 +17,10 @@ export const CALQUES_MONTIS = [
   'montis-building',
   'montis-road-casing',
   'montis-road',
+  'montis-chemins',
+  'montis-sentiers-lisere',
   'montis-path',
+  'montis-marches',
   'montis-place',
   'montis-summit',
 ];
@@ -244,17 +247,70 @@ export const STYLE_MONTIS = {
         'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 12, 2.2, 16, 5],
       },
     },
+    // Chemins carrossables : trait continu brun clair, entre la route et le sentier
+    {
+      id: 'montis-chemins',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 11,
+      filter: ['==', ['get', 'class'], 'track'],
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#6e6359', // gris-brun : ne pas confondre avec les courbes
+        'line-opacity': 0.8,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.5, 14, 1.3, 17, 2.6],
+      },
+    },
+    // Sentiers : tireté rouge des cartes de randonnée, posé sur un liseré couleur papier qui le détache
+    // de l'ombrage et des courbes
+    {
+      id: 'montis-sentiers-lisere',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 12,
+      filter: classes(['path', 'footway', 'bridleway', 'steps']),
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#f6f3ec',
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.35, 15, 0.7],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 4, 17, 6],
+      },
+    },
     {
       id: 'montis-path',
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(['path', 'track', 'footway', 'bridleway', 'steps']),
+      minzoom: 10,
+      filter: ['all', classes(['path', 'footway', 'bridleway']), ['!=', ['get', 'subclass'], 'steps']],
       paint: {
-        'line-color': '#a7875d',
-        'line-opacity': 0.78,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.35, 15, 1.15],
-        'line-dasharray': [1.4, 1.4],
+        // Les trottoirs et allées (footway, surtout en ville) restent discrets : le rouge est pour les sentiers
+        'line-color': ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], '#9a918a', '#c4442f'],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 10, 0.55, 13, 0.95],
+        'line-width': [
+          'interpolate', ['linear'], ['zoom'],
+          10, 0.6,
+          13, ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], 0.6, 1.1],
+          15, ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], 0.9, 1.7],
+          17, ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], 1.3, 2.4],
+        ],
+        'line-dasharray': [2.4, 1.4],
+      },
+    },
+    // Marches et passages équipés : tireté serré, plus foncé
+    {
+      id: 'montis-marches',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 13,
+      filter: ['any', ['==', ['get', 'class'], 'steps'], ['==', ['get', 'subclass'], 'steps']],
+      paint: {
+        'line-color': '#8f2a1c',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1.4, 17, 3],
+        'line-dasharray': [0.6, 0.6],
       },
     },
     {
