@@ -8,7 +8,7 @@ import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE }
 import { cadran, creerReglageSoleil, tournerCadrans } from './soleil-reglage.js';
 import { creerSoleilCiel } from './soleil-ciel.js';
 import { heureDuLieu, nomDecalage } from './soleil.js';
-import { etat } from './options-carte.js';
+import { etat, majOmbrage } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { poser, surLangue, t, ta } from './i18n.js';
@@ -109,9 +109,7 @@ export function initOmbres(map, { details, eteindre }) {
     if (etat.ombreSortie) return; // l'ombre d'une sortie a la place ; elle rappelle etat.majOmbres en s'éteignant
     const voir = actif && soleil() && !nuit();
     etat.ombresSoleil = actif;
-    if (map.getLayer('ombrage')) {
-      map.setLayoutProperty('ombrage', 'visibility', etat.mode3D && !actif ? 'visible' : 'none');
-    }
+    majOmbrage(map);
     map.setLayoutProperty(COUCHE_OMBRAGE, 'visibility', voir ? 'visible' : 'none');
     map.setLayoutProperty(SOURCE_PORTEE, 'visibility', voir && portees ? 'visible' : 'none');
     if (!voir) return;

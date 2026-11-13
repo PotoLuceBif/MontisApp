@@ -2,6 +2,7 @@
 // (Ici, Monde, Pays, Anciennes), et calques officiels à superposer (calques-officiels.js).
 // Une carte nationale ne couvre que son pays : au-delà, le fond Montis complète la carte.
 import { lire, ecrire } from './reglages.js';
+import { etat, majOmbrage } from './options-carte.js';
 import { CALQUES_MONTIS, REPERE_CALQUES } from './style-montis.js';
 import { surLangue, t, ti } from './i18n.js';
 import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
@@ -50,6 +51,9 @@ function appliquerFond(map, id) {
   if (map.getLayer(coucheDe(choix)) || !national) {
     for (const calque of MONTIS_DESSUS) if (map.getLayer(calque)) map.moveLayer(calque, dessous);
   }
+
+  etat.fond = choix.integre ? 'montis' : national ? 'national' : 'autre';
+  majOmbrage(map);
 
   // Sur une photo, les courbes de niveau passent en blanc pour rester lisibles
   if (map.getLayer('courbes')) {

@@ -4,7 +4,7 @@ import mlcontour from 'maplibre-contour';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import { initMenu } from './menu.js';
-import { etat, majCourbes } from './options-carte.js';
+import { etat, majCourbes, majOmbrage } from './options-carte.js';
 import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
@@ -13,7 +13,7 @@ import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
-import { STYLE_MONTIS } from './style-montis.js';
+import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
@@ -247,11 +247,11 @@ const OMBRAGE_EXAGERATION = 0.5;
 let ombragePolaire = null;
 function majOmbragePolaire() {
   const lat = Math.abs(map.getCenter().lat);
-  const facteur = Math.min(1, Math.max(0, (78 - lat) / 8));
-  const valeur = Math.round(OMBRAGE_EXAGERATION * facteur * 100) / 100;
-  if (valeur === ombragePolaire || !map.getLayer('ombrage')) return;
-  ombragePolaire = valeur;
-  map.setPaintProperty('ombrage', 'hillshade-exaggeration', valeur);
+  const facteur = Math.round(Math.min(1, Math.max(0, (78 - lat) / 8)) * 100) / 100;
+  if (facteur === ombragePolaire || !map.getLayer('ombrage')) return;
+  ombragePolaire = facteur;
+  map.setPaintProperty('ombrage', 'hillshade-exaggeration', OMBRAGE_EXAGERATION * facteur);
+  if (map.getLayer('montis-relief')) map.setPaintProperty('montis-relief', 'hillshade-exaggeration', exagerationReliefMontis(facteur));
 }
 map.on('moveend', majOmbragePolaire);
 map.on('style.load', () => {
@@ -267,12 +267,12 @@ function appliquerMode(mode3D) {
     map.setMaxPitch(85);
     majTerrain();
     // L'ombre du soleil (ombres.js), quand elle est allumée, remplace cet ombrage fixe
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil || etat.ombreSortie ? 'none' : 'visible');
+    majOmbrage(map);
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison
     majTerrain();
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'none');
+    majOmbrage(map);
     map.touchPitch.disable();
     // Bloquer tout de suite couperait l'animation : la carte se remet à plat, puis se bloque
     if (map.getPitch() === 0) map.setMaxPitch(0);
@@ -330,6 +330,7 @@ const texteSommetFond = () => [
 // Pas « load » : il attend les premières tuiles, et sur un réseau lent l'appli resterait
 // sans menu ni recherche. Le style est dans le code, il est prêt presque tout de suite.
 map.once('style.load', () => {
+  ajouterMotifsMontis(map); // avant les premières tuiles du fond, qui en ont besoin
   marquerPrete(map);
   // ---------- Courbes de niveau ----------
   map.addSource('courbes', {

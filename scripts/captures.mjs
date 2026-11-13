@@ -219,6 +219,11 @@ const { fragment: LIEN_PARCOURS } = await fragmentParcours({
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
+  // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
+  { nom: 'fond-massif', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-vallee', actions: [vue(MATIN), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-sentiers', actions: [vue({ center: [6.885, 45.975], zoom: 14.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
   { nom: 'parapente', actions: [module('parapente')] },

@@ -7,7 +7,20 @@ export const etat = {
   courbes: lire('courbes', true),
   altitudes: lire('altitudes', true),
   mode3D: false,
+  fond: 'montis', // 'montis', 'national' (Montis au-delà de la frontière) ou 'autre' (fond-de-carte.js)
 };
+
+// Deux ombrages fixes, jamais ensemble : celui du fond Montis (`montis-relief`, en 2D comme en 3D, sous les
+// routes et les noms) et celui de la 3D pour les autres fonds (`ombrage`, au-dessus). L'ombre du soleil
+// (Carte › Relief) ou celle d'une sortie les remplace tous les deux.
+export function majOmbrage(map) {
+  if (etat.enVisite) return; // la visite masque la carte et la rétablit ensuite
+  const soleil = etat.ombresSoleil || etat.ombreSortie;
+  const montis = etat.fond !== 'autre' && !soleil && !(etat.fond === 'national' && etat.mode3D);
+  const fixe = etat.mode3D && !soleil && etat.fond !== 'montis';
+  if (map.getLayer('montis-relief')) map.setLayoutProperty('montis-relief', 'visibility', montis ? 'visible' : 'none');
+  if (map.getLayer('ombrage')) map.setLayoutProperty('ombrage', 'visibility', fixe ? 'visible' : 'none');
+}
 
 export function majCourbes(map) {
   if (etat.enVisite) return; // la visite a ses propres courbes, la carte normale reste coupée
