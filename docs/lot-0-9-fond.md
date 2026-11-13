@@ -22,7 +22,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 8. ★ **Parcs nationaux et réserves.** Aujourd'hui seulement dans Éléments de la carte. Piste : un liseré discret toujours visible dans le fond.
 
 ## B. Relief
-9. ★★★ **Courbes de niveau.** Le plus gros chantier visible de près : elles sont trop denses et trop brunes. Pistes : maîtresses marquées, intermédiaires très fines, intervalle adapté au zoom, couleur selon le terrain (brun sur la terre, bleu sur les glaciers, gris sur les rochers), cotes mieux espacées et dans le sens de la pente.
+9. ★★★ **Courbes de niveau.** *Fait le 13 novembre 2026 : 50 m au zoom 12, 20 m aux zooms 13 et 14, 10 m au-delà ; maîtresses marquées.* Le plus gros chantier visible de près : elles sont trop denses et trop brunes. Pistes : maîtresses marquées, intermédiaires très fines, intervalle adapté au zoom, couleur selon le terrain (brun sur la terre, bleu sur les glaciers, gris sur les rochers), cotes mieux espacées et dans le sens de la pente.
 10. ★★ **Force et couleur de l'ombrage.** Plus ou moins contrasté, ombres plus bleues ou plus grises, lumière plus chaude.
 11. ★ **Teintes d'altitude.** Vallées vertes, hauts versants plus clairs, à la suisse. Écartées pour l'instant, à essayer si tu veux.
 12. *Pas dans les données :* falaises et barres rocheuses en trait. À chercher plus tard (calcul depuis le relief, sur l'appareil).
