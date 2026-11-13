@@ -628,7 +628,7 @@ export function creerVueSortie(map, { ouvrirMenu, onModifiee }) {
     if (mode === 'pente') {
       const palette = paletteInterface();
       const limites = [0, ...PALIERS_PENTE];
-      legende.innerHTML = `<div class="traces-legende-classes">${palette.map((couleur, i) => `<span><i style="background:${couleur}"></i>${i < PALIERS_PENTE.length ? `${limites[i]}–${limites[i + 1]}` : `> ${limites[i]}`} %</span>`).join('')}</div>`;
+      legende.innerHTML = `<div class="traces-legende-classes">${palette.slice(0, PALIERS_PENTE.length + 1).map((couleur, i) => `<span><i style="background:${couleur}"></i>${i < PALIERS_PENTE.length ? `${limites[i]}–${limites[i + 1]}` : `> ${limites[i]}`} %</span>`).join('')}</div>`;
       return;
     }
     const texte = {

@@ -152,6 +152,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <label class="parcours-couleur">${tt('editeur.colorer')}<select>
         ${MODES_COULEUR.map(([id, cle]) => { const c = id === 'pratique' && Object.keys(pratiques).length < 2 ? 'editeur.couleur-unie' : cle; return `<option value="${id}" ${ti(c)}>${t(c)}</option>`; }).join('')}
       </select></label>
+      <div class="parcours-legende-couleur" hidden></div>
     </div>
     <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
     <div class="parcours-pied">
@@ -761,7 +762,27 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     }
     const couleurs = paletteInterface();
     const bornes = ['0', ...PALIERS_PENTE.map(String)];
-    $('.parcours-legende-pente').innerHTML = couleurs.map((couleur, index) => `<span><i style="background: ${couleur}"></i>${index < PALIERS_PENTE.length ? `${bornes[index]}–${PALIERS_PENTE[index]}` : `${PALIERS_PENTE.at(-1)}+`}</span>`).join('') + '<span>%</span>';
+    $('.parcours-legende-pente').innerHTML = couleurs.slice(0, PALIERS_PENTE.length + 1).map((couleur, index) => `<span><i style="background: ${couleur}"></i>${index < PALIERS_PENTE.length ? `${bornes[index]}–${PALIERS_PENTE[index]}` : `${PALIERS_PENTE.at(-1)}+`}</span>`).join('') + '<span>%</span>';
+    rendreLegendeCouleur();
+  }
+
+  // Légende du mode choisi, juste sous le choix : sans elle, un tracé gris ne dit rien.
+  // La pente a déjà la sienne sous le profil.
+  function rendreLegendeCouleur() {
+    const bloc = $('.parcours-legende-couleur');
+    const mode = ['surface', 'difficulte'].includes(modeCouleur) && repartition ? modeCouleur : null;
+    bloc.hidden = !mode;
+    if (!mode) return;
+    const { voies, difficultes, total } = repartition;
+    const connues = mode === 'surface' ? total - voies.inconnu : difficultes.reduce((somme, longueur) => somme + longueur, 0);
+    if (!connues) {
+      bloc.innerHTML = `<p>${t(mode === 'surface' ? 'editeur.surface-inconnue' : 'editeur.difficulte-inconnue')}</p>`;
+      return;
+    }
+    const parts = mode === 'surface'
+      ? Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle: activite.libelleVoies?.[id] ? t(activite.libelleVoies[id]) : libelle, couleur, longueur: voies[id] }))
+      : [...DIFFICULTES.map(({ libelle, couleur }, index) => ({ libelle, couleur, longueur: difficultes[index] })), { libelle: t('editeur.non-cote'), couleur: VOIES.inconnu.couleur, longueur: total - connues }];
+    bloc.innerHTML = `<div class="parcours-legende">${legende(parts, total)}</div>`;
   }
 
   // Lecture seule : la carte redevient libre, un toucher sur le tracé lit le profil
@@ -826,6 +847,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     modeCouleur = selecteurCouleur.value;
     ecrire(`${activite.id}-couleur`, modeCouleur);
     dessinerTrace();
+    rendreLegendeCouleur();
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
   boutonGpx.addEventListener('click', exporterGpx);

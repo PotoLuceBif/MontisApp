@@ -152,6 +152,12 @@ const SITES = [vue(ANNECY), module('parapente'), ongletSites, (p) => p.waitForTi
 // Fiche d'un décollage près d'Annecy
 const TERRAIN = [...SITES, clic('#menu-bouton'), vue({ ...ANNECY, zoom: 11.5 }), toucherObjet('terrains-ffvl-points', 'classe', 'decollage')];
 // Fait défiler le panneau jusqu'à un bloc
+const choisirVisible = (selecteur, valeur) => (page) => page.evaluate(([s, v]) => {
+  const choix = [...document.querySelectorAll(s)].find((e) => e.offsetParent !== null);
+  if (!choix) return;
+  choix.value = v;
+  choix.dispatchEvent(new Event('change'));
+}, [selecteur, valeur]);
 const defiler = (selecteur) => (page) => page.evaluate((s) => document.querySelector(s)?.scrollIntoView({ block: 'start' }), selecteur);
 // Touche la frise météo à une fraction de sa largeur
 const lireFrise = (fraction) => async (page) => {
@@ -245,6 +251,7 @@ const ECRANS = [
   { nom: 'ski-rando-itineraires-carte', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // Un itinéraire touché dans la liste s'ouvre dans l'éditeur, comme une trace importée
   { nom: 'ski-rando-trace', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'ski-rando-trace-surface', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000), choisirVisible('.parcours-couleur select', 'surface'), (p) => p.waitForTimeout(500), defiler('.parcours-couleur')] },
   // Routage de montée : deux points posés sur la trace du col du Passon, le tracé la suit
   { nom: 'ski-rando-routage', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500), clicCarte([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), clicCarte([6.97771, 45.96735]), (p) => p.waitForTimeout(6000)] },
   { nom: 'ski-rando-ferme', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1500), clic('#menu-fermer'), (p) => p.waitForTimeout(3000)] },
@@ -258,6 +265,7 @@ const ECRANS = [
   { nom: 'ski-rando-piste', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1000), clic('.ski-pratiques [data-pratique="piste"]'), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
+  { nom: 'meteo-pin-ferme', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(2000), clicVisible('.outil-rapide-panneau:not([hidden]) .outil-rapide-fermer'), (p) => p.waitForTimeout(1000)] },
   // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
   { nom: 'meteo-recherche', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), (p) => p.waitForTimeout(3000)] },
   { nom: 'meteo-recherche-choisi', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), attendre('.meteo-recherche-liste .rando-item'), clic('.meteo-recherche-liste .rando-item'), (p) => p.waitForTimeout(3000)] },
