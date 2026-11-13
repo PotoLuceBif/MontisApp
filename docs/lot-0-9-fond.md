@@ -28,7 +28,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 12. *Pas dans les données :* falaises et barres rocheuses en trait. À chercher plus tard (calcul depuis le relief, sur l'appareil).
 
 ## C. Routes et chemins
-13. ★★★ **Routes.** *Fait le 14 novembre 2026 : juste milieu entre les deux pistes (la hiérarchie de l'IGN en couleurs adoucies), cerne pour toutes les routes, largeur selon la classe, tunnels estompés ; versions IGN et moderne gardées dans `VERSIONS_ROUTES`.* Deux pistes à comparer en captures :
+13. ★★★ **Routes.** *Fait le 14 novembre 2026 : violets de la DA de Montis (version « montis » de `VERSIONS_ROUTES`), un peu plus profonds après un premier essai trop effacé ; cerne pour toutes les routes, largeur selon la classe, tunnels estompés. Versions IGN, juste milieu, doux et moderne gardées pour comparer. En mode nuit (23) : les mêmes en « laser » magenta et violet.*
     - *IGN* : autoroutes rouges, nationales rouge-orangé, départementales jaunes, petites routes blanches cerclées ;
     - *Moderne* : routes blanches ou gris clair avec un fin liseré, seules les grandes en couleur douce (orange pâle).
 14. ★★★ **Sentiers.** *Fait le 14 novembre 2026 : tireté rouge sur liseré couleur papier, marches en tireté serré, trottoirs et allées en gris fin.* Le cœur de Montis. Pistes : tireté rouge-brun bien visible comme l'IGN, épaisseur selon le zoom, sentiers balisés (GR) mis en avant, marches et passages raides marqués. *Pas dans les données :* la difficulté des sentiers (`sac_scale`).
@@ -44,7 +44,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 22. ★ **Points utiles.** Parkings, abris, points d'eau, en petits pictos discrets de près.
 
 ## E. Thème sombre
-23. ★★★ **Version sombre du fond**, assortie aux thèmes sombre et cyberpunk (aujourd'hui la carte reste claire quand l'interface est sombre). On la fait en dernier : elle décline tout le reste.
+23. ★★★ **Version sombre du fond** (idée du 14 novembre 2026 : routes « laser » magenta et violet avec halo, sentiers corail néon, eau et glaciers cyan du logo ; le jour en est la version calme), assortie aux thèmes sombre et cyberpunk (aujourd'hui la carte reste claire quand l'interface est sombre). On la fait en dernier : elle décline tout le reste.
 
 ## F. Selon le zoom
 24. ★★ **Vue de loin** (pays, massifs) : ce qui apparaît, ce qui disparaît, passage au globe.

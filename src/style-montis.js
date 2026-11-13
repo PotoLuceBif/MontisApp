@@ -114,12 +114,24 @@ const VERSIONS_ROUTES = {
     cerne: '#a99f92',
     couleurs: { motorway: '#df6656', trunk: '#e37d58', primary: '#eea466', secondary: '#f4cd7c', tertiary: '#faeac2', minor: '#ffffff', service: '#ffffff' },
   },
+  // Encore plus doux (demande du 14 novembre 2026)
+  doux: {
+    cerne: '#b9b0a4',
+    couleurs: { motorway: '#e99482', trunk: '#eda485', primary: '#f2c196', secondary: '#f7dfab', tertiary: '#fbf0d6', minor: '#ffffff', service: '#ffffff' },
+  },
+  // Couleurs de la DA de Montis (violets du logo), en version de jour : le violet n'est pris par rien
+  // d'autre sur une carte de montagne (eau et glace bleues, forêts vertes, sentiers rouges)
+  montis: {
+    // Un peu plus profond que le premier essai, trop effacé (demande du propriétaire du 14 novembre 2026)
+    cerne: '#a596b3',
+    couleurs: { motorway: '#9259cc', trunk: '#9f6bd3', primary: '#b282dd', secondary: '#d0afea', tertiary: '#e8d7f3', minor: '#ffffff', service: '#ffffff' },
+  },
   moderne: {
     cerne: '#cbc2b4',
     couleurs: { motorway: '#f0a565', trunk: '#f3b878', primary: '#f7d398', secondary: '#ffffff', tertiary: '#ffffff', minor: '#ffffff', service: '#fbf9f5' },
   },
 };
-export const VERSION_ROUTES = 'milieu';
+export const VERSION_ROUTES = 'montis';
 const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
 
 const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
