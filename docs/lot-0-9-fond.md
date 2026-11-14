@@ -13,6 +13,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 
 ## Fait le 14 novembre 2026 (demandes du propriétaire)
 - [x] **Bâtiments allumés par défaut** (élément de la carte, sans pastille).
+- [x] **Bâtiments 3D** : couleur d'OpenStreetMap quand elle est connue, apparition dès le zoom 13,5, montée en douceur, dégradé vertical. Façades à fenêtres essayées puis retirées (MapLibre pose le motif aussi sur les toits). De vrais toits demanderaient une autre source de modèles 3D (swisstopo pour la Suisse) : plus tard.
 - [x] **Couleurs de jour rapprochées de la DA** : papier plus froid, eau vers le cyan du logo, noms bleu nuit, sommets brun-violet, bâtiments gris lavande.
 - [x] **Fond Montis Auto · Jour · Nuit** en tête de Fond de carte ; Auto par défaut, nuit après le coucher du soleil au centre de la carte.
 - [x] **Première version de nuit** : voir E. Bâtiments gris au contour « laser » cyan.

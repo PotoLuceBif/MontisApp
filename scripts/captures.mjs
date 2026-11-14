@@ -231,6 +231,7 @@ const ECRANS = [
   { nom: 'fond-nuit-sentiers', fond: 'nuit', actions: [vue({ center: [6.885, 45.975], zoom: 14.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-nuit-3d', fond: 'nuit', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 14.8, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'fond-modes', actions: [module('fond')] },
+  { nom: 'fond-batiments-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 15, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
