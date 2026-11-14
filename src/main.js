@@ -9,6 +9,7 @@ import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
 import { retablirFond } from './fond-de-carte.js';
+import { initPaletteFond } from './fond-palette.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
@@ -369,6 +370,7 @@ map.once('style.load', () => {
   // ---------- Menu (activités, météo, carte) ----------
   initMenu(map);
   retablirFond(map);
+  initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   initCiel(map); // étoiles et Lune autour du globe, derrière la carte
   initRecherche(map);

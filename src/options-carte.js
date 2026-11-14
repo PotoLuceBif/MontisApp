@@ -34,7 +34,7 @@ export function peintureCourbes(photo = false) {
 export function peintureCotes(photo = false) {
   return {
     'text-color': photo ? '#ffffff' : '#7a4f2a',
-    'text-halo-color': photo ? 'rgba(0, 0, 0, 0.75)' : 'rgba(244, 241, 234, 0.9)',
+    'text-halo-color': photo ? 'rgba(0, 0, 0, 0.75)' : 'rgba(243, 242, 244, 0.9)',
     'text-halo-width': 1.4,
   };
 }

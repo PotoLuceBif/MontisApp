@@ -3,8 +3,9 @@
 // Une carte nationale ne couvre que son pays : au-delà, le fond Montis complète la carte.
 import { lire, ecrire } from './reglages.js';
 import { etat, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
+import { MODES_FOND, choisirModeFond, fondDeNuit, modeFond } from './fond-palette.js';
 import { CALQUES_MONTIS, REPERE_CALQUES } from './style-montis.js';
-import { surLangue, t, ti } from './i18n.js';
+import { surLangue, t, ta, ti } from './i18n.js';
 import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
 import { rangerParPays, zoneCouvre } from './fonds-calcul.js';
 import { initCalquesOfficiels } from './calques-officiels.js';
@@ -54,8 +55,10 @@ function appliquerFond(map, id) {
 
   etat.fond = choix.integre ? 'montis' : national ? 'national' : 'autre';
   majOmbrage(map);
+  etat.majPaletteFond?.(); // avant les courbes : en quittant la nuit, elle leur rend leurs couleurs de jour
 
-  // Sur une photo, les courbes de niveau passent en blanc pour rester lisibles
+  // Sur une photo, les courbes de niveau passent en blanc pour rester lisibles (la nuit a les siennes)
+  if (fondDeNuit()) return;
   if (map.getLayer('courbes')) {
     for (const [nom, valeur] of Object.entries(peintureCourbes(choix.photo))) map.setPaintProperty('courbes', nom, valeur);
   }
@@ -113,6 +116,15 @@ export function creerFondDeCarte(map) {
   const panneau = document.createElement('div');
   panneau.className = 'fond-panneau';
   panneau.innerHTML = `
+    <section class="fond-montis-bloc">
+      <div class="fond-montis-entete">
+        <strong ${ti('fond.montis-titre')}>${t('fond.montis-titre')}</strong>
+        <small class="fond-montis-etat" aria-live="polite"></small>
+      </div>
+      <div class="segments fond-montis-modes" role="group" ${ta('aria-label', 'fond.montis-titre')}>
+        ${MODES_FOND.map((m) => `<button type="button" data-mode="${m}" ${ti(`fond.mode-${m}`)}>${t(`fond.mode-${m}`)}</button>`).join('')}
+      </div>
+    </section>
     <div class="fond-onglets" role="tablist">
       ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
     </div>
@@ -121,6 +133,31 @@ export function creerFondDeCarte(map) {
     <p class="note fond-alerte" role="status" hidden></p>
   `;
   const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button');
+  const boutonsModes = panneau.querySelectorAll('.fond-montis-modes button');
+  const etatMontis = panneau.querySelector('.fond-montis-etat');
+
+  // Jour, nuit ou auto : un mode choisi ramène au fond Montis
+  function majModes() {
+    const mode = modeFond();
+    const montis = idActif === 'montis';
+    boutonsModes.forEach((b) => {
+      b.classList.toggle('actif', montis && b.dataset.mode === mode);
+      b.setAttribute('aria-pressed', String(montis && b.dataset.mode === mode));
+    });
+    const cle = !montis ? 'fond.mode-etat-autre' : mode !== 'auto' ? `fond.mode-etat-${mode}` : fondDeNuit() ? 'fond.mode-etat-auto-nuit' : 'fond.mode-etat-auto-jour';
+    etatMontis.textContent = t(cle);
+  }
+  boutonsModes.forEach((b) => b.addEventListener('click', () => {
+    choisirModeFond(b.dataset.mode);
+    if (idActif !== 'montis') {
+      idActif = 'montis';
+      ecrire('fond', idActif);
+      if (!fondImpose) appliquerFond(map, idActif);
+      afficher();
+    }
+    majModes();
+  }));
+  window.addEventListener('montis:fond-nuit', () => majModes());
   const contenu = panneau.querySelector('.fond-contenu');
   const actuel = panneau.querySelector('.fond-actuel');
   const alerte = panneau.querySelector('.fond-alerte');
@@ -250,6 +287,7 @@ export function creerFondDeCarte(map) {
     });
     contenu.innerHTML = RENDUS[onglet]();
     majAlerte();
+    majModes();
     signatureIci = signature();
   }
 

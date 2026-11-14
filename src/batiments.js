@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { peindreCoucheFond } from './fond-palette.js';
 
 const COUCHE = 'batiments-3d';
 
@@ -17,7 +18,7 @@ export function afficherBatiments(map, visible) {
       paint: {
         'fill-extrusion-color': [
           'interpolate', ['linear'], ['get', 'render_height'],
-          0, '#e6dfd3', 30, '#d3c7b5', 100, '#b9a88f',
+          0, '#e3e0e6', 30, '#d0cbd6', 100, '#b6aec0',
         ],
         'fill-extrusion-height': [
           'interpolate', ['linear'], ['zoom'],
@@ -27,6 +28,7 @@ export function afficherBatiments(map, visible) {
         'fill-extrusion-opacity': 0.9,
       },
     });
+    peindreCoucheFond(map, COUCHE);
   }
 
   map.setLayoutProperty(COUCHE, 'visibility', visible ? 'visible' : 'none');

@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { peindreCoucheFond } from './fond-palette.js';
 
 // Les remplissages sont insérés sous l'ombrage et les courbes de niveau ;
 // les noms (haut: true) passent au-dessus de tout pour rester lisibles.
@@ -320,6 +321,7 @@ function afficher(map, groupe, visible) {
         },
         haut ? undefined : AVANT
       );
+      peindreCoucheFond(map, c.id);
     }
     map.setLayoutProperty(c.id, 'visibility', visible ? 'visible' : 'none');
   }

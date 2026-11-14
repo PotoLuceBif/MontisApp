@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { peindreCoucheFond } from './fond-palette.js';
 import { t } from './i18n.js';
 
 
@@ -42,7 +43,10 @@ function definition(n) {
 export function afficherVilles(map, visible) {
   assurerSourceVecteur(map);
   for (const n of NIVEAUX) {
-    if (!map.getLayer(n.id)) map.addLayer(definition(n));
+    if (!map.getLayer(n.id)) {
+      map.addLayer(definition(n));
+      peindreCoucheFond(map, n.id);
+    }
     map.setLayoutProperty(n.id, 'visibility', visible ? 'visible' : 'none');
   }
 }
@@ -128,6 +132,7 @@ export function afficherRefuges(map, visible) {
         'text-halo-width': 1.6,
       },
     });
+    peindreCoucheFond(map, COUCHE_REFUGES);
   }
 
   map.setLayoutProperty(COUCHE_REFUGES, 'visibility', visible ? 'visible' : 'none');

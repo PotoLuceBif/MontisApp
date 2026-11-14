@@ -78,7 +78,18 @@ export function ajouterMotifsMontis(map) {
     canvas.height = 32;
     const g = canvas.getContext('2d');
     tracer(g);
-    map.addImage(nom, g.getImageData(0, 0, 32, 32), { pixelRatio: 2 });
+    const image = g.getImageData(0, 0, 32, 32);
+    map.addImage(nom, image, { pixelRatio: 2 });
+    // Version de nuit : mêmes traits, éclaircis pour se lire sur le fond sombre
+    const nuit = new ImageData(new Uint8ClampedArray(image.data), 32, 32);
+    for (let i = 0; i < nuit.data.length; i += 4) {
+      if (!nuit.data[i + 3]) continue;
+      const bleu = nom.includes('humide');
+      nuit.data[i] = bleu ? 60 : 150;
+      nuit.data[i + 1] = bleu ? 200 : 160;
+      nuit.data[i + 2] = bleu ? 235 : 195;
+    }
+    map.addImage(`${nom}-nuit`, nuit, { pixelRatio: 2 });
   }
 }
 
@@ -143,7 +154,7 @@ export const STYLE_MONTIS = {
     [SOURCE_VECTEUR]: definitionSourceVecteur(),
   },
   layers: [
-    { id: 'montis-background', type: 'background', paint: { 'background-color': '#f4f1ea' } },
+    { id: 'montis-background', type: 'background', paint: { 'background-color': '#f3f2f4' } },
     {
       id: 'montis-landuse',
       type: 'fill',
@@ -163,18 +174,18 @@ export const STYLE_MONTIS = {
           'match',
           ['get', 'class'],
           ['wood', 'forest'],
-          '#aed293',
+          '#a6d19b',
           ['grass', 'scrub'],
-          '#dce9c4',
+          '#dbe9cc',
           ['ice', 'snow'],
-          '#f4f8fb',
+          '#f2f7fc',
           'rock',
-          '#e4e1da',
+          '#e2e0e6',
           'sand',
-          '#efe4c6',
+          '#ede5cf',
           'wetland',
-          '#e1ece6',
-          '#e6ecd5',
+          '#dcebea',
+          '#dbe9cc',
         ],
         'fill-opacity': ['match', ['get', 'class'], ['ice', 'snow'], 0.95, ['wood', 'forest'], 0.9, 0.8],
       },
@@ -213,7 +224,7 @@ export const STYLE_MONTIS = {
         'hillshade-illumination-anchor': 'map',
         'hillshade-exaggeration': exagerationReliefMontis(),
         'hillshade-shadow-color': ['rgba(46, 58, 92, 0.55)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.15)'],
-        'hillshade-highlight-color': ['rgba(255, 246, 222, 0.32)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
+        'hillshade-highlight-color': ['rgba(255, 250, 240, 0.3)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
         'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
       },
     },
@@ -236,7 +247,7 @@ export const STYLE_MONTIS = {
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'water',
-      paint: { 'fill-color': '#a8d2ea', 'fill-opacity': 0.95 },
+      paint: { 'fill-color': '#9dd2ec', 'fill-opacity': 0.95 },
     },
     {
       id: 'montis-waterway',
@@ -244,7 +255,7 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'waterway',
       paint: {
-        'line-color': '#7db8dc',
+        'line-color': '#5fb3df',
         'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 14, 2.2],
       },
     },
@@ -255,7 +266,7 @@ export const STYLE_MONTIS = {
       'source-layer': 'boundary',
       filter: ['==', ['get', 'admin_level'], 4],
       paint: {
-        'line-color': '#bd9988',
+        'line-color': '#a996b8',
         'line-opacity': 0.55,
         'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.5, 10, 1.2],
         'line-dasharray': [2, 2],
@@ -267,7 +278,26 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'building',
       minzoom: 13,
-      paint: { 'fill-color': '#d8d1c3', 'fill-opacity': 0.74 },
+      paint: { 'fill-color': '#d5d1da', 'fill-opacity': 0.8 },
+    },
+    // Contour « laser » des bâtiments, seulement de nuit et avec l'élément Bâtiments (fond-palette.js)
+    {
+      id: 'montis-batiments-lueur',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'building',
+      minzoom: 14,
+      layout: { visibility: 'none' },
+      paint: { 'line-color': '#3ee8ff', 'line-opacity': 0.35, 'line-width': 4, 'line-blur': 3 },
+    },
+    {
+      id: 'montis-batiments-contour',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'building',
+      minzoom: 14,
+      layout: { visibility: 'none' },
+      paint: { 'line-color': '#7ff3ff', 'line-opacity': 0.9, 'line-width': 0.8 },
     },
     {
       id: 'montis-road-casing',
@@ -321,7 +351,7 @@ export const STYLE_MONTIS = {
       filter: classes(['path', 'footway', 'bridleway', 'steps']),
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': '#f6f3ec',
+        'line-color': '#f5f4f7',
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.35, 15, 0.7],
         'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 15, 4, 17, 6],
       },
@@ -376,8 +406,8 @@ export const STYLE_MONTIS = {
         'symbol-sort-key': ['to-number', ['get', 'rank'], 99],
       },
       paint: {
-        'text-color': '#394b43',
-        'text-halo-color': '#f8f6ef',
+        'text-color': '#232b45',
+        'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,
       },
     },
@@ -400,8 +430,8 @@ export const STYLE_MONTIS = {
         'text-padding': 5,
       },
       paint: {
-        'text-color': '#725844',
-        'text-halo-color': '#f7f4eb',
+        'text-color': '#5b4660',
+        'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,
       },
     },

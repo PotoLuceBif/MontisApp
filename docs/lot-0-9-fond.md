@@ -11,6 +11,12 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 - [x] **Rochers, éboulis, zones humides, sable, glaciers bordés de bleu.**
 - [x] **Forêts et alpages plus verts** (13 novembre 2026, ta demande : vert plus accentué).
 
+## Fait le 14 novembre 2026 (demandes du propriétaire)
+- [x] **Bâtiments allumés par défaut** (élément de la carte, sans pastille).
+- [x] **Couleurs de jour rapprochées de la DA** : papier plus froid, eau vers le cyan du logo, noms bleu nuit, sommets brun-violet, bâtiments gris lavande.
+- [x] **Fond Montis Auto · Jour · Nuit** en tête de Fond de carte ; Auto par défaut, nuit après le coucher du soleil au centre de la carte.
+- [x] **Première version de nuit** : voir E. Bâtiments gris au contour « laser » cyan.
+
 ## A. Couleurs de base
 1. ★★★ **Forêts.** Le vert vient d'être accentué. Pistes : lisière plus foncée (contour fin), petit motif d'arbres de près comme l'IGN. *Pas dans les données :* feuillus ou conifères.
 2. ★★ **Prairies et alpages.** Vert pâle, distinct des forêts. Pistes : un vert-jaune plus franc pour les alpages, rien pour les cultures (la carte reste claire en vallée).
