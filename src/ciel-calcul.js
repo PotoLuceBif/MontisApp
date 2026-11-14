@@ -63,5 +63,16 @@ export function lireCatalogue(json) {
   return etoiles;
 }
 
+// La Voie lactée : une grille de points [ra, dec, niveau] à plat, ra et dec en dixièmes de degré, niveau 1 à 5
+export function lireVoieLactee(json) {
+  const plat = json?.points ?? [];
+  const points = [];
+  for (let i = 0; i + 2 < plat.length; i += 3) points.push({ ra: plat[i] / 10, dec: plat[i + 1] / 10, niveau: plat[i + 2] });
+  return points;
+}
+
+// Opacité d'une tache de Voie lactée selon son niveau : halo à peine visible, cœur plus lumineux
+export const opaciteVoieLactee = (niveau) => [0, 0.009, 0.018, 0.03, 0.045, 0.06][Math.min(5, Math.max(0, niveau))];
+
 // Opacité du ciel selon le zoom : celle du globe jour et nuit (plein jusqu'au zoom 4, rien au-delà du zoom 6)
 export const opaciteCiel = (zoom) => Math.min(1, Math.max(0, (6 - zoom) / 2));

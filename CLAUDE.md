@@ -152,7 +152,7 @@ src/                    Tout le code (détail ci-dessous)
 | Fichier | Rôle |
 |---|---|
 | `main.js`, `ouverture-calcul.js` | Crée la carte, relief et courbes, globe, ciel, bascule 2D/3D, mémoire de la vue ; ouverture sur sa position après une absence (testé) |
-| `ciel.js`, `ciel-calcul.js` | Ciel autour du globe : étoiles (catalogue `public/data/ciel/etoiles.json`) et Lune avec sa phase, sur une toile derrière la carte, seulement au dézoom ; calculs purs : temps sidéral, direction d'une étoile, projection, éclat, couleur, catalogue (testés). Base des constellations |
+| `ciel.js`, `ciel-calcul.js` | Ciel autour du globe : Voie lactée (taches floues en quart de résolution), étoiles (catalogue `public/data/ciel/etoiles.json`) et Lune avec sa phase, sur une toile derrière la carte, seulement au dézoom ; calculs purs : temps sidéral, direction d'une étoile, projection, éclat, couleur, catalogue (testés). Base des constellations |
 | `globe-nuit.js`, `globe-nuit-calcul.js` | Globe jour et nuit au dézoom (images de la NASA mélangées selon le soleil, `montis-globe://<instant>/z/x/y`) ; calculs purs : point subsolaire, hauteur du soleil, crépuscule, mélange d'une tuile (testés) |
 | `globe-atmosphere.js` | Atmosphère du globe au dézoom : halo dans l'espace (toile derrière la carte) et liseré sur le bord (toile par-dessus), éclairés du côté du soleil, bord assombri côté nuit ; même fondu que le ciel |
 | `menu.js`, `module-differe.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules ; chargement à la première ouverture |
@@ -270,6 +270,7 @@ Fichiers générés par `scripts/`, à relancer seulement pour rafraîchir les d
 | `public/data/bike-parks.json`, `bike-parks/` (38 fichiers) | 2,7 Mo | `node scripts/extraire-bike-parks.mjs` (OSM via Overpass) |
 | `public/data/refuges.json` | 1,9 Mo | `MONTIS_CONTACT_EMAIL=... node scripts/extraire-refuges.mjs` (Overpass) |
 | `public/data/ciel/etoiles.json` (5 044 étoiles jusqu'à la magnitude 6) | 93 Ko | `node scripts/extraire-etoiles.mjs` (d3-celestial, BSD-3, Hipparcos ; à créditer) |
+| `public/data/ciel/voie-lactee.json` (3 827 points, cinq niveaux d'éclat) | 43 Ko | `node scripts/extraire-voie-lactee.mjs` (contours de d3-celestial, BSD-3) |
 | `src/fonds-zones.js`, `src/fonds-emprises.js` | 50 Ko | `node scripts/extraire-zones-fonds.mjs` (Natural Earth, domaine public) |
 | `public/data/skitour/` (6 446 itinéraires, 294 carrés de 1° et `index.json`) | 3,4 Mo | `node scripts/extraire-skitour.mjs` (OpenSkiData) ; hors du préchargement |
 | `public/data/avalanches/massifs.json` (627 massifs simplifiés) | 488 Ko | `node scripts/extraire-massifs-avalanche.mjs` (EAWS, CC BY 4.0) ; hors du préchargement, comme `pistes/` |
@@ -342,6 +343,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 
 - Globe jour et nuit (12 novembre 2026, demande du propriétaire, d'après Plans d'Apple) : au dézoom, image du jour avec relief et fonds marins, et villes éclairées la nuit, mélangées selon la hauteur réelle du soleil (crépuscule de −8° à +1°), recalculées toutes les dix minutes ; plein jusqu'au zoom 4, effacé au zoom 6, au-dessus de tous les fonds (sous le repère des calques). Écrans `globe-nuit`, `globe-nuit-terminateur` (centré sur la ligne jour-nuit), `globe-nuit-fondu`.
 
+- Voie lactée (14 novembre 2026, demande du propriétaire) : bande laiteuse discrète derrière les étoiles, à sa vraie place, d'après les contours de d3-celestial changés en grille de points (les contours font le tour du ciel et passent derrière la caméra). Écrans `globe-nuit`, `globe-ciel-lune`.
 - Atmosphère du globe (14 novembre 2026, demande du propriétaire, d'après Plans d'Apple) : liseré blanc-bleu et halo sur le bord éclairé, bord assombri côté nuit (`globe-atmosphere.js`) ; nuit en bleu profond avec les lumières des villes réchauffées (`teinteNuit`), jour qui baisse près de la ligne jour-nuit (`eclairageJour`, `globe-nuit-calcul.js`).
 
 - Ciel du globe (12 novembre 2026, demande du propriétaire) : étoiles visibles à l'œil nu à leur vraie place et à l'heure réelle, couleur et éclat selon l'étoile, et Lune avec sa phase (côté éclairé vers le soleil, agrandie : 10 px de rayon), sur une toile derrière la carte (le globe les cache) ; même fondu que le globe jour et nuit (pleines jusqu'au zoom 4, effacées au zoom 6). Constellations : plus tard, sur la même base (tracés de d3-celestial). Écran `globe-ciel-lune` (la Terre cadrée pour voir la Lune près du bord).
