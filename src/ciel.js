@@ -2,12 +2,9 @@
 // place et Lune avec sa phase, sur une toile posée derrière la carte (le globe les cache quand elles passent
 // derrière lui). Seulement au dézoom, avec le globe jour et nuit. Base des constellations à venir.
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
-import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, lireVoieLactee, opaciteCiel, opaciteVoieLactee, projeterDirection, tempsSideral } from './ciel-calcul.js';
+import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral } from './ciel-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
-const VOIE_LACTEE = '/data/ciel/voie-lactee.json';
-const PAS_VOIE_LACTEE = 1.5; // ° entre deux points de la grille
-const REDUCTION = 4; // la Voie lactée se dessine en quart de résolution puis s'agrandit : un flou doux et léger
 const ZOOM_MAX = 6;
 const RAYON_LUNE = 10; // px : la Lune réelle (0,5°) n'aurait que quelques pixels à cette échelle
 const AZIMUT = (azimuth) => ((azimuth % 360) + 360) % 360; // suncalc 2 : degrés depuis le nord
@@ -28,22 +25,6 @@ const chargerEtoiles = () => {
   return chargement;
 };
 
-let chargementVoieLactee = null;
-const chargerVoieLactee = () => {
-  chargementVoieLactee ??= fetch(VOIE_LACTEE)
-    .then((reponse) => {
-      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
-      return reponse.json();
-    })
-    .then(lireVoieLactee)
-    .catch((erreur) => {
-      chargementVoieLactee = null;
-      console.warn('Ciel : Voie lactée indisponible', erreur);
-      return [];
-    });
-  return chargementVoieLactee;
-};
-
 export function initCiel(map) {
   const toile = document.createElement('canvas');
   toile.className = 'ciel-etoiles';
@@ -51,38 +32,7 @@ export function initCiel(map) {
   map.getContainer().insertBefore(toile, map.getCanvasContainer());
   const contexte = toile.getContext('2d');
   let etoiles = [];
-  let voieLactee = [];
   let prevu = false;
-  const brume = document.createElement('canvas');
-  const contexteBrume = brume.getContext('2d');
-
-  // Taches floues, du halo au cœur, sous les étoiles
-  function dessinerVoieLactee(cam, centre, ts, l, h) {
-    const largeur = Math.ceil(l / REDUCTION);
-    const hauteur = Math.ceil(h / REDUCTION);
-    if (brume.width !== largeur || brume.height !== hauteur) {
-      brume.width = largeur;
-      brume.height = hauteur;
-    }
-    contexteBrume.clearRect(0, 0, largeur, hauteur);
-    // Taches à bord dégradé, deux fois plus larges que la grille : elles se fondent sans laisser voir de rond
-    const rayon = (2 * PAS_VOIE_LACTEE * (h / cam.fov)) / REDUCTION;
-    for (const { ra, dec, niveau } of voieLactee) {
-      const point = projeterDirection(directionEtoile(ra, dec, centre.lat, centre.lng, ts), cam);
-      if (!point) continue;
-      const x = point.x / REDUCTION;
-      const y = point.y / REDUCTION;
-      if (x < -rayon || y < -rayon || x > largeur + rayon || y > hauteur + rayon) continue;
-      const tache = contexteBrume.createRadialGradient(x, y, 0, x, y, rayon);
-      tache.addColorStop(0, `rgba(196, 210, 255, ${opaciteVoieLactee(niveau)})`);
-      tache.addColorStop(1, 'rgba(196, 210, 255, 0)');
-      contexteBrume.fillStyle = tache;
-      contexteBrume.fillRect(x - rayon, y - rayon, rayon * 2, rayon * 2);
-    }
-    contexte.imageSmoothingEnabled = true;
-    contexte.imageSmoothingQuality = 'high';
-    contexte.drawImage(brume, 0, 0, largeur * REDUCTION, hauteur * REDUCTION);
-  }
 
   function camera() {
     const { clientWidth: largeur, clientHeight: hauteurEcran } = map.getContainer();
@@ -155,14 +105,6 @@ export function initCiel(map) {
     contexte.clearRect(0, 0, l, h);
     toile.hidden = opacite <= 0;
     if (opacite <= 0) return;
-    if (!voieLactee.length) {
-      chargerVoieLactee().then((liste) => {
-        if (liste.length && !voieLactee.length) {
-          voieLactee = liste;
-          planifier();
-        }
-      });
-    }
     if (!etoiles.length) {
       chargerEtoiles().then((liste) => {
         if (liste.length && !etoiles.length) {
@@ -176,7 +118,6 @@ export function initCiel(map) {
     const maintenant = new Date();
     const ts = tempsSideral(maintenant);
     contexte.globalAlpha = opacite;
-    if (voieLactee.length) dessinerVoieLactee(cam, centre, ts, l, h);
     for (const etoile of etoiles) {
       const point = projeterDirection(directionEtoile(etoile.ra, etoile.dec, centre.lat, centre.lng, ts), cam);
       if (!point || point.x < -4 || point.y < -4 || point.x > l + 4 || point.y > h + 4) continue;

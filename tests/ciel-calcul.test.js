@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, lireVoieLactee, opaciteCiel, opaciteVoieLactee, projeterDirection, tempsSideral } from '../src/ciel-calcul.js';
+import {
+  couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral,
+} from '../src/ciel-calcul.js';
 
 describe('position des étoiles', () => {
   it('donne le temps sidéral de référence au 1er janvier 2000 à midi UTC', () => {
@@ -59,19 +61,5 @@ describe('éclat, couleur et catalogue', () => {
     expect(opaciteCiel(2)).toBe(1);
     expect(opaciteCiel(5)).toBe(0.5);
     expect(opaciteCiel(7)).toBe(0);
-  });
-});
-
-describe('Voie lactée', () => {
-  it('lit la grille de points', () => {
-    expect(lireVoieLactee({ points: [2665, -290, 5, 100, 15, 1] })).toEqual([
-      { ra: 266.5, dec: -29, niveau: 5 },
-      { ra: 10, dec: 1.5, niveau: 1 },
-    ]);
-    expect(lireVoieLactee(null)).toEqual([]);
-  });
-  it('éclaire plus le cœur que le halo', () => {
-    expect(opaciteVoieLactee(5)).toBeGreaterThan(opaciteVoieLactee(1));
-    expect(opaciteVoieLactee(0)).toBe(0);
   });
 });

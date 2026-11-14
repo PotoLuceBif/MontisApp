@@ -18,6 +18,9 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 - [x] **Fond Montis Auto · Jour · Nuit** en tête de Fond de carte ; Auto par défaut, nuit après le coucher du soleil au centre de la carte.
 - [x] **Première version de nuit** : voir E. Bâtiments gris au contour « laser » cyan.
 
+## À revoir (prévu le 15 novembre 2026)
+- **Voie lactée autour du globe.** Deux essais retirés le 14 novembre : contours de d3-celestial en taches floues (trop discret ou voile gris), puis photo du ciel de l'ESO (eso0932a, S. Brunier, CC BY 4.0) projetée pixel par pixel, proche du rendu de Google Earth (4 000 px, 1,3 Mo hors préchargement, éclat 55 %). Le code de l'essai photo n'est pas gardé ; la piste à reprendre est celle-là.
+
 ## A. Couleurs de base
 1. ★★★ **Forêts.** Le vert vient d'être accentué. Pistes : lisière plus foncée (contour fin), petit motif d'arbres de près comme l'IGN. *Pas dans les données :* feuillus ou conifères.
 2. ★★ **Prairies et alpages.** Vert pâle, distinct des forêts. Pistes : un vert-jaune plus franc pour les alpages, rien pour les cultures (la carte reste claire en vallée).
