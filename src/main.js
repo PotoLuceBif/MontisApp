@@ -4,20 +4,22 @@ import mlcontour from 'maplibre-contour';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import { initMenu } from './menu.js';
-import { etat, majCourbes } from './options-carte.js';
+import { etat, majCourbes, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
 import { retablirFond } from './fond-de-carte.js';
+import { initPaletteFond } from './fond-palette.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
-import { STYLE_MONTIS } from './style-montis.js';
+import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
 import { initGlobeNuit } from './globe-nuit.js';
+import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
@@ -247,11 +249,11 @@ const OMBRAGE_EXAGERATION = 0.5;
 let ombragePolaire = null;
 function majOmbragePolaire() {
   const lat = Math.abs(map.getCenter().lat);
-  const facteur = Math.min(1, Math.max(0, (78 - lat) / 8));
-  const valeur = Math.round(OMBRAGE_EXAGERATION * facteur * 100) / 100;
-  if (valeur === ombragePolaire || !map.getLayer('ombrage')) return;
-  ombragePolaire = valeur;
-  map.setPaintProperty('ombrage', 'hillshade-exaggeration', valeur);
+  const facteur = Math.round(Math.min(1, Math.max(0, (78 - lat) / 8)) * 100) / 100;
+  if (facteur === ombragePolaire || !map.getLayer('ombrage')) return;
+  ombragePolaire = facteur;
+  map.setPaintProperty('ombrage', 'hillshade-exaggeration', OMBRAGE_EXAGERATION * facteur);
+  if (map.getLayer('montis-relief')) map.setPaintProperty('montis-relief', 'hillshade-exaggeration', exagerationReliefMontis(facteur));
 }
 map.on('moveend', majOmbragePolaire);
 map.on('style.load', () => {
@@ -267,12 +269,12 @@ function appliquerMode(mode3D) {
     map.setMaxPitch(85);
     majTerrain();
     // L'ombre du soleil (ombres.js), quand elle est allumée, remplace cet ombrage fixe
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', etat.ombresSoleil || etat.ombreSortie ? 'none' : 'visible');
+    majOmbrage(map);
     map.touchPitch.enable();
   } else {
     // 2D : on remet à plat, puis on bloque l'inclinaison
     majTerrain();
-    if (!etat.enVisite) map.setLayoutProperty('ombrage', 'visibility', 'none');
+    majOmbrage(map);
     map.touchPitch.disable();
     // Bloquer tout de suite couperait l'animation : la carte se remet à plat, puis se bloque
     if (map.getPitch() === 0) map.setMaxPitch(0);
@@ -290,9 +292,10 @@ function appliquerMode(mode3D) {
 
 etat.basculerMode = () => appliquerMode(!etat.mode3D);
 
-// Les courbes sont calculées dans l'unité affichée : des pieds ronds en impérial
-const SEUILS_METRES = { 9: [500, 1000], 10: [200, 1000], 11: [100, 500], 12: [20, 100], 13: [20, 100], 14: [10, 100] };
-const SEUILS_PIEDS = { 9: [2000, 4000], 10: [1000, 5000], 11: [500, 2000], 12: [100, 500], 13: [50, 250], 14: [40, 200] };
+// Les courbes sont calculées dans l'unité affichée : des pieds ronds en impérial.
+// [intermédiaire, maîtresse] : en montagne, une courbe tous les 20 m n'est lisible qu'à partir du zoom 13
+const SEUILS_METRES = { 9: [500, 1000], 10: [200, 1000], 11: [100, 500], 12: [50, 250], 13: [20, 100], 14: [20, 100], 15: [10, 50] };
+const SEUILS_PIEDS = { 9: [2000, 4000], 10: [1000, 5000], 11: [500, 2000], 12: [200, 1000], 13: [100, 500], 14: [50, 250], 15: [40, 200] };
 const urlCourbes = () =>
   demSource.contourProtocolUrl({
     multiplier: imperial() ? PIEDS : 1,
@@ -330,6 +333,7 @@ const texteSommetFond = () => [
 // Pas « load » : il attend les premières tuiles, et sur un réseau lent l'appli resterait
 // sans menu ni recherche. Le style est dans le code, il est prêt presque tout de suite.
 map.once('style.load', () => {
+  ajouterMotifsMontis(map); // avant les premières tuiles du fond, qui en ont besoin
   marquerPrete(map);
   // ---------- Courbes de niveau ----------
   map.addSource('courbes', {
@@ -343,11 +347,8 @@ map.once('style.load', () => {
     type: 'line',
     source: 'courbes',
     'source-layer': 'contours',
-    paint: {
-      'line-color': '#8a5a2b',
-      'line-opacity': 0.6,
-      'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6],
-    },
+    layout: { 'line-join': 'round' },
+    paint: peintureCourbes(),
   });
 
   map.addLayer({
@@ -358,23 +359,22 @@ map.once('style.load', () => {
     filter: ['>=', ['get', 'level'], 1],
     layout: {
       'symbol-placement': 'line',
-      'symbol-spacing': 300,
+      'symbol-spacing': 420,
       'text-field': texteCourbe(),
       'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-      'text-size': 11,
+      'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9.5, 15, 11],
+      'text-padding': 12,
     },
-    paint: {
-      'text-color': '#6b4220',
-      'text-halo-color': '#ffffff',
-      'text-halo-width': 1.5,
-    },
+    paint: peintureCotes(),
   });
 
   // ---------- Menu (activités, météo, carte) ----------
   initMenu(map);
   retablirFond(map);
+  initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   initCiel(map); // étoiles et Lune autour du globe, derrière la carte
+  initAtmosphere(map); // halo et liseré du globe, éclairés du côté du soleil
   initRecherche(map);
   initFiches(map);
   initHorsLigne(map);

@@ -219,6 +219,20 @@ const { fragment: LIEN_PARCOURS } = await fragmentParcours({
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
+  // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
+  { nom: 'fond-massif', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-vallee', actions: [vue(MATIN), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-sentiers', actions: [vue({ center: [6.885, 45.975], zoom: 14.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-sentiers-proche', actions: [vue({ center: [6.872, 45.93], zoom: 15.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-routes', actions: [vue({ center: [6.66, 45.92], zoom: 11.2, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-routes-ville', actions: [vue({ center: [6.87, 45.923], zoom: 13.8, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-nuit-massif', fond: 'nuit', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-nuit-ville', fond: 'nuit', actions: [vue({ center: [6.87, 45.923], zoom: 15, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-nuit-sentiers', fond: 'nuit', actions: [vue({ center: [6.885, 45.975], zoom: 14.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-nuit-3d', fond: 'nuit', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 14.8, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
+  { nom: 'fond-modes', actions: [module('fond')] },
+  { nom: 'fond-batiments-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 15, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
+  { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
   { nom: 'parapente', actions: [module('parapente')] },
@@ -612,7 +626,8 @@ async function main() {
         const contexte = await navigateur.newContext({ ...options, locale: 'fr-FR', permissions: ['clipboard-read', 'clipboard-write'] });
         // Pas de feuille de partage du système : le lien est copié, ce qui se voit sur la capture
         await contexte.addInitScript(() => { delete Navigator.prototype.share; });
-        await contexte.addInitScript(() => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr' })));
+        // Fond de jour par défaut : en Auto, une série lancée le soir passerait tout en nuit
+        await contexte.addInitScript((mode) => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': mode })), ecran.fond ?? 'jour');
         const page = await contexte.newPage();
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));

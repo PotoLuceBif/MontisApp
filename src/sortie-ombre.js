@@ -7,7 +7,7 @@ import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
 import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE } from './ombre-couches.js';
 import { creerSoleilCiel } from './soleil-ciel.js';
 import { positionSoleil } from './soleil.js';
-import { etat } from './options-carte.js';
+import { etat, majOmbrage } from './options-carte.js';
 import { lire } from './reglages.js';
 
 const COUCHE_OMBRAGE = 'sortie-ombre-soleil';
@@ -50,7 +50,7 @@ export function creerOmbreSortie(map) {
       if (voir) eclairer(map, COUCHE_OMBRAGE, SOURCE_PORTEE, soleil, intensite());
     }
     // L'ombrage fixe de la 3D et celui de Carte › Relief s'effacent devant celui de la sortie
-    if (map.getLayer('ombrage')) map.setLayoutProperty('ombrage', 'visibility', !actif && etat.mode3D && !etat.ombresSoleil ? 'visible' : 'none');
+    majOmbrage(map);
     if (actif) RELIEF.forEach((id) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', 'none'));
     ciel?.montrer(actif && etat.mode3D ? soleil : null);
   }

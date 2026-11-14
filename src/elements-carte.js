@@ -32,7 +32,7 @@ const GROUPES = [
     id: 'construit',
     nom: 'elements.construit',
     calques: [
-      { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: false, appliquer: afficherBatiments },
+      { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: true, appliquer: afficherBatiments },
     ],
   },
 ];
@@ -92,8 +92,10 @@ export function creerElementsCarte(map) {
       ligne.append(input, ' ', texte, aide);
       bloc.appendChild(ligne);
 
-      // Pastille sur la carte tant que l'élément est affiché : ✕ l'enlève, un appui ouvre son onglet
-      const pastille = creerPastilleCouche({
+      // Pastille sur la carte tant que l'élément est affiché : ✕ l'enlève, un appui ouvre son onglet.
+      // Un élément allumé par défaut (bâtiments) n'en a pas, comme les courbes : il fait partie du fond.
+      const avecPastille = !c.defaut;
+      const pastilleCouche = creerPastilleCouche({
         rubrique: 'elements',
         ordre: 10 + rang,
         nom: () => t(`elements.court-${c.cle}`),
@@ -108,6 +110,7 @@ export function creerElementsCarte(map) {
           input.dispatchEvent(new Event('change'));
         },
       });
+      const pastille = { montrer: (oui) => pastilleCouche.montrer(oui && avecPastille) };
       rang += 1;
 
       // Rétablit l'état précédent dès que la carte est prête

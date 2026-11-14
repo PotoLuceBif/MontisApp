@@ -1,4 +1,5 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
+import { peindreCoucheFond } from './fond-palette.js';
 import { expressionAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 
@@ -79,6 +80,7 @@ export function afficherSommets(map, visible) {
         'text-halo-width': 1.5,
       },
     });
+    peindreCoucheFond(map, COUCHE);
   }
 
   map.setLayoutProperty(COUCHE, 'visibility', visible ? 'visible' : 'none');

@@ -183,6 +183,11 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
 .segments button.actif, .fond-onglets button.actif, .relief-bascule button.actif { background: var(--accent); color: var(--accent-texte); }
 
 /* Fond de carte */
+.fond-montis-bloc { display: grid; gap: 8px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--bord); }
+.fond-montis-entete { display: grid; gap: 2px; }
+.fond-montis-entete strong { color: var(--texte); font-size: 14px; }
+.fond-montis-etat { color: var(--texte-2); font-size: 12px; }
+.fond-montis-modes button { min-height: 40px; }
 .liste-fonds { max-height: 240px; overflow-y: auto; border: 1px solid var(--bord); border-radius: 8px; }
 .fond-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-bottom: 1px solid var(--bord); cursor: pointer; }
 .fond-item:last-child { border-bottom: 0; }
@@ -3866,5 +3871,5 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .bulletin-carte[aria-pressed="true"] { background: var(--accent); color: var(--accent-texte); }
 
 /* Ciel autour du globe (ciel.js) : derrière la carte, qui le laisse voir autour de la Terre */
-.ciel-etoiles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.ciel-etoiles[hidden] { display: none; }
+.ciel-etoiles, .globe-atmosphere { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ciel-etoiles[hidden], .globe-atmosphere[hidden] { display: none; }
