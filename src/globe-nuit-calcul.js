@@ -41,6 +41,35 @@ export function partJour(hauteur) {
   return x * x * (3 - 2 * x);
 }
 
+const lisse = (a, b, v) => {
+  const x = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return x * x * (3 - 2 * x);
+};
+
+// Côté jour : la lumière baisse quand le soleil descend vers l'horizon, comme vu de l'espace
+export function eclairageJour(hauteur) {
+  return 0.62 + 0.38 * lisse(-2, 30, hauteur);
+}
+
+// Côté nuit : un bleu nuit profond plutôt que le gris violacé de l'image ; les lumières des villes restent, réchauffées
+export function teinteNuit(r, v, b) {
+  const lum = (r + v + b) / 3;
+  const ville = lisse(70, 170, lum);
+  const fond = [r * 0.3 + 4, v * 0.36 + 8, b * 0.5 + 20];
+  const lumiere = [Math.min(255, lum * 1.15 + 25), Math.min(255, lum * 0.95 + 8), lum * 0.62];
+  return fond.map((c, i) => c * (1 - ville) + lumiere[i] * ville);
+}
+
+// Point à `angle` degrés de (lat, lng), dans la direction `azimut` (degrés depuis le nord) : sur le grand cercle
+export function pointADistance(lat, lng, azimut, angle) {
+  const phi = lat * RAD;
+  const d = angle * RAD;
+  const az = azimut * RAD;
+  const phi2 = Math.asin(Math.sin(phi) * Math.cos(d) + Math.cos(phi) * Math.sin(d) * Math.cos(az));
+  const lambda = Math.atan2(Math.sin(az) * Math.sin(d) * Math.cos(phi), Math.cos(d) - Math.sin(phi) * Math.sin(phi2));
+  return { lat: phi2 / RAD, lng: normaliser(lng + lambda / RAD) };
+}
+
 // Pixels RGBA d'une tuile z/x/y de 256 px : `jour` et `nuit` sont les pixels des deux images de la même tuile
 export function melangerTuile(jour, nuit, z, x, y, soleil) {
   const pixels = new Uint8ClampedArray(256 * 256 * 4);
@@ -49,11 +78,14 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
   const PAS = 8;
   const cotes = 256 / PAS + 1;
   const parts = new Float32Array(cotes * cotes);
+  const lumieres = new Float32Array(cotes * cotes);
   for (let gy = 0; gy < cotes; gy += 1) {
     const lat = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y * 256 + gy * PAS)) / monde))) / RAD;
     for (let gx = 0; gx < cotes; gx += 1) {
       const lng = ((x * 256 + gx * PAS) / monde) * 360 - 180;
-      parts[gy * cotes + gx] = partJour(hauteurSoleil(lat, lng, soleil));
+      const h = hauteurSoleil(lat, lng, soleil);
+      parts[gy * cotes + gx] = partJour(h);
+      lumieres[gy * cotes + gx] = eclairageJour(h);
     }
   }
   const bordMonde = y === 0 || y === 2 ** z - 1; // seules les tuiles du haut et du bas touchent un pôle
@@ -71,9 +103,12 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       const tx = (px - gx * PAS) / PAS;
       const w = (parts[gy * cotes + gx] * (1 - tx) + parts[gy * cotes + gx + 1] * tx) * (1 - ty)
         + (parts[(gy + 1) * cotes + gx] * (1 - tx) + parts[(gy + 1) * cotes + gx + 1] * tx) * ty;
+      const l = (lumieres[gy * cotes + gx] * (1 - tx) + lumieres[gy * cotes + gx + 1] * tx) * (1 - ty)
+        + (lumieres[(gy + 1) * cotes + gx] * (1 - tx) + lumieres[(gy + 1) * cotes + gx + 1] * tx) * ty;
       const o = (py * 256 + px) * 4;
+      const teinte = teinteNuit(nuit[o], nuit[o + 1], nuit[o + 2]);
       for (let c = 0; c < 3; c += 1) {
-        const image = jour[o + c] * w + nuit[o + c] * (1 - w);
+        const image = jour[o + c] * l * w + teinte[c] * (1 - w);
         const unie = GLACE[c] * w + NUIT_POLAIRE[c] * (1 - w);
         pixels[o + c] = image * (1 - polaire) + unie * polaire;
       }

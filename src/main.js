@@ -19,6 +19,7 @@ import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
 import { initGlobeNuit } from './globe-nuit.js';
+import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
@@ -373,6 +374,7 @@ map.once('style.load', () => {
   initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   initCiel(map); // étoiles et Lune autour du globe, derrière la carte
+  initAtmosphere(map); // halo et liseré du globe, éclairés du côté du soleil
   initRecherche(map);
   initFiches(map);
   initHorsLigne(map);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hauteurSoleil, melangerTuile, partJour, pointSubsolaire } from '../src/globe-nuit-calcul.js';
+import { eclairageJour, hauteurSoleil, melangerTuile, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
 
 describe('point subsolaire', () => {
   it('suit la déclinaison au fil des saisons', () => {
@@ -47,8 +47,8 @@ describe('jour, nuit et crépuscule', () => {
       const py = Math.round(((1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2) * 255);
       return pixels[(py * 256 + px) * 4];
     };
-    expect(valeur(15, 0)).toBe(200);
-    expect(valeur(-165, 0)).toBe(10);
+    expect(valeur(15, 0)).toBe(200); // soleil au zénith : pleine lumière
+    expect(valeur(-165, 0)).toBe(Math.floor(teinteNuit(10, 10, 10)[0]));
     expect(pixels[3]).toBe(255);
   });
 
@@ -59,7 +59,31 @@ describe('jour, nuit et crépuscule', () => {
     const pixels = melangerTuile(jour, nuit, 1, 0, 1, { lat: -23, lng: 0 }); // tuile du bas : Antarctique en été
     const derniere = 255 * 256 * 4;
     expect(Math.abs(pixels[derniere] - pixels[derniere + 4])).toBeLessThan(15); // la rangée du bord est unie
-    const milieu = 128 * 256 * 4;
+    const milieu = (128 * 256 + 250) * 4; // près du méridien 0, sous le soleil
     expect(Math.abs(pixels[milieu] - pixels[milieu + 4])).toBeGreaterThan(200); // ailleurs, l'image reste
+  });
+
+  it('teinte la nuit en bleu profond et garde les lumières des villes', () => {
+    const [r, v, b] = teinteNuit(60, 60, 70); // campagne la nuit
+    expect(b).toBeGreaterThan(r);
+    expect(r).toBeLessThan(30);
+    const ville = teinteNuit(230, 220, 200);
+    expect(ville[0]).toBeGreaterThan(200);
+    expect(ville[0]).toBeGreaterThan(ville[2]); // lumière chaude
+  });
+
+  it('baisse la lumière du jour près de la ligne jour-nuit', () => {
+    expect(eclairageJour(60)).toBe(1);
+    expect(eclairageJour(0)).toBeLessThan(0.7);
+    expect(eclairageJour(10)).toBeGreaterThan(eclairageJour(0));
+  });
+
+  it('trouve un point à distance sur le grand cercle', () => {
+    const nord = pointADistance(0, 0, 0, 30);
+    expect(nord.lat).toBeCloseTo(30);
+    expect(nord.lng).toBeCloseTo(0);
+    const est = pointADistance(0, 170, 90, 20);
+    expect(est.lat).toBeCloseTo(0);
+    expect(est.lng).toBeCloseTo(-170);
   });
 });

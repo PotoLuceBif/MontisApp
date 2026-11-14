@@ -154,6 +154,7 @@ src/                    Tout le code (détail ci-dessous)
 | `main.js`, `ouverture-calcul.js` | Crée la carte, relief et courbes, globe, ciel, bascule 2D/3D, mémoire de la vue ; ouverture sur sa position après une absence (testé) |
 | `ciel.js`, `ciel-calcul.js` | Ciel autour du globe : étoiles (catalogue `public/data/ciel/etoiles.json`) et Lune avec sa phase, sur une toile derrière la carte, seulement au dézoom ; calculs purs : temps sidéral, direction d'une étoile, projection, éclat, couleur, catalogue (testés). Base des constellations |
 | `globe-nuit.js`, `globe-nuit-calcul.js` | Globe jour et nuit au dézoom (images de la NASA mélangées selon le soleil, `montis-globe://<instant>/z/x/y`) ; calculs purs : point subsolaire, hauteur du soleil, crépuscule, mélange d'une tuile (testés) |
+| `globe-atmosphere.js` | Atmosphère du globe au dézoom : halo dans l'espace (toile derrière la carte) et liseré sur le bord (toile par-dessus), éclairés du côté du soleil, bord assombri côté nuit ; même fondu que le ciel |
 | `menu.js`, `module-differe.js` | Bouton logo, tiroir, panneaux flottants, activation exclusive des modules ; chargement à la première ouverture |
 | `reglages.js` | `lire`, `ecrire`, `quandPret`, `retourAZero` (localStorage `montis.reglages`) |
 | `options-carte.js` | État partagé entre le bouton 3D et le menu (`etat`), courbes |
@@ -340,6 +341,8 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 - Échelle des vents (11 novembre 2026, demande du propriétaire) : paliers < 10, 10–20, 20–30, 30–40, 40–70 (violet) et 70+ km/h (blanc, flèche à double pointe : `VENT_TRES_FORT`, `iconeVent` de `vent-cadran.js`), communs au vent prévu, aux balises et aux légendes ; rappelée sous le profil.
 
 - Globe jour et nuit (12 novembre 2026, demande du propriétaire, d'après Plans d'Apple) : au dézoom, image du jour avec relief et fonds marins, et villes éclairées la nuit, mélangées selon la hauteur réelle du soleil (crépuscule de −8° à +1°), recalculées toutes les dix minutes ; plein jusqu'au zoom 4, effacé au zoom 6, au-dessus de tous les fonds (sous le repère des calques). Écrans `globe-nuit`, `globe-nuit-terminateur` (centré sur la ligne jour-nuit), `globe-nuit-fondu`.
+
+- Atmosphère du globe (14 novembre 2026, demande du propriétaire, d'après Plans d'Apple) : liseré blanc-bleu et halo sur le bord éclairé, bord assombri côté nuit (`globe-atmosphere.js`) ; nuit en bleu profond avec les lumières des villes réchauffées (`teinteNuit`), jour qui baisse près de la ligne jour-nuit (`eclairageJour`, `globe-nuit-calcul.js`).
 
 - Ciel du globe (12 novembre 2026, demande du propriétaire) : étoiles visibles à l'œil nu à leur vraie place et à l'heure réelle, couleur et éclat selon l'étoile, et Lune avec sa phase (côté éclairé vers le soleil, agrandie : 10 px de rayon), sur une toile derrière la carte (le globe les cache) ; même fondu que le globe jour et nuit (pleines jusqu'au zoom 4, effacées au zoom 6). Constellations : plus tard, sur la même base (tracés de d3-celestial). Écran `globe-ciel-lune` (la Terre cadrée pour voir la Lune près du bord).
 
