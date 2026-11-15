@@ -4,7 +4,7 @@
 import { lire, ecrire } from './reglages.js';
 import { etat, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { MODES_FOND, choisirModeFond, fondDeNuit, modeFond } from './fond-palette.js';
-import { CALQUES_MONTIS, REPERE_CALQUES, nomsAuDessusDesBatiments } from './style-montis.js';
+import { CALQUES_MONTIS, REPERE_CALQUES, VOILE_GLACIERS, nomsAuDessusDesBatiments } from './style-montis.js';
 import { surLangue, t, ta, ti } from './i18n.js';
 import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
 import { rangerParPays, zoneCouvre } from './fonds-calcul.js';
@@ -53,6 +53,8 @@ function appliquerFond(map, id) {
     for (const calque of MONTIS_DESSUS) if (map.getLayer(calque)) map.moveLayer(calque, dessous);
   }
   if (!national) nomsAuDessusDesBatiments(map);
+  // Le voile des glaciers ne vaut que pour le fond Montis seul : il délaverait une carte nationale
+  if (map.getLayer(VOILE_GLACIERS.id)) map.setLayoutProperty(VOILE_GLACIERS.id, 'visibility', choix.integre ? 'visible' : 'none');
 
   etat.fond = choix.integre ? 'montis' : national ? 'national' : 'autre';
   majOmbrage(map);

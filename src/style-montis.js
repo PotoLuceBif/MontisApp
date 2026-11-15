@@ -18,10 +18,15 @@ export const CALQUES_MONTIS = [
   'montis-building',
   'montis-road-casing',
   'montis-road',
+  'montis-tunnels',
   'montis-chemins',
   'montis-sentiers-lisere',
   'montis-path',
   'montis-marches',
+  'montis-rail',
+  'montis-rail-tirets',
+  'montis-remontees',
+  'montis-remontees-pylones',
   'montis-eau-noms-ligne',
   'montis-eau-noms-point',
   'montis-rivieres-noms',
@@ -39,6 +44,26 @@ export function nomsAuDessusDesBatiments(map) {
   const suivante = ids.slice(batiments + 1).find((id) => !NOMS_MONTIS.includes(id));
   for (const id of NOMS_MONTIS) if (map.getLayer(id)) map.moveLayer(id, suivante);
 }
+
+// Rivières plus larges que les torrents, qui s'affinent de loin (fond et élément Eaux)
+export const LARGEUR_COURS_EAU = [
+  'interpolate', ['linear'], ['zoom'],
+  7, ['match', ['get', 'class'], 'river', 1, 0.3],
+  11, ['match', ['get', 'class'], 'river', 2, 'canal', 1.4, 0.6],
+  14, ['match', ['get', 'class'], 'river', 3.5, 'canal', 2.5, 1.5],
+  17, ['match', ['get', 'class'], 'river', 6, 'canal', 4, 2.6],
+];
+
+// Voile bleu-blanc sur les glaciers, posé juste au-dessus des courbes (main.js) : elles y paraissent bleutées
+export const VOILE_GLACIERS = {
+  id: 'montis-glaciers-voile',
+  type: 'fill',
+  source: SOURCE_VECTEUR,
+  'source-layer': 'landcover',
+  minzoom: 10,
+  filter: ['==', ['get', 'class'], 'ice'],
+  paint: { 'fill-color': '#d9ecfb', 'fill-opacity': 0.5 },
+};
 
 // Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
 // au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
@@ -111,9 +136,12 @@ function triangleSommet() {
 // Sommets : nom en capitales espacées, violet ; altitude et triangle en cyan (plus soutenu le jour, pour le papier clair)
 export const SOMMET_JOUR = { nom: '#6a2fc2', accent: '#0a93b0' };
 export const SOMMET_NUIT = { nom: '#e3c4ff', accent: '#5ee6ff' };
+// Cols : nom en minuscules italiques, plus petit, sans triangle : on les distingue des sommets d'un coup d'œil
+export const EST_COL = ['==', ['get', 'class'], 'saddle'];
+const NOM_SOMMET = ['coalesce', ['get', 'name:fr'], ['get', 'name']];
 export const texteSommetMontis = (nuit = false) =>
-  expressionSommet(['upcase', ['coalesce', ['get', 'name:fr'], ['get', 'name']]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
-const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
+  expressionSommet(['case', EST_COL, NOM_SOMMET, ['upcase', NOM_SOMMET]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
+const tailleSommet = (base) => ['case', EST_COL, base, ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
 
 export function ajouterMotifsMontis(map) {
   if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
@@ -231,7 +259,8 @@ export const STYLE_MONTIS = {
           ['wood', 'forest'],
           '#84bd7a',
           ['grass', 'scrub'],
-          '#c6dcb0',
+          // Prés et alpages vert-jaune, landes plus olive, pelouses et jardins plus pâles
+          ['match', ['get', 'subclass'], ['meadow', 'grassland'], '#cddfa0', ['scrub', 'heath'], '#b4c795', '#c6dcb0'],
           ['ice', 'snow'],
           '#f2f7fc',
           'rock',
@@ -309,9 +338,12 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'waterway',
+      // Ruisseaux busés (sous les villes) cachés. Cours d'eau temporaires : en tireté par l'élément Eaux (nature.js)
+      filter: ['all', ['!=', ['get', 'brunnel'], 'tunnel'], ['!=', ['get', 'intermittent'], 1]],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#3492c8',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 14, 2.2],
+        'line-width': LARGEUR_COURS_EAU,
       },
     },
     {
@@ -359,7 +391,7 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(CLASSES_ROUTES),
+      filter: ['all', classes(CLASSES_ROUTES), ['!=', ['get', 'brunnel'], 'tunnel']],
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ROUTES.cerne,
@@ -373,13 +405,28 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(CLASSES_ROUTES),
+      filter: ['all', classes(CLASSES_ROUTES), ['!=', ['get', 'brunnel'], 'tunnel']],
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
         // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.18, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1]],
         'line-width': largeurRoute(false),
+      },
+    },
+    // Tunnels : fin pointillé discret, sans cerne ; on devine le passage sans qu'il barre la montagne
+    {
+      id: 'montis-tunnels',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 9,
+      filter: ['all', classes(CLASSES_ROUTES), ['==', ['get', 'brunnel'], 'tunnel']],
+      paint: {
+        'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
+        'line-opacity': 0.4,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 1.2, 17, 2],
+        'line-dasharray': [1, 2.5],
       },
     },
     // Chemins carrossables : trait continu brun clair, entre la route et le sentier
@@ -448,6 +495,62 @@ export const STYLE_MONTIS = {
         'line-dasharray': [0.6, 0.6],
       },
     },
+    // Voies ferrées : trait gris coupé de blanc, comme sur les cartes papier
+    {
+      id: 'montis-rail',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 9,
+      filter: classes(['rail', 'transit']),
+      paint: {
+        'line-color': '#6f6b7e',
+        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.3, 0.9],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 12, 1.4, 16, 3],
+      },
+    },
+    {
+      id: 'montis-rail-tirets',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 12,
+      filter: ['all', classes(['rail', 'transit']), ['!=', ['get', 'brunnel'], 'tunnel']],
+      paint: {
+        'line-color': '#f6f5f8',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.6, 16, 1.6],
+        'line-dasharray': [3, 3],
+      },
+    },
+    // Remontées mécaniques : trait fin sombre, pylônes en petits traits en travers (cartes de ski)
+    {
+      id: 'montis-remontees',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 11,
+      filter: ['==', ['get', 'class'], 'aerialway'],
+      paint: {
+        'line-color': '#2b2838',
+        'line-opacity': 0.85,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 14, 1.1, 17, 1.8],
+      },
+    },
+    {
+      id: 'montis-remontees-pylones',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 13,
+      filter: ['==', ['get', 'class'], 'aerialway'],
+      // Un tiret très court sur un trait large : un petit trait en travers à intervalles réguliers
+      paint: {
+        'line-color': '#2b2838',
+        'line-opacity': 0.85,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 13, 4, 17, 6],
+        'line-dasharray': [0.3, 10],
+      },
+    },
     // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là
     {
       id: 'montis-eau-noms-ligne',
@@ -456,8 +559,15 @@ export const STYLE_MONTIS = {
       'source-layer': 'water_name',
       minzoom: 8,
       filter: ['all', ['==', ['geometry-type'], 'LineString'], ['any', ['has', 'name'], ['has', 'name:fr']]],
-      // Placé comme un point : le long de l'axe, le nom d'un grand lac ne tenait pas dans une tuile et disparaissait
-      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      // Les tuiles donnent l'axe du lac : placé comme un point, le nom tombait sur son premier sommet (le Léman à
+      // Genève). Au milieu de l'axe, le long du lac ; un petit lac dont le nom dépasse l'axe attend qu'on zoome.
+      layout: {
+        ...NOM_EAU,
+        'symbol-placement': 'line-center',
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 12, 15, 15, 17],
+        'text-letter-spacing': 0.18,
+        'text-max-angle': 40,
+      },
       paint: PEINTURE_EAU,
     },
     {
@@ -489,7 +599,12 @@ export const STYLE_MONTIS = {
       layout: {
         'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
         'text-font': ['case', ['in', ['get', 'class'], ['literal', ['city', 'town']]], ['literal', POLICE_GRAS], ['literal', POLICE]],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 13],
+        // Taille selon l'importance : ville, bourg, village, hameau et quartier
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          5, ['match', ['get', 'class'], 'city', 12, 'town', 10.5, 9.5],
+          12, ['match', ['get', 'class'], 'city', 18, 'town', 15.5, 'village', 13, 11.5],
+        ],
         'text-max-width': 8,
         'text-padding': 4,
         'symbol-sort-key': ['to-number', ['get', 'rank'], 99],
@@ -514,10 +629,10 @@ export const STYLE_MONTIS = {
         // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
         'text-field': texteSommetMontis(),
-        'text-font': POLICE_GRAS,
+        'text-font': ['case', EST_COL, ['literal', POLICE_ITALIQUE], ['literal', POLICE_GRAS]],
         // Plus le sommet est haut, plus son nom est grand
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(9), 14, tailleSommet(11)],
-        'text-letter-spacing': 0.12,
+        'text-letter-spacing': ['case', EST_COL, 0.02, 0.12],
         'text-anchor': 'top',
         'text-offset': [0, 0.45],
         'text-max-width': 8,
