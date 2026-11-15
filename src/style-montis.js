@@ -31,7 +31,7 @@ export const REPERE_CALQUES = 'repere-calques';
 
 // Ombrage du fond Montis, en 2D comme en 3D, plus léger de près où il brouillerait le détail
 // (`facteur` : main.js l'efface près des pôles)
-export const exagerationReliefMontis = (facteur = 1) => ['interpolate', ['linear'], ['zoom'], 9, 0.6 * facteur, 13, 0.5 * facteur, 16, 0.3 * facteur];
+export const exagerationReliefMontis = (facteur = 1) => ['interpolate', ['linear'], ['zoom'], 9, 0.85 * facteur, 13, 0.72 * facteur, 16, 0.45 * facteur];
 
 // Motifs du fond, dessinés à deux fois la taille affichée pour rester nets
 const MOTIFS = {
@@ -178,14 +178,14 @@ export const STYLE_MONTIS = {
     [SOURCE_VECTEUR]: definitionSourceVecteur(),
   },
   layers: [
-    { id: 'montis-background', type: 'background', paint: { 'background-color': '#f3f2f4' } },
+    { id: 'montis-background', type: 'background', paint: { 'background-color': '#e8e6ec' } },
     {
       id: 'montis-landuse',
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'landuse',
       filter: classes(['park', 'nature_reserve', 'wood', 'forest', 'cemetery', 'allotments']),
-      paint: { 'fill-color': '#cfe3bd', 'fill-opacity': 0.75 },
+      paint: { 'fill-color': '#b7d6a3', 'fill-opacity': 0.8 },
     },
     {
       id: 'montis-landcover',
@@ -198,18 +198,18 @@ export const STYLE_MONTIS = {
           'match',
           ['get', 'class'],
           ['wood', 'forest'],
-          '#a6d19b',
+          '#84bd7a',
           ['grass', 'scrub'],
-          '#dbe9cc',
+          '#c6dcb0',
           ['ice', 'snow'],
           '#f2f7fc',
           'rock',
-          '#e2e0e6',
+          '#cbc7d3',
           'sand',
           '#ede5cf',
           'wetland',
-          '#dcebea',
-          '#dbe9cc',
+          '#c9e0df',
+          '#c6dcb0',
         ],
         'fill-opacity': ['match', ['get', 'class'], ['ice', 'snow'], 0.95, ['wood', 'forest'], 0.9, 0.8],
       },
@@ -224,7 +224,7 @@ export const STYLE_MONTIS = {
       filter: ['==', ['get', 'class'], 'rock'],
       paint: {
         'fill-pattern': ['match', ['get', 'subclass'], ['scree', 'shingle'], 'montis-motif-eboulis', 'montis-motif-rocher'],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.4, 14, 0.9],
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 14, 1],
       },
     },
     {
@@ -247,8 +247,8 @@ export const STYLE_MONTIS = {
         'hillshade-illumination-direction': [315, 270, 0, 350],
         'hillshade-illumination-anchor': 'map',
         'hillshade-exaggeration': exagerationReliefMontis(),
-        'hillshade-shadow-color': ['rgba(46, 58, 92, 0.55)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.15)'],
-        'hillshade-highlight-color': ['rgba(255, 250, 240, 0.3)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
+        'hillshade-shadow-color': ['rgba(40, 50, 86, 0.78)', 'rgba(54, 58, 86, 0.32)', 'rgba(54, 58, 86, 0.32)', 'rgba(54, 58, 86, 0.2)'],
+        'hillshade-highlight-color': ['rgba(255, 250, 240, 0.45)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
         'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
       },
     },
@@ -271,7 +271,7 @@ export const STYLE_MONTIS = {
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'water',
-      paint: { 'fill-color': '#9dd2ec', 'fill-opacity': 0.95 },
+      paint: { 'fill-color': '#5fb1dc', 'fill-opacity': 0.95 },
     },
     {
       id: 'montis-waterway',
@@ -279,7 +279,7 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'waterway',
       paint: {
-        'line-color': '#5fb3df',
+        'line-color': '#3492c8',
         'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 14, 2.2],
       },
     },
