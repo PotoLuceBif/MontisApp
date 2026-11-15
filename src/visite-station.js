@@ -1,3 +1,4 @@
+import { POLICE } from './polices.js';
 import * as maplibregl from 'maplibre-gl';
 import { etat, majCourbes } from './options-carte.js';
 import { bloquerFiches } from './fiche.js';
@@ -76,7 +77,6 @@ const SOURCES_LIMITEES = {
   ombrage: 'visite-ombrage',
   courbes: 'visite-courbes-source',
 };
-const POLICE = ['Open Sans Regular', 'Arial Unicode MS Regular'];
 const INCLINAISON = 62;
 const ZOOM_MIN = 11;
 const ZOOM_MAX = 14.5;

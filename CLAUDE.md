@@ -285,7 +285,7 @@ Aucune de ces sources n'a de clé d'API ni de garantie de service : toujours pr�
 | Usage | Source | Limites connues |
 |---|---|---|
 | Fond Montis | OpenFreeMap | Hors ligne : 3 000 tuiles ou 50 Mo par téléchargement, 4 requêtes en parallèle |
-| Polices de la carte | `demotiles.maplibre.org` | Serveur de démonstration |
+| Polices de la carte | Noto Sans d'OpenFreeMap (`tiles.openfreemap.org/fonts`, `polices.js`) : normal, gras, italique | Une police par pile : les piles combinées (« A,B ») ne sont pas servies |
 | Relief, courbes, altitudes | Terrain Tiles (AWS) | Zoom 15 au plus |
 | Autres fonds | Monde : OSM, OpenTopoMap, TopPlusOpen (BKG), Esri, CyclOSM. Pays : IGN (`data.geopf.fr`), swisstopo (`wmts.geo.admin.ch`), basemap.at, IGN Espagne, ICGC, Kartverket, NGI, USGS, Toporama (WMS de RNCan), GSI | Tous sans clé, vérifiés le 8 novembre 2026 (CORS compris). Non téléchargeables : sans réseau, retour au fond Montis. Écartés : Top 25 IGN, Ordnance Survey, Lantmäteriet, MML, LINZ, Thunderforest, Mapy.cz (clé) ; IGM italien (http seulement) |
 | Globe jour et nuit | NASA GIBS (`gibs.earthdata.nasa.gov/wmts`, `BlueMarble_ShadedRelief_Bathymetry` et `VIIRS_Black_Marble`) | Domaine public, sans clé, CORS ouvert. Zoom 8 au plus ; lumières de 2016 |

@@ -1,9 +1,9 @@
+import { POLICE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
 import { t } from './i18n.js';
 
 
-const POLICE = ['Open Sans Regular', 'Arial Unicode MS Regular'];
 
 // Du moins important au plus important : les derniers calques ajoutés
 // sont placés en premier, donc gagnent en cas de manque de place.

@@ -1,3 +1,4 @@
+import { POLICE } from './polices.js';
 import * as maplibregl from 'maplibre-gl';
 import maplibreWorkerUrl from '../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import mlcontour from 'maplibre-contour';
@@ -354,7 +355,7 @@ map.once('style.load', () => {
       'symbol-placement': 'line',
       'symbol-spacing': 420,
       'text-field': texteCourbe(),
-      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-font': POLICE,
       'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9.5, 15, 11],
       'text-padding': 12,
     },

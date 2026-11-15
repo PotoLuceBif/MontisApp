@@ -1,10 +1,10 @@
+import { POLICE, POLICE_ITALIQUE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
 
 // Les remplissages sont insérés sous l'ombrage et les courbes de niveau ;
 // les noms (haut: true) passent au-dessus de tout pour rester lisibles.
 const AVANT = 'ombrage';
-const POLICE = ['Open Sans Regular', 'Arial Unicode MS Regular'];
 
 // ---------- Motifs dessinés à la volée ----------
 function dessiner(taille, tracer) {
@@ -132,7 +132,7 @@ const EAUX = {
       layout: {
         'symbol-placement': 'line-center',
         'text-field': ['get', 'name'],
-        'text-font': POLICE,
+        'text-font': POLICE_ITALIQUE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10, 14, 15],
         'text-letter-spacing': 0.1,
       },
@@ -152,7 +152,7 @@ const EAUX = {
       ],
       layout: {
         'text-field': ['get', 'name'],
-        'text-font': POLICE,
+        'text-font': POLICE_ITALIQUE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10, 14, 15],
         'text-letter-spacing': 0.1,
         'text-max-width': 8,
@@ -175,7 +175,7 @@ const EAUX = {
         'symbol-placement': 'line',
         'symbol-spacing': 300,
         'text-field': ['get', 'name'],
-        'text-font': POLICE,
+        'text-font': POLICE_ITALIQUE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 12],
       },
       paint: { 'text-color': '#1b5e9b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },

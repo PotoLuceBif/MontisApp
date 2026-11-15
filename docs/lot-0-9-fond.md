@@ -47,7 +47,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 17. ★ **Voies ferrées** (trait noir et blanc), **ponts et tunnels** (tunnels en tireté).
 
 ## D. Noms et symboles
-18. ★★★ **Police.** Une police servie par Montis, plus élégante, qui ne dépend plus du serveur de démonstration de MapLibre. À choisir ensemble (deux ou trois essais en captures).
+18. ★★★ **Police.** *Fait le 15 novembre 2026, à valider : Noto Sans servie par OpenFreeMap (fin du serveur de démonstration de MapLibre), gras pour les villes et bourgs, italique pour les noms d'eau ; téléchargée avec les zones hors ligne. Une police propre à Montis reste possible plus tard.* Une police servie par Montis, plus élégante, qui ne dépend plus du serveur de démonstration de MapLibre. À choisir ensemble (deux ou trois essais en captures).
 19. ★★★ **Sommets.** *Fait le 15 novembre 2026, à valider : petit triangle coloré par le style (jour et nuit), altitude en plus petit sous le nom, plus de « 0 m », les plus hauts gardés en priorité, cols sans triangle.* Petit triangle, nom et altitude bien hiérarchisés ; corriger les « 0 m » (sommets sans altitude dans OpenStreetMap : n'afficher que le nom, ou rien s'il n'y a pas de nom).
 20. ★★ **Villes et villages.** Taille selon l'importance, capitales mieux marquées.
 21. ★★ **Cols, glaciers, lacs, vallées.** Cols avec leur altitude, noms des glaciers en bleu italique, noms des lacs dans le lac.

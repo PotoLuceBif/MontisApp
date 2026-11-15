@@ -1,3 +1,4 @@
+import { POLICE } from './polices.js';
 import { BALISES, URL_TERRAINS_FFVL, lireJson } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
@@ -136,7 +137,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
           'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-font': POLICE,
           'text-size': 13,
           'text-allow-overlap': true,
           'text-ignore-placement': true,
@@ -185,7 +186,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         filter: SANS_GROUPE,
         layout: {
           'text-field': ['get', 'nom'],
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-font': POLICE,
           'text-size': 11,
           'text-anchor': 'top',
           'text-offset': [0, 0.9],

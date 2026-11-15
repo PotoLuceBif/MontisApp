@@ -1,3 +1,4 @@
+import { POLICE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
 import { expressionSommet } from './unites.js';
@@ -61,7 +62,7 @@ export function afficherSommets(map, visible) {
         // Les sommets les plus hauts sont placés en premier (prioritaires)
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
         'text-field': texteSommet(),
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+        'text-font': POLICE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
         'text-anchor': 'top',
         'text-offset': [0, 0.5],

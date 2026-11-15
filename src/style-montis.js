@@ -1,3 +1,4 @@
+import { ADRESSE_POLICES, POLICE, POLICE_GRAS } from './polices.js';
 import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
 import { expressionSommet } from './unites.js';
 
@@ -173,7 +174,7 @@ const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs
 
 export const STYLE_MONTIS = {
   version: 8,
-  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  glyphs: `${ADRESSE_POLICES}/{fontstack}/{range}.pbf`,
   sources: {
     [SOURCE_VECTEUR]: definitionSourceVecteur(),
   },
@@ -423,7 +424,7 @@ export const STYLE_MONTIS = {
       filter: classes(['city', 'town', 'village', 'hamlet', 'suburb']),
       layout: {
         'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+        'text-font': ['case', ['in', ['get', 'class'], ['literal', ['city', 'town']]], ['literal', POLICE_GRAS], ['literal', POLICE]],
         'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 13],
         'text-max-width': 8,
         'text-padding': 4,
@@ -449,7 +450,7 @@ export const STYLE_MONTIS = {
         // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
         'text-field': expressionSommet(),
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+        'text-font': POLICE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10.5, 14, 13],
         'text-anchor': 'top',
         'text-offset': [0, 0.45],
