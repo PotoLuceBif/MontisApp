@@ -59,7 +59,7 @@ describe('ciel vu de la caméra', () => {
 
 describe('carte de la Voie lactée', () => {
   it('brille vers le centre galactique et presque pas aux pôles', () => {
-    expect(pixelVoieLactee(8, -4).a).toBeGreaterThan(0.4);
+    expect(pixelVoieLactee(2, -5).a).toBeGreaterThan(0.4); // nuage d'étoiles du Sagittaire
     expect(pixelVoieLactee(120, 85).a).toBeLessThan(0.05);
     expect(pixelVoieLactee(0, -6).a).toBeGreaterThan(pixelVoieLactee(180, -6).a);
   });
