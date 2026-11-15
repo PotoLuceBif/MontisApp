@@ -48,7 +48,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 
 ## D. Noms et symboles
 18. ★★★ **Police.** Une police servie par Montis, plus élégante, qui ne dépend plus du serveur de démonstration de MapLibre. À choisir ensemble (deux ou trois essais en captures).
-19. ★★★ **Sommets.** Petit triangle, nom et altitude bien hiérarchisés ; corriger les « 0 m » (sommets sans altitude dans OpenStreetMap : n'afficher que le nom, ou rien s'il n'y a pas de nom).
+19. ★★★ **Sommets.** *Fait le 15 novembre 2026, à valider : petit triangle coloré par le style (jour et nuit), altitude en plus petit sous le nom, plus de « 0 m », les plus hauts gardés en priorité, cols sans triangle.* Petit triangle, nom et altitude bien hiérarchisés ; corriger les « 0 m » (sommets sans altitude dans OpenStreetMap : n'afficher que le nom, ou rien s'il n'y a pas de nom).
 20. ★★ **Villes et villages.** Taille selon l'importance, capitales mieux marquées.
 21. ★★ **Cols, glaciers, lacs, vallées.** Cols avec leur altitude, noms des glaciers en bleu italique, noms des lacs dans le lac.
 22. ★ **Points utiles.** Parkings, abris, points d'eau, en petits pictos discrets de près.

@@ -1,5 +1,5 @@
 import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
-import { expressionAltitude } from './unites.js';
+import { expressionSommet } from './unites.js';
 
 const classes = (valeurs) => ['in', ['get', 'class'], ['literal', valeurs]];
 
@@ -70,7 +70,31 @@ const MOTIFS = {
   },
 };
 
+// Triangle des sommets en champ de distance (SDF), pour que le style le colore : brun-violet le jour, clair la nuit
+export const IMAGE_SOMMET = 'montis-sommet';
+function triangleSommet() {
+  const t = 28;
+  const [a, b, c] = [[14, 7], [21, 20], [7, 20]];
+  // Distance d'un point à un segment
+  const segment = (x, y, [x1, y1], [x2, y2]) => {
+    const u = Math.max(0, Math.min(1, ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / ((x2 - x1) ** 2 + (y2 - y1) ** 2)));
+    return Math.hypot(x - x1 - u * (x2 - x1), y - y1 - u * (y2 - y1));
+  };
+  const cote = (x, y, [x1, y1], [x2, y2]) => (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+  const image = new ImageData(t, t);
+  for (let y = 0; y < t; y++) {
+    for (let x = 0; x < t; x++) {
+      const [px, py] = [x + 0.5, y + 0.5];
+      const dedans = cote(px, py, a, b) >= 0 && cote(px, py, b, c) >= 0 && cote(px, py, c, a) >= 0;
+      const d = Math.min(segment(px, py, a, b), segment(px, py, b, c), segment(px, py, c, a)) * (dedans ? -1 : 1);
+      image.data[(y * t + x) * 4 + 3] = Math.max(0, Math.min(255, Math.round(255 * (0.75 - d / 8))));
+    }
+  }
+  return image;
+}
+
 export function ajouterMotifsMontis(map) {
+  if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
   for (const [nom, tracer] of Object.entries(MOTIFS)) {
     if (map.hasImage(nom)) continue;
     const canvas = document.createElement('canvas');
@@ -417,19 +441,26 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'mountain_peak',
       minzoom: 9,
+      filter: ['any', ['has', 'name'], ['has', 'name:fr']],
       layout: {
-        'text-field': [
-          'concat',
-          ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-          '\n',
-          expressionAltitude(['get', 'ele']),
-        ],
+        // Un col (saddle) garde son nom et son altitude, sans triangle
+        'icon-image': ['case', ['==', ['get', 'class'], 'saddle'], '', IMAGE_SOMMET],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 14, 1],
+        // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
+        'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
+        'text-field': expressionSommet(),
         'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
-        'text-allow-overlap': false,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10.5, 14, 13],
+        'text-anchor': 'top',
+        'text-offset': [0, 0.45],
+        'text-max-width': 8,
+        'text-line-height': 1.15,
         'text-padding': 5,
       },
       paint: {
+        'icon-color': '#5b4660',
+        'icon-halo-color': '#f6f5f8',
+        'icon-halo-width': 1.2,
         'text-color': '#5b4660',
         'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,

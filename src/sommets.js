@@ -1,6 +1,6 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
-import { expressionAltitude } from './unites.js';
+import { expressionSommet } from './unites.js';
 import { surPreferences } from './preferences.js';
 
 const COUCHE = 'sommets';
@@ -26,13 +26,7 @@ function creerIcone() {
   return g.getImageData(0, 0, t, t);
 }
 
-const texteSommet = () => [
-  'format',
-  ['get', 'name'], {},
-  '\n', {},
-  ['case', ['has', 'ele'], expressionAltitude(['get', 'ele']), ''],
-  { 'font-scale': 0.85 },
-];
+const texteSommet = () => expressionSommet(['get', 'name']);
 
 let suiviUnites = false;
 

@@ -57,7 +57,7 @@ const NUIT = {
   'montis-path': { 'line-color': ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], '#5d6378', '#ff6b5a'] },
   'montis-marches': { 'line-color': '#ff9d8f' },
   'montis-place': TEXTE_NUIT,
-  'montis-summit': { ...TEXTE_NUIT, 'text-color': '#cdb8f0' },
+  'montis-summit': { ...TEXTE_NUIT, 'text-color': '#cdb8f0', 'icon-color': '#cdb8f0', 'icon-halo-color': '#0b111b' },
   courbes: { 'line-color': ['case', ['>=', ['get', 'level'], 1], '#6f6194', '#4c4568'], 'line-opacity': ['case', ['>=', ['get', 'level'], 1], 0.85, 0.6] },
   'courbes-altitude': { 'text-color': '#a898d0', 'text-halo-color': '#0b111b' },
   'batiments-3d': {

@@ -23,7 +23,7 @@ import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
-import { imperial, expressionAltitude, PIEDS } from './unites.js';
+import { imperial, expressionSommet, PIEDS } from './unites.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -318,16 +318,9 @@ surPreferences(() => {
   map.getSource('courbes').setTiles([urlCourbes()]);
   map.setLayoutProperty('courbes-altitude', 'text-field', texteCourbe());
   if (map.getLayer('montis-summit')) {
-    map.setLayoutProperty('montis-summit', 'text-field', texteSommetFond());
+    map.setLayoutProperty('montis-summit', 'text-field', expressionSommet());
   }
 }, ['unites', '*']);
-
-const texteSommetFond = () => [
-  'concat',
-  ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-  '\n',
-  expressionAltitude(['get', 'ele']),
-];
 
 // ===== Tout ce qui s'ajoute une fois le style prêt =====
 // Pas « load » : il attend les premières tuiles, et sur un réseau lent l'appli resterait

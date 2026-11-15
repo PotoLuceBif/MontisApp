@@ -4,7 +4,7 @@ import { bloquerFiches } from './fiche.js';
 import { SOURCE_SATELLITE, SOURCE_TOPO, retablirFond } from './fond-de-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
-import { expressionAltitude, formatDenivele, formatLongueur, imperial } from './unites.js';
+import { expressionSommet, formatDenivele, formatLongueur, imperial } from './unites.js';
 import { poser, t } from './i18n.js';
 import { ZOOM_MAX_OMBRES } from './ombre-tuile.js';
 import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
@@ -317,7 +317,7 @@ function calquesPistes(communes, courbesVisibles) {
         'text-field': [
           'case',
           ['has', 'ele'],
-          ['concat', ['coalesce', ['get', 'name:fr'], ['get', 'name']], '\n', expressionAltitude(['get', 'ele'])],
+          expressionSommet(),
           ['coalesce', ['get', 'name:fr'], ['get', 'name']],
         ],
         'text-font': POLICE,
