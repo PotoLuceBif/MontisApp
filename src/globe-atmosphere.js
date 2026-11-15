@@ -1,7 +1,7 @@
 // Atmosphère du globe au dézoom (demande du propriétaire du 14 novembre 2026, d'après Plans d'Apple) :
 // liseré blanc-bleu sur le bord éclairé par le soleil, halo qui déborde dans l'espace, bord assombri côté nuit.
 // Deux toiles : le halo derrière la carte (il ne se voit qu'autour du globe), le liseré par-dessus le bord du globe.
-import { hauteurSoleil, pointADistance, pointSubsolaire } from './globe-nuit-calcul.js';
+import { hauteurSoleil, limbeGlobe, pointADistance, pointSubsolaire } from './globe-nuit-calcul.js';
 import { opaciteCiel } from './ciel-calcul.js';
 
 const SECTEURS = 48; // directions autour du bord
@@ -27,34 +27,44 @@ export function initAtmosphere(map) {
   const dessus = creerToile(map, map.getCanvasContainer().nextSibling);
   let prevu = false;
 
-  // Bord apparent du globe. La carte inclinée, il n'est plus centré sur le centre de la carte : on projette
-  // des points de toute la sphère, la face cachée tombant à l'intérieur du disque, et on prend leur enveloppe.
+  // Bord apparent du globe : les points du limbe, calculés depuis la caméra (carte inclinée ou non), puis
+  // projetés à l'écran. Un point pris juste en deçà du bord reste visible, donc bien projeté.
   function bordGlobe() {
     const c = map.getCenter();
+    const limbe = limbeGlobe({
+      lat: c.lat, lng: c.lng, zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing(),
+      fov: map.getVerticalFieldOfView(), hauteurEcran: conteneur.clientHeight,
+    });
     const points = [];
-    for (let az = 0; az < 360; az += 10) {
-      for (let angle = 14; angle <= 174; angle += 4) {
-        const p = pointADistance(c.lat, c.lng, az, angle);
-        const ecran = map.project([p.lng, p.lat]);
-        if (Number.isFinite(ecran.x) && Number.isFinite(ecran.y)) points.push({ ...p, x: ecran.x, y: ecran.y });
-      }
+    for (let i = 0; i < SECTEURS; i += 1) {
+      const p = pointADistance(limbe.lat, limbe.lng, (i * 360) / SECTEURS, Math.max(1, limbe.angle - 0.4));
+      const ecran = map.project([p.lng, p.lat]);
+      if (Number.isFinite(ecran.x) && Number.isFinite(ecran.y)) points.push({ ...p, x: ecran.x, y: ecran.y });
     }
-    let [x0, x1, y0, y1] = [Infinity, -Infinity, Infinity, -Infinity];
-    for (const { x, y } of points) {
-      x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    // En perspective, le bord d'une sphère hors de l'axe de visée est une ellipse, allongée dans la direction
+    // qui part du centre de l'écran : un cercle traversait le globe dès qu'on inclinait près d'un pôle.
+    const mx = points.reduce((t, q) => t + q.x, 0) / points.length;
+    const my = points.reduce((t, q) => t + q.y, 0) / points.length;
+    const theta = Math.atan2(my - conteneur.clientHeight / 2, mx - conteneur.clientWidth / 2);
+    const [cos, sin] = [Math.cos(theta), Math.sin(theta)];
+    let [u0, u1, v0, v1] = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const q of points) {
+      q.u = (q.x - mx) * cos + (q.y - my) * sin;
+      q.v = -(q.x - mx) * sin + (q.y - my) * cos;
+      u0 = Math.min(u0, q.u); u1 = Math.max(u1, q.u); v0 = Math.min(v0, q.v); v1 = Math.max(v1, q.v);
     }
-    const bord = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, rayon: (x1 - x0 + y1 - y0) / 4 };
-    // Par direction à l'écran, le point le plus proche du bord : c'est lui qui dit s'il y fait jour
-    const secteurs = new Array(SECTEURS).fill(null);
-    for (const p of points) {
-      const d = Math.hypot(p.x - bord.cx, p.y - bord.cy);
-      if (d < bord.rayon * 0.9) continue;
-      const angleEcran = Math.atan2(p.y - bord.cy, p.x - bord.cx);
-      const i = Math.min(SECTEURS - 1, Math.floor(((angleEcran + Math.PI) / (2 * Math.PI)) * SECTEURS));
-      if (!secteurs[i] || d > secteurs[i].d) secteurs[i] = { ...p, d, angleEcran };
-    }
-    bord.limbe = secteurs.filter(Boolean);
-    return bord;
+    const [uc, vc] = [(u0 + u1) / 2, (v0 + v1) / 2];
+    const rayon = (v1 - v0) / 2;
+    const etire = (u1 - u0) / 2 / rayon;
+    return {
+      cx: mx + uc * cos - vc * sin,
+      cy: my + uc * sin + vc * cos,
+      theta,
+      etire,
+      rayon,
+      // Dans le repère de l'ellipse ramenée à un cercle
+      limbe: points.map((q) => ({ ...q, angleEcran: Math.atan2(q.v - vc, (q.u - uc) / etire) })),
+    };
   }
 
   // Lumière du bord, direction par direction : le soleil vu depuis ce point du bord
@@ -66,10 +76,12 @@ export function initAtmosphere(map) {
   }
 
   function degradeAutour(contexte, bord, lumieres, couleur) {
-    const conique = contexte.createConicGradient(-Math.PI, bord.cx, bord.cy);
+    const conique = contexte.createConicGradient(-Math.PI, 0, 0);
     const arret = (angle) => (angle + Math.PI) / (2 * Math.PI);
-    // Raccord à -180° / 180° : la moyenne des deux bouts, pour éviter une couture
-    const raccord = couleur((lumieres[0].jour + lumieres.at(-1).jour) / 2);
+    // Raccord à -180° / 180° : entre le dernier point et le premier, selon leur écart à la couture
+    const [premier, dernier] = [lumieres[0], lumieres.at(-1)];
+    const [avant, apres] = [Math.PI - dernier.angleEcran, premier.angleEcran + Math.PI];
+    const raccord = couleur(avant + apres > 0 ? (premier.jour * avant + dernier.jour * apres) / (avant + apres) : premier.jour);
     conique.addColorStop(0, raccord);
     for (const { angleEcran, jour } of lumieres) conique.addColorStop(Math.min(1, Math.max(0, arret(angleEcran))), couleur(jour));
     conique.addColorStop(1, raccord);
@@ -92,16 +104,20 @@ export function initAtmosphere(map) {
   // Anneau entre deux rayons : couleur selon la direction, fondu du bord intérieur au bord extérieur
   function anneau(contexte, bord, interieur, exterieur, conique, fondu) {
     contexte.save();
+    // Repère de l'ellipse : centre, axe vers le centre de l'écran, étirement
+    contexte.translate(bord.cx, bord.cy);
+    contexte.rotate(bord.theta);
+    contexte.scale(bord.etire, 1);
     contexte.beginPath();
-    contexte.arc(bord.cx, bord.cy, exterieur, 0, Math.PI * 2);
-    contexte.arc(bord.cx, bord.cy, interieur, 0, Math.PI * 2, true);
+    contexte.arc(0, 0, exterieur, 0, Math.PI * 2);
+    contexte.arc(0, 0, interieur, 0, Math.PI * 2, true);
     contexte.fillStyle = conique;
     contexte.fill();
     contexte.globalCompositeOperation = 'destination-in';
-    const radial = contexte.createRadialGradient(bord.cx, bord.cy, interieur, bord.cx, bord.cy, exterieur);
+    const radial = contexte.createRadialGradient(0, 0, interieur, 0, 0, exterieur);
     fondu.forEach(([position, alpha]) => radial.addColorStop(position, `rgba(0, 0, 0, ${alpha})`));
     contexte.fillStyle = radial;
-    contexte.fillRect(0, 0, conteneur.clientWidth, conteneur.clientHeight);
+    contexte.fillRect(-exterieur - 2, -exterieur - 2, 2 * exterieur + 4, 2 * exterieur + 4);
     contexte.restore();
   }
 

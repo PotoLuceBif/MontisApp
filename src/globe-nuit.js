@@ -4,7 +4,7 @@
 // pour laisser la carte. L'heure du mélange avance toutes les dix minutes.
 import { addProtocol } from 'maplibre-gl';
 import { REPERE_CALQUES } from './style-montis.js';
-import { melangerTuile, pointSubsolaire } from './globe-nuit-calcul.js';
+import { couleurCalotte, melangerTuile, pointSubsolaire } from './globe-nuit-calcul.js';
 
 const PROTOCOLE = 'montis-globe';
 const SOURCE = 'globe-jour-nuit';
@@ -17,6 +17,28 @@ const ZOOM_PLEIN = 6; // jusqu'ici, l'image seule
 const ZOOM_FIN = 8.5; // au-delà, la carte seule
 const PAS_HEURE = 10 * 60 * 1000;
 const TUILES_GARDEES = 96;
+
+const CALOTTES = 'globe-calottes';
+const SECTEURS = 48; // tranches de longitude d'une calotte, chacune à la couleur du bord de l'image
+
+// Deux bandes au bord du monde, que MapLibre étire jusqu'aux pôles
+function calottes(instant) {
+  const soleil = pointSubsolaire(new Date(instant));
+  const pas = 360 / SECTEURS;
+  const features = [];
+  for (const nord of [true, false]) {
+    const [bas, haut] = nord ? [84.9, 86] : [-86, -84.9];
+    for (let i = 0; i < SECTEURS; i += 1) {
+      const ouest = -180 + i * pas;
+      features.push({
+        type: 'Feature',
+        properties: { couleur: `rgb(${couleurCalotte(nord, ouest + pas / 2, soleil).join(', ')})` },
+        geometry: { type: 'Polygon', coordinates: [[[ouest, bas], [ouest + pas, bas], [ouest + pas, haut], [ouest, haut], [ouest, bas]]] },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
 
 const images = new Map(); // adresse → promesse des pixels RGBA
 
@@ -78,6 +100,21 @@ export function initGlobeNuit(map) {
       },
       map.getLayer(REPERE_CALQUES) ? REPERE_CALQUES : 'montis-road-casing',
     );
+    map.addSource(CALOTTES, { type: 'geojson', data: calottes(instant) });
+    map.addLayer(
+      {
+        id: CALOTTES,
+        type: 'fill',
+        source: CALOTTES,
+        maxzoom: ZOOM_FIN,
+        paint: {
+          'fill-color': ['get', 'couleur'],
+          'fill-antialias': false, // sinon un filet entre deux tranches
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'], ZOOM_PLEIN, 1, ZOOM_FIN, 0],
+        },
+      },
+      map.getLayer(REPERE_CALQUES) ? REPERE_CALQUES : 'montis-road-casing',
+    );
   }
   poser();
   map.on('style.load', poser);
@@ -88,12 +125,14 @@ export function initGlobeNuit(map) {
     if (nouvel === instant || map.getZoom() >= ZOOM_FIN) return;
     instant = nouvel;
     map.getSource(SOURCE)?.setTiles(tuiles());
+    map.getSource(CALOTTES)?.setData(calottes(instant));
   }, 60 * 1000);
   map.on('zoomend', () => {
     const nouvel = instantArrondi();
     if (nouvel !== instant && map.getZoom() < ZOOM_FIN) {
       instant = nouvel;
       map.getSource(SOURCE)?.setTiles(tuiles());
+      map.getSource(CALOTTES)?.setData(calottes(instant));
     }
   });
 }

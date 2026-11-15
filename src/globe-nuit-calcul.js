@@ -57,9 +57,14 @@ export function eclairageJour(hauteur) {
 // Côté jour : l'océan de l'image, très sombre, est éclairci vers un bleu franc (demande du propriétaire du
 // 15 novembre 2026) ; les fonds marins restent lisibles. La mer se reconnaît à son bleu dominant : terres,
 // glaces et nuages ne changent pas, et la côte passe en douceur.
+// Part de mer d'un pixel de l'image du jour : le bleu en trop, rapporté au bleu, pour que les abysses presque
+// noirs comptent autant que les hauts-fonds
+export const partMer = (r, v, b) => lisse(0.08, 0.3, (b - Math.max(r, v) * 1.12) / (b + 1));
+// Côté nuit, la mer est plus sombre que les terres : sans lumières, elle paraissait trop claire
+const MER_NUIT = 0.45;
+
 export function oceanClair(r, v, b) {
-  // Part de bleu en trop, rapportée au bleu : les abysses presque noirs comptent autant que les hauts-fonds
-  const mer = lisse(0.08, 0.3, (b - Math.max(r, v) * 1.12) / (b + 1));
+  const mer = partMer(r, v, b);
   if (!mer) return [r, v, b];
   return [r + (r * 0.5 + 30 - r) * mer, v + (v * 0.45 + 96 - v) * mer, b + (b * 0.35 + 150 - b) * mer];
 }
@@ -83,6 +88,39 @@ export function pointADistance(lat, lng, azimut, angle) {
   return { lat: phi2 / RAD, lng: normaliser(lng + lambda / RAD) };
 }
 
+// Bord apparent du globe (son limbe) vu par la caméra de MapLibre : le point de la Terre sous la caméra, et
+// l'angle, vu du centre de la Terre, entre ce point et le bord. La caméra regarde le centre de la carte, à la
+// distance qui donne ce zoom, reculée selon l'inclinaison et le cap. Tout se compte en pixels.
+export function limbeGlobe({ lat, lng, zoom, pitch = 0, bearing = 0, fov, hauteurEcran }) {
+  const phi = lat * RAD;
+  const lambda = lng * RAD;
+  const rayon = (512 * 2 ** zoom) / (2 * Math.PI * Math.cos(phi));
+  const distance = hauteurEcran / 2 / Math.tan((fov * RAD) / 2);
+  const haut = [Math.cos(phi) * Math.cos(lambda), Math.cos(phi) * Math.sin(lambda), Math.sin(phi)];
+  const est = [-Math.sin(lambda), Math.cos(lambda), 0];
+  const nord = [-Math.sin(phi) * Math.cos(lambda), -Math.sin(phi) * Math.sin(lambda), Math.cos(phi)];
+  const [p, b] = [pitch * RAD, bearing * RAD];
+  const camera = haut.map((h, i) => (rayon + distance * Math.cos(p)) * h - distance * Math.sin(p) * (Math.sin(b) * est[i] + Math.cos(b) * nord[i]));
+  const norme = Math.hypot(...camera);
+  return {
+    lat: Math.asin(camera[2] / norme) / RAD,
+    lng: Math.atan2(camera[1], camera[0]) / RAD,
+    angle: Math.acos(Math.min(1, rayon / norme)) / RAD,
+  };
+}
+
+// Couleur unie vers laquelle l'image se fond au bord du monde : la mer au nord, la glace au sud
+const couleursPole = (nord) => (nord ? [oceanClair(...ARCTIQUE), teinteNuit(...ARCTIQUE_NUIT).map((c) => c * MER_NUIT)] : [GLACE, NUIT_POLAIRE]);
+const unieAuPole = (nord, [jour, nuit], w, l, c) => jour[c] * l * w + nuit[c] * (1 - w);
+
+// L'image s'arrête à 85° : au-delà, c'est la carte du dessous qui se voyait (disque d'eau au nord, de glace
+// au sud). Couleur de la calotte qui la prolonge, à cette longitude : celle du bord de l'image.
+export function couleurCalotte(nord, lng, soleil) {
+  const h = hauteurSoleil(nord ? LAT_BORD : -LAT_BORD, lng, soleil);
+  const couleurs = couleursPole(nord);
+  return [0, 1, 2].map((c) => Math.round(unieAuPole(nord, couleurs, partJour(h), eclairageJour(h), c)));
+}
+
 // Pixels RGBA d'une tuile z/x/y de 256 px : `jour` et `nuit` sont les pixels des deux images de la même tuile
 export function melangerTuile(jour, nuit, z, x, y, soleil) {
   const pixels = new Uint8ClampedArray(256 * 256 * 4);
@@ -101,7 +139,7 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       lumieres[gy * cotes + gx] = eclairageJour(h);
     }
   }
-  const [poleJour, poleNuit] = y === 0 ? [oceanClair(...ARCTIQUE), teinteNuit(...ARCTIQUE_NUIT)] : [GLACE, NUIT_POLAIRE];
+  const pole = couleursPole(y === 0);
   const bordMonde = y === 0 || y === 2 ** z - 1; // seules les tuiles du haut et du bas touchent un pôle
   for (let py = 0; py < 256; py += 1) {
     const gy = Math.min(cotes - 2, Math.floor(py / PAS));
@@ -122,9 +160,10 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       const o = (py * 256 + px) * 4;
       const teinte = teinteNuit(nuit[o], nuit[o + 1], nuit[o + 2]);
       const clair = oceanClair(jour[o], jour[o + 1], jour[o + 2]);
+      const sombre = 1 - (1 - MER_NUIT) * partMer(jour[o], jour[o + 1], jour[o + 2]);
       for (let c = 0; c < 3; c += 1) {
-        const image = clair[c] * l * w + teinte[c] * (1 - w);
-        const unie = poleJour[c] * (y === 0 ? l : 1) * w + poleNuit[c] * (1 - w);
+        const image = clair[c] * l * w + teinte[c] * sombre * (1 - w);
+        const unie = unieAuPole(y === 0, pole, w, l, c);
         pixels[o + c] = image * (1 - polaire) + unie * polaire;
       }
       pixels[o + 3] = 255;
