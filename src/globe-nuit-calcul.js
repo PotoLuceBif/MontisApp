@@ -61,7 +61,7 @@ export function eclairageJour(hauteur) {
 // noirs comptent autant que les hauts-fonds
 export const partMer = (r, v, b) => lisse(0.08, 0.3, (b - Math.max(r, v) * 1.12) / (b + 1));
 // Côté nuit, la mer est plus sombre que les terres : sans lumières, elle paraissait trop claire
-const MER_NUIT = 0.45;
+const MER_NUIT = 0.68;
 
 export function oceanClair(r, v, b) {
   const mer = partMer(r, v, b);
