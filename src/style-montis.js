@@ -22,6 +22,10 @@ export const CALQUES_MONTIS = [
   'montis-sentiers-lisere',
   'montis-path',
   'montis-marches',
+  'montis-rail',
+  'montis-rail-tirets',
+  'montis-remontees',
+  'montis-remontees-pylones',
   'montis-eau-noms-ligne',
   'montis-eau-noms-point',
   'montis-rivieres-noms',
@@ -39,6 +43,15 @@ export function nomsAuDessusDesBatiments(map) {
   const suivante = ids.slice(batiments + 1).find((id) => !NOMS_MONTIS.includes(id));
   for (const id of NOMS_MONTIS) if (map.getLayer(id)) map.moveLayer(id, suivante);
 }
+
+// Rivières plus larges que les torrents, qui s'affinent de loin (fond et élément Eaux)
+export const LARGEUR_COURS_EAU = [
+  'interpolate', ['linear'], ['zoom'],
+  7, ['match', ['get', 'class'], 'river', 1, 0.3],
+  11, ['match', ['get', 'class'], 'river', 2, 'canal', 1.4, 0.6],
+  14, ['match', ['get', 'class'], 'river', 3.5, 'canal', 2.5, 1.5],
+  17, ['match', ['get', 'class'], 'river', 6, 'canal', 4, 2.6],
+];
 
 // Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
 // au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
@@ -231,7 +244,8 @@ export const STYLE_MONTIS = {
           ['wood', 'forest'],
           '#84bd7a',
           ['grass', 'scrub'],
-          '#c6dcb0',
+          // Prés et alpages vert-jaune, landes plus olive, pelouses et jardins plus pâles
+          ['match', ['get', 'subclass'], ['meadow', 'grassland'], '#cddfa0', ['scrub', 'heath'], '#b4c795', '#c6dcb0'],
           ['ice', 'snow'],
           '#f2f7fc',
           'rock',
@@ -309,9 +323,12 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'waterway',
+      // Ruisseaux busés (sous les villes) cachés. Cours d'eau temporaires : en tireté par l'élément Eaux (nature.js)
+      filter: ['all', ['!=', ['get', 'brunnel'], 'tunnel'], ['!=', ['get', 'intermittent'], 1]],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#3492c8',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 14, 2.2],
+        'line-width': LARGEUR_COURS_EAU,
       },
     },
     {
@@ -446,6 +463,62 @@ export const STYLE_MONTIS = {
         'line-color': '#8f2a1c',
         'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1.4, 17, 3],
         'line-dasharray': [0.6, 0.6],
+      },
+    },
+    // Voies ferrées : trait gris coupé de blanc, comme sur les cartes papier
+    {
+      id: 'montis-rail',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 9,
+      filter: classes(['rail', 'transit']),
+      paint: {
+        'line-color': '#6f6b7e',
+        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.3, 0.9],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 12, 1.4, 16, 3],
+      },
+    },
+    {
+      id: 'montis-rail-tirets',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 12,
+      filter: ['all', classes(['rail', 'transit']), ['!=', ['get', 'brunnel'], 'tunnel']],
+      paint: {
+        'line-color': '#f6f5f8',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.6, 16, 1.6],
+        'line-dasharray': [3, 3],
+      },
+    },
+    // Remontées mécaniques : trait fin sombre, pylônes en petits traits en travers (cartes de ski)
+    {
+      id: 'montis-remontees',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 11,
+      filter: ['==', ['get', 'class'], 'aerialway'],
+      paint: {
+        'line-color': '#2b2838',
+        'line-opacity': 0.85,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.6, 14, 1.1, 17, 1.8],
+      },
+    },
+    {
+      id: 'montis-remontees-pylones',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 13,
+      filter: ['==', ['get', 'class'], 'aerialway'],
+      // Un tiret très court sur un trait large : un petit trait en travers à intervalles réguliers
+      paint: {
+        'line-color': '#2b2838',
+        'line-opacity': 0.85,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 13, 4, 17, 6],
+        'line-dasharray': [0.3, 10],
       },
     },
     // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là

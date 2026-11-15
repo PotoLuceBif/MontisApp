@@ -1,6 +1,7 @@
 import { POLICE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
+import { LARGEUR_COURS_EAU } from './style-montis.js';
 
 // Les remplissages sont insérés sous l'ombrage et les courbes de niveau ;
 // les noms (haut: true) passent au-dessus de tout pour rester lisibles.
@@ -78,6 +79,8 @@ const FORETS = {
   ],
 };
 
+const COURS_EAU = ['all', ['in', ['get', 'class'], ['literal', ['river', 'stream', 'canal']]], ['!=', ['get', 'brunnel'], 'tunnel']];
+
 const EAUX = {
   couches: [
     {
@@ -101,21 +104,32 @@ const EAUX = {
         'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 14, 1.5],
       },
     },
+    // Rivières plus larges que les torrents, qui s'affinent de loin ; ruisseaux busés (sous les villes) cachés
     {
       id: 'nature-rivieres',
       type: 'line',
       'source-layer': 'waterway',
       minzoom: 7,
-      filter: ['in', ['get', 'class'], ['literal', ['river', 'stream', 'canal']]],
+      filter: ['all', COURS_EAU, ['!=', ['get', 'intermittent'], 1]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#2f7fd1',
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0, 8.5, 0.85],
-        'line-width': [
-          'interpolate', ['linear'], ['zoom'],
-          7, ['match', ['get', 'class'], 'river', 1, 0.4],
-          14, ['match', ['get', 'class'], 'river', 3.5, 'canal', 2.5, 1.6],
-        ],
+        'line-width': LARGEUR_COURS_EAU,
+      },
+    },
+    // Cours d'eau temporaires, à sec une partie de l'année : tireté
+    {
+      id: 'nature-rivieres-temporaires',
+      type: 'line',
+      'source-layer': 'waterway',
+      minzoom: 11,
+      filter: ['all', COURS_EAU, ['==', ['get', 'intermittent'], 1]],
+      paint: {
+        'line-color': '#2f7fd1',
+        'line-opacity': 0.75,
+        'line-width': LARGEUR_COURS_EAU,
+        'line-dasharray': [3, 2],
       },
     },
     // Les noms des lacs et des rivières sont dans le fond Montis lui-même (style-montis.js)

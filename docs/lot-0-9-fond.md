@@ -36,6 +36,12 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 
 - [x] **Lacs et rivières allumés par défaut** (élément Eaux, sans pastille, comme les bâtiments), effacés du zoom 8,5 au zoom 6 pour laisser l'image du globe : plus de mer claire la nuit ni de disque au pôle. Leurs noms ne sont plus que dans le fond. Mer de nuit un peu moins sombre.
 
+## Fait le 15 novembre 2026, suite (étape 4 et remontées, à valider)
+- [x] **Cours d'eau** : rivières plus larges que les torrents, qui s'affinent de loin ; cours d'eau temporaires en tireté ; ruisseaux busés sous les villes cachés. Lacs, rivières et torrents en cyan la nuit, comme l'eau du fond.
+- [x] **Prairies** : prés et alpages vert-jaune, landes et broussailles plus olive, pelouses et jardins plus pâles.
+- [x] **Remontées mécaniques** (16) : trait fin sombre avec les pylônes en petits traits en travers (dès le zoom 13), clair la nuit. Le trait orange vers l'aiguille du Midi venait d'une autre couche : à revoir s'il réapparaît.
+- [x] **Voies ferrées** (17) : trait gris coupé de blanc, tunnels estompés.
+
 ## À revoir (prévu le 15 novembre 2026)
 - **Voie lactée autour du globe.** Deux essais retirés le 14 novembre : contours de d3-celestial en taches floues (trop discret ou voile gris), puis photo du ciel de l'ESO (eso0932a, S. Brunier, CC BY 4.0) projetée pixel par pixel, proche du rendu de Google Earth (4 000 px, 1,3 Mo hors préchargement, éclat 55 %). Le code de l'essai photo n'est pas gardé ; la piste à reprendre est celle-là.
 
