@@ -10,12 +10,12 @@ import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
 import { retablirFond } from './fond-de-carte.js';
-import { initPaletteFond } from './fond-palette.js';
+import { initPaletteFond, fondDeNuit } from './fond-palette.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
-import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis } from './style-montis.js';
+import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis, texteSommetMontis } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
@@ -24,7 +24,7 @@ import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
-import { imperial, expressionSommet, PIEDS } from './unites.js';
+import { imperial, PIEDS } from './unites.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -319,7 +319,7 @@ surPreferences(() => {
   map.getSource('courbes').setTiles([urlCourbes()]);
   map.setLayoutProperty('courbes-altitude', 'text-field', texteCourbe());
   if (map.getLayer('montis-summit')) {
-    map.setLayoutProperty('montis-summit', 'text-field', expressionSommet());
+    map.setLayoutProperty('montis-summit', 'text-field', texteSommetMontis(fondDeNuit()));
   }
 }, ['unites', '*']);
 

@@ -18,6 +18,12 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 - [x] **Fond Montis Auto · Jour · Nuit** en tête de Fond de carte ; Auto par défaut, nuit après le coucher du soleil au centre de la carte.
 - [x] **Première version de nuit** : voir E. Bâtiments gris au contour « laser » cyan.
 
+## Fait le 15 novembre 2026 (demandes du propriétaire, à valider)
+- [x] **Fond de jour assombri** : papier, verts, rocher et eau plus soutenus, ombrage nettement plus marqué.
+- [x] **Noms des lacs et des rivières toujours affichés** dans le fond (italique bleu, cyan la nuit), sans passer par Éléments de la carte. Ils dépendent des tuiles : grands lacs vers le zoom 11, rivières vers 12.
+- [x] **Sommets plus marqués** : nom en gras, plus grand au-dessus de 3 000 m et de 4 000 m, altitude et triangle en violet le jour, en cyan la nuit.
+- [x] **Bâtiments noirs entre les zooms 13,5 et 14** : corrigé (les tuiles n'y donnent pas la hauteur).
+
 ## À revoir (prévu le 15 novembre 2026)
 - **Voie lactée autour du globe.** Deux essais retirés le 14 novembre : contours de d3-celestial en taches floues (trop discret ou voile gris), puis photo du ciel de l'ESO (eso0932a, S. Brunier, CC BY 4.0) projetée pixel par pixel, proche du rendu de Google Earth (4 000 px, 1,3 Mo hors préchargement, éclat 55 %). Le code de l'essai photo n'est pas gardé ; la piste à reprendre est celle-là.
 

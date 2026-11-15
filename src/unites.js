@@ -87,11 +87,11 @@ export const expressionAltitude = (champ) =>
 
 // Nom d'un sommet, puis son altitude en plus petit. Sans altitude connue dans OpenStreetMap, le nom seul
 // (sinon la carte affichait « 0 m »).
-export const expressionSommet = (nom = ['coalesce', ['get', 'name:fr'], ['get', 'name']]) => [
+export const expressionSommet = (nom = ['coalesce', ['get', 'name:fr'], ['get', 'name']], styleAltitude = {}) => [
   'format',
   nom, {},
   ['case', ['>', ['to-number', ['get', 'ele'], 0], 0], ['concat', '\n', expressionAltitude(['get', 'ele'])], ''],
-  { 'font-scale': 0.82 },
+  { 'font-scale': 0.82, ...styleAltitude },
 ];
 
 export const PIEDS = PIEDS_PAR_METRE;

@@ -1,4 +1,4 @@
-import { ADRESSE_POLICES, POLICE, POLICE_GRAS } from './polices.js';
+import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
 import { expressionSommet } from './unites.js';
 
@@ -22,6 +22,9 @@ export const CALQUES_MONTIS = [
   'montis-sentiers-lisere',
   'montis-path',
   'montis-marches',
+  'montis-eau-noms-ligne',
+  'montis-eau-noms-point',
+  'montis-rivieres-noms',
   'montis-place',
   'montis-summit',
 ];
@@ -93,6 +96,13 @@ function triangleSommet() {
   }
   return image;
 }
+
+// Sommets : nom en gras, altitude dans la couleur d'accent (violet le jour, cyan la nuit)
+const SOMMET_JOUR = { accent: '#8b3fd9' };
+export const SOMMET_NUIT = { accent: '#5ee6ff' };
+export const texteSommetMontis = (nuit = false) =>
+  expressionSommet(undefined, { 'font-scale': 0.9, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
+const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2.5, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
 
 export function ajouterMotifsMontis(map) {
   if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
@@ -171,6 +181,15 @@ export const VERSION_ROUTES = 'montis';
 const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
 
 const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
+
+const NOM_EAU = {
+  'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
+  'text-font': POLICE_ITALIQUE,
+  'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10.5, 14, 14],
+  'text-letter-spacing': 0.08,
+  'text-padding': 4,
+};
+const PEINTURE_EAU = { 'text-color': '#1c6aa6', 'text-halo-color': '#f6f5f8', 'text-halo-width': 1.4 };
 
 export const STYLE_MONTIS = {
   version: 8,
@@ -416,6 +435,38 @@ export const STYLE_MONTIS = {
         'line-dasharray': [0.6, 0.6],
       },
     },
+    // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là
+    {
+      id: 'montis-eau-noms-ligne',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'water_name',
+      minzoom: 8,
+      filter: ['all', ['==', ['geometry-type'], 'LineString'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      // Placé comme un point : le long de l'axe, le nom d'un grand lac ne tenait pas dans une tuile et disparaissait
+      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      paint: PEINTURE_EAU,
+    },
+    {
+      id: 'montis-eau-noms-point',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'water_name',
+      minzoom: 8,
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      paint: PEINTURE_EAU,
+    },
+    {
+      id: 'montis-rivieres-noms',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'waterway',
+      minzoom: 10,
+      filter: ['all', ['in', ['get', 'class'], ['literal', ['river', 'canal', 'stream']]], ['!=', ['get', 'brunnel'], 'tunnel'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      layout: { ...NOM_EAU, 'symbol-placement': 'line', 'symbol-spacing': 320, 'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 12.5] },
+      paint: PEINTURE_EAU,
+    },
     {
       id: 'montis-place',
       type: 'symbol',
@@ -449,9 +500,11 @@ export const STYLE_MONTIS = {
         'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 14, 1],
         // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
-        'text-field': expressionSommet(),
-        'text-font': POLICE,
-        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10.5, 14, 13],
+        'text-field': texteSommetMontis(),
+        'text-font': POLICE_GRAS,
+        // Plus le sommet est haut, plus son nom est grand
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(10.5), 14, tailleSommet(13)],
+        'text-letter-spacing': 0.02,
         'text-anchor': 'top',
         'text-offset': [0, 0.45],
         'text-max-width': 8,
@@ -459,10 +512,10 @@ export const STYLE_MONTIS = {
         'text-padding': 5,
       },
       paint: {
-        'icon-color': '#5b4660',
+        'icon-color': SOMMET_JOUR.accent,
         'icon-halo-color': '#f6f5f8',
         'icon-halo-width': 1.2,
-        'text-color': '#5b4660',
+        'text-color': '#2f2350',
         'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,
       },
