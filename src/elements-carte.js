@@ -23,7 +23,7 @@ const GROUPES = [
     nom: 'elements.nature',
     calques: [
       { cle: 'forets', label: 'elements.forets', aide: 'elements.forets-aide', defaut: false, appliquer: afficherForets },
-      { cle: 'eaux', label: 'elements.eaux', aide: 'elements.eaux-aide', defaut: false, appliquer: afficherEaux },
+      { cle: 'eaux', label: 'elements.eaux', aide: 'elements.eaux-aide', defaut: true, appliquer: afficherEaux },
       { cle: 'glaciers', label: 'elements.glaciers', aide: 'elements.glaciers-aide', defaut: false, appliquer: afficherGlaciers },
       { cle: 'parcs', label: 'elements.parcs', aide: 'elements.parcs-aide', defaut: false, appliquer: afficherParcs },
     ],

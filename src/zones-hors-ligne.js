@@ -1,3 +1,4 @@
+import { ADRESSE_POLICES, POLICES_CARTE } from './polices.js';
 // Cartes hors ligne : cadrer une zone, estimer sa taille, la télécharger, la retrouver.
 // Seuls le fond Montis et le relief se téléchargent : les autres fonds l'interdisent ou n'en
 // disent rien. OpenFreeMap fixe ses limites : 3 000 tuiles ou 50 Mo, 4 requêtes en parallèle.
@@ -13,7 +14,6 @@ const CACHE_ZONES = 'montis-zones';
 const CLE_ZONES = 'montis.zones';
 const DESCRIPTION_FOND = 'https://tiles.openfreemap.org/planet';
 const MODELE_RELIEF = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const POLICES = 'https://demotiles.maplibre.org/font/Open Sans Regular,Arial Unicode MS Regular';
 const PLAGES_POLICES = ['0-255', '256-511', '8192-8447', '8448-8703'];
 const MAX_TUILES_FOND = 3000;
 const MAX_OCTETS_FOND = 50 * 1024 * 1024;
@@ -38,7 +38,6 @@ function cleTuile(adresse) {
   if (url.hostname === 'tiles.openfreemap.org') {
     return `${url.origin}${url.pathname.replace(/^\/planet\/[^/]+\//, '/planet/')}`;
   }
-  if (url.hostname === 'demotiles.maplibre.org') return decodeURIComponent(url.href);
   return url.href;
 }
 
@@ -118,7 +117,7 @@ async function urlsDeZone(zone) {
   return [
     ...fond.map((tuile) => ({ url: remplir(tiles[0], tuile), genre: 'fond' })),
     ...relief.map((tuile) => ({ url: remplir(MODELE_RELIEF, tuile), genre: 'relief' })),
-    ...PLAGES_POLICES.map((plage) => ({ url: `${POLICES}/${plage}.pbf`, genre: 'police' })),
+    ...POLICES_CARTE.flatMap((police) => PLAGES_POLICES.map((plage) => ({ url: `${ADRESSE_POLICES}/${police}/${plage}.pbf`, genre: 'police' }))),
   ];
 }
 

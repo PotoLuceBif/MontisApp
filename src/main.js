@@ -1,3 +1,4 @@
+import { POLICE } from './polices.js';
 import * as maplibregl from 'maplibre-gl';
 import maplibreWorkerUrl from '../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import mlcontour from 'maplibre-contour';
@@ -9,12 +10,12 @@ import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
 import { ouvrirLienRecu, vueDemandee } from './partage.js';
 import { retablirFond } from './fond-de-carte.js';
-import { initPaletteFond } from './fond-palette.js';
+import { initPaletteFond, fondDeNuit } from './fond-palette.js';
 import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
-import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis } from './style-montis.js';
+import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis, texteSommetMontis } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
@@ -23,7 +24,7 @@ import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
-import { imperial, expressionAltitude, PIEDS } from './unites.js';
+import { imperial, PIEDS } from './unites.js';
 
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl);
@@ -318,16 +319,9 @@ surPreferences(() => {
   map.getSource('courbes').setTiles([urlCourbes()]);
   map.setLayoutProperty('courbes-altitude', 'text-field', texteCourbe());
   if (map.getLayer('montis-summit')) {
-    map.setLayoutProperty('montis-summit', 'text-field', texteSommetFond());
+    map.setLayoutProperty('montis-summit', 'text-field', texteSommetMontis(fondDeNuit()));
   }
 }, ['unites', '*']);
-
-const texteSommetFond = () => [
-  'concat',
-  ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-  '\n',
-  expressionAltitude(['get', 'ele']),
-];
 
 // ===== Tout ce qui s'ajoute une fois le style prêt =====
 // Pas « load » : il attend les premières tuiles, et sur un réseau lent l'appli resterait
@@ -361,7 +355,7 @@ map.once('style.load', () => {
       'symbol-placement': 'line',
       'symbol-spacing': 420,
       'text-field': texteCourbe(),
-      'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+      'text-font': POLICE,
       'text-size': ['interpolate', ['linear'], ['zoom'], 11, 9.5, 15, 11],
       'text-padding': 12,
     },

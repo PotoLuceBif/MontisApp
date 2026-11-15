@@ -85,6 +85,15 @@ export const expressionAltitude = (champ) =>
     ? ['concat', ['number-format', ['*', ['to-number', champ, 0], PIEDS_PAR_METRE], { 'max-fraction-digits': 0 }], ' ft']
     : ['concat', ['number-format', ['to-number', champ, 0], { 'max-fraction-digits': 0 }], ' m'];
 
+// Nom d'un sommet, puis son altitude en plus petit. Sans altitude connue dans OpenStreetMap, le nom seul
+// (sinon la carte affichait « 0 m »).
+export const expressionSommet = (nom = ['coalesce', ['get', 'name:fr'], ['get', 'name']], styleAltitude = {}) => [
+  'format',
+  nom, {},
+  ['case', ['>', ['to-number', ['get', 'ele'], 0], 0], ['concat', '\n', expressionAltitude(['get', 'ele'])], ''],
+  { 'font-scale': 0.82, ...styleAltitude },
+];
+
 export const PIEDS = PIEDS_PAR_METRE;
 
 // ---------- Tailles de fichiers : Ko, Mo, Go en français ; KB, MB, GB en anglais ----------

@@ -60,3 +60,16 @@ describe('vent', () => {
     expect(u.formatVent(20)).toBe('5,6 m/s');
   });
 });
+
+describe('nom d’un sommet sur la carte', () => {
+  it('n’ajoute l’altitude que si elle est connue', () => {
+    const [genre, nom, , altitude, style] = u.expressionSommet();
+    expect(genre).toBe('format');
+    expect(nom).toEqual(['coalesce', ['get', 'name:fr'], ['get', 'name']]);
+    // Sans « ele », to-number vaut 0 : la condition écarte le « 0 m »
+    expect(altitude[0]).toBe('case');
+    expect(altitude[1]).toEqual(['>', ['to-number', ['get', 'ele'], 0], 0]);
+    expect(altitude[3]).toBe('');
+    expect(style['font-scale']).toBeLessThan(1);
+  });
+});

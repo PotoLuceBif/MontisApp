@@ -1,6 +1,7 @@
+import { POLICE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
-import { expressionAltitude } from './unites.js';
+import { expressionSommet } from './unites.js';
 import { surPreferences } from './preferences.js';
 
 const COUCHE = 'sommets';
@@ -26,13 +27,7 @@ function creerIcone() {
   return g.getImageData(0, 0, t, t);
 }
 
-const texteSommet = () => [
-  'format',
-  ['get', 'name'], {},
-  '\n', {},
-  ['case', ['has', 'ele'], expressionAltitude(['get', 'ele']), ''],
-  { 'font-scale': 0.85 },
-];
+const texteSommet = () => expressionSommet(['get', 'name']);
 
 let suiviUnites = false;
 
@@ -67,7 +62,7 @@ export function afficherSommets(map, visible) {
         // Les sommets les plus hauts sont placés en premier (prioritaires)
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
         'text-field': texteSommet(),
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+        'text-font': POLICE,
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
         'text-anchor': 'top',
         'text-offset': [0, 0.5],

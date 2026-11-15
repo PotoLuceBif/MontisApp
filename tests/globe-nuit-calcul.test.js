@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eclairageJour, hauteurSoleil, melangerTuile, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
+import { couleurCalotte, eclairageJour, hauteurSoleil, limbeGlobe, melangerTuile, oceanClair, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
 
 describe('point subsolaire', () => {
   it('suit la déclinaison au fil des saisons', () => {
@@ -63,6 +63,14 @@ describe('jour, nuit et crépuscule', () => {
     expect(Math.abs(pixels[milieu] - pixels[milieu + 4])).toBeGreaterThan(200); // ailleurs, l'image reste
   });
 
+  it('fond le pôle Nord vers la mer, pas vers la glace', () => {
+    const jour = new Uint8ClampedArray(256 * 256 * 4).fill(255);
+    const nuit = new Uint8ClampedArray(256 * 256 * 4).fill(10);
+    const pixels = melangerTuile(jour, nuit, 1, 0, 0, { lat: 23, lng: -90 }); // tuile du haut, en été
+    const o = 128 * 4; // première rangée, au milieu de la tuile
+    expect(pixels[o + 2]).toBeGreaterThan(pixels[o] * 2); // bleu
+  });
+
   it('teinte la nuit en bleu profond et garde les lumières des villes', () => {
     const [r, v, b] = teinteNuit(60, 60, 70); // campagne la nuit
     expect(b).toBeGreaterThan(r);
@@ -85,5 +93,54 @@ describe('jour, nuit et crépuscule', () => {
     const est = pointADistance(0, 170, 90, 20);
     expect(est.lat).toBeCloseTo(0);
     expect(est.lng).toBeCloseTo(-170);
+  });
+});
+
+describe('océan du côté jour', () => {
+  it('éclaircit la mer sombre de l’image et garde ses nuances', () => {
+    const profond = oceanClair(8, 30, 90);
+    const plateau = oceanClair(20, 60, 130);
+    expect(profond[2]).toBeGreaterThan(150);
+    expect(plateau[2]).toBeGreaterThan(profond[2]); // les fonds marins se lisent encore
+    expect(profond[2]).toBeGreaterThan(profond[0] * 3); // toujours bleu
+  });
+
+  it('laisse les terres, les glaces et les déserts tels quels', () => {
+    expect(oceanClair(60, 90, 40)).toEqual([60, 90, 40]); // forêt
+    expect(oceanClair(240, 240, 245)).toEqual([240, 240, 245]); // glace
+    expect(oceanClair(200, 170, 120)).toEqual([200, 170, 120]); // désert
+  });
+});
+
+describe('bord apparent du globe', () => {
+  const vue = { lat: 20, lng: 10, zoom: 1.5, fov: 36.87, hauteurEcran: 800 };
+  it('est centré sous la caméra quand la carte est à plat', () => {
+    const limbe = limbeGlobe(vue);
+    expect(limbe.lat).toBeCloseTo(20, 5);
+    expect(limbe.lng).toBeCloseTo(10, 5);
+    expect(limbe.angle).toBeGreaterThan(60);
+    expect(limbe.angle).toBeLessThan(90);
+  });
+  it('recule avec la caméra quand la carte est inclinée vers le nord', () => {
+    const limbe = limbeGlobe({ ...vue, pitch: 50 });
+    expect(limbe.lat).toBeLessThan(20); // la caméra est au sud du centre
+    expect(limbe.lng).toBeCloseTo(10, 5);
+  });
+  it('se resserre quand on se rapproche', () => {
+    expect(limbeGlobe({ ...vue, zoom: 4 }).angle).toBeLessThan(limbeGlobe(vue).angle);
+  });
+});
+
+describe('calottes des pôles', () => {
+  const hiver = { lat: -20, lng: 0 }; // novembre : nuit polaire au nord, jour au sud
+  it('est sombre au nord pendant la nuit polaire, claire au sud', () => {
+    const nord = couleurCalotte(true, 0, hiver);
+    const sud = couleurCalotte(false, 0, hiver);
+    expect(Math.max(...nord)).toBeLessThan(40);
+    expect(Math.min(...sud)).toBeGreaterThan(200); // glace
+  });
+  it('est une mer bleue au nord en été', () => {
+    const [r, , b] = couleurCalotte(true, 0, { lat: 23, lng: 0 });
+    expect(b).toBeGreaterThan(r * 2);
   });
 });

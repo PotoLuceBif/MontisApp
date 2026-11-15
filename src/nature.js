@@ -1,10 +1,10 @@
+import { POLICE } from './polices.js';
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
 
 // Les remplissages sont insérés sous l'ombrage et les courbes de niveau ;
 // les noms (haut: true) passent au-dessus de tout pour rester lisibles.
 const AVANT = 'ombrage';
-const POLICE = ['Open Sans Regular', 'Arial Unicode MS Regular'];
 
 // ---------- Motifs dessinés à la volée ----------
 function dessiner(taille, tracer) {
@@ -85,7 +85,9 @@ const EAUX = {
       type: 'fill',
       'source-layer': 'water',
       filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'fill-color': '#4a9be8', 'fill-opacity': 0.5 },
+      minzoom: 6,
+      // Plus loin, l'image du globe montre l'eau (claire le jour, sombre la nuit) : la couche s'efface
+      paint: { 'fill-color': '#4a9be8', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0, 8.5, 0.5] },
     },
     {
       id: 'nature-lacs-bord',
@@ -95,7 +97,7 @@ const EAUX = {
       filter: ['==', ['geometry-type'], 'Polygon'],
       paint: {
         'line-color': '#1d5fa6',
-        'line-opacity': 0.85,
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0, 8.5, 0.85],
         'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 14, 1.5],
       },
     },
@@ -108,7 +110,7 @@ const EAUX = {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: {
         'line-color': '#2f7fd1',
-        'line-opacity': 0.85,
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0, 8.5, 0.85],
         'line-width': [
           'interpolate', ['linear'], ['zoom'],
           7, ['match', ['get', 'class'], 'river', 1, 0.4],
@@ -116,70 +118,7 @@ const EAUX = {
         ],
       },
     },
-    // Noms des lacs : certains sont des lignes (axe du lac), d'autres des points
-    {
-      id: 'nature-lacs-noms-ligne',
-      type: 'symbol',
-      'source-layer': 'water_name',
-      minzoom: 6,
-      haut: true,
-      filter: [
-        'all',
-        ['==', ['geometry-type'], 'LineString'],
-        ['==', ['get', 'class'], 'lake'],
-        ['has', 'name'],
-      ],
-      layout: {
-        'symbol-placement': 'line-center',
-        'text-field': ['get', 'name'],
-        'text-font': POLICE,
-        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10, 14, 15],
-        'text-letter-spacing': 0.1,
-      },
-      paint: { 'text-color': '#1b5e9b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-    },
-    {
-      id: 'nature-lacs-noms-point',
-      type: 'symbol',
-      'source-layer': 'water_name',
-      minzoom: 6,
-      haut: true,
-      filter: [
-        'all',
-        ['==', ['geometry-type'], 'Point'],
-        ['==', ['get', 'class'], 'lake'],
-        ['has', 'name'],
-      ],
-      layout: {
-        'text-field': ['get', 'name'],
-        'text-font': POLICE,
-        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10, 14, 15],
-        'text-letter-spacing': 0.1,
-        'text-max-width': 8,
-      },
-      paint: { 'text-color': '#1b5e9b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-    },
-    // Noms des rivières, écrits le long du tracé
-    {
-      id: 'nature-rivieres-noms',
-      type: 'symbol',
-      'source-layer': 'waterway',
-      minzoom: 8,
-      haut: true,
-      filter: [
-        'all',
-        ['in', ['get', 'class'], ['literal', ['river', 'canal']]],
-        ['has', 'name'],
-      ],
-      layout: {
-        'symbol-placement': 'line',
-        'symbol-spacing': 300,
-        'text-field': ['get', 'name'],
-        'text-font': POLICE,
-        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10, 14, 12],
-      },
-      paint: { 'text-color': '#1b5e9b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
-    },
+    // Les noms des lacs et des rivières sont dans le fond Montis lui-même (style-montis.js)
   ],
 };
 

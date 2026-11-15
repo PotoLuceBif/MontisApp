@@ -1,5 +1,6 @@
+import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
-import { expressionAltitude } from './unites.js';
+import { expressionSommet } from './unites.js';
 
 const classes = (valeurs) => ['in', ['get', 'class'], ['literal', valeurs]];
 
@@ -21,9 +22,23 @@ export const CALQUES_MONTIS = [
   'montis-sentiers-lisere',
   'montis-path',
   'montis-marches',
+  'montis-eau-noms-ligne',
+  'montis-eau-noms-point',
+  'montis-rivieres-noms',
   'montis-place',
   'montis-summit',
 ];
+
+// Les bâtiments en volume se posent tout en haut et cachaient le nom des villes : les noms du fond repassent
+// juste au-dessus d'eux. Pas sous une carte nationale, où ils restent dessous (fond-de-carte.js).
+const NOMS_MONTIS = ['montis-eau-noms-ligne', 'montis-eau-noms-point', 'montis-rivieres-noms', 'montis-place', 'montis-summit'];
+export function nomsAuDessusDesBatiments(map) {
+  const ids = map.getStyle().layers.map(({ id }) => id);
+  const batiments = ids.indexOf('batiments-3d');
+  if (batiments < 0) return;
+  const suivante = ids.slice(batiments + 1).find((id) => !NOMS_MONTIS.includes(id));
+  for (const id of NOMS_MONTIS) if (map.getLayer(id)) map.moveLayer(id, suivante);
+}
 
 // Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
 // au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
@@ -31,7 +46,7 @@ export const REPERE_CALQUES = 'repere-calques';
 
 // Ombrage du fond Montis, en 2D comme en 3D, plus léger de près où il brouillerait le détail
 // (`facteur` : main.js l'efface près des pôles)
-export const exagerationReliefMontis = (facteur = 1) => ['interpolate', ['linear'], ['zoom'], 9, 0.6 * facteur, 13, 0.5 * facteur, 16, 0.3 * facteur];
+export const exagerationReliefMontis = (facteur = 1) => ['interpolate', ['linear'], ['zoom'], 9, 0.85 * facteur, 13, 0.72 * facteur, 16, 0.45 * facteur];
 
 // Motifs du fond, dessinés à deux fois la taille affichée pour rester nets
 const MOTIFS = {
@@ -70,7 +85,38 @@ const MOTIFS = {
   },
 };
 
+// Triangle des sommets en champ de distance (SDF), pour que le style le colore : brun-violet le jour, clair la nuit
+export const IMAGE_SOMMET = 'montis-sommet';
+function triangleSommet() {
+  const t = 28;
+  const [a, b, c] = [[14, 7], [21, 20], [7, 20]];
+  // Distance d'un point à un segment
+  const segment = (x, y, [x1, y1], [x2, y2]) => {
+    const u = Math.max(0, Math.min(1, ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / ((x2 - x1) ** 2 + (y2 - y1) ** 2)));
+    return Math.hypot(x - x1 - u * (x2 - x1), y - y1 - u * (y2 - y1));
+  };
+  const cote = (x, y, [x1, y1], [x2, y2]) => (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+  const image = new ImageData(t, t);
+  for (let y = 0; y < t; y++) {
+    for (let x = 0; x < t; x++) {
+      const [px, py] = [x + 0.5, y + 0.5];
+      const dedans = cote(px, py, a, b) >= 0 && cote(px, py, b, c) >= 0 && cote(px, py, c, a) >= 0;
+      const d = Math.min(segment(px, py, a, b), segment(px, py, b, c), segment(px, py, c, a)) * (dedans ? -1 : 1);
+      image.data[(y * t + x) * 4 + 3] = Math.max(0, Math.min(255, Math.round(255 * (0.75 - d / 8))));
+    }
+  }
+  return image;
+}
+
+// Sommets : nom en capitales espacées, violet ; altitude et triangle en cyan (plus soutenu le jour, pour le papier clair)
+export const SOMMET_JOUR = { nom: '#6a2fc2', accent: '#0a93b0' };
+export const SOMMET_NUIT = { nom: '#e3c4ff', accent: '#5ee6ff' };
+export const texteSommetMontis = (nuit = false) =>
+  expressionSommet(['upcase', ['coalesce', ['get', 'name:fr'], ['get', 'name']]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
+const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
+
 export function ajouterMotifsMontis(map) {
+  if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
   for (const [nom, tracer] of Object.entries(MOTIFS)) {
     if (map.hasImage(nom)) continue;
     const canvas = document.createElement('canvas');
@@ -147,21 +193,30 @@ const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
 
 const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
 
+const NOM_EAU = {
+  'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
+  'text-font': POLICE_ITALIQUE,
+  'text-size': ['interpolate', ['linear'], ['zoom'], 8, 10.5, 14, 14],
+  'text-letter-spacing': 0.08,
+  'text-padding': 4,
+};
+const PEINTURE_EAU = { 'text-color': '#1c6aa6', 'text-halo-color': '#f6f5f8', 'text-halo-width': 1.4 };
+
 export const STYLE_MONTIS = {
   version: 8,
-  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  glyphs: `${ADRESSE_POLICES}/{fontstack}/{range}.pbf`,
   sources: {
     [SOURCE_VECTEUR]: definitionSourceVecteur(),
   },
   layers: [
-    { id: 'montis-background', type: 'background', paint: { 'background-color': '#f3f2f4' } },
+    { id: 'montis-background', type: 'background', paint: { 'background-color': '#e8e6ec' } },
     {
       id: 'montis-landuse',
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'landuse',
       filter: classes(['park', 'nature_reserve', 'wood', 'forest', 'cemetery', 'allotments']),
-      paint: { 'fill-color': '#cfe3bd', 'fill-opacity': 0.75 },
+      paint: { 'fill-color': '#b7d6a3', 'fill-opacity': 0.8 },
     },
     {
       id: 'montis-landcover',
@@ -174,18 +229,18 @@ export const STYLE_MONTIS = {
           'match',
           ['get', 'class'],
           ['wood', 'forest'],
-          '#a6d19b',
+          '#84bd7a',
           ['grass', 'scrub'],
-          '#dbe9cc',
+          '#c6dcb0',
           ['ice', 'snow'],
           '#f2f7fc',
           'rock',
-          '#e2e0e6',
+          '#cbc7d3',
           'sand',
           '#ede5cf',
           'wetland',
-          '#dcebea',
-          '#dbe9cc',
+          '#c9e0df',
+          '#c6dcb0',
         ],
         'fill-opacity': ['match', ['get', 'class'], ['ice', 'snow'], 0.95, ['wood', 'forest'], 0.9, 0.8],
       },
@@ -200,7 +255,7 @@ export const STYLE_MONTIS = {
       filter: ['==', ['get', 'class'], 'rock'],
       paint: {
         'fill-pattern': ['match', ['get', 'subclass'], ['scree', 'shingle'], 'montis-motif-eboulis', 'montis-motif-rocher'],
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.4, 14, 0.9],
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.55, 14, 1],
       },
     },
     {
@@ -223,8 +278,8 @@ export const STYLE_MONTIS = {
         'hillshade-illumination-direction': [315, 270, 0, 350],
         'hillshade-illumination-anchor': 'map',
         'hillshade-exaggeration': exagerationReliefMontis(),
-        'hillshade-shadow-color': ['rgba(46, 58, 92, 0.55)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.22)', 'rgba(60, 64, 88, 0.15)'],
-        'hillshade-highlight-color': ['rgba(255, 250, 240, 0.3)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
+        'hillshade-shadow-color': ['rgba(40, 50, 86, 0.78)', 'rgba(54, 58, 86, 0.32)', 'rgba(54, 58, 86, 0.32)', 'rgba(54, 58, 86, 0.2)'],
+        'hillshade-highlight-color': ['rgba(255, 250, 240, 0.45)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)', 'rgba(255, 255, 255, 0)'],
         'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
       },
     },
@@ -247,7 +302,7 @@ export const STYLE_MONTIS = {
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'water',
-      paint: { 'fill-color': '#9dd2ec', 'fill-opacity': 0.95 },
+      paint: { 'fill-color': '#5fb1dc', 'fill-opacity': 0.95 },
     },
     {
       id: 'montis-waterway',
@@ -255,7 +310,7 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'waterway',
       paint: {
-        'line-color': '#5fb3df',
+        'line-color': '#3492c8',
         'line-width': ['interpolate', ['linear'], ['zoom'], 7, 0.5, 14, 2.2],
       },
     },
@@ -308,7 +363,8 @@ export const STYLE_MONTIS = {
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ROUTES.cerne,
-        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.35, 1],
+        // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.14, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.35, 1]],
         'line-width': largeurRoute(true),
       },
     },
@@ -321,7 +377,8 @@ export const STYLE_MONTIS = {
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
-        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1],
+        // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.18, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1]],
         'line-width': largeurRoute(false),
       },
     },
@@ -391,6 +448,38 @@ export const STYLE_MONTIS = {
         'line-dasharray': [0.6, 0.6],
       },
     },
+    // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là
+    {
+      id: 'montis-eau-noms-ligne',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'water_name',
+      minzoom: 8,
+      filter: ['all', ['==', ['geometry-type'], 'LineString'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      // Placé comme un point : le long de l'axe, le nom d'un grand lac ne tenait pas dans une tuile et disparaissait
+      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      paint: PEINTURE_EAU,
+    },
+    {
+      id: 'montis-eau-noms-point',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'water_name',
+      minzoom: 8,
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      paint: PEINTURE_EAU,
+    },
+    {
+      id: 'montis-rivieres-noms',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'waterway',
+      minzoom: 10,
+      filter: ['all', ['in', ['get', 'class'], ['literal', ['river', 'canal', 'stream']]], ['!=', ['get', 'brunnel'], 'tunnel'], ['any', ['has', 'name'], ['has', 'name:fr']]],
+      layout: { ...NOM_EAU, 'symbol-placement': 'line', 'symbol-spacing': 320, 'text-size': ['interpolate', ['linear'], ['zoom'], 10, 10, 15, 12.5] },
+      paint: PEINTURE_EAU,
+    },
     {
       id: 'montis-place',
       type: 'symbol',
@@ -399,7 +488,7 @@ export const STYLE_MONTIS = {
       filter: classes(['city', 'town', 'village', 'hamlet', 'suburb']),
       layout: {
         'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+        'text-font': ['case', ['in', ['get', 'class'], ['literal', ['city', 'town']]], ['literal', POLICE_GRAS], ['literal', POLICE]],
         'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 13],
         'text-max-width': 8,
         'text-padding': 4,
@@ -417,20 +506,29 @@ export const STYLE_MONTIS = {
       source: SOURCE_VECTEUR,
       'source-layer': 'mountain_peak',
       minzoom: 9,
+      filter: ['any', ['has', 'name'], ['has', 'name:fr']],
       layout: {
-        'text-field': [
-          'concat',
-          ['coalesce', ['get', 'name:fr'], ['get', 'name']],
-          '\n',
-          expressionAltitude(['get', 'ele']),
-        ],
-        'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 13],
-        'text-allow-overlap': false,
+        // Un col (saddle) garde son nom et son altitude, sans triangle
+        'icon-image': ['case', ['==', ['get', 'class'], 'saddle'], '', IMAGE_SOMMET],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 14, 1],
+        // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
+        'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
+        'text-field': texteSommetMontis(),
+        'text-font': POLICE_GRAS,
+        // Plus le sommet est haut, plus son nom est grand
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(9), 14, tailleSommet(11)],
+        'text-letter-spacing': 0.12,
+        'text-anchor': 'top',
+        'text-offset': [0, 0.45],
+        'text-max-width': 8,
+        'text-line-height': 1.15,
         'text-padding': 5,
       },
       paint: {
-        'text-color': '#5b4660',
+        'icon-color': SOMMET_JOUR.accent,
+        'icon-halo-color': '#f6f5f8',
+        'icon-halo-width': 1.2,
+        'text-color': SOMMET_JOUR.nom,
         'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,
       },
