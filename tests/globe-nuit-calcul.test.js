@@ -63,6 +63,14 @@ describe('jour, nuit et crépuscule', () => {
     expect(Math.abs(pixels[milieu] - pixels[milieu + 4])).toBeGreaterThan(200); // ailleurs, l'image reste
   });
 
+  it('fond le pôle Nord vers la mer, pas vers la glace', () => {
+    const jour = new Uint8ClampedArray(256 * 256 * 4).fill(255);
+    const nuit = new Uint8ClampedArray(256 * 256 * 4).fill(10);
+    const pixels = melangerTuile(jour, nuit, 1, 0, 0, { lat: 23, lng: -90 }); // tuile du haut, en été
+    const o = 128 * 4; // première rangée, au milieu de la tuile
+    expect(pixels[o + 2]).toBeGreaterThan(pixels[o] * 2); // bleu
+  });
+
   it('teinte la nuit en bleu profond et garde les lumières des villes', () => {
     const [r, v, b] = teinteNuit(60, 60, 70); // campagne la nuit
     expect(b).toBeGreaterThan(r);

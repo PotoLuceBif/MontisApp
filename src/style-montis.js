@@ -363,7 +363,8 @@ export const STYLE_MONTIS = {
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ROUTES.cerne,
-        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.35, 1],
+        // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.14, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.35, 1]],
         'line-width': largeurRoute(true),
       },
     },
@@ -376,7 +377,8 @@ export const STYLE_MONTIS = {
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
-        'line-opacity': ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1],
+        // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.18, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1]],
         'line-width': largeurRoute(false),
       },
     },

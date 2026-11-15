@@ -11,6 +11,9 @@ const LAT_FONDU = 80;
 const LAT_BORD = 85.0511;
 const GLACE = [236, 241, 246];
 const NUIT_POLAIRE = [7, 9, 20];
+// Au pôle Nord, c'est l'océan Arctique : fondre vers la glace y dessinait un disque clair sur la mer
+const ARCTIQUE = [14, 36, 78]; // moyenne de l'image du jour au-delà de 80° nord
+const ARCTIQUE_NUIT = [4, 5, 15];
 
 const normaliser = (degres) => ((((degres + 180) % 360) + 360) % 360) - 180;
 
@@ -65,7 +68,7 @@ export function oceanClair(r, v, b) {
 export function teinteNuit(r, v, b) {
   const lum = (r + v + b) / 3;
   const ville = lisse(70, 170, lum);
-  const fond = [r * 0.3 + 4, v * 0.36 + 8, b * 0.5 + 20];
+  const fond = [r * 0.24 + 2, v * 0.3 + 5, b * 0.42 + 12];
   const lumiere = [Math.min(255, lum * 1.15 + 25), Math.min(255, lum * 0.95 + 8), lum * 0.62];
   return fond.map((c, i) => c * (1 - ville) + lumiere[i] * ville);
 }
@@ -98,6 +101,7 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       lumieres[gy * cotes + gx] = eclairageJour(h);
     }
   }
+  const [poleJour, poleNuit] = y === 0 ? [oceanClair(...ARCTIQUE), teinteNuit(...ARCTIQUE_NUIT)] : [GLACE, NUIT_POLAIRE];
   const bordMonde = y === 0 || y === 2 ** z - 1; // seules les tuiles du haut et du bas touchent un pôle
   for (let py = 0; py < 256; py += 1) {
     const gy = Math.min(cotes - 2, Math.floor(py / PAS));
@@ -120,7 +124,7 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       const clair = oceanClair(jour[o], jour[o + 1], jour[o + 2]);
       for (let c = 0; c < 3; c += 1) {
         const image = clair[c] * l * w + teinte[c] * (1 - w);
-        const unie = GLACE[c] * w + NUIT_POLAIRE[c] * (1 - w);
+        const unie = poleJour[c] * (y === 0 ? l : 1) * w + poleNuit[c] * (1 - w);
         pixels[o + c] = image * (1 - polaire) + unie * polaire;
       }
       pixels[o + 3] = 255;

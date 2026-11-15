@@ -368,7 +368,7 @@ const ECRANS = [
       (p) => p.waitForTimeout(6000),
     ],
   },
-  { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
+  { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 7.3, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {
     nom: 'carte-pastilles',

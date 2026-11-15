@@ -11,8 +11,10 @@ const SOURCE = 'globe-jour-nuit';
 const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
 const JOUR = `${GIBS}/BlueMarble_ShadedRelief_Bathymetry/default/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg`;
 const NUIT = `${GIBS}/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png`;
-const ZOOM_PLEIN = 4; // jusqu'ici, le globe seul
-const ZOOM_FIN = 6; // au-delà, la carte seule
+// Entre le globe et la carte de montagne, le fond Montis est presque vide (papier blanc et routes) :
+// l'image reste pleine jusqu'au zoom 6 et ne s'efface qu'une fois forêts et relief lisibles
+const ZOOM_PLEIN = 6; // jusqu'ici, l'image seule
+const ZOOM_FIN = 8.5; // au-delà, la carte seule
 const PAS_HEURE = 10 * 60 * 1000;
 const TUILES_GARDEES = 96;
 
