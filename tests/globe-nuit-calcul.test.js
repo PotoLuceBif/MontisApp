@@ -139,6 +139,12 @@ describe('bord apparent du globe', () => {
   it('se resserre quand on se rapproche', () => {
     expect(limbeGlobe({ ...vue, zoom: 4 }).angle).toBeLessThan(limbeGlobe(vue).angle);
   });
+  it('garde sa taille face à un pôle, comme MapLibre qui arrête l’échelle à 85°', () => {
+    // Centre à −89,9° : le bord se resserrait autour du pôle (halo qui rétrécit en anneau)
+    const pole = { ...vue, lat: -89.9, zoom: -1.5 };
+    const limite = { ...vue, lat: -85.0511, zoom: -1.5 };
+    expect(limbeGlobe(pole).angle).toBeCloseTo(limbeGlobe(limite).angle, 4);
+  });
 });
 
 describe('calottes des pôles', () => {
