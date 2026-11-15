@@ -115,6 +115,9 @@ export function initCiel(map) {
       const est = ecran(modele.ra + DELTA / Math.cos((modele.dec * Math.PI) / 180), modele.dec);
       if (!nord || !est) continue;
       const rayon = Math.hypot(nord.x - point.x, nord.y - point.y) / DELTA * modele.grand;
+      const etirement = Math.hypot(est.x - point.x, est.y - point.y) / DELTA * modele.grand;
+      // Presque à angle droit de la visée, la perspective l'agrandit sans limite : elle couvrait tout le ciel
+      if (Math.max(rayon, etirement) > Math.max(l, h)) continue;
       if (point.x < -rayon || point.y < -rayon || point.x > l + rayon || point.y > h + rayon) continue;
       const [a, b, c, d, e, f] = poseGalaxie(modele, point, nord, est, DELTA);
       contexte.setTransform(ratio * a, ratio * b, ratio * c, ratio * d, ratio * e, ratio * f);

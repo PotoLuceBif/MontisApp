@@ -139,11 +139,14 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       lumieres[gy * cotes + gx] = eclairageJour(h);
     }
   }
-  const pole = couleursPole(y === 0);
+  // Au zoom 0, la seule tuile touche les deux pôles : la couleur du pôle se choisit ligne par ligne
+  const poles = [couleursPole(true), couleursPole(false)];
   const bordMonde = y === 0 || y === 2 ** z - 1; // seules les tuiles du haut et du bas touchent un pôle
   for (let py = 0; py < 256; py += 1) {
     const gy = Math.min(cotes - 2, Math.floor(py / PAS));
     const ty = (py - gy * PAS) / PAS;
+    const nord = y * 256 + py < monde / 2;
+    const pole = poles[nord ? 0 : 1];
     let polaire = 0;
     if (bordMonde) {
       const lat = Math.abs(Math.atan(Math.sinh(Math.PI * (1 - (2 * (y * 256 + py + 0.5)) / monde))) / RAD);
@@ -163,7 +166,7 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
       const sombre = 1 - (1 - MER_NUIT) * partMer(jour[o], jour[o + 1], jour[o + 2]);
       for (let c = 0; c < 3; c += 1) {
         const image = clair[c] * l * w + teinte[c] * sombre * (1 - w);
-        const unie = unieAuPole(y === 0, pole, w, l, c);
+        const unie = unieAuPole(nord, pole, w, l, c);
         pixels[o + c] = image * (1 - polaire) + unie * polaire;
       }
       pixels[o + 3] = 255;
