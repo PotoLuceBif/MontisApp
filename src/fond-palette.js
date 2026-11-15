@@ -60,7 +60,7 @@ const NUIT = {
   'montis-path': { 'line-color': ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], '#5d6378', '#ff6b5a'] },
   'montis-marches': { 'line-color': '#ff9d8f' },
   'montis-place': TEXTE_NUIT,
-  'montis-summit': { ...TEXTE_NUIT, 'text-color': '#f1e9ff', 'icon-color': SOMMET_NUIT.accent, 'icon-halo-color': '#0b111b' },
+  'montis-summit': { ...TEXTE_NUIT, 'text-color': SOMMET_NUIT.nom, 'icon-color': SOMMET_NUIT.accent, 'icon-halo-color': '#0b111b' },
   'montis-eau-noms-ligne': EAU_NUIT,
   'montis-eau-noms-point': EAU_NUIT,
   'montis-rivieres-noms': EAU_NUIT,

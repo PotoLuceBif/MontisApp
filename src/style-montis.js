@@ -29,6 +29,17 @@ export const CALQUES_MONTIS = [
   'montis-summit',
 ];
 
+// Les bâtiments en volume se posent tout en haut et cachaient le nom des villes : les noms du fond repassent
+// juste au-dessus d'eux. Pas sous une carte nationale, où ils restent dessous (fond-de-carte.js).
+const NOMS_MONTIS = ['montis-eau-noms-ligne', 'montis-eau-noms-point', 'montis-rivieres-noms', 'montis-place', 'montis-summit'];
+export function nomsAuDessusDesBatiments(map) {
+  const ids = map.getStyle().layers.map(({ id }) => id);
+  const batiments = ids.indexOf('batiments-3d');
+  if (batiments < 0) return;
+  const suivante = ids.slice(batiments + 1).find((id) => !NOMS_MONTIS.includes(id));
+  for (const id of NOMS_MONTIS) if (map.getLayer(id)) map.moveLayer(id, suivante);
+}
+
 // Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
 // au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
 export const REPERE_CALQUES = 'repere-calques';
@@ -97,12 +108,12 @@ function triangleSommet() {
   return image;
 }
 
-// Sommets : nom en gras, altitude dans la couleur d'accent (violet le jour, cyan la nuit)
-const SOMMET_JOUR = { accent: '#8b3fd9' };
-export const SOMMET_NUIT = { accent: '#5ee6ff' };
+// Sommets : nom en capitales espacées, violet ; altitude et triangle en cyan (plus soutenu le jour, pour le papier clair)
+export const SOMMET_JOUR = { nom: '#6a2fc2', accent: '#0a93b0' };
+export const SOMMET_NUIT = { nom: '#e3c4ff', accent: '#5ee6ff' };
 export const texteSommetMontis = (nuit = false) =>
-  expressionSommet(undefined, { 'font-scale': 0.9, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
-const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2.5, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
+  expressionSommet(['upcase', ['coalesce', ['get', 'name:fr'], ['get', 'name']]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
+const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
 
 export function ajouterMotifsMontis(map) {
   if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
@@ -503,8 +514,8 @@ export const STYLE_MONTIS = {
         'text-field': texteSommetMontis(),
         'text-font': POLICE_GRAS,
         // Plus le sommet est haut, plus son nom est grand
-        'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(10.5), 14, tailleSommet(13)],
-        'text-letter-spacing': 0.02,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(9), 14, tailleSommet(11)],
+        'text-letter-spacing': 0.12,
         'text-anchor': 'top',
         'text-offset': [0, 0.45],
         'text-max-width': 8,
@@ -515,7 +526,7 @@ export const STYLE_MONTIS = {
         'icon-color': SOMMET_JOUR.accent,
         'icon-halo-color': '#f6f5f8',
         'icon-halo-width': 1.2,
-        'text-color': '#2f2350',
+        'text-color': SOMMET_JOUR.nom,
         'text-halo-color': '#f6f5f8',
         'text-halo-width': 1.5,
       },

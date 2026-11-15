@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eclairageJour, hauteurSoleil, melangerTuile, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
+import { eclairageJour, hauteurSoleil, melangerTuile, oceanClair, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
 
 describe('point subsolaire', () => {
   it('suit la déclinaison au fil des saisons', () => {
@@ -85,5 +85,21 @@ describe('jour, nuit et crépuscule', () => {
     const est = pointADistance(0, 170, 90, 20);
     expect(est.lat).toBeCloseTo(0);
     expect(est.lng).toBeCloseTo(-170);
+  });
+});
+
+describe('océan du côté jour', () => {
+  it('éclaircit la mer sombre de l’image et garde ses nuances', () => {
+    const profond = oceanClair(8, 30, 90);
+    const plateau = oceanClair(20, 60, 130);
+    expect(profond[2]).toBeGreaterThan(150);
+    expect(plateau[2]).toBeGreaterThan(profond[2]); // les fonds marins se lisent encore
+    expect(profond[2]).toBeGreaterThan(profond[0] * 3); // toujours bleu
+  });
+
+  it('laisse les terres, les glaces et les déserts tels quels', () => {
+    expect(oceanClair(60, 90, 40)).toEqual([60, 90, 40]); // forêt
+    expect(oceanClair(240, 240, 245)).toEqual([240, 240, 245]); // glace
+    expect(oceanClair(200, 170, 120)).toEqual([200, 170, 120]); // désert
   });
 });

@@ -51,6 +51,16 @@ export function eclairageJour(hauteur) {
   return 0.62 + 0.38 * lisse(-2, 30, hauteur);
 }
 
+// Côté jour : l'océan de l'image, très sombre, est éclairci vers un bleu franc (demande du propriétaire du
+// 15 novembre 2026) ; les fonds marins restent lisibles. La mer se reconnaît à son bleu dominant : terres,
+// glaces et nuages ne changent pas, et la côte passe en douceur.
+export function oceanClair(r, v, b) {
+  // Part de bleu en trop, rapportée au bleu : les abysses presque noirs comptent autant que les hauts-fonds
+  const mer = lisse(0.08, 0.3, (b - Math.max(r, v) * 1.12) / (b + 1));
+  if (!mer) return [r, v, b];
+  return [r + (r * 0.5 + 30 - r) * mer, v + (v * 0.45 + 96 - v) * mer, b + (b * 0.35 + 150 - b) * mer];
+}
+
 // Côté nuit : un bleu nuit profond plutôt que le gris violacé de l'image ; les lumières des villes restent, réchauffées
 export function teinteNuit(r, v, b) {
   const lum = (r + v + b) / 3;
@@ -107,8 +117,9 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
         + (lumieres[(gy + 1) * cotes + gx] * (1 - tx) + lumieres[(gy + 1) * cotes + gx + 1] * tx) * ty;
       const o = (py * 256 + px) * 4;
       const teinte = teinteNuit(nuit[o], nuit[o + 1], nuit[o + 2]);
+      const clair = oceanClair(jour[o], jour[o + 1], jour[o + 2]);
       for (let c = 0; c < 3; c += 1) {
-        const image = jour[o + c] * l * w + teinte[c] * (1 - w);
+        const image = clair[c] * l * w + teinte[c] * (1 - w);
         const unie = GLACE[c] * w + NUIT_POLAIRE[c] * (1 - w);
         pixels[o + c] = image * (1 - polaire) + unie * polaire;
       }

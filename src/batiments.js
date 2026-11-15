@@ -1,5 +1,7 @@
 import { SOURCE_VECTEUR, assurerSourceVecteur } from './source-vecteur.js';
 import { peindreCoucheFond } from './fond-palette.js';
+import { etat } from './options-carte.js';
+import { nomsAuDessusDesBatiments } from './style-montis.js';
 
 const COUCHE = 'batiments-3d';
 const ZOOM_MIN = 13.5;
@@ -37,6 +39,7 @@ export function afficherBatiments(map, visible) {
       },
     });
     peindreCoucheFond(map, COUCHE);
+    if (etat.fond !== 'national') nomsAuDessusDesBatiments(map);
   }
 
   map.setLayoutProperty(COUCHE, 'visibility', visible ? 'visible' : 'none');
