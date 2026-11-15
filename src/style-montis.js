@@ -529,8 +529,15 @@ export const STYLE_MONTIS = {
       'source-layer': 'water_name',
       minzoom: 8,
       filter: ['all', ['==', ['geometry-type'], 'LineString'], ['any', ['has', 'name'], ['has', 'name:fr']]],
-      // Placé comme un point : le long de l'axe, le nom d'un grand lac ne tenait pas dans une tuile et disparaissait
-      layout: { ...NOM_EAU, 'text-max-width': 7 },
+      // Les tuiles donnent l'axe du lac : placé comme un point, le nom tombait sur son premier sommet (le Léman à
+      // Genève). Au milieu de l'axe, le long du lac ; un petit lac dont le nom dépasse l'axe attend qu'on zoome.
+      layout: {
+        ...NOM_EAU,
+        'symbol-placement': 'line-center',
+        'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 12, 15, 15, 17],
+        'text-letter-spacing': 0.18,
+        'text-max-angle': 40,
+      },
       paint: PEINTURE_EAU,
     },
     {
