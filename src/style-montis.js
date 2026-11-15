@@ -18,6 +18,7 @@ export const CALQUES_MONTIS = [
   'montis-building',
   'montis-road-casing',
   'montis-road',
+  'montis-tunnels',
   'montis-chemins',
   'montis-sentiers-lisere',
   'montis-path',
@@ -390,7 +391,7 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(CLASSES_ROUTES),
+      filter: ['all', classes(CLASSES_ROUTES), ['!=', ['get', 'brunnel'], 'tunnel']],
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ROUTES.cerne,
@@ -404,13 +405,28 @@ export const STYLE_MONTIS = {
       type: 'line',
       source: SOURCE_VECTEUR,
       'source-layer': 'transportation',
-      filter: classes(CLASSES_ROUTES),
+      filter: ['all', classes(CLASSES_ROUTES), ['!=', ['get', 'brunnel'], 'tunnel']],
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
         'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
         // Vues de loin, sur l'image du globe, les routes s'effacent à moitié
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.18, 0.4], 8, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.45, 1]],
         'line-width': largeurRoute(false),
+      },
+    },
+    // Tunnels : fin pointillé discret, sans cerne ; on devine le passage sans qu'il barre la montagne
+    {
+      id: 'montis-tunnels',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'transportation',
+      minzoom: 9,
+      filter: ['all', classes(CLASSES_ROUTES), ['==', ['get', 'brunnel'], 'tunnel']],
+      paint: {
+        'line-color': ['match', ['get', 'class'], ...Object.entries(ROUTES.couleurs).flat(), ROUTES.couleurs.minor],
+        'line-opacity': 0.4,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.6, 14, 1.2, 17, 2],
+        'line-dasharray': [1, 2.5],
       },
     },
     // Chemins carrossables : trait continu brun clair, entre la route et le sentier

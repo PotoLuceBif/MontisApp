@@ -56,6 +56,7 @@ const NUIT = {
     'line-blur': ['interpolate', ['linear'], ['zoom'], 8, 1, 15, 4],
   },
   'montis-road': { 'line-color': classeRoute(ROUTES_NUIT) },
+  'montis-tunnels': { 'line-color': classeRoute(ROUTES_NUIT), 'line-opacity': 0.45 },
   'montis-chemins': { 'line-color': '#8f86a8' },
   'montis-sentiers-lisere': { 'line-color': '#ff6b5a', 'line-opacity': 0.18, 'line-blur': 2 },
   'montis-path': { 'line-color': ['match', ['get', 'subclass'], ['footway', 'pedestrian', 'sidewalk'], '#5d6378', '#ff6b5a'] },
