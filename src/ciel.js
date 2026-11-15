@@ -10,8 +10,8 @@ import { matriceCiel, peindreVoieLactee, projeterGalactique } from './voie-lacte
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
 const RAYON_LUNE = 10; // px : la Lune réelle (0,5°) n'aurait que quelques pixels à cette échelle
-const VOIE_LACTEE = { largeur: 2048, hauteur: 1024, nombre: 45000 };
-const PIXELS_VOIE_LACTEE = 110000; // taille du dessin, agrandi ensuite : la Voie lactée est diffuse
+const VOIE_LACTEE = { largeur: 2048, hauteur: 1024, nombre: 25000 };
+const PIXELS_VOIE_LACTEE = 90000; // taille du dessin, agrandi ensuite : la Voie lactée est diffuse
 const AZIMUT = (azimuth) => ((azimuth % 360) + 360) % 360; // suncalc 2 : degrés depuis le nord
 
 let chargement = null;
@@ -90,7 +90,7 @@ export function initCiel(map) {
       const eclat = Math.round(semis[k + 3] * 8);
       if (eclat !== niveau) {
         niveau = eclat;
-        contexte.fillStyle = `rgba(232, 236, 255, ${(0.25 + 0.75 * (eclat / 8)).toFixed(2)})`;
+        contexte.fillStyle = `rgba(236, 232, 238, ${(0.2 + 0.6 * (eclat / 8)).toFixed(2)})`;
       }
       const taille = 0.7 + 0.6 * (eclat / 8);
       contexte.fillRect(point.x - taille / 2, point.y - taille / 2, taille, taille);

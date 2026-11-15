@@ -147,9 +147,9 @@ const entre = (a, b, x) => {
   return t * t * (3 - 2 * t);
 };
 
-const COEUR = [255, 216, 172];
-const BANDE = [192, 208, 255];
-const NEBULEUSE = [255, 105, 150];
+const COEUR = [246, 184, 128]; // orangé doux
+const BANDE = [176, 186, 214]; // gris bleuté, pas blanc
+const NEBULEUSE = [236, 150, 112]; // à peine rosé, fondu dans l'orangé
 const MAGELLAN = [222, 222, 245];
 
 // Lumière et couleur du ciel en (l, b) : { r, v, b (0-255), a (0-1) }
@@ -197,7 +197,7 @@ export function pixelVoieLactee(l, b) {
     }
     const transmis = Math.exp(-tau);
     lumiere *= transmis;
-    const chaud = Math.min(1, (bulbe + 0.6 * nuages) / (proche + 1e-6) + 0.35 * centre);
+    const chaud = Math.min(1, (bulbe + 0.6 * nuages) / (proche + 1e-6) + 0.55 * centre);
     // Le rougissement des poussières tire la lumière restante vers le brun
     const rougi = 1 - transmis;
     r = (BANDE[0] + (COEUR[0] - BANDE[0]) * chaud) * (1 - 0.03 * rougi);
@@ -205,13 +205,13 @@ export function pixelVoieLactee(l, b) {
     bl = (BANDE[2] + (COEUR[2] - BANDE[2]) * chaud) * (1 - 0.22 * rougi);
     // Nébuleuses rosées : quelques régions connues, et un semis discret dans le plan
     const n3 = Math.abs(b) < 7 ? fbm(px * 22, py * 22, pz * 22, 3, 59) : 0;
-    const rose = Math.min(0.9, 0.9 * tache(l, b, 6, -1.2, 0.9) + 0.8 * tache(l, b, 287.6, -0.6, 1.4)
+    const rose = 0.3 * Math.min(1, 0.9 * tache(l, b, 6, -1.2, 0.9) + 0.8 * tache(l, b, 287.6, -0.6, 1.4)
       + 0.55 * tache(l, b, 85, -1, 1.8) + 0.4 * tache(l, b, 209, -19.4, 1.2)
       + 0.7 * Math.exp(-0.5 * (b / 2) ** 2) * Math.max(0, n3 - 0.6) * transmis);
     r += (NEBULEUSE[0] - r) * rose;
     v += (NEBULEUSE[1] - v) * rose;
     bl += (NEBULEUSE[2] - bl) * rose;
-    lumiere += 0.18 * rose;
+    lumiere += 0.04 * rose;
   }
   // Grand et Petit Nuage de Magellan, galaxie d'Andromède
   const magellan = 0.5 * tache(l, b, 280.5, -32.9, 4, 3) + 0.3 * tache(l, b, 302.8, -44.3, 2.2, 1.5);
@@ -226,7 +226,7 @@ export function pixelVoieLactee(l, b) {
     bl += (MAGELLAN[2] - bl) * part;
     lumiere += apport;
   }
-  return { r, v, b: bl, a: 0.8 * Math.min(1, 1 - Math.exp(-1.6 * lumiere ** 1.6)) };
+  return { r, v, b: bl, a: 0.7 * Math.min(1, 1 - Math.exp(-1.6 * lumiere ** 1.6)) };
 }
 
 // Carte du ciel entière (équirectangulaire : l de 0 à 360° en largeur, b de +90 à −90° en hauteur), RGBA.

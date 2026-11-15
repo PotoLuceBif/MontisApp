@@ -4,7 +4,7 @@
 import { genererVoieLactee, semerEtoiles } from './voie-lactee-calcul.js';
 
 const CACHE = 'ciel'; // hors du préfixe montis- : le service worker ne l'efface pas à chaque version
-const CLE = '/ciel/voie-lactee-1'; // changer le numéro quand le calcul change
+const CLE = '/ciel/voie-lactee-2'; // changer le numéro quand le calcul change
 
 async function relire(largeur, hauteur) {
   if (typeof caches === 'undefined' || typeof OffscreenCanvas === 'undefined') return null;
