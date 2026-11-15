@@ -1,10 +1,11 @@
-// Travailleur : génère la carte de la Voie lactée et ses petites étoiles sans bloquer la carte
+// Travailleur : génère la carte de la Voie lactée, ses petites étoiles et les galaxies voisines sans bloquer la carte
 // (quelques secondes, plus sur téléphone). La carte est gardée en image dans le cache du navigateur :
 // les fois suivantes, elle ne fait que se relire.
 import { genererVoieLactee, semerEtoiles } from './voie-lactee-calcul.js';
+import { GALAXIES, imageGalaxie } from './galaxies-calcul.js';
 
 const CACHE = 'ciel'; // hors du préfixe montis- : le service worker ne l'efface pas à chaque version
-const CLE = '/ciel/voie-lactee-2'; // changer le numéro quand le calcul change
+const CLE = '/ciel/voie-lactee-3'; // changer le numéro quand le calcul change
 
 async function relire(largeur, hauteur) {
   if (typeof caches === 'undefined' || typeof OffscreenCanvas === 'undefined') return null;
@@ -33,5 +34,6 @@ self.onmessage = async ({ data: { largeur, hauteur, nombre } }) => {
     await garder(texture, largeur, hauteur).catch(() => {});
   }
   const etoiles = semerEtoiles(texture, largeur, hauteur, nombre);
-  self.postMessage({ texture, largeur, hauteur, etoiles }, [texture.buffer, etoiles.buffer]);
+  const galaxies = GALAXIES.map((galaxie) => ({ id: galaxie.id, pixels: imageGalaxie(galaxie) }));
+  self.postMessage({ texture, largeur, hauteur, etoiles, galaxies }, [texture.buffer, etoiles.buffer, ...galaxies.map((g) => g.pixels.buffer)]);
 };

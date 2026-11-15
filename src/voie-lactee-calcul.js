@@ -1,6 +1,6 @@
 // Voie lactée autour du globe : une carte du ciel en coordonnées galactiques (longitude l, latitude b),
-// générée sur l'appareil (bande, bulbe vers le Sagittaire, nuages d'étoiles, Grand Rift et poussières,
-// nébuleuses, Nuages de Magellan, Andromède), puis peinte à sa vraie place vue depuis la caméra.
+// générée sur l'appareil (bande, bulbe vers le Sagittaire, nuages d'étoiles, Grand Rift et poussières, nébuleuses),
+// puis peinte à sa vraie place vue depuis la caméra. Les galaxies voisines sont à part (galaxies-calcul.js).
 // Volontairement un peu plus marquée que dans un ciel réel, puisqu'on la voit « depuis l'espace ».
 // Calculs purs, testés.
 const RAD = Math.PI / 180;
@@ -119,7 +119,7 @@ function bruit(x, y, z) {
   const y1 = x01 + (x11 - x01) * fy;
   return y0 + (y1 - y0) * fz;
 }
-function fbm(x, y, z, octaves, graine) {
+export function fbm(x, y, z, octaves, graine) {
   let somme = 0;
   let amp = 1;
   let total = 0;
@@ -150,7 +150,6 @@ const entre = (a, b, x) => {
 const COEUR = [246, 184, 128]; // orangé doux
 const BANDE = [176, 186, 214]; // gris bleuté, pas blanc
 const NEBULEUSE = [236, 150, 112]; // à peine rosé, fondu dans l'orangé
-const MAGELLAN = [222, 222, 245];
 
 // Lumière et couleur du ciel en (l, b) : { r, v, b (0-255), a (0-1) }
 export function pixelVoieLactee(l, b) {
@@ -213,19 +212,7 @@ export function pixelVoieLactee(l, b) {
     bl += (NEBULEUSE[2] - bl) * rose;
     lumiere += 0.04 * rose;
   }
-  // Grand et Petit Nuage de Magellan, galaxie d'Andromède
-  const magellan = 0.5 * tache(l, b, 280.5, -32.9, 4, 3) + 0.3 * tache(l, b, 302.8, -44.3, 2.2, 1.5);
-  const andromede = 0.3 * tache(l, b, 121.2, -21.6, 1.3, 0.5);
-  const lointain = magellan + andromede;
-  if (lointain > 0.003) {
-    const n4 = fbm(px * 30, py * 30, pz * 30, 3, 73);
-    const apport = lointain * (0.6 + 0.8 * n4);
-    const part = apport / (lumiere + apport);
-    r += (MAGELLAN[0] - r) * part;
-    v += (MAGELLAN[1] - v) * part;
-    bl += (MAGELLAN[2] - bl) * part;
-    lumiere += apport;
-  }
+  // Les galaxies voisines (Andromède, Magellan…) sont dessinées à part : galaxies-calcul.js
   return { r, v, b: bl, a: 0.7 * Math.min(1, 1 - Math.exp(-1.6 * lumiere ** 1.6)) };
 }
 

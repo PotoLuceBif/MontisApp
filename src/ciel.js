@@ -6,6 +6,7 @@
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral } from './ciel-calcul.js';
 import { matriceCiel, peindreVoieLactee, projeterGalactique } from './voie-lactee-calcul.js';
+import { GALAXIES, poseGalaxie } from './galaxies-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
@@ -103,6 +104,27 @@ export function initCiel(map) {
   }
 
   // Soleil à sa vraie direction : disque blanc chaud et halo (agrandi comme la Lune)
+  // Galaxies voisines : leur image posée à leur place, dans leur angle sur le ciel
+  function dessinerGalaxies(cam, centre, ts, l, h, ratio, alpha) {
+    const DELTA = 0.5;
+    const ecran = (ra, dec) => projeterDirection(directionEtoile(ra, dec, centre.lat, centre.lng, ts), cam);
+    for (const { modele, image } of galaxie.images) {
+      const point = ecran(modele.ra, modele.dec);
+      if (!point) continue;
+      const nord = ecran(modele.ra, modele.dec + DELTA);
+      const est = ecran(modele.ra + DELTA / Math.cos((modele.dec * Math.PI) / 180), modele.dec);
+      if (!nord || !est) continue;
+      const rayon = Math.hypot(nord.x - point.x, nord.y - point.y) / DELTA * modele.grand;
+      if (point.x < -rayon || point.y < -rayon || point.x > l + rayon || point.y > h + rayon) continue;
+      const [a, b, c, d, e, f] = poseGalaxie(modele, point, nord, est, DELTA);
+      contexte.setTransform(ratio * a, ratio * b, ratio * c, ratio * d, ratio * e, ratio * f);
+      contexte.globalAlpha = alpha * modele.eclat;
+      contexte.drawImage(image, 0, 0);
+    }
+    contexte.setTransform(ratio, 0, 0, ratio, 0, 0);
+    contexte.globalAlpha = alpha;
+  }
+
   function dessinerSoleil(cam, { lng, lat }, maintenant) {
     const soleil = getPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
@@ -181,6 +203,15 @@ export function initCiel(map) {
         if (donnees && !galaxie) {
           galaxie = donnees;
           galaxie.debut = performance.now();
+          toile.dataset.voieLactee = 'prete'; // attendu par les captures
+          galaxie.images = donnees.galaxies.map(({ id, pixels }) => {
+            const modele = GALAXIES.find((g) => g.id === id);
+            const image = document.createElement('canvas');
+            image.width = modele.taille;
+            image.height = modele.taille;
+            image.getContext('2d').putImageData(new ImageData(pixels, modele.taille, modele.taille), 0, 0);
+            return { modele, image };
+          });
           planifier();
         }
       });
@@ -195,6 +226,7 @@ export function initCiel(map) {
       const fondu = Math.min(1, (performance.now() - galaxie.debut) / 1200);
       contexte.globalAlpha = opacite * fondu;
       dessinerVoieLactee(cam, centre, ts, l, h);
+      dessinerGalaxies(cam, centre, ts, l, h, ratio, opacite * fondu);
       contexte.globalAlpha = opacite;
       if (fondu < 1) requestAnimationFrame(planifier);
     }

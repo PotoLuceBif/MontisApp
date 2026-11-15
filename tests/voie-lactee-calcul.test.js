@@ -68,10 +68,6 @@ describe('carte de la Voie lactée', () => {
     expect(pixelVoieLactee(301, -1).a).toBeLessThan(pixelVoieLactee(301, -8).a + 0.2);
   });
 
-  it('montre le Grand Nuage de Magellan hors de la bande', () => {
-    expect(pixelVoieLactee(280.5, -32.9).a).toBeGreaterThan(pixelVoieLactee(250, -32.9).a + 0.2);
-  });
-
   it('est la même d’un appareil à l’autre', () => {
     expect(pixelVoieLactee(33.3, 2.2)).toEqual(pixelVoieLactee(33.3, 2.2));
   });
