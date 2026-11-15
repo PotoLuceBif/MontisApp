@@ -94,7 +94,9 @@ export function pointADistance(lat, lng, azimut, angle) {
 export function limbeGlobe({ lat, lng, zoom, pitch = 0, bearing = 0, fov, hauteurEcran }) {
   const phi = lat * RAD;
   const lambda = lng * RAD;
-  const rayon = (512 * 2 ** zoom) / (2 * Math.PI * Math.cos(phi));
+  // Comme MapLibre (planetScaleAtLatitude) : l'échelle s'arrête à 85,05°, sinon le globe, face à un pôle,
+  // paraissait immense et son bord se resserrait autour du pôle
+  const rayon = (512 * 2 ** zoom) / (2 * Math.PI * Math.cos(Math.min(Math.abs(lat), LAT_BORD) * RAD));
   const distance = hauteurEcran / 2 / Math.tan((fov * RAD) / 2);
   const haut = [Math.cos(phi) * Math.cos(lambda), Math.cos(phi) * Math.sin(lambda), Math.sin(phi)];
   const est = [-Math.sin(lambda), Math.cos(lambda), 0];
