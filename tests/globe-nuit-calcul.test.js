@@ -71,6 +71,16 @@ describe('jour, nuit et crépuscule', () => {
     expect(pixels[o + 2]).toBeGreaterThan(pixels[o] * 2); // bleu
   });
 
+  it('au zoom 0, fond le pôle Sud vers la glace et le pôle Nord vers la mer dans la même tuile', () => {
+    // La seule tuile du zoom 0 touche les deux pôles : le pôle Sud faisait un anneau bleu (couleur de l'Arctique)
+    const jour = new Uint8ClampedArray(256 * 256 * 4).fill(255);
+    const nuit = new Uint8ClampedArray(256 * 256 * 4).fill(10);
+    const pixels = melangerTuile(jour, nuit, 0, 0, 0, { lat: -23, lng: 0 }); // été austral
+    const bas = (255 * 256 + 128) * 4; // dernière rangée, au méridien 0 (sous le soleil, côté sud)
+    expect(pixels[bas]).toBeGreaterThan(200); // glace : claire, pas bleue
+    expect(pixels[bas + 2] - pixels[bas]).toBeLessThan(30);
+  });
+
   it('teinte la nuit en bleu profond et garde les lumières des villes', () => {
     const [r, v, b] = teinteNuit(60, 60, 70); // campagne la nuit
     expect(b).toBeGreaterThan(r);

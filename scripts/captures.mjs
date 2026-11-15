@@ -14,6 +14,7 @@ import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 import { fragmentParcours } from '../src/partage-calcul.js';
 import { getMoonPosition } from 'suncalc';
+import { directionEtoile, tempsSideral } from '../src/ciel-calcul.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -378,6 +379,42 @@ const ECRANS = [
       (p) => p.waitForTimeout(6000),
     ],
   },
+  // Voie lactée : le centre galactique (Sagittaire A*) au nadir, derrière la Terre, quelle que soit l'heure
+  {
+    nom: 'globe-voie-lactee',
+    actions: [
+      (p) => {
+        const ts = tempsSideral(new Date());
+        return vue({ center: [((((266.4 + 180 - ts) % 360) + 540) % 360) - 180, 28.9], zoom: 1.2, bearing: 0, pitch: 0 })(p);
+      },
+      (p) => p.waitForTimeout(3000),
+      (p) => attendreSur(p, () => document.querySelector('.ciel-etoiles')?.dataset.voieLactee === 'prete', null, 60000).then(() => p.waitForTimeout(2500)),
+    ],
+  },
+  // Galaxies voisines : vues d'un point d'où elles sont près du nadir (latitude du centre limitée à ±50° à ce zoom),
+  // carte tournée et inclinée en 3D pour les mettre au-dessus de la Terre (écran étroit sur téléphone)
+  ...[['globe-andromede', 10.68, 41.27], ['globe-magellan', 80.89, -69.76]].map(([nom, ra, dec]) => ({
+    nom,
+    actions: [
+      clic('#bascule-mode [data-mode="3d"]'),
+      (p) => p.waitForTimeout(1200),
+      (p) => {
+        const ts = tempsSideral(new Date());
+        let meilleur = null;
+        for (let lat = -50; lat <= 50; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            const direction = directionEtoile(ra, dec, lat, lng, ts);
+            const ecart = Math.abs(direction.hauteur + 72);
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng, ...direction };
+          }
+        }
+        // Caméra inclinée vers la galaxie : elle passe à 11° au-dessus du centre de l'écran, hors de la Terre
+        return vue({ center: [meilleur.lng, meilleur.lat], zoom: 1.2, bearing: meilleur.azimut, pitch: Math.max(0, 90 + meilleur.hauteur - 11) })(p);
+      },
+      (p) => p.waitForTimeout(3000),
+      (p) => attendreSur(p, () => document.querySelector('.ciel-etoiles')?.dataset.voieLactee === 'prete', null, 60000).then(() => p.waitForTimeout(2500)),
+    ],
+  })),
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 7.3, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
   // Pastilles des couches allumées depuis Carte, panneau fermé
   {
