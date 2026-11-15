@@ -14,6 +14,7 @@ import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 import { fragmentParcours } from '../src/partage-calcul.js';
 import { getMoonPosition } from 'suncalc';
+import { tempsSideral } from '../src/ciel-calcul.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -376,6 +377,17 @@ const ECRANS = [
         await vue({ center: [meilleur.lng, meilleur.lat], zoom: 1.6, bearing: 0, pitch: 0 })(page);
       },
       (p) => p.waitForTimeout(6000),
+    ],
+  },
+  // Voie lactée : le centre galactique (Sagittaire A*) au nadir, derrière la Terre, quelle que soit l'heure
+  {
+    nom: 'globe-voie-lactee',
+    actions: [
+      (p) => {
+        const ts = tempsSideral(new Date());
+        return vue({ center: [((((266.4 + 180 - ts) % 360) + 540) % 360) - 180, 28.9], zoom: 1.2, bearing: 0, pitch: 0 })(p);
+      },
+      (p) => p.waitForTimeout(9000),
     ],
   },
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 7.3, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },

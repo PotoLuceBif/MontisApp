@@ -1,12 +1,17 @@
 // Ciel autour du globe (demande du propriétaire du 12 novembre 2026) : étoiles visibles à l'œil nu à leur vraie
 // place et Lune avec sa phase, sur une toile posée derrière la carte (le globe les cache quand elles passent
 // derrière lui). Seulement au dézoom, avec le globe jour et nuit. Base des constellations à venir.
+// Voie lactée (15 novembre 2026, demande du propriétaire) : ciel sans pollution lumineuse, un peu exagéré,
+// générée dans un travailleur à la première ouverture du ciel (`voie-lactee-calcul.js`).
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral } from './ciel-calcul.js';
+import { matriceCiel, peindreVoieLactee, projeterGalactique } from './voie-lactee-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
 const RAYON_LUNE = 10; // px : la Lune réelle (0,5°) n'aurait que quelques pixels à cette échelle
+const VOIE_LACTEE = { largeur: 2048, hauteur: 1024, nombre: 45000 };
+const PIXELS_VOIE_LACTEE = 110000; // taille du dessin, agrandi ensuite : la Voie lactée est diffuse
 const AZIMUT = (azimuth) => ((azimuth % 360) + 360) % 360; // suncalc 2 : degrés depuis le nord
 
 let chargement = null;
@@ -25,6 +30,29 @@ const chargerEtoiles = () => {
   return chargement;
 };
 
+let voieLactee = null;
+const genererVoieLactee = () => {
+  voieLactee ??= new Promise((resolve) => {
+    try {
+      const travailleur = new Worker(new URL('./voie-lactee-travail.js', import.meta.url), { type: 'module' });
+      travailleur.onmessage = ({ data }) => {
+        resolve(data);
+        travailleur.terminate();
+      };
+      travailleur.onerror = (erreur) => {
+        console.warn('Ciel : Voie lactée indisponible', erreur);
+        resolve(null);
+        travailleur.terminate();
+      };
+      travailleur.postMessage(VOIE_LACTEE);
+    } catch (erreur) {
+      console.warn('Ciel : Voie lactée indisponible', erreur);
+      resolve(null);
+    }
+  });
+  return voieLactee;
+};
+
 export function initCiel(map) {
   const toile = document.createElement('canvas');
   toile.className = 'ciel-etoiles';
@@ -32,7 +60,42 @@ export function initCiel(map) {
   map.getContainer().insertBefore(toile, map.getCanvasContainer());
   const contexte = toile.getContext('2d');
   let etoiles = [];
+  let galaxie = null;
   let prevu = false;
+  const tampon = document.createElement('canvas');
+  const contexteTampon = tampon.getContext('2d');
+  let image = null;
+
+  // Voie lactée dessinée en basse définition, puis agrandie (lissée) sur toute la toile ; ensuite son grain d'étoiles
+  function dessinerVoieLactee(cam, centre, ts, l, h) {
+    const ciel = matriceCiel(cam, centre.lat, centre.lng, ts);
+    const pas = Math.max(2, Math.sqrt((l * h) / PIXELS_VOIE_LACTEE));
+    const tl = Math.ceil(l / pas);
+    const th = Math.ceil(h / pas);
+    if (tampon.width !== tl || tampon.height !== th || !image) {
+      tampon.width = tl;
+      tampon.height = th;
+      image = contexteTampon.createImageData(tl, th);
+    }
+    peindreVoieLactee(image.data, tl, th, pas, ciel, galaxie.texture, galaxie.largeur, galaxie.hauteur);
+    contexteTampon.putImageData(image, 0, 0);
+    contexte.imageSmoothingEnabled = true;
+    contexte.imageSmoothingQuality = 'high';
+    contexte.drawImage(tampon, 0, 0, tl * pas, th * pas);
+    const semis = galaxie.etoiles;
+    let niveau = -1;
+    for (let k = 0; k < semis.length; k += 4) {
+      const point = projeterGalactique(semis[k], semis[k + 1], semis[k + 2], ciel);
+      if (!point || point.x < 0 || point.y < 0 || point.x > l || point.y > h) continue;
+      const eclat = Math.round(semis[k + 3] * 8);
+      if (eclat !== niveau) {
+        niveau = eclat;
+        contexte.fillStyle = `rgba(232, 236, 255, ${(0.25 + 0.75 * (eclat / 8)).toFixed(2)})`;
+      }
+      const taille = 0.7 + 0.6 * (eclat / 8);
+      contexte.fillRect(point.x - taille / 2, point.y - taille / 2, taille, taille);
+    }
+  }
 
   function camera() {
     const { clientWidth: largeur, clientHeight: hauteurEcran } = map.getContainer();
@@ -113,11 +176,28 @@ export function initCiel(map) {
         }
       });
     }
+    if (!galaxie) {
+      genererVoieLactee().then((donnees) => {
+        if (donnees && !galaxie) {
+          galaxie = donnees;
+          galaxie.debut = performance.now();
+          planifier();
+        }
+      });
+    }
     const cam = camera();
     const centre = map.getCenter();
     const maintenant = new Date();
     const ts = tempsSideral(maintenant);
     contexte.globalAlpha = opacite;
+    if (galaxie) {
+      // Fondu d'apparition, une fois la carte prête
+      const fondu = Math.min(1, (performance.now() - galaxie.debut) / 1200);
+      contexte.globalAlpha = opacite * fondu;
+      dessinerVoieLactee(cam, centre, ts, l, h);
+      contexte.globalAlpha = opacite;
+      if (fondu < 1) requestAnimationFrame(planifier);
+    }
     for (const etoile of etoiles) {
       const point = projeterDirection(directionEtoile(etoile.ra, etoile.dec, centre.lat, centre.lng, ts), cam);
       if (!point || point.x < -4 || point.y < -4 || point.x > l + 4 || point.y > h + 4) continue;
