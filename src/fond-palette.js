@@ -43,6 +43,7 @@ const NUIT = {
     'hillshade-shadow-color': ['rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.35)', 'rgba(0, 0, 0, 0.35)', 'rgba(0, 0, 0, 0.25)'],
     'hillshade-highlight-color': ['rgba(140, 170, 255, 0.16)', 'rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'],
   },
+  'montis-glaciers-voile': { 'fill-color': '#1b2a3b', 'fill-opacity': 0.45 },
   'montis-glaciers-bord': { 'line-color': '#3fc6ef', 'line-opacity': 0.9 },
   'montis-water': { 'fill-color': '#0d3550' },
   'montis-waterway': { 'line-color': '#22b8e6' },

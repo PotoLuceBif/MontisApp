@@ -53,6 +53,17 @@ export const LARGEUR_COURS_EAU = [
   17, ['match', ['get', 'class'], 'river', 6, 'canal', 4, 2.6],
 ];
 
+// Voile bleu-blanc sur les glaciers, posé juste au-dessus des courbes (main.js) : elles y paraissent bleutées
+export const VOILE_GLACIERS = {
+  id: 'montis-glaciers-voile',
+  type: 'fill',
+  source: SOURCE_VECTEUR,
+  'source-layer': 'landcover',
+  minzoom: 10,
+  filter: ['==', ['get', 'class'], 'ice'],
+  paint: { 'fill-color': '#d9ecfb', 'fill-opacity': 0.5 },
+};
+
 // Couche vide posée par fond-de-carte.js : les calques (pentes, ombres, géologie…) s'insèrent juste en dessous,
 // au-dessus des fonds, et restent au-dessus d'une carte nationale (sous les routes du fond Montis sinon)
 export const REPERE_CALQUES = 'repere-calques';
@@ -124,9 +135,12 @@ function triangleSommet() {
 // Sommets : nom en capitales espacées, violet ; altitude et triangle en cyan (plus soutenu le jour, pour le papier clair)
 export const SOMMET_JOUR = { nom: '#6a2fc2', accent: '#0a93b0' };
 export const SOMMET_NUIT = { nom: '#e3c4ff', accent: '#5ee6ff' };
+// Cols : nom en minuscules italiques, plus petit, sans triangle : on les distingue des sommets d'un coup d'œil
+export const EST_COL = ['==', ['get', 'class'], 'saddle'];
+const NOM_SOMMET = ['coalesce', ['get', 'name:fr'], ['get', 'name']];
 export const texteSommetMontis = (nuit = false) =>
-  expressionSommet(['upcase', ['coalesce', ['get', 'name:fr'], ['get', 'name']]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
-const tailleSommet = (base) => ['case', ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
+  expressionSommet(['case', EST_COL, NOM_SOMMET, ['upcase', NOM_SOMMET]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
+const tailleSommet = (base) => ['case', EST_COL, base, ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
 
 export function ajouterMotifsMontis(map) {
   if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
@@ -569,7 +583,12 @@ export const STYLE_MONTIS = {
       layout: {
         'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
         'text-font': ['case', ['in', ['get', 'class'], ['literal', ['city', 'town']]], ['literal', POLICE_GRAS], ['literal', POLICE]],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 12, 13],
+        // Taille selon l'importance : ville, bourg, village, hameau et quartier
+        'text-size': [
+          'interpolate', ['linear'], ['zoom'],
+          5, ['match', ['get', 'class'], 'city', 12, 'town', 10.5, 9.5],
+          12, ['match', ['get', 'class'], 'city', 18, 'town', 15.5, 'village', 13, 11.5],
+        ],
         'text-max-width': 8,
         'text-padding': 4,
         'symbol-sort-key': ['to-number', ['get', 'rank'], 99],
@@ -594,10 +613,10 @@ export const STYLE_MONTIS = {
         // Les plus hauts d'abord : ce sont eux qui restent quand la place manque
         'symbol-sort-key': ['-', 0, ['to-number', ['get', 'ele'], 0]],
         'text-field': texteSommetMontis(),
-        'text-font': POLICE_GRAS,
+        'text-font': ['case', EST_COL, ['literal', POLICE_ITALIQUE], ['literal', POLICE_GRAS]],
         // Plus le sommet est haut, plus son nom est grand
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, tailleSommet(9), 14, tailleSommet(11)],
-        'text-letter-spacing': 0.12,
+        'text-letter-spacing': ['case', EST_COL, 0.02, 0.12],
         'text-anchor': 'top',
         'text-offset': [0, 0.45],
         'text-max-width': 8,

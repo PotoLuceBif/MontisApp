@@ -15,7 +15,7 @@ import { initRecherche } from './recherche.js';
 import { initFiches } from './fiche.js';
 import { initBasculeMode } from './bascule-mode.js';
 import { appliquerApparence } from './apparence.js';
-import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis, texteSommetMontis } from './style-montis.js';
+import { STYLE_MONTIS, exagerationReliefMontis, ajouterMotifsMontis, texteSommetMontis, VOILE_GLACIERS } from './style-montis.js';
 import { suivreDescriptionFond } from './source-vecteur.js';
 import { initEchelleCarte } from './echelle-carte.js';
 import { initHorsLigne } from './hors-ligne.js';
@@ -344,6 +344,7 @@ map.once('style.load', () => {
     layout: { 'line-join': 'round' },
     paint: peintureCourbes(),
   });
+  map.addLayer(VOILE_GLACIERS);
 
   map.addLayer({
     id: 'courbes-altitude',

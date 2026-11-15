@@ -42,6 +42,11 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 - [x] **Remontées mécaniques** (16) : trait fin sombre avec les pylônes en petits traits en travers (dès le zoom 13), clair la nuit. Le trait orange vers l'aiguille du Midi venait d'une autre couche : à revoir s'il réapparaît.
 - [x] **Voies ferrées** (17) : trait gris coupé de blanc, tunnels estompés.
 
+- [x] **Noms des lacs** (retour du propriétaire : Léman, Neuchâtel, Joux introuvables) : les tuiles donnent l'axe du lac, le nom tombait sur son premier sommet ; il se pose maintenant au milieu de l'axe, plus grand.
+- [x] **Cols** (21) : nom en minuscules italiques, plus petit que celui des sommets, avec l'altitude, sans triangle.
+- [x] **Villes** (20) : taille selon l'importance (ville, bourg, village, hameau). Avant : seule la graisse changeait.
+- [x] **Glaciers** (5) : voile bleu-blanc posé au-dessus des courbes, qui y paraissent bleutées (fond Montis seul). *Pas dans les données :* les noms des glaciers (aucun dans les tuiles d'OpenFreeMap).
+
 ## À revoir (prévu le 15 novembre 2026)
 - **Voie lactée autour du globe.** Deux essais retirés le 14 novembre : contours de d3-celestial en taches floues (trop discret ou voile gris), puis photo du ciel de l'ESO (eso0932a, S. Brunier, CC BY 4.0) projetée pixel par pixel, proche du rendu de Google Earth (4 000 px, 1,3 Mo hors préchargement, éclat 55 %). Le code de l'essai photo n'est pas gardé ; la piste à reprendre est celle-là.
 
