@@ -372,6 +372,7 @@
   "editeur.terminer": "Done",
   "editeur.modifier": "Edit",
   "editeur.enregistrer": "Save",
+  "editeur.deja-enregistre": "Saved ✓",
   "editeur.depart-lettre": "S",
   "editeur.arrivee-lettre": "F",
   "editeur.depart": "Start",
