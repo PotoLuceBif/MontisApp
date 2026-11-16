@@ -418,6 +418,45 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .ciel-entete { display: grid; gap: 10px; margin: 0 0 8px; padding: 2px 0 12px; border-bottom: 1px solid var(--bord); }
 .ciel-entete > .soleil-reglage { display: grid; gap: 10px; }
 .ciel-entete .note { margin: 0; }
+/* Frise de Soleil et Lune : la course remplace la bande du jour, la position du soleil passe dans sa ligne */
+.ciel-entete .ombres-piste, .ciel-entete > .soleil-reglage > .ombres-soleil { display: none; }
+.ciel-entete .ciel-choix[hidden] { display: none; }
+.ciel-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.ciel-choix svg { width: 18px; height: 18px; flex: none; }
+.ciel-position-soleil { margin-bottom: 4px; }
+.ciel-course { position: relative; height: 62px; margin: 6px 8px 0; }
+.ciel-course > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ciel-course-horizon { stroke: color-mix(in srgb, var(--texte-2) 55%, transparent); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.ciel-course-aire { fill: color-mix(in srgb, #f2b33d 13%, transparent); }
+.ciel-course-soleil-jour { fill: none; stroke: #f2b33d; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.ciel-course-soleil-nuit { fill: none; stroke: var(--texte-2); stroke-width: 1.2; stroke-dasharray: 3 4; opacity: .45; vector-effect: non-scaling-stroke; }
+.ciel-course-lune-trace { fill: none; stroke: #b9c3da; stroke-width: 1.4; stroke-dasharray: 1 4; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
+.ciel-course-repere { position: absolute; top: 64.5%; width: 2px; height: 9px; margin: -4.5px 0 0 -1px; border-radius: 1px; background: #f2b33d; }
+.ciel-course-repere[hidden] { display: none; }
+.ciel-course-soleil, .ciel-course-lune { position: absolute; pointer-events: none; }
+.ciel-course-soleil { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); box-shadow: 0 0 10px 3px rgb(255 200 90 / .5); }
+.ciel-course-soleil.couche { background: var(--texte-2); box-shadow: none; opacity: .55; }
+.ciel-course-lune { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; filter: drop-shadow(0 0 3px rgb(220 228 255 / .45)); }
+.ciel-course-lune.couche { opacity: .35; }
+.mini-icone-ciel svg { width: 18px; height: 18px; display: block; color: var(--accent); }
+/* Cycle de la Lune (lune.js) */
+.lunaison { display: grid; gap: 8px; padding: 10px 12px 6px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); }
+.lunaison-entete { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.lunaison-entete strong { font-weight: 650; }
+.lunaison-entete span { color: var(--texte-2); text-align: right; }
+.lunaison-frise { position: relative; height: 58px; margin: 0 14px; }
+.lunaison-piste { position: absolute; top: 15px; left: 0; right: 0; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--texte-2) 28%, transparent); overflow: hidden; }
+.lunaison-fait { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 70%, transparent); }
+.lunaison-curseur { position: absolute; top: 9px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index: 2; pointer-events: none; }
+.lunaison-phase {
+  position: absolute; top: 0; display: grid; justify-items: center; gap: 3px; width: 54px; margin-left: -27px; padding: 0;
+  border: 0; background: none; color: var(--texte-2); font: 500 10.5px var(--police); cursor: pointer;
+}
+.lunaison-phase .lune-icone { width: 34px; height: 34px; padding: 2px; border-radius: 50%; background: var(--surface); box-sizing: border-box; }
+.lunaison-phase:hover .lune-icone, .lunaison-phase:focus-visible .lune-icone { outline: 2px solid var(--accent); }
+.lunaison-phase small { font-size: 10.5px; white-space: nowrap; }
+.lune-aller .lune-aller-icone { display: flex; flex: none; }
+.lune-aller .lune-icone { width: 22px; height: 22px; }
 /* Lune (lune.js) */
 .lune-panneau { display: grid; gap: 12px; }
 .lune-phase { display: flex; align-items: center; gap: 12px; }

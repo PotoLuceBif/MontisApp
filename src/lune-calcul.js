@@ -96,3 +96,54 @@ export function dessinPhase(fraction, croissante, { c = 12, r = 9, sud = false }
   const terminateur = (f < 0.5) === droite ? 0 : 1;
   return `M${haut}A${r} ${r} 0 0 ${limbe} ${bas}A${rx} ${r} 0 0 ${terminateur} ${haut}Z`;
 }
+
+export const DUREE_LUNAISON = LUNAISON;
+
+// Âge de la Lune en jours depuis la dernière nouvelle lune (0 à 29,5)
+export const ageLune = (date) => getMoonIllumination(new Date(date)).phase * LUNAISON;
+
+// Les quatre phases principales du cycle en cours, de la nouvelle lune qui l'ouvre à celle qui le ferme :
+// [{ code, part (0 à 1 sur le cycle), instant }]
+export const PHASES_PRINCIPALES = [
+  { code: 'nouvelle', part: 0 },
+  { code: 'premier-quartier', part: 0.25 },
+  { code: 'pleine', part: 0.5 },
+  { code: 'dernier-quartier', part: 0.75 },
+  { code: 'nouvelle', part: 1 },
+];
+export function cycleLunaire(date) {
+  const instant = new Date(date).getTime();
+  const debut = instant - ageLune(instant) * JOUR;
+  return PHASES_PRINCIPALES.map(({ code, part }) => {
+    // Chercher à partir de deux jours avant l'instant attendu : la phase réelle s'en écarte d'un jour au plus
+    const approche = debut + part * LUNAISON * JOUR;
+    return { code, part, instant: prochainePhase(approche - 2 * JOUR, part % 1) };
+  });
+}
+
+// Instant où la Lune est au plus haut, à moins de 13 h de `date` (pour la montrer dans le ciel)
+export function culminationProche(date, latitude, longitude) {
+  const centre = new Date(date).getTime();
+  let meilleur = centre;
+  let plusHaut = -Infinity;
+  for (let m = -13 * 60; m <= 13 * 60; m += 10) {
+    const t = centre + m * MINUTE;
+    const { hauteur } = positionLune(t, latitude, longitude);
+    if (hauteur > plusHaut) {
+      plusHaut = hauteur;
+      meilleur = t;
+    }
+  }
+  return new Date(meilleur);
+}
+
+// Hauteur de la Lune toutes les `pas` minutes du jour civil du lieu, de 0 h à 24 h (comme courseSoleil)
+export function courseLune(jour, latitude, longitude, decalageMinutes, pas = 10) {
+  const [annee, mois, quantieme] = jour.split('-').map(Number);
+  const minuit = Date.UTC(annee, mois - 1, quantieme) - decalageMinutes * MINUTE;
+  const points = [];
+  for (let minutes = 0; minutes <= 24 * 60; minutes += pas) {
+    points.push({ minutes, hauteur: positionLune(minuit + minutes * MINUTE, latitude, longitude).hauteur });
+  }
+  return points;
+}

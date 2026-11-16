@@ -1,15 +1,13 @@
 // Ombre du soleil : ombrage du relief éclairé depuis la position réelle du soleil, et ombre portée par les
-// montagnes voisines (calculée dans le travailleur des pentes). Réglages du jour et de l'heure, pastille,
-// soleil et Lune dans le ciel en 3D. Le jour et l'heure sont ceux de la rubrique Soleil et Lune
+// montagnes voisines (calculée dans le travailleur des pentes). Pastille ; le soleil et la Lune dans le ciel
+// sont dessinés par la rubrique (soleil-lune.js). Le jour et l'heure sont ceux de la rubrique Soleil et Lune
 // (soleil-lune.js). Chargé à la première activation (ombres-panneau.js).
 import { REPERE_CALQUES } from './style-montis.js';
 import { ZOOM_MAX_OMBRES } from './ombre-tuile.js';
 import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
 import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE } from './ombre-couches.js';
 import { cadran, tournerCadrans } from './soleil-reglage.js';
-import { creerSoleilCiel } from './soleil-ciel.js';
 import { heureDuLieu } from './soleil.js';
-import { eclairementLune, positionLune } from './lune-calcul.js';
 import { etat, majOmbrage } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { estHorsLigne } from './hors-ligne.js';
@@ -82,6 +80,7 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
     ordre: 1,
     nom: () => t(nuit() ? 'ombres.pastille-nuit' : 'ombres.pastille', { heure: heureDuLieu(reglage.instant(), reglage.decalage()) }),
     legende: () => cadran('mini-cadran'),
+    rubrique: 'ciel',
     onOuvrir: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'ciel', module: 'ombres' } })),
     onRetirer: () => eteindre(),
   });
@@ -92,19 +91,8 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
     tournerCadrans(details, soleil(), map.getBearing());
   }
 
-  // ---------- Soleil dans le ciel, en 3D ----------
-  const ciel = creerSoleilCiel(map);
-  // Une visite ou une sortie montre son propre soleil (visite-station.js, sortie-ombre.js)
-  // La Lune à la même heure, au centre de la carte
-  function luneCiel() {
-    const { lng, lat } = map.getCenter();
-    const instant = reglage.instant();
-    return { ...positionLune(instant, lat, lng), fraction: eclairementLune(instant).fraction };
-  }
-  const majCiel = () => {
-    const voir = actif && etat.mode3D && !etat.enVisite && !etat.ombreSortie;
-    ciel.montrer(voir ? soleil() : null, voir ? luneCiel() : null);
-  };
+  // Soleil et Lune dans le ciel, en 3D : dessinés par la rubrique, avec l'ombre ou l'option « Dans le ciel »
+  const majCiel = () => partage.majCiel();
 
   // ---------- Couches selon le soleil ----------
   let adresse = null;
@@ -191,7 +179,7 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
   });
   window.addEventListener('mode3d', () => { if (actif) appliquer(); });
   surLangue(() => { if (actif) majTextes(); });
-  etat.majOmbres = () => { if (actif) appliquer(); else majCiel(); };
+  etat.majOmbres = () => { if (actif) appliquer(); majCiel(); };
 
   return {
     afficher(oui) {

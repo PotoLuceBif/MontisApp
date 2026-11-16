@@ -19,6 +19,7 @@ const pastilles = new Set();
 // du 12 novembre 2026). Seule, une couche garde sa pastille détaillée.
 const RUBRIQUES = {
   relief: { cle: 'relief.titre', ordre: 0 },
+  ciel: { cle: 'menu.ciel', ordre: 2, categorie: 'ciel', module: 'ombres' }, // rubrique à part : Soleil et Lune
   nature: { cle: 'nature.titre', ordre: 5 },
   elements: { cle: 'elements.titre', ordre: 10 },
   fond: { cle: 'fond.titre', ordre: 40 },
@@ -59,7 +60,11 @@ function pastilleRubrique(id) {
   const corps = element.querySelector('.couche-pastille-corps');
   const retirer = element.querySelector('.couche-pastille-retirer');
   const membres = () => [...pastilles].filter((p) => p.rubrique === id && p.visible);
-  corps.addEventListener('click', () => ouvrirReglage(id));
+  corps.addEventListener('click', () => {
+    const { categorie, module } = RUBRIQUES[id];
+    if (categorie) window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module } }));
+    else ouvrirReglage(id);
+  });
   // Éteint toutes les couches de la rubrique ; chacune se retire de la liste en s'éteignant
   retirer.addEventListener('click', () => membres().forEach((p) => p.retirer()));
   const rubrique = {

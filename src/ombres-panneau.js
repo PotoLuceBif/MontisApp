@@ -13,7 +13,7 @@ export function creerOptionOmbres(map, partage) {
   bloc.className = 'relief-ombres';
   bloc.innerHTML = `
     <div class="relief-bascule ombres-choix" role="group" ${ta('aria-label', 'ombres.titre')}>
-      <button type="button" aria-pressed="false">${ICONE_SOLEIL}<span data-i18n="ombres.afficher"></span></button>
+      <button type="button" aria-pressed="false">${ICONE_SOLEIL}<span data-i18n="ombres.titre"></span></button>
     </div>
     <div class="ombres-details" hidden></div>
   `;

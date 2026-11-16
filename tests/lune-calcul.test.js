@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codePhase, dessinPhase, eclairementLune, journeeLune, positionLune, prochainePhase } from '../src/lune-calcul.js';
+import { ageLune, codePhase, courseLune, culminationProche, cycleLunaire, dessinPhase, eclairementLune, journeeLune, positionLune, prochainePhase } from '../src/lune-calcul.js';
 
 const CHAMONIX = { lat: 45.92, lng: 6.87 };
 
@@ -72,5 +72,44 @@ describe('dessin de la phase', () => {
   it('fait bomber le terminateur selon la phase', () => {
     expect(dessinPhase(0.25, true)).toMatch(/A4\.50 9 0 0 0 12 3\.00Z$/); // croissant
     expect(dessinPhase(0.75, true)).toMatch(/A4\.50 9 0 0 1 12 3\.00Z$/); // gibbeuse
+  });
+});
+
+describe('lunaison', () => {
+  it('donne l’âge de la Lune en jours', () => {
+    const age = ageLune(new Date('2026-11-24T14:54:00Z'));
+    expect(age).toBeGreaterThan(14.5);
+    expect(age).toBeLessThan(15);
+  });
+
+  it('place les quatre phases du cycle en cours, dans l’ordre', () => {
+    const cycle = cycleLunaire(new Date('2026-11-16T12:00:00Z'));
+    expect(cycle.map((p) => p.code)).toEqual(['nouvelle', 'premier-quartier', 'pleine', 'dernier-quartier', 'nouvelle']);
+    for (let i = 1; i < cycle.length; i += 1) expect(cycle[i].instant > cycle[i - 1].instant).toBe(true);
+    expect(cycle[0].instant < new Date('2026-11-16T12:00:00Z')).toBe(true);
+    expect(Math.abs(cycle[2].instant - new Date('2026-11-24T14:54:00Z'))).toBeLessThan(30 * 60000);
+    const duree = (cycle[4].instant - cycle[0].instant) / 86400000;
+    expect(duree).toBeGreaterThan(29);
+    expect(duree).toBeLessThan(30);
+  });
+
+  it('trouve l’heure où la Lune est au plus haut', () => {
+    const haut = culminationProche(new Date('2026-11-24T14:54:00Z'), CHAMONIX.lat, CHAMONIX.lng);
+    const avant = positionLune(new Date(haut.getTime() - 3600000), CHAMONIX.lat, CHAMONIX.lng).hauteur;
+    const apres = positionLune(new Date(haut.getTime() + 3600000), CHAMONIX.lat, CHAMONIX.lng).hauteur;
+    const sommet = positionLune(haut, CHAMONIX.lat, CHAMONIX.lng).hauteur;
+    expect(sommet).toBeGreaterThan(avant);
+    expect(sommet).toBeGreaterThan(apres);
+    expect(sommet).toBeGreaterThan(30);
+  });
+});
+
+describe('course de la Lune', () => {
+  it('passe au-dessus de l’horizon entre son lever et son coucher', () => {
+    const course = courseLune('2026-11-16', CHAMONIX.lat, CHAMONIX.lng, 60);
+    expect(course).toHaveLength(145);
+    const a = (h, m) => course.find((p) => p.minutes === h * 60 + m).hauteur;
+    expect(a(18, 0)).toBeGreaterThan(10); // au plus haut vers 18 h
+    expect(a(9, 0)).toBeLessThan(0); // pas encore levée (lever 13 h 12)
   });
 });
