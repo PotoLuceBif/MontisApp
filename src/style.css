@@ -4174,3 +4174,6 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
   .lune-recherche { flex: 1 1 auto; }
   body .lune-visite .lune-visite-panneau.bf { top: auto; }
 }
+.lune-bulle-retour { z-index: 5; }
+.lune-bulle-retour button { display: inline-flex; align-items: center; gap: 8px; }
+.lune-bulle-retour svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }

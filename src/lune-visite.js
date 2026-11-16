@@ -205,8 +205,12 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   const elementTerre = document.createElement('button');
   elementTerre.type = 'button';
   elementTerre.className = 'lune-ciel terre-ciel';
-  elementTerre.setAttribute('aria-label', t('lune-visite.regarder-terre'));
-  elementTerre.title = t('lune-visite.regarder-terre');
+  function nommerTerre() {
+    const cle = elementTerre.classList.contains('bord') ? 'lune-visite.regarder-terre' : 'lune-visite.retour-terre';
+    elementTerre.setAttribute('aria-label', t(cle));
+    elementTerre.title = t(cle);
+  }
+  nommerTerre();
   elementTerre.innerHTML = `${svgTerre()}<i class="lune-ciel-fleche"></i>`;
   map.getCanvasContainer().append(elementTerre);
   const phaseTerre = elementTerre.querySelector('.terre-phase-chemin');
@@ -226,9 +230,14 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     const place = placerSoleil(direction.hauteur > 0 ? projection : { ...projection, devant: false }, {
       largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: 12,
     });
-    // Juste derrière la caméra (vue depuis la Terre), elle n'a pas de direction à montrer
-    elementTerre.hidden = !projection.devant && Math.hypot(projection.dx, projection.dy) < 0.15;
-    elementTerre.classList.toggle('bord', !place.dedans);
+    // Toujours affichée (demande du propriétaire du 16 novembre 2026) : juste derrière la caméra, au départ ou en vue
+    // depuis la Terre, elle se pose en bas, flèche vers le bas
+    const auBord = !place.dedans;
+    if (auBord !== elementTerre.classList.contains('bord')) {
+      elementTerre.classList.toggle('bord', auBord);
+      nommerTerre();
+      fermerRetour();
+    }
     if (!place.dedans) elementTerre.querySelector('.lune-ciel-fleche').style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
     elementTerre.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
     // Phase vue de la Lune (pleine à la nouvelle lune), côté éclairé tourné vers le soleil
@@ -280,7 +289,34 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       duration: 2600,
     });
   }
-  elementTerre.addEventListener('click', regarderTerre);
+  // Au bord : aller la voir. Dans le ciel : une bulle pour retourner sur la Terre (quitter la visite)
+  const bulleRetour = document.createElement('div');
+  bulleRetour.className = 'lune-bulle lune-bulle-retour';
+  bulleRetour.hidden = true;
+  bulleRetour.innerHTML = `<button type="button" class="principal">${ICONE_TERRE}<span data-i18n="lune-visite.retour-terre"></span></button>`;
+  poser(bulleRetour.querySelector('span'), 'lune-visite.retour-terre');
+  racine.append(bulleRetour);
+  function fermerRetour() { bulleRetour.hidden = true; }
+  elementTerre.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (elementTerre.classList.contains('bord')) {
+      fermerRetour();
+      regarderTerre();
+      return;
+    }
+    if (!bulleRetour.hidden) {
+      fermerRetour();
+      return;
+    }
+    const disque = elementTerre.querySelector('svg').getBoundingClientRect();
+    bulleRetour.hidden = false;
+    const largeur = bulleRetour.offsetWidth;
+    bulleRetour.style.left = `${Math.min(window.innerWidth - largeur - 8, Math.max(8, disque.left + disque.width / 2 - largeur / 2))}px`;
+    bulleRetour.style.top = `${disque.bottom + 10}px`;
+  });
+  bulleRetour.querySelector('button').addEventListener('click', () => quitter());
+  map.on('movestart', fermerRetour);
+  map.on('click', fermerRetour);
 
   // ---------- Noms ----------
   let lieux = null;
@@ -300,7 +336,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     fermerListe();
     poserNoms();
     majPanneau();
-    elementTerre.setAttribute('aria-label', t('lune-visite.regarder-terre'));
+    nommerTerre();
   });
 
   // ---------- Éclairage ----------
@@ -542,6 +578,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
 
   function quitter() {
     fermerBulle();
+    fermerRetour();
     desabonnerLangue?.();
     document.removeEventListener('keydown', surTouche);
     racine.classList.remove('prete');
