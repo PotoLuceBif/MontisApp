@@ -6,7 +6,6 @@ import { ouvrirSoleilLune } from './soleil-lune.js';
 import { poser, t } from './i18n.js';
 import { getMoonPosition } from 'suncalc';
 import { opaciteCiel } from './ciel-calcul.js';
-import { etat } from './options-carte.js';
 
 const MARGE = 14; // px autour du disque : les astres sont petits, le doigt ne l'est pas
 
@@ -106,7 +105,7 @@ export function initBulleLune(map, ciel) {
     if (visible) return;
     // Direction de la Lune vue du centre de la carte, ramenée au bord libre de l'écran
     const { lng, lat } = map.getCenter();
-    const instant = new Date(etat.instantCiel?.() ?? Date.now());
+    const instant = new Date();
     const a = ((getMoonPosition(instant, lat, lng).azimuth - map.getBearing()) * Math.PI) / 180;
     const dx = Math.sin(a);
     const dy = -Math.cos(a);
@@ -128,7 +127,7 @@ export function initBulleLune(map, ciel) {
   indice.addEventListener('click', (event) => {
     event.stopPropagation();
     import('./terre-vue-calcul.js').then(({ pointSousLune, vueLuneAuNord }) => {
-      const instant = new Date(etat.instantCiel?.() ?? Date.now());
+      const instant = new Date();
       const vue = vueLuneAuNord(pointSousLune(instant));
       map.flyTo({ center: [vue.lng, vue.lat], zoom: Math.min(map.getZoom(), 1.4), bearing: 0, pitch: 0, duration: 2200 });
     });

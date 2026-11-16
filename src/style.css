@@ -4281,3 +4281,9 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
   content: ''; position: absolute; left: 50%; top: -1px; margin-left: -6px;
   border: 6px solid transparent; border-bottom: 8px solid rgb(236 240 255 / .9); border-top: 0;
 }
+
+/* Logo de la Terre (Quitter la Lune, Retourner sur la Terre) : continents pleins dans un cercle */
+.icone-terre .plein { fill: currentColor; stroke: none; }
+.icone-terre .contour { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.lune-visite-quitter .icone-terre { color: #6fb6ff; stroke: none; }
+.lune-bulle-retour .icone-terre { stroke: none; }

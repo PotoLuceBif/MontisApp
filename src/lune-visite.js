@@ -29,7 +29,16 @@ const JOUR = 24 * 3600 * 1000;
 const NOMS = '/data/lune/noms.json';
 const RELIEF = `${location.origin}/data/lune/relief/{z}/{x}/{y}.png`;
 const APPUI_LONG = 550; // ms
-const ICONE_TERRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M5.5 8.5c2.5.5 3 2 4.5 2.3 1.6.3 1.4 2.2 3 2.6 1.4.3 2.8-.9 4.6-.4M9 19.6c.4-1.6 1.6-2.3 1.4-3.6-.2-1.2-1.8-1.5-2-2.9M15.5 4.6c-.6 1.3.3 2.4 1.6 2.6 1 .2 1.8 1 2.1 2"/></svg>';
+// Globe avec ses continents (Amériques à gauche, Europe et Afrique à droite), d'après le modèle du propriétaire
+const ICONE_TERRE = `<svg class="icone-terre" viewBox="0 0 24 24" aria-hidden="true">
+  <defs><clipPath id="icone-terre-disque"><circle cx="12" cy="12" r="9"/></clipPath></defs>
+  <g class="plein" clip-path="url(#icone-terre-disque)">
+    <path d="M4 7.4 5.6 5.6l1.9-.5 1.5.6 1.7-.2.6 1-1.2.7.4 1.1-1 .9-.9-.2-.6.9-.9.4-.4 1.1-.9.4-.7-1-.5-1.6-.8-.9Z"/>
+    <path d="M8.8 12.3l1.4.2 1.2.9.3 1.2-.6 1.4-.4 1.6-.8 1.3-.6 1.2-.6-.2-.2-1.5-.6-1.5-.3-1.6.2-1.4Z"/>
+    <path d="M13.4 6.3l1.3-.6 1.4.3.6.9-.8.5.4.6 1.2.1.7.9-.1 1.1.9.9 1.4.2.6 1.4-.4 1.5-.9 1.2-.4 1.6-.8 1.3-1 .4-.7-1.1-.4-1.6-.7-1.3.3-1.3-.9-.8-1.5-.2-.5-1.1.6-1.2-.2-1.1.6-.7Z"/>
+  </g>
+  <circle cx="12" cy="12" r="9.6" class="contour"/>
+</svg>`;
 const ICONE_FUSEE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8c2.6 2 4 5 4 8.4v4.3H8v-4.3c0-3.4 1.4-6.4 4-8.4Z"/><circle cx="12" cy="9.6" r="1.6"/><path d="M8 12.6 5.2 15.4v2.4H8M16 12.6l2.8 2.8v2.4H16M10.2 18.4c.3 1.2 1 2.1 1.8 2.8.8-.7 1.5-1.6 1.8-2.8"/></svg>';
 const ICONE_VUE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="16.5" cy="7.5" r="4.5"/><path d="M14.6 4.4a4.5 4.5 0 0 0 0 6.2"/><circle cx="6.5" cy="17" r="3"/><path d="m8.9 15.2 4.6-4.4"/></svg>';
 const CHEVRON = '<svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';

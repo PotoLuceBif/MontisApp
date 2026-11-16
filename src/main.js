@@ -372,7 +372,9 @@ map.once('style.load', () => {
   initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
   // Étoiles, soleil et Lune autour du globe, derrière la carte, à l'heure de Soleil et Lune ; Lune et soleil se touchent
-  const ciel = initCiel(map, { instant: () => etat.instantCiel?.() });
+  // À l'heure réelle, comme l'éclairage du globe (globe-nuit.js) : à l'heure de Soleil et Lune, locale au centre de
+  // la carte, le ciel sautait d'un fuseau à l'autre en tournant la Terre et ne collait plus au globe
+  const ciel = initCiel(map);
   // Mode espace : dès que les étoiles apparaissent au dézoom, toutes les couches s'éteignent (couches-actives.js)
   let enEspace = opaciteCiel(map.getZoom()) > 0;
   map.on('zoom', () => {
@@ -380,7 +382,6 @@ map.once('style.load', () => {
     if (espace && !enEspace) eteindreFiltres();
     enEspace = espace;
   });
-  etat.redessinerCiel = ciel.redessiner;
   initBulleLune(map, ciel);
   initAtmosphere(map); // halo et liseré du globe, éclairés du côté du soleil
   initRecherche(map);
