@@ -9,6 +9,7 @@ import {
 import { heureDuLieu, jourLocal } from './soleil.js';
 import { codeCardinal } from './vent-calcul.js';
 import { svgLune } from './lune-dessin.js';
+import { tuilesAstre } from './astre-icones.js';
 import { visiterLaLune } from './lune-bulle.js';
 import { formatDate, poser, surLangue, t, ta } from './i18n.js';
 import { nombre, pourcent } from './unites.js';
@@ -37,16 +38,12 @@ export function creerLune(map, partage, reglage) {
   const panneau = document.createElement('div');
   panneau.className = 'lune-panneau';
   panneau.innerHTML = `
-    <div class="lune-phase">
+    <div class="astre-carte lune-carte" role="status">
       <span class="lune-icone-boite"></span>
-      <div class="lune-phase-textes"><strong class="lune-nom"></strong><span class="lune-fraction"></span></div>
+      <div class="astre-valeurs"><strong class="astre-grande lune-nom"></strong><span class="astre-sous lune-fraction"></span><span class="astre-sous lune-position-texte"></span></div>
+      ${CADRAN}
     </div>
-    <div class="ombres-soleil lune-position" role="status">${CADRAN}<span class="lune-position-texte"></span></div>
-    <div class="lune-heures">
-      <div><span data-i18n="lune.lever"></span><strong class="lune-lever"></strong></div>
-      <div><span data-i18n="lune.culmination"></span><strong class="lune-culmination"></strong></div>
-      <div><span data-i18n="lune.coucher"></span><strong class="lune-coucher"></strong></div>
-    </div>
+    ${tuilesAstre({ lever: 'lune-lever', haut: 'lune-culmination', coucher: 'lune-coucher' })}
     <p class="note lune-regime" hidden></p>
     <div class="lunaison">
       <div class="lunaison-entete">
@@ -121,8 +118,9 @@ export function creerLune(map, partage, reglage) {
     const hauteur = `${nombre(Math.round(lune.hauteur))}°`;
     const direction = `${nombre(Math.round(lune.azimut))}° ${t(`cardinal.${codeCardinal(lune.azimut)}`)}`;
     $('.lune-position-texte').textContent = lune.hauteur > 0
-      ? t('lune.position', { hauteur, direction })
-      : t('lune.sous-horizon', { hauteur, direction });
+      ? t('lune.position-court', { hauteur, direction })
+      : t('lune.sous-horizon-court', { direction });
+    $('.lune-carte').classList.toggle('nuit', lune.hauteur <= 0);
     majCadran();
 
     const jour = jourLocal(instant, decalage);

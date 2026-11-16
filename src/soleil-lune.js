@@ -7,6 +7,7 @@
 import { creerOptionOmbres } from './ombres-panneau.js';
 import { creerPastilleCouche } from './couches-actives.js';
 import { etat } from './options-carte.js';
+import { tuilesAstre } from './astre-icones.js';
 import { lire, ecrire } from './reglages.js';
 import { poser, surLangue, t } from './i18n.js';
 
@@ -31,21 +32,15 @@ export function creerSoleilLune(map) {
   const boutonCiel = choixCiel.querySelector('button');
   const fuseau = entete.querySelector('.ciel-fuseau');
 
-  // Lever, passage au plus haut et coucher, sous la position (aussi sur la frise, demande du propriétaire du
-  // 16 novembre 2026), comme dans la ligne Lune
-  const heuresSoleil = document.createElement('div');
-  heuresSoleil.className = 'lune-heures soleil-heures';
-  heuresSoleil.innerHTML = `
-    <div><span data-i18n="lune.lever"></span><strong class="soleil-lever"></strong></div>
-    <div><span data-i18n="lune.culmination"></span><strong class="soleil-midi"></strong></div>
-    <div><span data-i18n="lune.coucher"></span><strong class="soleil-coucher"></strong></div>
-  `;
-  heuresSoleil.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
-
-  // Position du soleil, en tête de la ligne Soleil
+  // Ligne Soleil, retouchée le 16 novembre 2026 (demande du propriétaire) : en tête, une carte avec le cadran et la
+  // hauteur en grand ; puis lever, passage au plus haut et coucher en tuiles (aussi sur la frise), et la durée du jour
   const position = document.createElement('div');
-  position.className = 'ombres-soleil ciel-position-soleil';
+  position.className = 'astre-carte ciel-position-soleil';
   position.setAttribute('role', 'status');
+  const heuresSoleil = document.createElement('div');
+  heuresSoleil.className = 'astre-heures';
+  heuresSoleil.innerHTML = `${tuilesAstre({ lever: 'soleil-lever', haut: 'soleil-midi', coucher: 'soleil-coucher' })}<p class="astre-duree"></p>`;
+  heuresSoleil.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
 
   const visible = () => entete.offsetParent !== null;
   let ombres = null;
@@ -62,8 +57,9 @@ export function creerSoleilLune(map) {
       import('./lune-calcul.js'),
       import('./soleil-ciel.js'),
       import('./ciel-lieu.js'),
-    ]).then(([r, s, l, c, lieuModule]) => {
-      m = { r, s, l };
+      import('./vent-calcul.js'),
+    ]).then(([r, s, l, c, lieuModule, v]) => {
+      m = { r, s, l, v };
       reglage = r.creerReglageSoleil(map, {
         course: true,
         surChangement: (options) => maj(options),
@@ -73,7 +69,7 @@ export function creerSoleilLune(map) {
       // Le lieu, en petit sous le jour
       lieu = lieuModule.creerLieuCiel(map, { reglage, visible });
       reglage.element.querySelector('.ombres-jour').after(lieu.element);
-      position.innerHTML = `${r.cadran('ombres-cadran')}<span class="ciel-position-texte"></span>`;
+      position.innerHTML = `${r.cadran('ombres-cadran astre-cadran')}<div class="astre-valeurs"><strong class="astre-grande"></strong><span class="astre-sous astre-horizon"></span><span class="astre-sous astre-direction"></span></div>`;
       ciel = c.creerSoleilCiel(map);
       maj();
       return reglage;
@@ -88,8 +84,13 @@ export function creerSoleilLune(map) {
     lieu.majTextes();
     const soleil = reglage.soleil();
     if (soleil) {
-      // Même texte que le réglage (« Soleil à 23°, vers 160° SSE »)
-      position.querySelector('.ciel-position-texte').textContent = reglage.element.querySelector('.ombres-soleil-texte').textContent;
+      const hauteur = Math.round(soleil.hauteur);
+      position.querySelector('.astre-grande').textContent = `${hauteur}°`;
+      position.querySelector('.astre-horizon').textContent = t(hauteur > 0 ? 'soleil.au-dessus' : 'soleil.sous-horizon');
+      position.querySelector('.astre-direction').textContent = t('soleil.vers', {
+        direction: `${Math.round(soleil.azimut)}° ${t(`cardinal.${m.v.codeCardinal(soleil.azimut)}`)}`,
+      });
+      position.classList.toggle('nuit', hauteur <= 0);
       m.r.tournerCadrans(position, soleil, map.getBearing());
     }
     const journee = reglage.journee();
@@ -97,6 +98,9 @@ export function creerSoleilLune(map) {
     heuresSoleil.querySelector('.soleil-lever').textContent = heure(journee?.lever);
     heuresSoleil.querySelector('.soleil-midi').textContent = heure(journee?.midiSolaire);
     heuresSoleil.querySelector('.soleil-coucher').textContent = heure(journee?.coucher);
+    heuresSoleil.querySelector('.astre-duree').textContent = journee?.dureeMinutes
+      ? t('soleil.duree-jour', { duree: m.s.formatDuree(journee.dureeMinutes) })
+      : '';
   }
 
   // ---------- Soleil et Lune dans le ciel, en 3D ----------

@@ -12,13 +12,15 @@ export function creerOptionOmbres(map, partage) {
   const bloc = document.createElement('div');
   bloc.className = 'relief-ombres';
   bloc.innerHTML = `
-    <div class="relief-bascule ombres-choix" role="group" ${ta('aria-label', 'ombres.titre')}>
-      <button type="button" aria-pressed="false">${ICONE_SOLEIL}<span data-i18n="ombres.titre"></span></button>
-    </div>
+    <button type="button" class="astre-option" role="switch" aria-checked="false">
+      <span class="astre-option-icone">${ICONE_SOLEIL}</span>
+      <span class="astre-option-textes"><strong data-i18n="ombres.titre"></strong><small data-i18n="ombres.description"></small></span>
+      <i class="interrupteur" aria-hidden="true"></i>
+    </button>
     <div class="ombres-details" hidden></div>
   `;
   bloc.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
-  const bouton = bloc.querySelector('.ombres-choix button');
+  const bouton = bloc.querySelector('.astre-option');
   const details = bloc.querySelector('.ombres-details');
 
   let actif = lire('ombres', false);
@@ -32,7 +34,8 @@ export function creerOptionOmbres(map, partage) {
 
   function majBouton() {
     bouton.classList.toggle('actif', actif);
-    bouton.setAttribute('aria-pressed', String(actif));
+    bouton.setAttribute('aria-checked', String(actif));
+    bloc.classList.toggle('actif', actif);
     details.hidden = !actif;
   }
 

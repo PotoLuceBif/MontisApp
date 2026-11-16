@@ -71,6 +71,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
           <path class="ciel-course-aire" clip-path="url(#ciel-course-jour)"/>
           <line class="ciel-course-horizon" x1="0" x2="${LARGEUR_COURSE}" y1="${HORIZON}" y2="${HORIZON}"/>
           <path class="ciel-course-lune-trace"/>
+          <path class="ciel-course-lune-jour" clip-path="url(#ciel-course-jour)"/>
           <path class="ciel-course-soleil-nuit"/>
           <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
         </svg>
@@ -172,7 +173,9 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
       boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);
       boite.querySelector('.ciel-course-aire').setAttribute('d', `${trace}L${LARGEUR_COURSE} ${HORIZON}L0 ${HORIZON}Z`);
-      boite.querySelector('.ciel-course-lune-trace').setAttribute('d', traceCourse(pointsLune));
+      const traceLune = traceCourse(pointsLune);
+      boite.querySelector('.ciel-course-lune-trace').setAttribute('d', traceLune);
+      boite.querySelector('.ciel-course-lune-jour').setAttribute('d', traceLune);
       // Lever et coucher marqués sur l'horizon
       const debut = midiLocal(jour, decalage).getTime() - 12 * 60 * MINUTE;
       const repere = (classe, date) => {

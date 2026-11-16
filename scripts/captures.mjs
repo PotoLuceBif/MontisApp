@@ -560,31 +560,31 @@ const ECRANS = [
   // Activité en cours, menu fermé : sa pastille avec les couches
   { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
-  { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
     nom: 'ciel-ombres-3d',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
       (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
   },
   // Le soleil dans le ciel en 3D, en fin d'après-midi, face à lui
   {
     nom: 'ciel-ombres-3d-soleil',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
       clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 238 }), (p) => p.waitForTimeout(5000)],
   },
-  { nom: 'ciel-ombres-ferme', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'ciel-ombres-ferme', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   // Un jour choisi au calendrier (appui sur le nom du jour)
   {
     nom: 'ciel-ombres-jour',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(12 * 60),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(12 * 60),
       (p) => p.evaluate(() => {
         const champ = document.querySelector('.ombres-calendrier');
         champ.value = '2027-02-15';
         champ.dispatchEvent(new Event('change', { bubbles: true }));
       }), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')],
   },
-  { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
   { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
   // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
@@ -598,7 +598,7 @@ const ECRANS = [
       clic('.ciel-lieu-liste .rando-item'), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'ciel-soleil', actions: [vue(MATIN), module('ombres'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1000), defiler('.ciel-position-soleil')] },
-  { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-position')] },
+  { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-carte')] },
   // Appui sur la pleine lune du cycle : la frise passe à ce jour, quand la Lune est au plus haut
   { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-phase:nth-child(3)'), (p) => p.waitForTimeout(1000)] },
   // Flèche › : le jour suivant, entre deux phases
