@@ -54,6 +54,7 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 - [x] **Zones habitées** (7) : gris rosé léger sous les villages et les villes (habitat, commerces, industrie) ; bleu nuit la nuit.
 - [x] **Parcs nationaux et réserves** (8) : liseré vert en tirets toujours là dans le fond, plus marqué pour un parc national ; l'élément Parcs ajoute teinte et noms.
 - [x] **Points utiles** (22) : pictos parking (P), abri et point d'eau (goutte), pastilles arrondies cerclées de blanc, à partir du zoom 14,5 ; eau et abris passent avant les parkings quand la place manque. Mêmes pictos de jour et de nuit.
+- **Retour du propriétaire (16 novembre 2026)** : abris et points d'eau retirés de la vue par défaut, devenus des Éléments de la carte (onglet Lieux, avec pastille) ; parkings retirés aussi (Éléments de la carte › Construit, avec pastille) ; pictos refaits dans la DA (carré bleu nuit, liseré cyan → magenta, signe dégradé, comme les icônes d'activités, `points-utiles.js`) ; un appui sur un parking ouvre sa fiche (tarif gratuit ou payant, places, type, accès, horaires, site web, d'après OpenStreetMap par Overpass). Écrans `fond-parking-fiche` et `fond-points-utiles`.
 - Écrans `fond-pictos`, `fond-lisieres`, `fond-parcs`, `fond-nuit-pictos` dans les captures.
 - Restent écartés : teintes d'altitude (11), falaises en trait (12, pas dans les données), police propre à Montis.
 

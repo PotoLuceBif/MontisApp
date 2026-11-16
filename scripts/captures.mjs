@@ -75,6 +75,20 @@ const clicCarte = (lngLat) => async (page) => {
   const boite = await page.locator('#map').boundingBox();
   await page.mouse.click(boite.x + x, boite.y + y);
 };
+const allumerElements = (motif) => [module('elements'), (p) => p.evaluate((m) => { for (const l of document.querySelectorAll('.option-case')) if (new RegExp(m).test(l.textContent)) { const c = l.querySelector('input'); if (!c.checked) c.click(); } }, motif), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')];
+// Touche le premier élément affiché d'une couche (un parking du fond…), le plus près du centre
+const clicCouche = (couche) => async (page) => {
+  const point = await page.evaluate((id) => {
+    const c = window.map.getCanvas();
+    const centre = { x: c.clientWidth / 2, y: c.clientHeight / 2 };
+    const trouves = window.map.queryRenderedFeatures({ layers: [id] }).map((f) => window.map.project(f.geometry.coordinates));
+    trouves.sort((a, b) => Math.hypot(a.x - centre.x, a.y - centre.y) - Math.hypot(b.x - centre.x, b.y - centre.y));
+    return trouves[0] ?? null;
+  }, couche);
+  if (!point) return;
+  const boite = await page.locator('#map').boundingBox();
+  await page.mouse.click(boite.x + point.x, boite.y + point.y);
+};
 const MATIN = { center: [6.9, 45.88], zoom: 12.3, bearing: 0, pitch: 0 }; // vallée de Chamonix
 // Place le curseur d'heure de l'ombre du soleil (minutes depuis minuit)
 const heureOmbres = (minutes) => async (page) => {
@@ -254,9 +268,11 @@ const ECRANS = [
   { nom: 'fond-cols-glaciers', actions: [vue({ center: [6.92, 45.87], zoom: 12.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-villes', actions: [vue({ center: [6.2, 46.05], zoom: 9.4, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-pictos', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-parking-fiche', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements('Parkings'), (p) => p.waitForTimeout(5000), clicCouche('montis-parkings'), (p) => p.waitForTimeout(20000)] },
+  { nom: 'fond-points-utiles', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements("Parkings|Abris|Points d'eau"), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-lisieres', actions: [vue({ center: [6.83, 45.9], zoom: 14, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-parcs', actions: [vue({ center: [6.85, 45.37], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
-  { nom: 'fond-nuit-pictos', fond: 'nuit', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-nuit-pictos', fond: 'nuit', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements("Parkings|Abris|Points d'eau"), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-nuit-glaciers', fond: 'nuit', actions: [vue({ center: [6.92, 45.87], zoom: 12.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-nuit-remontees', fond: 'nuit', actions: [vue({ center: [6.875, 45.912], zoom: 14.2, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-nuit-massif', fond: 'nuit', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },

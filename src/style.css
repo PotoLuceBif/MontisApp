@@ -617,6 +617,7 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 }
 .point-raccourci:hover { background: var(--survol); }
 .fiche-icone .repere-pin { width: 30px; height: 30px; }
+.fiche-icone canvas { width: 30px; height: 30px; }
 /* Le pin tombe en place ; l'image bouge, jamais le marqueur (MapLibre le place avec transform) */
 .point-pin .repere-pin { animation: point-pin-tombe 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 91%; }
 @keyframes point-pin-tombe {

@@ -4,10 +4,12 @@ import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
 import { interroger } from './overpass.js';
 import { DECALAGE_PIN, creerPinSeul, imagePin } from './pins.js';
+import { dessinerPicto } from './points-utiles.js';
 
 // Quelle couche de la carte correspond à quel genre d'élément
 const GENRE_PAR_COUCHE = {
   sommets: 'sommet',
+  'montis-parkings': 'parking',
   'lieux-refuges': 'refuge',
   'lieux-villes': 'lieu',
   'lieux-bourgs': 'lieu',
@@ -28,7 +30,7 @@ const GENRE_PAR_COUCHE = {
 
 // Quand plusieurs éléments se superposent : le plus précis gagne
 // Plus de fiche pour l'eau (mer, lacs, cours d'eau) : demande du propriétaire du 16 novembre 2026
-const PRIORITE = ['sommet', 'refuge', 'lieu', 'glacier', 'foret', 'parc'];
+const PRIORITE = ['parking', 'sommet', 'refuge', 'lieu', 'glacier', 'foret', 'parc'];
 
 const NOMS_LIEUX = { city: 'fiche.ville', town: 'fiche.ville', village: 'fiche.village', hamlet: 'fiche.hameau' };
 const NOMS_PARCS = { national_park: 'fiche.parc-national', nature_reserve: 'fiche.reserve', protected_area: 'fiche.zone-protegee' };
@@ -68,6 +70,7 @@ function decrire(f, genre) {
       };
     case 'lieu': return { icone: '🏘️', type: tr(NOMS_LIEUX[p.class] || 'fiche.lieu'), nom };
     case 'glacier': return { icone: '🧊', type: tr('fiche.glacier'), nom };
+    case 'parking': return { icone: 'parking', type: tr('fiche.parking'), nom };
     case 'foret': return { icone: '🌲', type: tr('fiche.foret'), nom };
     default:
       return { icone: '🌿', type: NOMS_PARCS[p.class] ? tr(NOMS_PARCS[p.class]) : p.class ? humaniser(p.class) : tr('fiche.zone-protegee'), nom };
@@ -75,7 +78,7 @@ function decrire(f, genre) {
 }
 
 // Exploite la réponse d'Overpass : localisation, zones protégées, objet principal
-function analyser(elements, genre, nom) {
+function analyser(elements, genre, nom, position) {
   const nommes = elements.filter((e) => e.tags && e.tags.name);
 
   const admin = {};
@@ -99,12 +102,23 @@ function analyser(elements, genre, nom) {
   } else if (genre === 'sommet' || genre === 'lieu') {
     const n = (nom || '').toLowerCase();
     principal = nommes.find((e) => e.type === 'node' && e.tags.name.toLowerCase() === n) || null;
+  } else if (genre === 'parking') {
+    principal = plusProche(elements.filter((e) => e.tags && e.tags.amenity === 'parking'), position);
   } else if (genre === 'parc') {
     principal = parcs[0] || null;
   } else if (FILTRES[genre]) {
     principal = nommes.find((e) => e.type !== 'node' && FILTRES[genre](e.tags)) || null;
   }
   return { principal, parcs, localisation };
+}
+
+// Élément d'Overpass le plus proche du point touché (out center : les surfaces ont leur centre)
+function plusProche(elements, { lat, lng }) {
+  const ecart = (e) => {
+    const c = e.center || e;
+    return Number.isFinite(c.lat) ? (c.lat - lat) ** 2 + ((c.lon - lng) * Math.cos((lat * Math.PI) / 180)) ** 2 : Infinity;
+  };
+  return elements.slice().sort((a, b) => ecart(a) - ecart(b))[0] || null;
 }
 
 function lienWikipedia(tag) {
@@ -168,6 +182,7 @@ export function initFiches(map) {
     const icone = document.createElement('div');
     icone.className = 'fiche-icone';
     if (f.point) icone.append(imagePin(f.point.pin));
+    else if (f.icone === 'parking') icone.append(dessinerPicto('parking'));
     else icone.textContent = f.icone;
     const titres = document.createElement('div');
     titres.className = 'fiche-titres';
@@ -240,6 +255,23 @@ export function initFiches(map) {
       const resa = { required: 'fiche.resa-obligatoire', recommended: 'fiche.resa-recommandee', yes: 'fiche.resa-possible', no: 'fiche.resa-non', members_only: 'fiche.resa-membres' };
       if (t.reservation) corps.appendChild(ligne(tr('fiche.reservation'), resa[t.reservation] ? tr(resa[t.reservation]) : t.reservation));
     }
+    if (f.genre === 'parking') {
+      const t = (d && d.principal && d.principal.tags) || {};
+      const tarif = t.fee === 'no' ? tr('fiche.gratuit') : t.fee && t.fee !== 'unknown' ? tr('fiche.payant') : d ? tr('fiche.tarif-inconnu') : null;
+      if (tarif) corps.appendChild(ligne(tr('fiche.tarif'), t.charge ? `${tarif} · ${t.charge}` : tarif));
+      if (t.capacity) corps.appendChild(ligne(tr('fiche.places'), t.capacity));
+      const genres = { surface: 'fiche.parking-surface', underground: 'fiche.parking-souterrain', 'multi-storey': 'fiche.parking-etages' };
+      if (genres[t.parking]) corps.appendChild(ligne(tr('fiche.genre-parking'), tr(genres[t.parking])));
+      const acces = { private: 'fiche.acces-prive', customers: 'fiche.acces-clients', yes: 'fiche.acces-public', permissive: 'fiche.acces-public' };
+      if (acces[t.access]) corps.appendChild(ligne(tr('fiche.acces'), tr(acces[t.access])));
+      if (t.opening_hours) corps.appendChild(ligne(tr('fiche.ouverture'), t.opening_hours));
+      if (d) {
+        const avis = document.createElement('div');
+        avis.className = 'fiche-attente-ligne';
+        avis.textContent = tr('fiche.parking-verifie');
+        corps.appendChild(avis);
+      }
+    }
     if (f.genre === 'refuge') {
       const avis = document.createElement('div');
       avis.className = 'fiche-attente-ligne';
@@ -277,9 +309,9 @@ export function initFiches(map) {
 
   // ---------- Chargement des détails (Overpass) ----------
   async function chargerDetails(fiche) {
-    const cle = `${fiche.lat.toFixed(4)},${fiche.lng.toFixed(4)}`;
+    const cle = `${fiche.genre === 'parking' ? 'p' : ''}${fiche.lat.toFixed(4)},${fiche.lng.toFixed(4)}`;
     if (cache.has(cle)) {
-      fiche.details = analyser(cache.get(cle), fiche.genre, fiche.nom);
+      fiche.details = analyser(cache.get(cle), fiche.genre, fiche.nom, fiche);
       rendre();
       return;
     }
@@ -297,7 +329,9 @@ export function initFiches(map) {
       `[out:json][timeout:15];is_in(${lat},${lng})->.a;(wr(pivot.a);` +
       `node(around:80,${lat},${lng})["name"]["natural"~"^(peak|volcano|saddle)$"];` +
       `nwr(around:80,${lat},${lng})["name"]["tourism"~"^(alpine_hut|wilderness_hut)$"];` +
-      `node(around:150,${lat},${lng})["name"]["place"];);out tags;`;
+      `node(around:150,${lat},${lng})["name"]["place"];` +
+      (fiche.genre === 'parking' ? `nwr(around:60,${lat},${lng})["amenity"="parking"];` : '') +
+      ');out tags center;';
 
     try {
         
@@ -305,7 +339,7 @@ export function initFiches(map) {
       const elements = json.elements || [];
       cache.set(cle, elements);
       if (courant !== fiche) return;
-      fiche.details = analyser(elements, fiche.genre, fiche.nom);
+      fiche.details = analyser(elements, fiche.genre, fiche.nom, fiche);
     } catch (e) {
       if (courant !== fiche) return;
       fiche.details = 'erreur';
