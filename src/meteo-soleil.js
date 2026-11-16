@@ -1,4 +1,7 @@
-// Section « Soleil » des conditions locales : tout est calculé sur l'appareil, donc disponible hors ligne
+// Section « Soleil et Lune » des conditions locales (regroupée et allégée le 16 novembre 2026, demande du
+// propriétaire) : course du soleil, lever, coucher et durée du jour, heures dorées sur une ligne ; la Lune avec sa
+// phase, son lever et son coucher ; le reste (aube, midi solaire, ombre, cycle) dans la rubrique Soleil et Lune.
+// Tout est calculé sur l'appareil, donc disponible hors ligne.
 import { codeCardinal } from './vent-calcul.js';
 import { formatDate, t, ta, ti, poser } from './i18n.js';
 import { pourcent } from './unites.js';
@@ -11,7 +14,7 @@ import {
   nomDecalage,
   positionSoleil,
 } from './soleil.js';
-import { eclairementLune } from './lune-calcul.js';
+import { eclairementLune, journeeLune } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -61,34 +64,38 @@ export function creerSectionSoleil() {
   section.className = 'meteo-soleil';
   section.hidden = true;
   section.innerHTML = `
-    <h3 ${ti('soleil.titre')}>${t('soleil.titre')}</h3>
-    <svg class="soleil-course" viewBox="0 0 ${LARGEUR} 100" role="img" ${ta('aria-label', 'soleil.course-aria')}></svg>
-    <p class="soleil-regime" hidden></p>
-    <div class="soleil-grille"></div>
-    <div class="soleil-plages"></div>
-    <div class="soleil-lune" role="group">
-      <span class="lune-icone-boite"></span>
-      <div class="lune-phase-textes"><strong></strong><span></span></div>
+    <h3 ${ti('meteo-astres.titre')}>${t('meteo-astres.titre')}</h3>
+    <div class="meteo-astre">
+      <svg class="soleil-course" viewBox="0 0 ${LARGEUR} 100" role="img" ${ta('aria-label', 'soleil.course-aria')}></svg>
+      <p class="soleil-regime" hidden></p>
+      <div class="soleil-grille"></div>
+      <p class="soleil-dorees"></p>
     </div>
+    <div class="meteo-astre soleil-lune" role="group">
+      <span class="lune-icone-boite"></span>
+      <div class="lune-phase-textes"><strong></strong><span class="lune-meteo-fraction"></span><span class="lune-meteo-heures"></span></div>
+    </div>
+    <button type="button" class="meteo-astres-lien"><span data-i18n="meteo-astres.lien"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
     <p class="soleil-note"></p>
   `;
   const titre = section.querySelector('h3');
   const dessin = section.querySelector('.soleil-course');
   const regime = section.querySelector('.soleil-regime');
   const grille = section.querySelector('.soleil-grille');
-  const plages = section.querySelector('.soleil-plages');
+  const lignesDorees = section.querySelector('.soleil-dorees');
+  section.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
+  // Tout le détail dans la rubrique Soleil et Lune
+  section.querySelector('.meteo-astres-lien').addEventListener('click', () => window.dispatchEvent(
+    new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'ciel', module: 'ombres' } }),
+  ));
   const note = section.querySelector('.soleil-note');
   const lune = section.querySelector('.soleil-lune');
   const cases = {
     lever: creerCase('soleil-lever', 'lever'),
     coucher: creerCase('soleil-coucher', 'coucher'),
     duree: creerCase('soleil-duree', 'duree'),
-    midi: creerCase('soleil-midi', 'midi'),
-    doree: creerCase('soleil-doree', 'doree'),
-    aube: creerCase('soleil-aube', 'aube'),
   };
-  grille.append(cases.lever, cases.coucher, cases.duree, cases.midi);
-  plages.append(cases.doree, cases.aube);
+  grille.append(cases.lever, cases.coucher, cases.duree);
 
   let dernier = null;
 
@@ -150,12 +157,12 @@ export function creerSectionSoleil() {
     const journee = journeeSoleil(jourAffiche, position.latitude, position.longitude, decalage);
     const heure = (date) => heureDuLieu(date, decalage);
 
-    if (estAujourdhui) poser(titre, 'soleil.titre');
+    if (estAujourdhui) poser(titre, 'meteo-astres.titre');
     else {
       const nomJour = formatDate(`${jourAffiche}T12:00:00Z`, {
         weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
       });
-      poser(titre, 'soleil.titre-jour', { jour: nomJour });
+      poser(titre, 'meteo-astres.titre-jour', { jour: nomJour });
     }
 
     dessiner(journee, position, decalage, estAujourdhui ? maintenant : null);
@@ -163,8 +170,7 @@ export function creerSectionSoleil() {
     regime.hidden = journee.regime === 'normal';
     if (!regime.hidden) poser(regime, `soleil.${journee.regime}`);
 
-    const sansValeur = (valeur) => valeur ?? '—';
-    remplirCase(cases.lever, heure(journee.lever), t('soleil.mot-lever'), t('soleil.lever-aria', {
+      remplirCase(cases.lever, heure(journee.lever), t('soleil.mot-lever'), t('soleil.lever-aria', {
       heure: heure(journee.lever), direction: journee.azimutLever === null ? '—' : direction(journee.azimutLever),
     }));
     remplirCase(cases.coucher, heure(journee.coucher), t('soleil.mot-coucher'), t('soleil.coucher-aria', {
@@ -172,28 +178,14 @@ export function creerSectionSoleil() {
     }));
     const duree = formatDuree(journee.dureeMinutes);
     remplirCase(cases.duree, duree, t('soleil.mot-duree'), t('soleil.duree-aria', { duree }));
-    remplirCase(cases.midi, heure(journee.midiSolaire), t('soleil.mot-midi'), t('soleil.midi-aria', {
-      heure: heure(journee.midiSolaire), hauteur: journee.hauteurMax === null ? '—' : degres(journee.hauteurMax),
-    }));
-
     const plage = (doree) => {
       if (!doree) return null;
       if (doree.debut && doree.fin) return `${heure(doree.debut)}–${heure(doree.fin)}`;
       if (doree.fin) return t('soleil.doree-jusqua', { heure: heure(doree.fin) });
       return t('soleil.doree-des', { heure: heure(doree.debut) });
     };
-    // Matin et soir sur deux lignes : sur une seule, la case déborde au format téléphone
     const dorees = [plage(journee.doreeMatin), plage(journee.doreeSoir)].filter(Boolean);
-    cases.doree.hidden = !dorees.length;
-    if (dorees.length) {
-      remplirCase(cases.doree, dorees.join('\n'), t('soleil.mot-doree'), t('soleil.doree-aria', { plages: dorees.join(' · ') }));
-    }
-    cases.aube.hidden = !journee.aube && !journee.crepuscule;
-    if (!cases.aube.hidden) {
-      const debut = sansValeur(journee.aube && heure(journee.aube));
-      const fin = sansValeur(journee.crepuscule && heure(journee.crepuscule));
-      remplirCase(cases.aube, `${debut}\n${fin}`, t('soleil.mot-aube'), t('soleil.aube-aria', { plages: `${debut} · ${fin}` }));
-    }
+    lignesDorees.textContent = dorees.length ? t('meteo-astres.dorees', { plages: dorees.join(' · ') }) : '';
 
     // Phase de la Lune, maintenant ou à midi du jour affiché (vue de l'hémisphère du lieu)
     const eclairage = eclairementLune(estAujourdhui ? maintenant : `${jourAffiche}T12:00:00Z`);
@@ -201,8 +193,14 @@ export function creerSectionSoleil() {
     const nomPhase = t(`lune.phase-${eclairage.code}`);
     const eclairee = t('lune.eclairee', { pourcent: pourcent(eclairage.fraction * 100) });
     lune.querySelector('strong').textContent = nomPhase;
-    lune.querySelector('span').textContent = eclairee;
-    lune.setAttribute('aria-label', `${nomPhase}, ${eclairee}`);
+    lune.querySelector('.lune-meteo-fraction').textContent = eclairee;
+    const journeeL = journeeLune(jourAffiche, position.latitude, position.longitude, decalage);
+    const heureLune = (date) => (date ? heure(date) : '—');
+    const heuresLune = journeeL.regime === 'normal'
+      ? t('meteo-astres.lune-heures', { lever: heureLune(journeeL.lever), coucher: heureLune(journeeL.coucher) })
+      : t(`lune.${journeeL.regime}`);
+    lune.querySelector('.lune-meteo-heures').textContent = heuresLune;
+    lune.setAttribute('aria-label', `${nomPhase}, ${eclairee}, ${heuresLune}`);
 
     note.textContent = fuseauDuLieu
       ? t('soleil.relief')

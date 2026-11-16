@@ -366,8 +366,6 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .geologie-terrain[hidden] { display: none; }
 /* Ombre du soleil */
 .relief-ombres { margin-top: 6px; }
-.relief-ombres .ombres-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
-.relief-ombres .ombres-choix svg { width: 18px; height: 18px; flex: none; }
 .ombres-details { display: grid; gap: 10px; }
 .ombres-details[hidden], .ombres-etat[hidden] { display: none; }
 .ombres-jour { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 6px; }
@@ -409,8 +407,6 @@ body:has(#menu-tiroir.ouvert) .couches-actives, body.en-visite .couches-actives 
 .ombres-cadran-soleil { fill: #f2b33d; }
 svg.nuit .ombres-cadran-soleil { fill: var(--texte-2); }
 svg.nuit .ombres-cadran-ombre { display: none; }
-.relief-ombres .ombres-portees-ligne { min-height: 40px; margin: 0; }
-.relief-ombres .ombres-portees-ligne input { width: 20px; height: 20px; margin: 0; }
 .relief-ombres .ombres-etat { margin: -4px 0 0; color: var(--texte); }
 .relief-ombres .note { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }
@@ -443,14 +439,14 @@ svg.nuit .ombres-cadran-ombre { display: none; }
   background: var(--surface-2); color: var(--texte); font: 14px var(--police);
 }
 .ciel-lieu-champ:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
-.ciel-course { position: relative; height: 62px; margin: 6px 8px 0; }
-.ciel-course > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ciel-course { position: relative; height: 72px; margin: 8px 8px 2px; }
+.ciel-course > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .ciel-course-horizon { stroke: color-mix(in srgb, var(--texte-2) 55%, transparent); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .ciel-course-aire { fill: color-mix(in srgb, #f2b33d 13%, transparent); }
 .ciel-course-soleil-jour { fill: none; stroke: #f2b33d; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .ciel-course-soleil-nuit { fill: none; stroke: var(--texte-2); stroke-width: 1.2; stroke-dasharray: 3 4; opacity: .45; vector-effect: non-scaling-stroke; }
 .ciel-course-lune-trace { fill: none; stroke: #b9c3da; stroke-width: 1.4; stroke-dasharray: 1 4; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
-.ciel-course-repere { position: absolute; top: 64.5%; width: 2px; height: 9px; margin: -4.5px 0 0 -1px; border-radius: 1px; background: #f2b33d; }
+.ciel-course-repere { position: absolute; top: 50%; width: 2px; height: 9px; margin: -4.5px 0 0 -1px; border-radius: 1px; background: #f2b33d; }
 .ciel-course-repere[hidden] { display: none; }
 .ciel-course-soleil, .ciel-course-lune { position: absolute; pointer-events: none; }
 .ciel-course-soleil { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); box-shadow: 0 0 10px 3px rgb(255 200 90 / .5); }
@@ -2520,7 +2516,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .soleil-point { fill: var(--soleil); stroke: var(--surface); stroke-width: 2; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--soleil) 70%, transparent)); }
 .soleil-point.sous-horizon { fill: var(--texte-2); filter: none; }
 .soleil-regime { margin: 0; color: var(--soleil); font-size: 11.5px; font-weight: 600; }
-.soleil-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.soleil-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .soleil-plages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .soleil-case {
   display: grid;
@@ -3950,6 +3946,7 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Lune dans le ciel en 3D (soleil-ciel.js) : côté éclairé tourné vers le soleil */
 .lune-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
 .lune-ciel[hidden] { display: none; }
+.lune-ciel svg, .soleil-ciel-disque { pointer-events: auto; cursor: pointer; } /* ils se touchent : lune-bulle.js */
 .lune-ciel svg { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 0 1.5px rgb(14 20 42 / .9)) drop-shadow(0 0 9px rgb(225 232 255 / .65)); }
 .lune-ciel .lune-cendree { opacity: .28; } /* face sombre, à peine éclairée par la Terre */
 .lune-contour { fill: none; stroke: #f1f4fb; stroke-width: .75; opacity: .95; }
@@ -4064,3 +4061,229 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Ciel autour du globe (ciel.js) : derrière la carte, qui le laisse voir autour de la Terre */
 .ciel-etoiles, .globe-atmosphere { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .ciel-etoiles[hidden], .globe-atmosphere[hidden] { display: none; }
+
+/* ---------- Visiter la Lune (lot 4.10) ---------- */
+.lune-visite { position: fixed; inset: 0; z-index: 40; background: #020306; opacity: 0; transition: opacity .35s ease; }
+.lune-visite.prete { opacity: 1; }
+.lune-visite-carte { position: absolute; inset: 0; }
+.lune-visite .maplibregl-canvas-container { z-index: 1; }
+.lune-visite-quitter {
+  position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 16px 0 12px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font: 600 14px var(--police); cursor: pointer;
+}
+.lune-visite-quitter:hover { background: var(--survol); }
+.lune-visite-quitter svg { width: 22px; height: 22px; fill: none; stroke: #6fb6ff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+/* Plus fort que les règles qui cachent les panneaux .bf quand le menu ou un outil est ouvert sur la Terre */
+body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left: 14px; z-index: 3; display: grid; width: 340px; }
+.lune-visite-panneau .note { margin: 0; font-size: 12px; color: var(--texte-2); }
+.lune-visite-eclairage { margin: 0; }
+.lune-visite-reel { display: grid; gap: 12px; }
+.lune-visite-reel[hidden] { display: none; }
+.lune-visite-maintenant { justify-self: start; }
+.lune-visite-barre { display: none; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--texte); text-align: left; cursor: pointer; }
+.lune-visite-barre-icone .lune-icone { width: 26px; height: 26px; }
+.lune-visite-barre .bf-chevron { margin-left: auto; }
+.lune-visite-panneau.bf-reduite > :not(.lune-visite-barre) { display: none; }
+.lune-visite-panneau.bf-reduite .lune-visite-barre { display: flex; }
+@media (max-width: 640px) {
+  body .lune-visite .lune-visite-panneau.bf { top: auto; bottom: 0; left: 0; width: 100%; }
+  .lune-visite .maplibregl-ctrl-bottom-right { bottom: 64px; }
+}
+.lune-fiche .maplibregl-popup-content { padding: 12px 14px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font-family: var(--police); }
+.lune-fiche .maplibregl-popup-close-button { width: 32px; height: 32px; color: var(--texte-2); font-size: 20px; }
+.lune-fiche.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--surface); }
+.lune-fiche.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--surface); }
+.lune-fiche.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--surface); }
+.lune-fiche.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--surface); }
+.lune-fiche-nom { display: block; padding-right: 22px; font-size: 15px; }
+.lune-fiche-latin { display: block; margin-top: 1px; color: var(--texte-2); font-size: 12.5px; }
+.lune-fiche-genre, .lune-fiche-ligne, .lune-fiche-origine { margin: 6px 0 0; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.lune-fiche-genre { color: var(--texte-2); }
+.lune-fiche-origine { color: var(--texte-2); line-height: 1.4; }
+.lune-fiche-origine span { color: var(--texte); font-weight: 600; }
+.lune-bulle {
+  position: fixed; z-index: 35; display: flex; gap: 6px; padding: 6px; border: 1px solid var(--bord); border-radius: 14px;
+  background: var(--surface); box-shadow: var(--ombre-forte); font-family: var(--police);
+}
+.lune-bulle[hidden] { display: none; }
+.lune-bulle button { min-height: 40px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer; white-space: nowrap; }
+.lune-bulle button:hover { background: var(--survol); }
+.lune-bulle button.principal { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+.lune-visiter {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 12px;
+  background: var(--surface-2); color: var(--texte); text-align: left; cursor: pointer; font-family: var(--police);
+}
+.lune-visiter:hover { background: var(--survol); }
+.lune-visiter .lune-icone { width: 30px; height: 30px; flex: none; }
+.lune-visiter-textes { display: grid; gap: 2px; min-width: 0; }
+.lune-visiter-textes strong { font-size: 14px; }
+.lune-visiter-textes small { color: var(--texte-2); font-size: 12px; }
+.lune-visiter-fleche { width: 18px; height: 18px; margin-left: auto; flex: none; fill: none; stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lune-visite-haut { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 70px; z-index: 4; display: flex; gap: 8px; align-items: flex-start; }
+.lune-visite .lune-visite-quitter { position: static; flex: none; }
+.lune-recherche { position: relative; flex: 0 1 320px; min-width: 0; }
+.lune-recherche-champ {
+  box-sizing: border-box; width: 100%; height: 44px; padding: 0 48px 0 14px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font: 14px var(--police);
+}
+.lune-recherche-champ::placeholder { color: var(--texte-2); }
+.lune-recherche-sites {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.lune-recherche-sites:hover, .lune-recherche-sites.actif { background: var(--accent); color: var(--accent-texte); }
+.lune-recherche-sites svg, .lune-visite-vue-terre svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.lune-recherche-liste {
+  position: absolute; top: 50px; left: 0; right: 0; display: grid; max-height: min(60dvh, 420px); overflow-y: auto; padding: 6px;
+  border: 1px solid var(--bord); border-radius: 14px; background: var(--surface); box-shadow: var(--ombre-forte);
+}
+.lune-recherche-liste[hidden] { display: none; }
+.lune-recherche-titre, .lune-recherche-vide { margin: 4px 8px 6px; color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.lune-recherche-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--texte); text-align: left; cursor: pointer; font-family: var(--police);
+}
+.lune-recherche-item:hover, .lune-recherche-item:focus-visible { background: var(--survol); }
+.lune-recherche-item > span:last-child { display: grid; min-width: 0; }
+.lune-recherche-item strong { font-size: 14px; }
+.lune-recherche-item em { color: var(--texte-2); font-size: 12px; }
+.lune-recherche-item em:empty { display: none; }
+.lune-recherche-item small { color: var(--texte-2); font-size: 12px; }
+.lune-recherche-pastille { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #c9ccd4; }
+.lune-recherche-pastille.site { background: #c9b8ff; }
+.lune-recherche-pastille.site.equipage { background: #ff9f43; }
+.lune-visite-vue-terre {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
+}
+.lune-visite-vue-terre:hover { background: var(--survol); }
+.lune-visite-vue-terre svg { stroke: #6fb6ff; }
+.terre-ciel-image { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; filter: drop-shadow(0 0 8px rgb(110 180 255 / .55)); }
+.terre-ciel.bord .terre-ciel-image { left: -13px; top: -13px; width: 26px; height: 26px; }
+@media (max-width: 640px) {
+  .lune-visite .lune-visite-quitter { padding: 0 12px; }
+  .lune-visite .lune-visite-quitter span { display: none; }
+  .lune-recherche { flex: 1 1 auto; }
+  body .lune-visite .lune-visite-panneau.bf { top: auto; }
+}
+.lune-bulle-retour { z-index: 5; }
+.lune-bulle-retour button { display: inline-flex; align-items: center; gap: 8px; }
+.lune-bulle-retour svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Frise de Soleil et Lune : ciel de coucher de soleil et mer (demande du propriétaire du 16 novembre 2026, « un peu Vice City ») */
+.ciel-course-decor { position: absolute; inset: 0 -8px; overflow: hidden; border-radius: 10px; }
+.ciel-course-decor i { position: absolute; left: 0; right: 0; }
+.ciel-course-ciel { top: 0; height: 50%; background: linear-gradient(180deg, #160c33 0%, #3d1a63 35%, #8a2f7a 68%, #e0526e 88%, #ff9a5c 100%); }
+.ciel-course-mer {
+  bottom: 0; height: 50%;
+  background:
+    radial-gradient(60% 55% at 50% 0%, rgb(255 140 110 / .45), transparent 70%),
+    repeating-linear-gradient(180deg, rgb(255 255 255 / .06) 0 1px, transparent 1px 5px),
+    linear-gradient(180deg, #2a1d5c 0%, #10264a 45%, #071224 100%);
+}
+.ciel-course > svg { z-index: 1; }
+.ciel-course .ciel-course-horizon { stroke: rgb(255 214 170 / .8); }
+.ciel-course .ciel-course-aire { fill: rgb(255 190 110 / .22); }
+.ciel-course .ciel-course-soleil-nuit { stroke: rgb(220 225 255 / .7); opacity: .8; }
+.ciel-course .ciel-course-lune-trace { stroke: #dfe6ff; opacity: .85; }
+.ciel-course-repere, .ciel-course-soleil, .ciel-course-lune { z-index: 2; }
+.ciel-course-heure {
+  position: absolute; top: calc(50% + 8px); z-index: 2; transform: translateX(-50%); padding: 1px 5px; border-radius: 6px;
+  background: rgb(7 18 36 / .55); color: #ffe2c4; font: 600 11px var(--police); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+}
+.ciel-course-heure[hidden] { display: none; }
+.ciel-course-heure-lever { transform: translateX(-80%); }
+.ciel-course-heure-coucher { transform: translateX(-20%); }
+.soleil-heures { margin-top: 2px; }
+
+/* Frise : astres et traits qui ressortent sur le décor */
+.ciel-course .ciel-course-soleil { width: 18px; height: 18px; margin: -9px 0 0 -9px; box-shadow: 0 0 0 2px #1b0d33, 0 0 0 3px rgb(255 214 150 / .7), 0 0 14px 4px rgb(255 200 90 / .55); }
+.ciel-course .ciel-course-soleil.couche { opacity: .75; box-shadow: 0 0 0 2px #1b0d33, 0 0 0 3px rgb(220 225 255 / .45); }
+.ciel-course .ciel-course-lune { width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #0d0a24; box-shadow: 0 0 0 1.5px rgb(236 240 255 / .9), 0 0 12px 3px rgb(220 228 255 / .55); filter: none; }
+.ciel-course .ciel-course-lune .lune-cendree { opacity: .45; }
+.ciel-course .ciel-course-lune.couche { opacity: .7; }
+.ciel-course .ciel-course-lune-trace { stroke: #f1f4ff; stroke-width: 1.8; stroke-dasharray: 1.5 4; opacity: 1; }
+.ciel-course .ciel-course-soleil-jour { stroke: #ffc14d; stroke-width: 2.6; }
+.ciel-course .ciel-course-soleil-nuit { stroke: rgb(255 214 170 / .85); stroke-width: 1.4; }
+
+/* Lignes Soleil et Lune (retouche du 16 novembre 2026, demande du propriétaire) : carte d'en-tête teintée par
+   l'astre, tuiles Lever / Au plus haut / Coucher avec pictogrammes, option Ombre du soleil avec interrupteur */
+.relief-ombres { display: grid; gap: 10px; margin-top: 0; }
+.astre-carte {
+  display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--bord); border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, #f2b33d 16%, var(--surface-2)) 0%, var(--surface-2) 65%);
+}
+.lune-carte { background: linear-gradient(135deg, color-mix(in srgb, #9fb2ff 16%, var(--surface-2)) 0%, var(--surface-2) 65%); }
+.astre-carte.nuit { background: linear-gradient(135deg, color-mix(in srgb, #5b6ea8 14%, var(--surface-2)) 0%, var(--surface-2) 65%); }
+.astre-carte .astre-cadran { width: 54px; height: 54px; flex: none; }
+.astre-valeurs { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.astre-grande { font-size: 26px; font-weight: 750; line-height: 1.05; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.lune-carte .astre-grande { font-size: 17px; line-height: 1.2; }
+.astre-sous { color: var(--texte-2); font-size: 12.5px; }
+.lune-carte .lune-icone-boite .lune-icone { width: 58px; height: 58px; filter: drop-shadow(0 0 10px rgb(220 228 255 / .35)); }
+.lune-carte .lune-cadran { width: 34px; height: 34px; flex: none; }
+.astre-heures { display: grid; gap: 6px; }
+.astre-tuiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.astre-tuile { display: grid; justify-items: center; gap: 3px; padding: 10px 4px 9px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface-2); }
+.astre-tuile svg { width: 20px; height: 20px; color: #f2b33d; }
+.lune-panneau .astre-tuile svg { color: #b9c6ff; }
+.astre-tuile span { color: var(--texte-2); font-size: 11.5px; }
+.astre-tuile strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+.astre-duree { margin: 0; color: var(--texte-2); font-size: 12px; text-align: center; }
+.astre-duree:empty { display: none; }
+.astre-option {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 1px solid var(--bord); border-radius: 14px;
+  background: var(--surface-2); color: var(--texte); text-align: left; font-family: var(--police); cursor: pointer;
+}
+.astre-option:hover { background: var(--survol); }
+.astre-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.astre-option-icone { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 11px; background: color-mix(in srgb, #f2b33d 16%, transparent); color: #f2b33d; }
+.astre-option-icone svg { width: 20px; height: 20px; }
+.astre-option-textes { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.astre-option-textes strong { font-size: 14px; }
+.astre-option-textes small { color: var(--texte-2); font-size: 12px; line-height: 1.35; }
+.interrupteur { position: relative; flex: none; width: 42px; height: 24px; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--bord); transition: background .2s; }
+.interrupteur::after { content: ''; position: absolute; top: 4px; left: 4px; width: 16px; height: 16px; border-radius: 50%; background: var(--texte-2); transition: transform .2s, background .2s; }
+.astre-option.actif { border-color: color-mix(in srgb, var(--accent) 55%, var(--bord)); }
+.astre-option.actif .interrupteur { background: var(--accent); box-shadow: none; }
+.astre-option.actif .interrupteur::after { transform: translateX(18px); background: var(--accent-texte); }
+.relief-ombres .ombres-details { padding: 0 4px; }
+/* Frise : la course de la Lune pleine quand elle est levée, en pointillés quand elle est couchée */
+.ciel-course .ciel-course-lune-jour { fill: none; stroke: #eef2ff; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* Météo › Soleil et Lune : deux blocs, soleil puis Lune, et un lien vers la rubrique */
+.meteo-astre { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.meteo-astre.soleil-lune { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: linear-gradient(135deg, color-mix(in srgb, #9fb2ff 12%, var(--surface-2)) 0%, var(--surface-2) 65%); }
+.meteo-astre.soleil-lune .lune-icone { width: 42px; height: 42px; filter: drop-shadow(0 0 6px rgb(220 228 255 / .3)); }
+.meteo-astre.soleil-lune .lune-phase-textes { display: grid; gap: 1px; }
+.meteo-astre.soleil-lune .lune-phase-textes strong { font-size: 14px; }
+.meteo-astre.soleil-lune .lune-phase-textes span { color: var(--texte-2); font-size: 12px; }
+.meteo-astre .soleil-case { background: var(--surface); }
+.soleil-dorees { margin: 0; color: var(--soleil); font-size: 12px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.soleil-dorees:empty { display: none; }
+.meteo-astres-lien {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: transparent; color: var(--accent); font: 600 12.5px var(--police); cursor: pointer; text-align: left;
+}
+.meteo-astres-lien:hover { background: var(--survol); }
+.meteo-astres-lien svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Flèche de la Lune en mode espace, sur la Terre (lune-bulle.js) */
+.astre-indice { position: absolute; top: 0; left: 0; z-index: 3; width: 0; height: 0; padding: 0; border: 0; background: none; cursor: pointer; }
+.astre-indice[hidden] { display: none; }
+.astre-indice-lune {
+  position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 36%, #f4f2ea, #c9c8c2 55%, #8f9098); box-shadow: 0 0 0 1.5px rgb(14 20 42 / .85), 0 0 12px 3px rgb(220 228 255 / .45);
+}
+.astre-indice-fleche { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; pointer-events: none; }
+.astre-indice-fleche::before {
+  content: ''; position: absolute; left: 50%; top: -1px; margin-left: -6px;
+  border: 6px solid transparent; border-bottom: 8px solid rgb(236 240 255 / .9); border-top: 0;
+}
+
+/* Logo de la Terre (Quitter la Lune, Retourner sur la Terre) : continents pleins dans un cercle */
+.icone-terre .plein { fill: currentColor; stroke: none; }
+.icone-terre .contour { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.lune-visite-quitter .icone-terre { color: #6fb6ff; stroke: none; }
+.lune-bulle-retour .icone-terre { stroke: none; }

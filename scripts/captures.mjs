@@ -13,7 +13,7 @@ import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 import { fragmentParcours } from '../src/partage-calcul.js';
-import { getMoonPosition } from 'suncalc';
+import { getMoonPosition, getPosition } from 'suncalc';
 import { directionEtoile, tempsSideral } from '../src/ciel-calcul.js';
 
 const require = createRequire(import.meta.url);
@@ -256,6 +256,19 @@ const { fragment: LIEN_PARCOURS } = await fragmentParcours({
   ],
 });
 
+// Visite de la Lune, ouverte depuis Soleil et Lune ; sa carte est accessible par window.mapLune
+const ALLER_LUNE = [vue(MATIN), module('lune'), attendre('.lune-visiter'), clic('.lune-visiter'), attendre('.lune-visite.prete')];
+const vueLune = (options) => (page) => page.evaluate((o) => { window.mapLune.jumpTo(o); }, options);
+const clicLune = (lngLat) => async (page) => {
+  const { x, y } = await page.evaluate((ll) => { const p = window.mapLune.project(ll); return { x: p.x, y: p.y }; }, lngLat);
+  await page.mouse.click(x, y);
+};
+
+const toucherTerre = async (page) => {
+  const p = await page.evaluate(() => window.terreLune?.());
+  if (p) await page.mouse.click(p.x, p.y);
+};
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
@@ -338,7 +351,7 @@ const ECRANS = [
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
   // Phase de la Lune sous le Soleil des conditions locales (lot 4.7)
-  { nom: 'meteo-lune', simuler: true, actions: [module('meteo-locale'), attendre('.soleil-lune'), (p) => p.waitForTimeout(1500), defiler('.meteo-soleil .soleil-plages')] },
+  { nom: 'meteo-lune', simuler: true, actions: [module('meteo-locale'), attendre('.soleil-lune'), (p) => p.waitForTimeout(1500), defiler('.meteo-soleil')] },
   { nom: 'meteo-pin-ferme', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(2000), clicVisible('.outil-rapide-panneau:not([hidden]) .outil-rapide-fermer'), (p) => p.waitForTimeout(1000)] },
   // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
   // Pin de la recherche : bulle avec « Copier » seul ; un appui sur la carte à côté l'enlève
@@ -547,31 +560,31 @@ const ECRANS = [
   // Activité en cours, menu fermé : sa pastille avec les couches
   { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
-  { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
     nom: 'ciel-ombres-3d',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
       (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
   },
   // Le soleil dans le ciel en 3D, en fin d'après-midi, face à lui
   {
     nom: 'ciel-ombres-3d-soleil',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
       clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 238 }), (p) => p.waitForTimeout(5000)],
   },
-  { nom: 'ciel-ombres-ferme', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'ciel-ombres-ferme', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   // Un jour choisi au calendrier (appui sur le nom du jour)
   {
     nom: 'ciel-ombres-jour',
-    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(12 * 60),
+    actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(12 * 60),
       (p) => p.evaluate(() => {
         const champ = document.querySelector('.ombres-calendrier');
         champ.value = '2027-02-15';
         champ.dispatchEvent(new Event('change', { bubbles: true }));
       }), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')],
   },
-  { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
   { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
   // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
@@ -585,7 +598,7 @@ const ECRANS = [
       clic('.ciel-lieu-liste .rando-item'), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'ciel-soleil', actions: [vue(MATIN), module('ombres'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1000), defiler('.ciel-position-soleil')] },
-  { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-position')] },
+  { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-carte')] },
   // Appui sur la pleine lune du cycle : la frise passe à ce jour, quand la Lune est au plus haut
   { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-phase:nth-child(3)'), (p) => p.waitForTimeout(1000)] },
   // Flèche › : le jour suivant, entre deux phases
@@ -596,6 +609,99 @@ const ECRANS = [
     actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
+  },
+  // Visiter la Lune (lot 4.10) : bouton en bas de la ligne Lune, globe lunaire, temps réel, gros plan 3D, fiche
+  { nom: 'ciel-lune-visiter', actions: [vue(MATIN), module('lune'), attendre('.lune-visiter'), (p) => p.waitForTimeout(800), defiler('.lune-visiter')] },
+  { nom: 'lune-visite', actions: [...ALLER_LUNE, (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
+  // Copernic en 3D, incliné, panneau réduit
+  {
+    nom: 'lune-visite-copernic',
+    actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [-20.08, 8.2], zoom: 6.2, pitch: 62, bearing: 0 }), (p) => p.waitForTimeout(12000)],
+  },
+  // Mer de la Tranquillité et Apollo 11, puis la fiche du site
+  {
+    nom: 'lune-visite-fiche',
+    actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [23.47, 0.67], zoom: 4.2, pitch: 0, bearing: 0 }), (p) => p.waitForTimeout(8000), clicLune([23.473, 0.674]), (p) => p.waitForTimeout(1500)],
+  },
+  // Pôle nord, incliné : ni rayons ni pixels (fondu vers les calottes)
+  { nom: 'lune-visite-pole', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 80], zoom: 2.4, pitch: 30, bearing: 0 }), (p) => p.waitForTimeout(9000)] },
+  // La Terre dans le ciel lunaire, au-dessus de l'horizon sud, vue depuis la mer du Froid
+  { nom: 'lune-visite-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 62], zoom: 5, pitch: 78, bearing: 180 }), (p) => p.waitForTimeout(9000)] },
+  // Appui sur la Terre (ou sa flèche) : près du bord de la face visible, tourné vers elle, elle se lève sur l'horizon
+  // Vue depuis la Terre (nord en haut) : la Terre est derrière, sa flèche le dit ; un appui la fait apparaître
+  { nom: 'lune-visite-fleche-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-fleche-terre-appui', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(3000), clic('.terre-ciel-image'), (p) => p.waitForTimeout(9000)] },
+  // Terre visible dans le ciel, touchée : bulle « Retourner sur la Terre »
+  { nom: 'lune-visite-retour-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(3000), toucherTerre, (p) => p.waitForTimeout(800)] },
+  // Terre hors champ : au bord, avec sa flèche
+  { nom: 'lune-visite-terre-bord', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 40], zoom: 5, pitch: 70, bearing: 0 }), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
+  {
+    nom: 'lune-visite-recherche',
+    actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tran'); }, (p) => p.waitForTimeout(1500)],
+  },
+  { nom: 'lune-visite-sites', actions: [...ALLER_LUNE, clic('.lune-recherche-sites'), (p) => p.waitForTimeout(1500)] },
+  {
+    nom: 'lune-visite-recherche-tycho',
+    actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tycho'); }, (p) => p.waitForTimeout(800), clic('.lune-recherche-item'), (p) => p.waitForTimeout(9000)],
+  },
+  // Le soleil du ciel touché au dézoom : bulle Informations seule
+  {
+    nom: 'globe-soleil-bulle',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            const soleil = getPosition(maintenant, lat, lng);
+            const ecart = Math.abs(soleil.altitude + 76) + Math.min(Math.abs(soleil.azimuth % 180), 180 - Math.abs(soleil.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointSoleil());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(1000),
+    ],
+  },
+  // La Lune du ciel touchée au dézoom : bulle Informations ou Visiter la Lune
+  {
+    nom: 'globe-lune-bulle',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            // 14° du nadir, au nord ou au sud : sur l'écran étroit d'un téléphone, la Lune reste visible au-dessus ou au-dessous de la Terre
+            const lune = getMoonPosition(maintenant, lat, lng);
+            const ecart = Math.abs(lune.altitude + 76) + Math.min(Math.abs(lune.azimuth % 180), 180 - Math.abs(lune.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointLune());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(1000),
+    ],
+  },
+  // Même option au dézoom (zoom 7, globe) : le ciel 3D prend le relais du ciel du globe
+  {
+    nom: 'ciel-lune-3d-dezoom',
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+      clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },

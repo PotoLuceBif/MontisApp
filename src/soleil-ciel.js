@@ -5,7 +5,9 @@ import { placerSoleil, positionCamera, projeterSoleil } from './soleil-ciel-calc
 import { dessinPhase } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 
-const ZOOM_MIN = 9; // en dessous, projection globe (main.js)
+// Dès que le ciel du globe s'efface (ciel.js, zoom 6) : plus de trou entre les deux au dézoom (demande du
+// propriétaire du 16 novembre 2026)
+const ZOOM_MIN = 6;
 // Au bord, le petit soleil s'écarte ensuite des boutons et panneaux qui le couvriraient (`placerAuLarge`)
 const MARGE_BORD = { haut: 30, bas: 30, gauche: 30, droite: 30 };
 const METRES_PAR_DEGRE = 111_320;
@@ -25,6 +27,17 @@ export function creerSoleilCiel(map) {
   elementLune.setAttribute('aria-hidden', 'true');
   elementLune.innerHTML = `${svgLune({ contour: true })}<i class="lune-ciel-fleche"></i>`;
   map.getCanvasContainer().append(element, elementLune);
+  // Un appui sur la Lune propose ses informations ou sa visite, sur le soleil ses informations (lune-bulle.js)
+  const toucher = (cible, astre) => cible.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const cadre = map.getContainer().getBoundingClientRect();
+    const disque = event.currentTarget.getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('montis:astre-touche', {
+      detail: { astre, x: disque.left + disque.width / 2 - cadre.left, y: disque.top + disque.height / 2 - cadre.top },
+    }));
+  });
+  toucher(elementLune.querySelector('svg'), 'lune');
+  toucher(element.querySelector('.soleil-ciel-disque'), 'soleil');
   const fleche = element.querySelector('.soleil-ciel-fleche');
   const phaseLune = elementLune.querySelector('.lune-phase-chemin');
   const flecheLune = elementLune.querySelector('.lune-ciel-fleche');
@@ -66,6 +79,9 @@ export function creerSoleilCiel(map) {
   };
   function placerAuLarge(projection, largeur, hauteurEcran) {
     const marge = { ...MARGE_BORD };
+    // Pendant un déplacement, la place simple : chercher un coin libre lit la mise en page jusqu'à 48 fois par image
+    // et faisait saccader la carte ; l'évitement se refait à l'arrêt (idle)
+    if (map.isMoving()) return placerSoleil(projection, { largeur, hauteurEcran, marge, margeVisible: 8 });
     for (let essai = 0; ; essai += 1) {
       const place = placerSoleil(projection, { largeur, hauteurEcran, marge, margeVisible: 8 });
       if (place.dedans || essai >= 24) return place;

@@ -2,7 +2,7 @@
 // (soleil-lune.js) et aux visites de stations (visite-station.js). Le soleil se calcule au centre de la carte.
 // Option `course` (Soleil et Lune) : au-dessus du curseur, la course du soleil et, plus discrète, celle de la
 // Lune ; les deux astres suivent le curseur, se lèvent et se couchent sur la ligne d'horizon.
-import { courseSoleil, decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
+import { courseSoleil, decalageAppareil, hauteurMaxAnnee, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
 import { courseLune, dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 import { codeCardinal } from './vent-calcul.js';
@@ -12,13 +12,17 @@ import { nombre } from './unites.js';
 
 const MINUTE = 60000;
 const PAS_CURSEUR = 5;
-// Dessin de la course : largeur arbitraire (étirée), horizon à 40 px. Au-dessus, l'échelle suit le soleil du
-// jour (au plus haut à 34 px, même en hiver) ; en dessous, la nuit est tassée
+// Dessin de la course : largeur arbitraire (étirée), horizon au milieu, même échelle au-dessus et en dessous : de
+// vraies sinusoïdes, sans plat la nuit (demande du propriétaire du 16 novembre 2026). L'échelle est fixe pour un lieu,
+// calée sur le soleil le plus haut de l'année (un peu plus pour la Lune, qui monte jusqu'à 5° plus haut) : l'été
+// monte plus haut que l'hiver, et rien ne bouge d'un jour à l'autre. Avant, elle suivait chaque jour le plus haut
+// du soleil et de la Lune, et le soleil semblait monter et descendre au rythme de la Lune.
 const LARGEUR_COURSE = 288;
-const HAUTEUR_COURSE = 62;
-const HORIZON = 40;
+const HAUTEUR_COURSE = 72;
+const HORIZON = HAUTEUR_COURSE / 2;
+const AMPLITUDE = HORIZON - 3;
 let echelleCourse = 1;
-const yCourse = (hauteur) => Math.max(3, Math.min(HAUTEUR_COURSE - 3, HORIZON - hauteur * (hauteur > 0 ? echelleCourse : 0.35)));
+const yCourse = (hauteur) => Math.max(2, Math.min(HAUTEUR_COURSE - 2, HORIZON - hauteur * echelleCourse));
 const xCourse = (minutes) => (minutes / (24 * 60)) * LARGEUR_COURSE;
 const traceCourse = (points) => points.map((p, i) => `${i ? 'L' : 'M'}${xCourse(p.minutes).toFixed(1)} ${yCourse(p.hauteur).toFixed(1)}`).join('');
 
@@ -61,15 +65,18 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
         <strong class="ombres-heure-valeur"></strong>
       </div>
       ${course ? `<div class="ciel-course" aria-hidden="true">
+        <div class="ciel-course-decor"><i class="ciel-course-ciel"></i><i class="ciel-course-mer"></i></div>
         <svg viewBox="0 0 ${LARGEUR_COURSE} ${HAUTEUR_COURSE}" preserveAspectRatio="none">
           <defs><clipPath id="ciel-course-jour"><rect x="0" y="0" width="${LARGEUR_COURSE}" height="${HORIZON}"/></clipPath></defs>
           <path class="ciel-course-aire" clip-path="url(#ciel-course-jour)"/>
           <line class="ciel-course-horizon" x1="0" x2="${LARGEUR_COURSE}" y1="${HORIZON}" y2="${HORIZON}"/>
           <path class="ciel-course-lune-trace"/>
+          <path class="ciel-course-lune-jour" clip-path="url(#ciel-course-jour)"/>
           <path class="ciel-course-soleil-nuit"/>
           <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
         </svg>
         <i class="ciel-course-repere ciel-course-lever"></i><i class="ciel-course-repere ciel-course-coucher"></i>
+        <span class="ciel-course-heure ciel-course-heure-lever"></span><span class="ciel-course-heure ciel-course-heure-coucher"></span>
         <span class="ciel-course-lune">${svgLune({ classe: 'lune-icone' })}</span>
         <i class="ciel-course-soleil"></i>
       </div>` : ''}
@@ -132,8 +139,8 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     valeurHeure.textContent = heureDuLieu(instant(), decalage);
     curseur.value = minutesChoisies();
     element.querySelector('.ombres-maintenant').classList.toggle('actif', heure === 'maintenant' && jour === aujourdhui);
-    element.querySelector('.ombres-lever').textContent = journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
-    element.querySelector('.ombres-coucher').textContent = journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
+    element.querySelector('.ombres-lever').textContent = !course && journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
+    element.querySelector('.ombres-coucher').textContent = !course && journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
     // Bande du jour sous le curseur
     const position = (date) => ((date.getTime() - (midiLocal(jour, decalage).getTime() - 12 * 60 * MINUTE)) / (24 * 60 * MINUTE)) * 100;
     if (journee?.regime === 'jour-polaire') piste.style.cssText = 'left: 0; right: 0;';
@@ -161,12 +168,14 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       courseCle = cle;
       const pointsSoleil = courseSoleil(jour, lieu.lat, lieu.lng, decalage);
       const pointsLune = courseLune(jour, lieu.lat, lieu.lng, decalage);
-      echelleCourse = 34 / Math.max(20, ...pointsSoleil.map((p) => p.hauteur), ...pointsLune.map((p) => p.hauteur));
+      echelleCourse = AMPLITUDE / Math.min(90, hauteurMaxAnnee(lieu.lat) + 5.2);
       const trace = traceCourse(pointsSoleil);
       boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
       boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);
       boite.querySelector('.ciel-course-aire').setAttribute('d', `${trace}L${LARGEUR_COURSE} ${HORIZON}L0 ${HORIZON}Z`);
-      boite.querySelector('.ciel-course-lune-trace').setAttribute('d', traceCourse(pointsLune));
+      const traceLune = traceCourse(pointsLune);
+      boite.querySelector('.ciel-course-lune-trace').setAttribute('d', traceLune);
+      boite.querySelector('.ciel-course-lune-jour').setAttribute('d', traceLune);
       // Lever et coucher marqués sur l'horizon
       const debut = midiLocal(jour, decalage).getTime() - 12 * 60 * MINUTE;
       const repere = (classe, date) => {
@@ -176,6 +185,10 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       };
       repere('.ciel-course-lever', journee?.lever);
       repere('.ciel-course-coucher', journee?.coucher);
+      repere('.ciel-course-heure-lever', journee?.lever);
+      repere('.ciel-course-heure-coucher', journee?.coucher);
+      boite.querySelector('.ciel-course-heure-lever').textContent = journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
+      boite.querySelector('.ciel-course-heure-coucher').textContent = journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
     }
     const minutes = minutesChoisies();
     const placer = (el, hauteur) => {
@@ -259,6 +272,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     fuseauLieu: () => fuseauLieu,
     changerFuseau,
     soleil: () => soleil,
+    journee: () => journee,
     placer,
   };
 }

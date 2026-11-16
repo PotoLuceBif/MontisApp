@@ -49,13 +49,13 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
 
   // ---------- État ----------
   let actif = false;
-  let portees = lire('ombres-portees', true);
+  // L'ombre portée des montagnes fait toujours partie de l'ombre du soleil (décision du propriétaire du 16 novembre 2026)
+  const portees = true;
   let intensite = lire('ombres-intensite', 0.45);
   let erreurs = 0;
 
   // ---------- Panneau ----------
   details.innerHTML = `
-    <label class="ligne-coche ombres-portees-ligne"><input type="checkbox" class="ombres-portees"> <span data-i18n="ombres.portees"></span></label>
     <p class="note ombres-etat" role="status" hidden></p>
     <div class="relief-reglage">
       <div class="relief-entete">
@@ -67,7 +67,6 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
     <p class="note pentes-prudence" data-i18n="ombres.prudence"></p>
   `;
   details.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
-  const casePortees = details.querySelector('.ombres-portees');
   const note = details.querySelector('.ombres-etat');
   const curseurIntensite = details.querySelector('.ombres-intensite');
   const valeurIntensite = details.querySelector('.ombres-intensite-valeur');
@@ -154,12 +153,6 @@ export function initOmbres(map, { details, reglage, partage, eteindre }) {
   }
 
   // ---------- Réglages ----------
-  casePortees.checked = portees;
-  casePortees.addEventListener('change', () => {
-    portees = casePortees.checked;
-    ecrire('ombres-portees', portees);
-    tout();
-  });
   curseurIntensite.value = intensite;
   curseurIntensite.addEventListener('input', () => {
     intensite = Number(curseurIntensite.value);

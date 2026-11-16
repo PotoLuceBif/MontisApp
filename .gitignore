@@ -20,6 +20,7 @@ dist-ssr
 # Cache de travail du script d'extraction des refuges
 scripts/cache-refuges.json
 scripts/cache-bike-parks.json
+scripts/cache-lune-*
 
 # Editor directories and files
 .vscode/*
