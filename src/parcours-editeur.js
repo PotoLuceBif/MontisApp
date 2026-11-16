@@ -453,6 +453,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   // ---------- Historique ----------
   function memoriser() {
     aEnregistrer = true;
+    majEnregistrer();
     passe.push(copier(etapes));
     if (passe.length > MAX_HISTORIQUE) passe.shift();
     futur = [];
@@ -582,7 +583,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     } else {
       poser(message, secours ? 'editeur.secours' : 'editeur.ajouter');
     }
-    boutonEnregistrer.disabled = etapes.length < 2;
+    majEnregistrer();
     boutonPartager.disabled = etapes.length < 2;
     panneau.definirResume({ detail: total ? km(total) : t('editeur.touchez-carte'), valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
     rendre();
@@ -644,11 +645,20 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     }));
   }
 
-  function definirNom(nouveau) {
+  // Depuis le champ, on ne le réécrit pas : sinon, vidé, il se remplissait de « Parcours sans nom »
+  // et un espace tapé en fin de mot disparaissait
+  function definirNom(nouveau, { depuisChamp = false } = {}) {
     nom = nouveau;
     panneau.titre.textContent = nom;
     panneau.definirResume({ nom });
-    if (champNom.value !== nom) champNom.value = nom;
+    if (!depuisChamp && champNom.value !== nom) champNom.value = nom;
+  }
+
+  // Déjà dans Mes parcours et rien changé depuis : le bouton le dit, plutôt que de ne rien faire
+  function majEnregistrer() {
+    const dejaGarde = idParcours !== null && !aEnregistrer;
+    boutonEnregistrer.disabled = etapes.length < 2 || dejaGarde;
+    poser(boutonEnregistrer, dejaGarde ? 'editeur.deja-enregistre' : 'editeur.enregistrer');
   }
 
   function enregistrer() {
@@ -663,12 +673,14 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       plus: analyse?.plus ?? null,
       etapes: compacter(etapes),
     });
-    if (reussi) poser(message, 'editeur.enregistre', { nom });
-    else poser(message, 'editeur.stockage-plein');
+    // La ligne d'état est masquée en lecture : la bulle annonce le résultat partout
+    poser(message, reussi ? 'editeur.enregistre' : 'editeur.stockage-plein', { nom });
+    annoncer(t(reussi ? 'editeur.enregistre' : 'editeur.stockage-plein', { nom }), !reussi);
     if (reussi) {
       aEnregistrer = false;
       onEnregistre();
     }
+    majEnregistrer();
     return reussi;
   }
 
@@ -974,7 +986,11 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   boutonGpx.addEventListener('click', exporterGpx);
   boutonPartager.addEventListener('click', partager);
   boutonEnregistrer.addEventListener('click', enregistrer);
-  champNom.addEventListener('input', () => definirNom(champNom.value.trim() || t('editeur.sans-nom')));
+  champNom.addEventListener('input', () => {
+    definirNom(champNom.value.trim() || t('editeur.sans-nom'), { depuisChamp: true });
+    if (etapes.length > 1) aEnregistrer = true;
+    majEnregistrer();
+  });
   commande('annuler').addEventListener('click', () => restaurer(passe, futur));
   commande('retablir').addEventListener('click', () => restaurer(futur, passe));
   commande('libre').addEventListener('click', () => {

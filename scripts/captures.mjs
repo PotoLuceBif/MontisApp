@@ -584,6 +584,18 @@ const ECRANS = [
   { nom: 'parcours-aide', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-aide'), clicVisible('.parcours-bouton-aide')] },
   { nom: 'parcours-appui-long', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-aide'), (p) => p.waitForTimeout(800), appuiLongSur('[data-commande="libre"]')] },
   { nom: 'parcours-quitter', actions: [vue(PASSON), module('rando'), attendre('.parcours-creer'), (p) => p.waitForTimeout(800), clic('.parcours-creer'), (p) => p.waitForTimeout(2500), poserPoint([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), poserPoint([6.97771, 45.96735]), (p) => p.waitForTimeout(6000), clicVisible('.bf-parcours .bf-fermer'), attendre('.dialogue')] },
+  // Nom saisi puis effacé : le champ reste vide (il se remplissait en boucle) ; puis « Enregistrer » devient « Enregistré »
+  { nom: 'parcours-nom-efface', actions: [vue(PASSON), module('rando'), attendre('.parcours-creer'), (p) => p.waitForTimeout(800), clic('.parcours-creer'), (p) => p.waitForTimeout(2500), poserPoint([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), poserPoint([6.97771, 45.96735]), (p) => p.waitForTimeout(5000),
+    async (p) => {
+      const champ = p.locator('.parcours-nom input >> visible=true').first();
+      await champ.click();
+      await champ.press('Control+a');
+      await champ.pressSequentially('Mon tour ');
+      for (let i = 0; i < 12; i += 1) await champ.press('Backspace');
+      console.log('NOM-VIDE', JSON.stringify(await champ.inputValue()));
+      await champ.pressSequentially('Lac Cornu');
+      console.log('NOM', JSON.stringify(await champ.inputValue()));
+    }, clicVisible('.parcours-enregistrer'), (p) => p.waitForTimeout(800)] },
   { nom: 'parcours-lecture-trajet', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), (p) => p.waitForTimeout(2000), defiler('.parcours-trajet')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
   // L'analyse du vent par-dessus une visite de station : la visite continue, la station reste visible
