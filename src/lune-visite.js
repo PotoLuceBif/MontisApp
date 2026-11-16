@@ -8,14 +8,15 @@ import * as maplibregl from 'maplibre-gl';
 import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { ajouterProtocoleLune, PROTOCOLE_LUNE } from './lune-tuiles.js';
 import {
-  ECHELLE_LUNE, POINT_SOUS_TERRE, calottesLune, decoderTerrarium, pixelTuile, pointVersTerre, directionDepuis, fractionTerre, lieuxEnGeojson,
+  ECHELLE_LUNE, POINT_SOUS_TERRE, calottesLune, decoderTerrarium, pixelTuile, pointVersTerre, directionDepuis, lieuxEnGeojson,
   pointSubsolaireLune, sitesEnGeojson, texteCoordonnees,
 } from './lune-visite-calcul.js';
 import { chercherLieux, sitesParDate, zoomPourLieu } from './lune-recherche-calcul.js';
-import { dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
+import { eclairementLune, positionLune } from './lune-calcul.js';
+import { peindreTerre, pointSousLune, soleilSurTerre } from './terre-vue-calcul.js';
+import { requete } from './requete.js';
 import { getMoonPosition } from 'suncalc';
 import { svgLune } from './lune-dessin.js';
-import { svgTerre } from './terre-dessin.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
 import { initCiel } from './ciel.js';
 import { codeCardinal } from './vent-calcul.js';
@@ -152,7 +153,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
           },
         },
         {
-          id: 'sites-point', type: 'circle', source: 'sites', minzoom: 3,
+          id: 'sites-point', type: 'circle', source: 'sites', minzoom: 3.5,
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 3.5, 8, 6],
             'circle-color': ['case', ['==', ['get', 'equipage'], 1], '#ff9f43', '#c9b8ff'],
@@ -160,7 +161,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
           },
         },
         {
-          id: 'sites-nom', type: 'symbol', source: 'sites', minzoom: 3.8,
+          id: 'sites-nom', type: 'symbol', source: 'sites', minzoom: 4,
           layout: {
             'text-field': ['get', 'nom'], 'text-font': ['literal', POLICE_GRAS], 'text-size': 11.5,
             'text-anchor': 'left', 'text-offset': [0.8, 0], 'text-optional': true,
@@ -172,108 +173,192 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
         },
       ],
     },
-    center: [0, 0], // face visible, comme on la voit depuis la Terre
-    zoom: telephone() ? 0.4 : 1.2,
+    // Arrivée de l'autre côté : la Terre se lève au-dessus de la Lune, dans le fond étoilé (de la face visible, elle
+    // est derrière la caméra) ; « Vue depuis la Terre » ramène à la face visible
+    center: [180, 12],
+    zoom: telephone() ? 0.3 : 1,
+    minZoom: 0,
     maxPitch: 85,
     renderWorldCopies: false,
   });
   if (import.meta.env.DEV) window.mapLune = map;
 
-  // Relief 3D seulement de près, comme sur la Terre (main.js) : en vue globe, globe et relief ensemble font sauter
-  // la caméra pendant les déplacements (retour du propriétaire du 16 novembre 2026) ; de loin, on ne le voit pas
-  const ZOOM_RELIEF = 4;
-  let terrainActif = false;
+  // Relief 3D de près seulement, comme sur la Terre (main.js) : en vue globe, globe et relief ensemble faisaient
+  // sauter la caméra. Il monte en douceur du zoom 3 au zoom 5 (retour du propriétaire du 16 novembre 2026 : allumé
+  // d'un coup, il faisait « rezoomer » la vue). MapLibre recrée tout le relief à chaque setTerrain : on l'allume une
+  // fois, puis on fait varier son exagération (champ `exaggeration` du relief, lu à chaque image).
+  const ZOOM_RELIEF = 3;
+  const ZOOM_RELIEF_PLEIN = 5;
   function majTerrain() {
-    const veut = map.getZoom() >= ZOOM_RELIEF;
-    if (veut === terrainActif) return;
-    map.setTerrain(veut ? { source: 'relief', exaggeration: ECHELLE_LUNE } : null);
-    terrainActif = veut;
+    const z = map.getZoom();
+    const part = Math.min(1, Math.max(0, (z - ZOOM_RELIEF) / (ZOOM_RELIEF_PLEIN - ZOOM_RELIEF)));
+    if (z < ZOOM_RELIEF - 0.2) {
+      if (map.getTerrain()) map.setTerrain(null);
+      return;
+    }
+    if (!map.getTerrain()) map.setTerrain({ source: 'relief', exaggeration: Math.max(0.001, ECHELLE_LUNE * part) });
+    else if (map.terrain && Math.abs(map.terrain.exaggeration - ECHELLE_LUNE * part) > 0.01) {
+      map.terrain.exaggeration = Math.max(0.001, ECHELLE_LUNE * part);
+      map.triggerRepaint();
+    }
   }
   map.on('load', majTerrain);
-  map.on('zoomend', majTerrain);
+  map.on('zoom', majTerrain);
+  // Zoom autour du centre de l'écran : autour du pointeur, hors du globe, MapLibre repartait dans l'autre sens
+  // (déjà actifs à la création : enable() ne relit ses options qu'après un disable())
+  map.scrollZoom.disable();
+  map.scrollZoom.enable({ around: 'center' });
+  map.touchZoomRotate.disable();
+  map.touchZoomRotate.enable({ around: 'center' });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   // Vue depuis la Terre : dans le panneau, sous le choix de l'éclairage (demande du propriétaire du 16 novembre 2026)
   const boutonVueTerre = $('.lune-visite-vue-terre');
 
-  // ---------- Ciel : étoiles et, en temps réel, le soleil ----------
-  const ciel = initCiel(map, { astres: dessinerAstres });
+  // ---------- Ciel lunaire, comme le ciel de la Terre (ciel.js et soleil-ciel.js) ----------
+  // Demande du propriétaire du 16 novembre 2026 : voir la Terre depuis la Lune comme on voit la Lune depuis la Terre.
+  // Au dézoom, la vraie Terre (terre-vue-calcul.js) et le soleil sont dessinés dans le fond étoilé, à leur direction
+  // vue du centre de la carte : la Lune les cache quand ils passent derrière elle, comme le globe terrestre cache la
+  // Lune. De près, en 3D, ils sont dans le ciel, ou au bord de l'écran avec une flèche quand ils sont hors champ.
+  const RAYON_TERRE = 22; // px : la Lune vue de la Terre en fait 10, la Terre paraît 3,7 fois plus grande
+  const PIXELS_TERRE = 96;
+  const imageTerre = document.createElement('canvas');
+  imageTerre.width = PIXELS_TERRE;
+  imageTerre.height = PIXELS_TERRE;
+  let texturesTerre = null;
+
+  // De près, en 3D : la Terre et le soleil dans le ciel lunaire (mêmes règles que soleil-ciel.js sur la Terre)
+  const elementTerre = document.createElement('div');
+  elementTerre.className = 'lune-ciel terre-ciel';
+  elementTerre.hidden = true;
+  elementTerre.innerHTML = '<canvas class="terre-ciel-image"></canvas><i class="lune-ciel-fleche"></i>';
+  const imageTerre3D = elementTerre.querySelector('canvas');
+  imageTerre3D.width = PIXELS_TERRE;
+  imageTerre3D.height = PIXELS_TERRE;
+  const elementSoleil = document.createElement('div');
+  elementSoleil.className = 'soleil-ciel';
+  elementSoleil.hidden = true;
+  elementSoleil.setAttribute('aria-hidden', 'true');
+  elementSoleil.innerHTML = '<i class="soleil-ciel-halo"></i><i class="soleil-ciel-disque"></i><i class="soleil-ciel-fleche"></i>';
+  map.getCanvasContainer().append(elementSoleil, elementTerre);
+
+  let pointTerre = null; // { x, y, rayon } dans le fond étoilé, pour la toucher
+  if (import.meta.env.DEV) window.terreLune = () => pointTerre; // captures
+  const ciel = initCiel(map, { astres: dessinerAstres, instant: () => moment });
   function dessinerAstres({ contexte, centre, projeter }) {
-    if (eclairage() !== 'reel') return;
-    const soleil = projeter(directionDepuis(centre.lng, centre.lat, pointSubsolaireLune(moment)));
-    if (!soleil) return;
-    const halo = contexte.createRadialGradient(soleil.x, soleil.y, 0, soleil.x, soleil.y, 60);
-    halo.addColorStop(0, 'rgba(255, 248, 230, 0.95)');
-    halo.addColorStop(0.2, 'rgba(255, 230, 170, 0.3)');
-    halo.addColorStop(1, 'rgba(255, 220, 150, 0)');
+    if (eclairage() === 'reel') {
+      const soleil = projeter(directionDepuis(centre.lng, centre.lat, pointSubsolaireLune(moment)));
+      if (soleil) {
+        const halo = contexte.createRadialGradient(soleil.x, soleil.y, 0, soleil.x, soleil.y, 60);
+        halo.addColorStop(0, 'rgba(255, 244, 214, 0.9)');
+        halo.addColorStop(0.2, 'rgba(255, 220, 150, 0.35)');
+        halo.addColorStop(1, 'rgba(255, 200, 120, 0)');
+        contexte.fillStyle = halo;
+        contexte.beginPath();
+        contexte.arc(soleil.x, soleil.y, 60, 0, Math.PI * 2);
+        contexte.fill();
+        contexte.fillStyle = 'rgb(255, 250, 235)';
+        contexte.beginPath();
+        contexte.arc(soleil.x, soleil.y, 11, 0, Math.PI * 2);
+        contexte.fill();
+      }
+    }
+    const terre = projeter(directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE));
+    pointTerre = terre && { x: terre.x, y: terre.y, rayon: RAYON_TERRE };
+    if (!terre) return;
+    // Halo bleu de l'atmosphère, puis la Terre, nord en haut de la carte
+    const halo = contexte.createRadialGradient(terre.x, terre.y, RAYON_TERRE * 0.9, terre.x, terre.y, RAYON_TERRE * 1.6);
+    halo.addColorStop(0, 'rgba(120, 180, 255, 0.35)');
+    halo.addColorStop(1, 'rgba(120, 180, 255, 0)');
     contexte.fillStyle = halo;
     contexte.beginPath();
-    contexte.arc(soleil.x, soleil.y, 60, 0, Math.PI * 2);
+    contexte.arc(terre.x, terre.y, RAYON_TERRE * 1.6, 0, Math.PI * 2);
     contexte.fill();
+    contexte.save();
+    contexte.translate(terre.x, terre.y);
+    contexte.rotate((-map.getBearing() * Math.PI) / 180);
+    contexte.drawImage(imageTerre, -RAYON_TERRE, -RAYON_TERRE, 2 * RAYON_TERRE, 2 * RAYON_TERRE);
+    contexte.restore();
   }
 
-  // ---------- La Terre, dessinée dans le ciel lunaire (demande du propriétaire du 16 novembre 2026) ----------
-  // À sa place quand on la voit, sinon au bord de l'écran avec une flèche vers elle ; à tout zoom. Un appui
-  // dessus recadre la Lune comme on la voit depuis la Terre.
-  const elementTerre = document.createElement('button');
-  elementTerre.type = 'button';
-  elementTerre.className = 'lune-ciel terre-ciel';
+  function peindreImageTerre() {
+    const contexte = imageTerre.getContext('2d');
+    contexte.clearRect(0, 0, PIXELS_TERRE, PIXELS_TERRE);
+    if (!texturesTerre) {
+      // En attendant les images de la NASA (ou hors ligne) : un disque bleu
+      const disque = contexte.createRadialGradient(PIXELS_TERRE * 0.4, PIXELS_TERRE * 0.38, 2, PIXELS_TERRE / 2, PIXELS_TERRE / 2, PIXELS_TERRE / 2);
+      disque.addColorStop(0, '#7fc3ff');
+      disque.addColorStop(0.65, '#2f78c8');
+      disque.addColorStop(1, '#173d6e');
+      contexte.fillStyle = disque;
+      contexte.beginPath();
+      contexte.arc(PIXELS_TERRE / 2, PIXELS_TERRE / 2, PIXELS_TERRE / 2, 0, Math.PI * 2);
+      contexte.fill();
+    } else {
+      // Face tournée vers la Lune à cet instant, éclairée par le vrai soleil en temps réel (sa phase)
+      const pixels = peindreTerre({
+        ...texturesTerre,
+        centre: pointSousLune(moment),
+        soleil: eclairage() === 'reel' ? soleilSurTerre(moment) : null,
+        taille: PIXELS_TERRE,
+      });
+      contexte.putImageData(new ImageData(pixels, PIXELS_TERRE, PIXELS_TERRE), 0, 0);
+    }
+    const contexte3D = imageTerre3D.getContext('2d');
+    contexte3D.clearRect(0, 0, PIXELS_TERRE, PIXELS_TERRE);
+    contexte3D.drawImage(imageTerre, 0, 0);
+    ciel.redessiner();
+  }
+  peindreImageTerre();
+  chargerTexturesTerre().then((textures) => {
+    texturesTerre = textures;
+    peindreImageTerre();
+  }).catch((erreur) => console.warn('Lune : images de la Terre indisponibles', erreur));
+
   function nommerTerre() {
     const cle = elementTerre.classList.contains('bord') ? 'lune-visite.regarder-terre' : 'lune-visite.retour-terre';
-    elementTerre.setAttribute('aria-label', t(cle));
-    elementTerre.title = t(cle);
+    imageTerre3D.setAttribute('aria-label', t(cle));
+    imageTerre3D.title = t(cle);
   }
   nommerTerre();
-  elementTerre.innerHTML = `${svgTerre()}<i class="lune-ciel-fleche"></i>`;
-  map.getCanvasContainer().append(elementTerre);
-  const phaseTerre = elementTerre.querySelector('.terre-phase-chemin');
-  let fractionAffichee = null;
+  const ZOOM_CIEL_3D = 6; // le fond étoilé s'efface au zoom 6 (opaciteCiel de ciel-calcul.js)
   const cameraLune = () => {
     const { clientWidth: largeur, clientHeight: hauteurEcran } = map.getContainer();
     return { bearing: map.getBearing(), pitch: map.getPitch(), fov: map.getVerticalFieldOfView(), largeur, hauteurEcran, padding: map.getPadding() };
   };
+  // Un astre au-dessus de l'horizon, de près et vue inclinée : à sa place, ou au bord avec sa flèche
+  function placerAstre(element, direction, cam, marge) {
+    const voir = direction.hauteur > 0 && map.getZoom() >= ZOOM_CIEL_3D && cam.pitch > 1;
+    element.hidden = !voir;
+    if (!voir) return;
+    const projection = projeterSoleil(direction, cam);
+    // À sa place seulement dans la partie libre de l'écran (pas sous la barre de recherche ni le panneau)
+    const libre = projection.devant && projection.x >= marge.gauche && projection.x <= cam.largeur - marge.droite
+      && projection.y >= marge.haut && projection.y <= cam.hauteurEcran - marge.bas;
+    const place = libre ? { x: projection.x, y: projection.y, dedans: true } : placerSoleil(projection, {
+      largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran),
+    });
+    element.classList.toggle('bord', !place.dedans);
+    const fleche = element.querySelector('.lune-ciel-fleche, .soleil-ciel-fleche');
+    if (!place.dedans) fleche.style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
+    element.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
+  }
   function placerTerre() {
     const cam = cameraLune();
     const { lng, lat } = map.getCenter();
-    const direction = directionDepuis(lng, lat, POINT_SOUS_TERRE);
-    const projection = projeterSoleil(direction, cam);
-    // Sous l'horizon du centre, elle est derrière la Lune : seulement sa direction, au bord
     const haut = racine.querySelector('.lune-visite-haut').getBoundingClientRect().bottom + 16;
     const marge = { haut, bas: margeBas() + 28, gauche: 20, droite: 64 };
-    // À sa place seulement dans la partie libre de l'écran : sous la barre de recherche ou le panneau, elle était
-    // comptée comme visible alors qu'on ne la voyait pas ; elle va alors au bord, avec sa flèche
-    const libre = projection.devant && direction.hauteur > 0
-      && projection.x >= marge.gauche && projection.x <= cam.largeur - marge.droite
-      && projection.y >= marge.haut && projection.y <= cam.hauteurEcran - marge.bas;
-    const place = libre ? { x: projection.x, y: projection.y, dedans: true } : placerSoleil(
-      direction.hauteur > 0 ? projection : { ...projection, devant: false },
-      { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran) },
-    );
-    // Toujours affichée (demande du propriétaire du 16 novembre 2026) : juste derrière la caméra, au départ ou en vue
-    // depuis la Terre, elle se pose en bas, flèche vers le bas
-    const auBord = !place.dedans;
-    if (auBord !== elementTerre.classList.contains('bord')) {
-      elementTerre.classList.toggle('bord', auBord);
+    const bordAvant = elementTerre.classList.contains('bord');
+    placerAstre(elementTerre, directionDepuis(lng, lat, POINT_SOUS_TERRE), cam, marge);
+    if (bordAvant !== elementTerre.classList.contains('bord')) {
       nommerTerre();
       fermerRetour();
     }
-    if (!place.dedans) elementTerre.querySelector('.lune-ciel-fleche').style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
-    elementTerre.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
-    // Phase vue de la Lune (pleine à la nouvelle lune), côté éclairé tourné vers le soleil
-    const reel = eclairage() === 'reel';
-    const fraction = reel ? fractionTerre(eclairementLune(moment).fraction) : 1;
-    if (fraction !== fractionAffichee) {
-      phaseTerre.setAttribute('d', dessinPhase(fraction, true));
-      fractionAffichee = fraction;
-    }
-    let angle = 0;
-    if (reel) {
-      const versSoleil = projeterSoleil(directionDepuis(lng, lat, pointSubsolaireLune(moment)), cam);
-      angle = Math.atan2(versSoleil.dy - projection.dy, versSoleil.dx - projection.dx) * (180 / Math.PI);
-    }
-    phaseTerre.setAttribute('transform', `rotate(${angle.toFixed(1)} 12 12)`);
+    if (eclairage() === 'reel') placerAstre(elementSoleil, directionDepuis(lng, lat, pointSubsolaireLune(moment)), cam, marge);
+    else elementSoleil.hidden = true;
   }
   map.on('move', placerTerre);
   map.on('resize', placerTerre);
+  map.on('load', placerTerre);
 
   // Vue depuis la Terre : la face visible, tournée comme on la voit depuis le lieu de la carte de la Terre
   // (angle parallactique de la Lune dans son ciel)
@@ -311,11 +396,23 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   const bulleRetour = document.createElement('div');
   bulleRetour.className = 'lune-bulle lune-bulle-retour';
   bulleRetour.hidden = true;
-  bulleRetour.innerHTML = `<button type="button" class="principal">${ICONE_TERRE}<span data-i18n="lune-visite.retour-terre"></span></button>`;
-  poser(bulleRetour.querySelector('span'), 'lune-visite.retour-terre');
+  bulleRetour.innerHTML = `
+    <button type="button" data-action="voir"><span data-i18n="lune-visite.regarder-terre"></span></button>
+    <button type="button" data-action="retour" class="principal">${ICONE_TERRE}<span data-i18n="lune-visite.retour-terre"></span></button>
+  `;
+  bulleRetour.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   racine.append(bulleRetour);
   function fermerRetour() { bulleRetour.hidden = true; }
-  elementTerre.addEventListener('click', (event) => {
+  // Sous la Terre touchée (x, y : bas de la Terre, en px de la fenêtre)
+  function ouvrirRetour(x, y) {
+    bulleRetour.hidden = false;
+    const largeur = bulleRetour.offsetWidth;
+    bulleRetour.style.left = `${Math.min(window.innerWidth - largeur - 8, Math.max(8, x - largeur / 2))}px`;
+    const haut = y + 10 + bulleRetour.offsetHeight > window.innerHeight - 8 ? y - 2 * RAYON_TERRE - 20 - bulleRetour.offsetHeight : y + 10;
+    bulleRetour.style.top = `${Math.max(8, haut)}px`;
+  }
+  // De près : au bord, aller la voir ; dans le ciel, la bulle
+  imageTerre3D.addEventListener('click', (event) => {
     event.stopPropagation();
     if (elementTerre.classList.contains('bord')) {
       fermerRetour();
@@ -326,15 +423,29 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       fermerRetour();
       return;
     }
-    const disque = elementTerre.querySelector('svg').getBoundingClientRect();
-    bulleRetour.hidden = false;
-    const largeur = bulleRetour.offsetWidth;
-    bulleRetour.style.left = `${Math.min(window.innerWidth - largeur - 8, Math.max(8, disque.left + disque.width / 2 - largeur / 2))}px`;
-    bulleRetour.style.top = `${disque.bottom + 10}px`;
+    const disque = imageTerre3D.getBoundingClientRect();
+    ouvrirRetour(disque.left + disque.width / 2, disque.bottom);
   });
-  bulleRetour.querySelector('button').addEventListener('click', () => quitter());
+  // Au dézoom : la Terre du fond étoilé se touche, si la Lune ne la cache pas à cet endroit (comme lune-bulle.js)
+  map.on('click', (event) => {
+    const { x, y } = event.point;
+    const touchee = pointTerre && Math.hypot(x - pointTerre.x, y - pointTerre.y) <= pointTerre.rayon + 12;
+    if (!touchee) return;
+    // Hors de la Lune, MapLibre ramène le point sur son bord : l'aller-retour ne retombe pas au même pixel
+    const retour = map.project(map.unproject(event.point));
+    if (Math.hypot(retour.x - x, retour.y - y) < 3) return;
+    const cadre = map.getContainer().getBoundingClientRect();
+    const point = pointTerre;
+    setTimeout(() => ouvrirRetour(cadre.left + point.x, cadre.top + point.y + point.rayon));
+  });
+  bulleRetour.querySelector('[data-action="retour"]').addEventListener('click', () => quitter());
+  bulleRetour.querySelector('[data-action="voir"]').addEventListener('click', () => {
+    fermerRetour();
+    regarderTerre();
+  });
   map.on('movestart', fermerRetour);
-  map.on('click', fermerRetour);
+  map.on('mousedown', fermerRetour);
+  map.on('touchstart', fermerRetour);
 
   // ---------- Noms ----------
   let lieux = null;
@@ -369,7 +480,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       map.setLayoutProperty('nuit', 'visibility', reel ? 'visible' : 'none');
       map.getSource('calottes').setData(calottesLune(reel ? pointSubsolaireLune(moment) : null));
     }
-    ciel.redessiner();
+    peindreImageTerre();
     majPanneau();
     placerTerre();
   }
@@ -645,4 +756,36 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
 
   visite = { map, quitter };
   return visite;
+}
+
+// Images de la Terre (NASA GIBS, comme le globe jour et nuit de globe-nuit.js) : monde entier en Mercator au zoom 1
+// (2 × 2 tuiles de 256 px), le jour et les lumières des villes ; chargées une fois, à la première visite
+const GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
+const TUILES_TERRE = {
+  jour: `${GIBS}/BlueMarble_ShadedRelief_Bathymetry/default/default/GoogleMapsCompatible_Level8/1/{y}/{x}.jpeg`,
+  nuit: `${GIBS}/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/1/{y}/{x}.png`,
+};
+let texturesChargees = null;
+function chargerTexturesTerre() {
+  texturesChargees ??= Promise.all(Object.entries(TUILES_TERRE).map(async ([nom, modele]) => {
+    const toile = document.createElement('canvas');
+    toile.width = 512;
+    toile.height = 512;
+    const contexte = toile.getContext('2d', { willReadFrequently: true });
+    await Promise.all([0, 1].flatMap((x) => [0, 1].map(async (y) => {
+      const reponse = await requete(modele.replace('{x}', x).replace('{y}', y));
+      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+      const image = await createImageBitmap(await reponse.blob());
+      contexte.drawImage(image, x * 256, y * 256);
+      image.close?.();
+    })));
+    return [nom, contexte.getImageData(0, 0, 512, 512).data];
+  })).then((paires) => {
+    const textures = Object.fromEntries(paires);
+    return { jour: textures.jour, nuit: textures.nuit, largeur: 512 };
+  }).catch((erreur) => {
+    texturesChargees = null; // nouvel essai à la prochaine visite
+    throw erreur;
+  });
+  return texturesChargees;
 }

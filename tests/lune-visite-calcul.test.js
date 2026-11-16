@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getMoonIllumination } from 'suncalc';
 import {
-  ECHELLE_LUNE, altitudeReelle, boiteTuile, directionDepuis, fractionTerre, hauteurSoleilLune, latitudeLigne,
+  ECHELLE_LUNE, altitudeReelle, boiteTuile, directionDepuis, hauteurSoleilLune, latitudeLigne,
   lieuxEnGeojson, niveauPlateCarree, nomsLieu, normaliserLng, opaciteNuit, NUIT_MAX, pixelPlateCarree,
   pointSubsolaireLune, sitesEnGeojson, texteCoordonnees, tuilesCouvrantes, zoomNom,
 } from '../src/lune-visite-calcul.js';
@@ -88,7 +88,7 @@ describe('noms', () => {
     expect(nomsLieu('Copernicus', 'fr')).toEqual({ nom: 'Copernicus', latin: null });
   });
   it('montre les mers avant les petits cratères', () => {
-    expect(zoomNom('ME', 600)).toBe(0);
+    expect(zoomNom('ME', 600)).toBe(3); // aucun nom en vue d'ensemble
     expect(zoomNom('AA', 93)).toBeLessThan(zoomNom('AA', 20));
     expect(zoomNom('AA', 5)).toBeGreaterThan(6);
   });
@@ -107,10 +107,6 @@ describe('ciel lunaire', () => {
     expect(bord.hauteur).toBeCloseTo(0);
     expect(bord.azimut).toBeCloseTo(270); // vers l'ouest
     expect(directionDepuis(0, 45, { lng: 0, lat: 0 }).azimut).toBeCloseTo(180); // vers le sud
-  });
-  it('voit une Terre pleine à la nouvelle lune', () => {
-    expect(fractionTerre(0)).toBe(1);
-    expect(fractionTerre(1)).toBe(0);
   });
   it('écrit des coordonnées sélénographiques', () => {
     expect(texteCoordonnees(23.473, 0.674)).toBe('0.674° N · 23.473° E');
@@ -169,3 +165,4 @@ describe('altitude dans les tuiles de relief', () => {
     expect(decoderTerrarium(120, 128, 0)).toBe(-1920);
   });
 });
+

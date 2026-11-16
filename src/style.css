@@ -4163,11 +4163,8 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 }
 .lune-visite-vue-terre:hover { background: var(--survol); }
 .lune-visite-vue-terre svg { stroke: #6fb6ff; }
-.terre-ciel { padding: 0; border: 0; background: none; }
-.terre-ciel svg { left: -22px; top: -22px; width: 44px; height: 44px; filter: drop-shadow(0 0 8px rgb(110 180 255 / .55)); }
-.terre-ciel.bord svg { left: -13px; top: -13px; width: 26px; height: 26px; }
-.terre-ciel .terre-nuit { opacity: .2; }
-.terre-ciel .terre-contour { fill: none; stroke: rgb(190 225 255 / .45); stroke-width: .5; }
+.terre-ciel-image { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: auto; cursor: pointer; filter: drop-shadow(0 0 8px rgb(110 180 255 / .55)); }
+.terre-ciel.bord .terre-ciel-image { left: -13px; top: -13px; width: 26px; height: 26px; }
 @media (max-width: 640px) {
   .lune-visite .lune-visite-quitter { padding: 0 12px; }
   .lune-visite .lune-visite-quitter span { display: none; }

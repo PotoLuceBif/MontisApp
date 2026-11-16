@@ -264,6 +264,11 @@ const clicLune = (lngLat) => async (page) => {
   await page.mouse.click(x, y);
 };
 
+const toucherTerre = async (page) => {
+  const p = await page.evaluate(() => window.terreLune?.());
+  if (p) await page.mouse.click(p.x, p.y);
+};
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
@@ -625,9 +630,9 @@ const ECRANS = [
   // La Terre dans le ciel lunaire, au-dessus de l'horizon sud, vue depuis la mer du Froid
   { nom: 'lune-visite-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 62], zoom: 5, pitch: 78, bearing: 180 }), (p) => p.waitForTimeout(9000)] },
   // Appui sur la Terre (ou sa flèche) : près du bord de la face visible, tourné vers elle, elle se lève sur l'horizon
-  { nom: 'lune-visite-regarder-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [-30, 20], zoom: 3, pitch: 0, bearing: 0 }), (p) => p.waitForTimeout(1500), clic('.terre-ciel'), (p) => p.waitForTimeout(10000)] },
+  { nom: 'lune-visite-regarder-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(3000), toucherTerre, (p) => p.waitForTimeout(500), clic('.lune-bulle-retour [data-action="voir"]'), (p) => p.waitForTimeout(10000)] },
   // Terre visible dans le ciel, touchée : bulle « Retourner sur la Terre »
-  { nom: 'lune-visite-retour-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(2500), clic('.terre-ciel'), (p) => p.waitForTimeout(10000), clic('.terre-ciel'), (p) => p.waitForTimeout(800)] },
+  { nom: 'lune-visite-retour-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(3000), toucherTerre, (p) => p.waitForTimeout(800)] },
   // Terre hors champ : au bord, avec sa flèche
   { nom: 'lune-visite-terre-bord', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 40], zoom: 5, pitch: 70, bearing: 0 }), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },

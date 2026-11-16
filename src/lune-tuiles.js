@@ -50,7 +50,8 @@ async function dessinerCouche(contexte, couche, z, x, y, signal) {
   if (resultats.every((r) => r.status === 'rejected')) throw resultats[0].reason;
   const b = boiteTuile(z, x, y);
   const gauche = pixelPlateCarree(n, b.ouest, 0, COTE).x - col0 * COTE;
-  const largeur = pixelPlateCarree(n, b.est, 0, COTE).x - col0 * COTE - gauche;
+  // Bornée à la mosaïque : au bord est du monde (180°), la largeur la dépassait d'un pixel et faisait une couture
+  const largeur = Math.min(mosaique.width - gauche, pixelPlateCarree(n, b.est, 0, COTE).x - col0 * COTE - gauche);
   for (let py = 0; py < COTE; py++) {
     const sy = pixelPlateCarree(n, 0, latitudeLigne(z, y, py, COTE), COTE).y - lig0 * COTE;
     contexte.drawImage(mosaique, gauche, Math.max(0, Math.min(mosaique.height - 1, Math.floor(sy))), largeur, 1, 0, py, COTE, 1);

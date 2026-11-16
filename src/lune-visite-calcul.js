@@ -213,19 +213,20 @@ const GRANDS = new Set(['ME', 'OC']);
 const ETENDUS = new Set(['LC', 'SI', 'PA', 'MO', 'VA', 'RU', 'PL']);
 
 // Zoom à partir duquel un nom apparaît : mers d'abord, puis selon la taille
-// Vue d'ensemble légère (demande du propriétaire du 16 novembre 2026) : les grandes mers seules, puis les détails
-// en se rapprochant ; rainures, dorsales et chaînes de cratères un cran plus tard
+// Vue d'ensemble sans aucun nom (demande du propriétaire du 16 novembre 2026, « même pas les mers ») : tout
+// apparaît en se rapprochant, mers d'abord ; rainures, dorsales et chaînes de cratères un peu plus tard
+export const ZOOM_NOMS = 3; // aucun nom en dessous
 const DETAILS = new Set(['RI', 'DO', 'CA', 'LF', 'PR', 'ST', 'AL']);
 export function zoomNom(code, diametre) {
-  if (GRANDS.has(code)) return diametre > 500 ? 0 : 2.2;
+  if (GRANDS.has(code)) return ZOOM_NOMS;
   const d = diametre * (ETENDUS.has(code) ? 1.5 : 1);
-  const retard = DETAILS.has(code) ? 1 : 0;
-  if (d >= 200) return 2.8 + retard;
-  if (d >= 100) return 3.5 + retard;
-  if (d >= 50) return 4.3 + retard;
-  if (d >= 25) return 5.2 + retard;
+  const retard = DETAILS.has(code) ? 0.8 : 0;
+  if (d >= 200) return 3.4 + retard;
+  if (d >= 100) return 4 + retard;
+  if (d >= 50) return 4.7 + retard;
+  if (d >= 25) return 5.4 + retard;
   if (d >= 10) return 6.2 + retard;
-  return 7.2 + retard;
+  return 7 + retard;
 }
 
 // Lieux du gazetteer (`[nom, code, diamètre, lng, lat, origine]`) en GeoJSON pour la carte
@@ -308,8 +309,6 @@ export function pointVersTerre(lng, lat, distance = 86) {
   const point = { lng: normaliserLng(lngArrivee / RAD), lat: latArrivee / RAD };
   return { ...point, cap: directionDepuis(point.lng, point.lat, POINT_SOUS_TERRE).azimut };
 }
-// Vue de la Lune, la Terre est « pleine » à la nouvelle lune, et inversement
-export const fractionTerre = (fractionLune) => 1 - fractionLune;
 
 // Coordonnées sélénographiques lisibles : « 0,674° N · 23,473° E »
 export function texteCoordonnees(lng, lat, { nombre = (v) => v.toFixed(3), langue = 'fr' } = {}) {
