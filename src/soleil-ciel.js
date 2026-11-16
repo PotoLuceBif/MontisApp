@@ -99,7 +99,7 @@ export function creerSoleilCiel(map) {
     elementLune.hidden = !voir;
     if (!voir) return;
     const projection = projeterSoleil(lune, cam);
-    const place = placerSoleil(projection, { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge: MARGE_BORD, margeVisible: 8 });
+    const place = placerAuLarge(projection, cam.largeur, cam.hauteurEcran);
     // Côté éclairé tourné vers le soleil : vers son point à l'écran, sinon vers sa direction
     let angle = 0;
     if (soleil) {
