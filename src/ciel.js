@@ -10,7 +10,24 @@ import { GALAXIES, poseGalaxie } from './galaxies-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
-const RAYON_LUNE = 10; // px : la Lune réelle (0,5°) n'aurait que quelques pixels à cette échelle
+const RAYON_LUNE = 16; // px : la Lune réelle (0,5°) n'aurait que quelques pixels à cette échelle
+const PIXELS_VRAIE_LUNE = 96;
+// Mosaïque de la Lune (NASA, Moon Trek), plate carrée au niveau 0 : 2 tuiles de 256 px
+const IMAGES_LUNE = 'https://trek.nasa.gov/tiles/Moon/EQ/LRO_WAC_Mosaic_Global_303ppd_v02/1.0.0/default/default028mm/0/0';
+async function chargerImageLune() {
+  const toile = document.createElement('canvas');
+  toile.width = 512;
+  toile.height = 256;
+  const contexte = toile.getContext('2d', { willReadFrequently: true });
+  await Promise.all([0, 1].map(async (colonne) => {
+    const reponse = await fetch(`${IMAGES_LUNE}/${colonne}.jpg`);
+    if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+    const image = await createImageBitmap(await reponse.blob());
+    contexte.drawImage(image, colonne * 256, 0);
+    image.close?.();
+  }));
+  return { image: contexte.getImageData(0, 0, 512, 256).data, largeur: 512, hauteur: 256 };
+}
 const VOIE_LACTEE = { largeur: 2048, hauteur: 1024, nombre: 25000 };
 const PIXELS_VOIE_LACTEE = 90000; // taille du dessin, agrandi ensuite : la Voie lactée est diffuse
 const AZIMUT = (azimuth) => ((azimuth % 360) + 360) % 360; // suncalc 2 : degrés depuis le nord
@@ -151,13 +168,67 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     contexte.fill();
   }
 
+  // La vraie Lune (lune-vue-calcul.js) : images de la NASA chargées à la première apparition du ciel, repeinte
+  // quand la phase a pu changer (toutes les 10 minutes d'écart) ; en attendant, ou hors ligne, la Lune dessinée
+  let vraieLune = null; // { image, instant }
+  let moduleLune = null;
+  let calculLune = null; // lune-vue-calcul.js, une fois chargé
+  const chargerVraieLune = () => {
+    moduleLune ??= Promise.all([import('./lune-vue-calcul.js'), chargerImageLune()])
+      .then(([m, texture]) => {
+        calculLune = m;
+        return { m, texture };
+      })
+      .catch((erreur) => {
+        moduleLune = null; // nouvel essai au prochain dézoom
+        console.warn('Ciel : images de la Lune indisponibles', erreur);
+        return null;
+      });
+    return moduleLune;
+  };
+  function imageVraieLune(maintenant) {
+    if (vraieLune && Math.abs(vraieLune.instant - maintenant.getTime()) < 10 * 60000) return vraieLune.image;
+    chargerVraieLune().then((charge) => {
+      if (!charge || (vraieLune && Math.abs(vraieLune.instant - maintenant.getTime()) < 10 * 60000)) return;
+      const taille = PIXELS_VRAIE_LUNE;
+      const image = vraieLune?.image ?? document.createElement('canvas');
+      image.width = taille;
+      image.height = taille;
+      const pixels = charge.m.peindreLune({ ...charge.texture, date: maintenant, taille });
+      image.getContext('2d').putImageData(new ImageData(pixels, taille, taille), 0, 0);
+      vraieLune = { image, instant: maintenant.getTime() };
+      planifier();
+    });
+    return vraieLune?.image ?? null;
+  }
+
   // Position de la Lune à l'écran, pour qu'un appui la touche (lune-bulle.js)
   let pointLune = null;
-  function dessinerLune(cam, { lng, lat }, maintenant) {
+  function dessinerLune(cam, { lng, lat }, maintenant, ts) {
     const lune = getMoonPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(lune.azimuth), hauteur: lune.altitude }, cam);
     pointLune = point && { x: point.x, y: point.y, rayon: RAYON_LUNE };
     if (!point) return;
+    const image = imageVraieLune(maintenant);
+    if (image && calculLune) {
+      // Tournée comme dans le ciel : son nord vers le nord céleste à cet endroit de l'écran
+      const { ra, dec } = calculLune.coordonneesLune(maintenant);
+      const nord = projeterDirection(directionEtoile(ra, dec + 0.5, lat, lng, ts), cam);
+      const angle = nord ? Math.atan2(nord.x - point.x, -(nord.y - point.y)) : 0;
+      const halo = contexte.createRadialGradient(point.x, point.y, RAYON_LUNE * 0.95, point.x, point.y, RAYON_LUNE * 1.7);
+      halo.addColorStop(0, 'rgba(235, 240, 255, 0.28)');
+      halo.addColorStop(1, 'rgba(235, 240, 255, 0)');
+      contexte.fillStyle = halo;
+      contexte.beginPath();
+      contexte.arc(point.x, point.y, RAYON_LUNE * 1.7, 0, Math.PI * 2);
+      contexte.fill();
+      contexte.save();
+      contexte.translate(point.x, point.y);
+      contexte.rotate(angle);
+      contexte.drawImage(image, -RAYON_LUNE, -RAYON_LUNE, 2 * RAYON_LUNE, 2 * RAYON_LUNE);
+      contexte.restore();
+      return;
+    }
     const soleil = getPosition(maintenant, lat, lng);
     const versSoleil = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
     // Côté éclairé tourné vers le soleil ; derrière la caméra, on garde sa direction approximative
@@ -259,7 +330,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
       astres({ contexte, centre, maintenant, projeter: (direction) => projeterDirection(direction, cam) });
     } else {
       dessinerSoleil(cam, centre, maintenant);
-      dessinerLune(cam, centre, maintenant);
+      dessinerLune(cam, centre, maintenant, ts);
     }
     contexte.globalAlpha = 1;
   }

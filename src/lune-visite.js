@@ -15,10 +15,10 @@ import { chercherLieux, sitesParDate, zoomPourLieu } from './lune-recherche-calc
 import { eclairementLune, positionLune } from './lune-calcul.js';
 import { peindreTerre, pointSousLune, soleilSurTerre } from './terre-vue-calcul.js';
 import { requete } from './requete.js';
-import { getMoonPosition } from 'suncalc';
 import { svgLune } from './lune-dessin.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
 import { initCiel } from './ciel.js';
+import { opaciteCiel } from './ciel-calcul.js';
 import { codeCardinal } from './vent-calcul.js';
 import { lire, ecrire } from './reglages.js';
 import { formatDate, heureCourte, poser, surLangue, t, ta } from './i18n.js';
@@ -264,7 +264,10 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     }
     const terre = projeter(directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE));
     pointTerre = terre && { x: terre.x, y: terre.y, rayon: RAYON_TERRE };
-    if (!terre) return;
+    if (!terre) {
+      requestAnimationFrame(placerTerre);
+      return;
+    }
     // Halo bleu de l'atmosphère, puis la Terre, nord en haut de la carte
     const halo = contexte.createRadialGradient(terre.x, terre.y, RAYON_TERRE * 0.9, terre.x, terre.y, RAYON_TERRE * 1.6);
     halo.addColorStop(0, 'rgba(120, 180, 255, 0.35)');
@@ -278,6 +281,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     contexte.rotate((-map.getBearing() * Math.PI) / 180);
     contexte.drawImage(imageTerre, -RAYON_TERRE, -RAYON_TERRE, 2 * RAYON_TERRE, 2 * RAYON_TERRE);
     contexte.restore();
+    requestAnimationFrame(placerTerre); // la flèche suit la Terre qu'on vient de dessiner
   }
 
   function peindreImageTerre() {
@@ -342,7 +346,44 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     if (!place.dedans) fleche.style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
     element.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
   }
+  // Vue d'ensemble : la Terre se voit dans le fond étoilé quand elle dépasse du bord de la Lune. Sinon (derrière la
+  // Lune ou derrière la caméra), une petite flèche au bord de l'écran montre de quel côté elle est (demande du
+  // propriétaire du 16 novembre 2026) ; un appui fait tourner la Lune jusqu'à la voir.
+  const surLaLune = ({ x, y }) => {
+    const retour = map.project(map.unproject([x, y]));
+    return Math.hypot(retour.x - x, retour.y - y) < 3;
+  };
+  function indiquerTerre(cam, marge, centre) {
+    const visible = pointTerre && opaciteCiel(map.getZoom()) > 0.5 && !surLaLune(pointTerre)
+      && pointTerre.x > 0 && pointTerre.x < cam.largeur && pointTerre.y > 0 && pointTerre.y < cam.hauteurEcran;
+    elementTerre.hidden = Boolean(visible);
+    if (visible) return;
+    const angle = ((directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE).azimut - cam.bearing) * Math.PI) / 180;
+    const { top = 0, bottom = 0, left = 0, right = 0 } = cam.padding;
+    const place = placerSoleil({
+      devant: false, dx: Math.sin(angle), dy: -Math.cos(angle),
+      cx: left + (cam.largeur - left - right) / 2, cy: top + (cam.hauteurEcran - top - bottom) / 2,
+    }, { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran) });
+    elementTerre.classList.add('bord');
+    elementTerre.querySelector('.lune-ciel-fleche').style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
+    elementTerre.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
+  }
+  // Tourner la Lune pour voir la Terre dépasser de son bord, en haut de l'écran
+  function montrerTerreDansEspace() {
+    const { lng, lat } = map.getCenter();
+    const cible = pointVersTerre(lng, lat, 168);
+    map.flyTo({
+      center: [cible.lng, cible.lat],
+      bearing: cible.cap,
+      pitch: 0,
+      zoom: Math.min(map.getZoom(), telephone() ? 0.9 : 1.7),
+      padding: { top: 0, right: 0, left: 0, bottom: margeBas() },
+      duration: 2200,
+    });
+  }
+
   function placerTerre() {
+    nommerTerre();
     const cam = cameraLune();
     const { lng, lat } = map.getCenter();
     const haut = racine.querySelector('.lune-visite-haut').getBoundingClientRect().bottom + 16;
@@ -353,6 +394,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       nommerTerre();
       fermerRetour();
     }
+    if (map.getZoom() < ZOOM_CIEL_3D) indiquerTerre(cam, marge, { lng, lat });
     if (eclairage() === 'reel') placerAstre(elementSoleil, directionDepuis(lng, lat, pointSubsolaireLune(moment)), cam, marge);
     else elementSoleil.hidden = true;
   }
@@ -360,17 +402,15 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   map.on('resize', placerTerre);
   map.on('load', placerTerre);
 
-  // Vue depuis la Terre : la face visible, tournée comme on la voit depuis le lieu de la carte de la Terre
-  // (angle parallactique de la Lune dans son ciel)
+  // Vue depuis la Terre : la face visible, nord en haut (demande du propriétaire du 16 novembre 2026 : tournée
+  // comme dans le ciel du lieu, elle avait souvent l'est en haut)
   function vueDepuisTerre() {
-    const { lng, lat } = mapTerre.getCenter();
-    const { parallacticAngle } = getMoonPosition(new Date(moment), lat, lng);
     fermerBulle();
     map.flyTo({
       center: [POINT_SOUS_TERRE.lng, POINT_SOUS_TERRE.lat],
       zoom: telephone() ? 0.9 : 1.7,
       pitch: 0,
-      bearing: -parallacticAngle,
+      bearing: 0,
       padding: { top: 0, right: 0, left: 0, bottom: margeBas() },
       duration: 1800,
     });
@@ -397,7 +437,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   bulleRetour.className = 'lune-bulle lune-bulle-retour';
   bulleRetour.hidden = true;
   bulleRetour.innerHTML = `
-    <button type="button" data-action="voir"><span data-i18n="lune-visite.regarder-terre"></span></button>
     <button type="button" data-action="retour" class="principal">${ICONE_TERRE}<span data-i18n="lune-visite.retour-terre"></span></button>
   `;
   bulleRetour.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
@@ -416,7 +455,8 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     event.stopPropagation();
     if (elementTerre.classList.contains('bord')) {
       fermerRetour();
-      regarderTerre();
+      if (map.getZoom() < ZOOM_CIEL_3D) montrerTerreDansEspace();
+      else regarderTerre();
       return;
     }
     if (!bulleRetour.hidden) {
@@ -439,10 +479,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     setTimeout(() => ouvrirRetour(cadre.left + point.x, cadre.top + point.y + point.rayon));
   });
   bulleRetour.querySelector('[data-action="retour"]').addEventListener('click', () => quitter());
-  bulleRetour.querySelector('[data-action="voir"]').addEventListener('click', () => {
-    fermerRetour();
-    regarderTerre();
-  });
   map.on('movestart', fermerRetour);
   map.on('mousedown', fermerRetour);
   map.on('touchstart', fermerRetour);

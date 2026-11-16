@@ -346,6 +346,7 @@ export function initMenu(map) {
   let activiteEnCours = null;
   const pastilleActivite = creerPastilleCouche({
     ordre: -10,
+    filtre: false, // le mode espace n'arrête pas l'activité
     nom: () => (activiteEnCours ? t(activiteEnCours.def.labelCle) : ''),
     legende: () => {
       const fichier = activiteEnCours && ICONES_ACTIVITES[activiteEnCours.def.icone];

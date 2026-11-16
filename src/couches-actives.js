@@ -94,13 +94,20 @@ function majRubriques() {
   }
 }
 
+// Mode espace (demande du propriétaire du 16 novembre 2026) : au dézoom, dès que les étoiles apparaissent, toutes les
+// couches allumées s'éteignent, comme par leur ✕ (vent, géologie, ombre, Soleil et Lune dans le ciel…)
+export function eteindreFiltres() {
+  [...pastilles].filter((p) => p.visible && p.filtre).forEach((p) => p.retirer());
+}
+
 // Ouvre le panneau Carte sur un module (relief, elements), même réduit
 export const ouvrirReglage = (module) =>
   window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'carte', module } }));
 
 // `ordre` : place dans la rangée. `nom()` : texte de la pastille. `legende()` : HTML facultatif devant le nom.
 // `rubrique` : rubrique de Carte (relief, nature, elements, fond) où la pastille se regroupe.
-export function creerPastilleCouche({ ordre = 0, nom, legende = () => '', onOuvrir, onRetirer, rubrique = null }) {
+// `filtre` : faux pour ce qui n'est pas une couche (l'activité en cours), que le mode espace n'éteint pas.
+export function creerPastilleCouche({ ordre = 0, nom, legende = () => '', onOuvrir, onRetirer, rubrique = null, filtre = true }) {
   const element = document.createElement('div');
   element.className = 'couche-pastille';
   element.style.order = ordre;
@@ -128,6 +135,7 @@ export function creerPastilleCouche({ ordre = 0, nom, legende = () => '', onOuvr
   const pastille = {
     visible: false,
     rubrique,
+    filtre,
     retirer: () => onRetirer(),
     cacher(oui) {
       cachee = oui;
