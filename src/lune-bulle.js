@@ -4,6 +4,7 @@
 // soleil, « Informations » (Soleil et Lune › Soleil), sans visite.
 import { ouvrirSoleilLune } from './soleil-lune.js';
 import { poser, t } from './i18n.js';
+import { svgLune } from './lune-dessin.js';
 import { getMoonPosition } from 'suncalc';
 import { opaciteCiel } from './ciel-calcul.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
@@ -81,7 +82,8 @@ export function initBulleLune(map, ciel) {
   indice.type = 'button';
   indice.className = 'astre-indice';
   indice.hidden = true;
-  indice.innerHTML = '<i class="astre-indice-lune"></i><i class="astre-indice-fleche"></i>';
+  // La Lune dessinée des menus (blanche avec ses mers grises, lune-dessin.js), demande du propriétaire du 16 novembre 2026
+  indice.innerHTML = `<span class="astre-indice-lune">${svgLune({ fraction: 1, classe: 'lune-icone' })}</span><i class="astre-indice-fleche"></i>`;
   map.getContainer().append(indice);
   const nommerIndice = () => {
     indice.setAttribute('aria-label', t('lune-visite.montrer-lune'));
