@@ -4273,10 +4273,11 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .astre-indice { position: absolute; top: 0; left: 0; z-index: 3; width: 0; height: 0; padding: 0; border: 0; background: none; cursor: pointer; }
 .astre-indice[hidden] { display: none; }
 .astre-indice-lune {
-  position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 50%;
-  background: radial-gradient(circle at 38% 36%, #f4f2ea, #c9c8c2 55%, #8f9098); box-shadow: 0 0 0 1.5px rgb(14 20 42 / .85), 0 0 12px 3px rgb(220 228 255 / .45);
+  position: absolute; left: -16px; top: -16px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface); color: var(--texte); box-shadow: 0 0 0 1px var(--bord), 0 0 12px 2px rgb(220 228 255 / .3);
 }
-.astre-indice-fleche { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; pointer-events: none; }
+.astre-indice-lune .lune-icone { width: 30px; height: 30px; }
+.astre-indice-fleche { position: absolute; left: -25px; top: -25px; width: 50px; height: 50px; pointer-events: none; }
 .astre-indice-fleche::before {
   content: ''; position: absolute; left: 50%; top: -1px; margin-left: -6px;
   border: 6px solid transparent; border-bottom: 8px solid rgb(236 240 255 / .9); border-top: 0;
