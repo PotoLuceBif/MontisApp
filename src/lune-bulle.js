@@ -6,6 +6,7 @@ import { ouvrirSoleilLune } from './soleil-lune.js';
 import { poser, t } from './i18n.js';
 import { getMoonPosition } from 'suncalc';
 import { opaciteCiel } from './ciel-calcul.js';
+import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
 
 const MARGE = 14; // px autour du disque : les astres sont petits, le doigt ne l'est pas
 
@@ -103,22 +104,17 @@ export function initBulleLune(map, ciel) {
     }
     indice.hidden = visible;
     if (visible) return;
-    // Direction de la Lune vue du centre de la carte, ramenée au bord libre de l'écran
+    // Direction de la Lune par la vraie projection de la caméra, inclinaison comprise (avec la seule boussole, une vue
+    // inclinée montrait le haut pour une Lune qui était en bas), ramenée au bord libre de l'écran
     const { lng, lat } = map.getCenter();
-    const instant = new Date();
-    const a = ((getMoonPosition(instant, lat, lng).azimuth - map.getBearing()) * Math.PI) / 180;
-    const dx = Math.sin(a);
-    const dy = -Math.cos(a);
-    const cx = l / 2;
-    const cy = h / 2;
-    const limites = [];
-    if (dx > 1e-6) limites.push((l - MARGE_INDICE.droite - cx) / dx);
-    if (dx < -1e-6) limites.push((MARGE_INDICE.gauche - cx) / dx);
-    if (dy > 1e-6) limites.push((h - MARGE_INDICE.bas - cy) / dy);
-    if (dy < -1e-6) limites.push((MARGE_INDICE.haut - cy) / dy);
-    const k = Math.min(...limites);
-    indice.style.transform = `translate(${(cx + dx * k).toFixed(1)}px, ${(cy + dy * k).toFixed(1)}px)`;
-    indice.querySelector('.astre-indice-fleche').style.transform = `rotate(${((a * 180) / Math.PI).toFixed(1)}deg)`;
+    const lune2 = getMoonPosition(new Date(), lat, lng);
+    const cam = {
+      bearing: map.getBearing(), pitch: map.getPitch(), fov: map.getVerticalFieldOfView(), largeur: l, hauteurEcran: h, padding: map.getPadding(),
+    };
+    const projection = projeterSoleil({ azimut: ((lune2.azimuth % 360) + 360) % 360, hauteur: lune2.altitude }, cam);
+    const place = placerSoleil(projection, { largeur: l, hauteurEcran: h, marge: MARGE_INDICE, margeVisible: Math.max(l, h) });
+    indice.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
+    indice.querySelector('.astre-indice-fleche').style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
   }
   // La Lune du ciel est redessinée à l'image suivante : la flèche suit après elle
   map.on('move', () => requestAnimationFrame(placerIndice));
