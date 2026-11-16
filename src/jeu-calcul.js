@@ -136,9 +136,14 @@ export function paysDeZone(pays, zone) {
   return pays.filter((p) => zone === 'monde' || p.zones.includes(zone)).map((p) => p.code);
 }
 
+// Drapeaux identiques ou presque : jamais proposés ensemble, la réponse serait une loterie
+const JUMEAUX = [['MC', 'ID'], ['TD', 'RO']];
+export const jumeau = (code) => JUMEAUX.find((paire) => paire.includes(code))?.find((c) => c !== code) || null;
+
 // Quatre choix : la bonne réponse et trois autres de la zone (du monde si la zone est trop petite), dans le désordre
 export function proposerChoix(bonne, zone, tous, { nombre = 4, aleatoire = Math.random } = {}) {
-  const autres = (liste) => melanger(liste.filter((c) => c !== bonne), aleatoire);
+  const exclu = jumeau(bonne);
+  const autres = (liste) => melanger(liste.filter((c) => c !== bonne && c !== exclu), aleatoire);
   let leurres = autres(zone).slice(0, nombre - 1);
   if (leurres.length < nombre - 1) {
     leurres = [...leurres, ...autres(tous).filter((c) => !leurres.includes(c))].slice(0, nombre - 1);

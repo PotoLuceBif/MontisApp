@@ -156,6 +156,14 @@ describe('tirages et scores', () => {
     for (const c of choix) expect(europe).toContain(c);
   });
 
+  it('ne propose jamais deux drapeaux jumeaux ensemble (Monaco et Indonésie)', () => {
+    for (let n = 1; n < 200; n += 1) {
+      const choix = proposerChoix('MC', codes, codes, { aleatoire: graine(n) });
+      expect(choix).not.toContain('ID');
+      expect(proposerChoix('TD', codes, codes, { aleatoire: graine(n) })).not.toContain('RO');
+    }
+  });
+
   it('complète avec le monde si la zone est trop petite', () => {
     const choix = proposerChoix('FR', ['FR', 'DE'], codes, { aleatoire: graine(2) });
     expect(choix).toHaveLength(4);
