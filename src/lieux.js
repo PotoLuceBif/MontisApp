@@ -153,8 +153,8 @@ export function afficherFrontieres(map, visible) {
       layout: { visibility: 'none', 'line-join': 'round' },
       paint: {
         'line-color': '#141824',
-        'line-opacity': 0.45,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 2.5, 10, 5],
+        'line-opacity': 0.3,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.5, 10, 3],
       },
     }, avant);
     map.addLayer({
@@ -163,9 +163,9 @@ export function afficherFrontieres(map, visible) {
       layout: { visibility: 'none', 'line-join': 'round' },
       paint: {
         'line-color': '#f3eee4',
-        'line-opacity': 0.9,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1, 10, 1.8],
-        'line-dasharray': [5, 3],
+        'line-opacity': 0.8,
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 10, 1.1, 15, 1.4],
+        'line-dasharray': [4, 3],
       },
     }, avant);
   }

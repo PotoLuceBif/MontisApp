@@ -26,6 +26,7 @@ export const CALQUES_MONTIS = [
   'montis-sentiers-lisere',
   'montis-path',
   'montis-marches',
+  'montis-frontieres',
   'montis-rail',
   'montis-rail-tirets',
   'montis-remontees',
@@ -538,6 +539,23 @@ export const STYLE_MONTIS = {
       },
     },
     // Voies ferrées : trait gris coupé de blanc, comme sur les cartes papier
+    // Frontières des pays, d'elles-mêmes au dézoom (demande du propriétaire du 16 novembre 2026) : trait fin,
+    // clair sur l'image du globe, gris foncé sur la carte (distinct des routes violettes), effacé en se rapprochant (l'élément Frontières prend le relais).
+    // Au-dessus du repère des calques (fond-de-carte.js), donc de l'image du globe.
+    {
+      id: 'montis-frontieres',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'boundary',
+      maxzoom: 11,
+      filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]],
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': ['interpolate', ['linear'], ['zoom'], 6, '#ece6f5', 8.5, '#5d586b'],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.45, 6, 0.6, 9.5, 0.6, 11, 0],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.4, 6, 0.7, 10, 1],
+      },
+    },
     {
       id: 'montis-rail',
       type: 'line',

@@ -53,6 +53,7 @@ const NUIT = {
   'montis-water': { 'fill-color': '#0d3550' },
   'montis-waterway': { 'line-color': '#22b8e6' },
   'montis-boundary': { 'line-color': '#8b74b8' },
+  'montis-frontieres': { 'line-color': '#cfc6ea' },
   'montis-building': { 'fill-color': '#2a303c', 'fill-opacity': 0.9 },
   // Routes : un halo flou de la couleur de la route, puis le trait
   'montis-road-casing': {

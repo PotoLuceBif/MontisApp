@@ -270,6 +270,7 @@ const ECRANS = [
   { nom: 'fond-pictos', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-parking-fiche', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements('Parkings'), (p) => p.waitForTimeout(5000), clicCouche('montis-parkings'), (p) => p.waitForTimeout(20000)] },
   { nom: 'fond-points-utiles', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements("Parkings|Abris|Points d'eau"), (p) => p.waitForTimeout(5000)] },
+  { nom: 'fond-frontieres', actions: [vue({ center: [6.6, 46.1], zoom: 8.8, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-lisieres', actions: [vue({ center: [6.83, 45.9], zoom: 14, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-parcs', actions: [vue({ center: [6.85, 45.37], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-nuit-pictos', fond: 'nuit', actions: [vue({ center: [6.869, 45.924], zoom: 16, bearing: 0, pitch: 0 }), ...allumerElements("Parkings|Abris|Points d'eau"), (p) => p.waitForTimeout(5000)] },
