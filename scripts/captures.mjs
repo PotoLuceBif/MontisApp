@@ -553,6 +553,10 @@ const ECRANS = [
   { nom: 'partage-point', simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-partager'), defiler('.point-partager'), clic('.point-partager')] },
   { nom: 'partage-lien-point', simuler: true, lien: '#point=45.92/6.87&z=14', actions: [attendre('.point-partager')] },
   { nom: 'partage-lien-vue', lien: '#vue=13.5/45.9/6.88/40/60&3d=1', actions: [] },
+  // Mode guidage (lot 3.14) sur le parcours partagé : sur la trace, puis loin d'elle et le chemin pour la rejoindre
+  { nom: 'guidage', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), clic('.parcours-demarrer'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'guidage-loin', lien: `#${LIEN_PARCOURS}`, position: [tracePartage[22][0], tracePartage[22][1] - 0.004], actions: [attendre('.parcours-demarrer:not([hidden])'), clic('.parcours-demarrer'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'guidage-rejoindre', lien: `#${LIEN_PARCOURS}`, position: [tracePartage[22][0], tracePartage[22][1] - 0.004], actions: [attendre('.parcours-demarrer:not([hidden])'), clic('.parcours-demarrer'), attendre('.guidage-rejoindre:not([hidden])'), clic('.guidage-rejoindre-bouton'), (p) => p.waitForTimeout(6000)] },
   { nom: 'partage-lien-parcours', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])')] },
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
@@ -713,7 +717,9 @@ async function main() {
   try {
     for (const [format, options] of Object.entries(FORMATS)) {
       for (const ecran of ecrans) {
-        const contexte = await navigateur.newContext({ ...options, locale: 'fr-FR', permissions: ['clipboard-read', 'clipboard-write'] });
+        // Option position d'un écran : position GPS simulée, localisation autorisée (mode guidage)
+        const geo = ecran.position ? { geolocation: { longitude: ecran.position[0], latitude: ecran.position[1], accuracy: 10 } } : {};
+        const contexte = await navigateur.newContext({ ...options, ...geo, locale: 'fr-FR', permissions: ['clipboard-read', 'clipboard-write', ...(ecran.position ? ['geolocation'] : [])] });
         // Pas de feuille de partage du système : le lien est copié, ce qui se voit sur la capture
         await contexte.addInitScript(() => { delete Navigator.prototype.share; });
         // Fond de jour par défaut : en Auto, une série lancée le soir passerait tout en nuit

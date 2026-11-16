@@ -20,6 +20,7 @@ import { surPreferences } from './preferences.js';
 import { poser, poserAttribut, t, ta, ti, tt } from './i18n.js';
 import { demanderChoix } from './dialogue.js';
 import { adresseTrajet, plateformeDe } from './trajet-calcul.js';
+import { creerGuidage } from './parcours-guidage.js';
 
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
@@ -150,6 +151,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <p class="parcours-preferences-note" ${ti('preference.note')}>${t('preference.note')}</p>
     </div>` : ''}
     <p class="parcours-etat" role="status" aria-live="polite"></p>
+    <div class="parcours-guidage" hidden></div>
     <div class="parcours-analyse" hidden>
       <div class="parcours-stats">
         <div class="parcours-stat parcours-stat-principale">${tt('editeur.distance')}<strong data-v="distance">—</strong></div>
@@ -175,7 +177,10 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <div class="parcours-legende-couleur" hidden></div>
     </div>
     <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
+    <div class="parcours-sortie">
+    <button type="button" class="para-bouton para-bouton-principal parcours-demarrer" hidden ${ti('guidage.demarrer')}>${t('guidage.demarrer')}</button>
     <a class="para-bouton parcours-trajet" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_TRAJET}</svg><span ${ti('editeur.s-y-rendre')}>${t('editeur.s-y-rendre')}</span></a>
+    </div>
     <div class="parcours-pied">
       <button type="button" class="para-bouton parcours-terminer">${t('editeur.terminer')}</button>
       <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer" ${ti('editeur.enregistrer')}>${t('editeur.enregistrer')}</button>
@@ -212,12 +217,28 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const blocAide = $('.parcours-aide');
   const lienTrajet = $('.parcours-trajet');
   const plateforme = plateformeDe(navigator.userAgent, navigator.maxTouchPoints);
+  const boutonDemarrer = $('.parcours-demarrer');
   const source = $('.parcours-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
 
   const profil = creerProfilParcours($('.parcours-graphique'), {
     onCurseur: (index) => afficherCurseur(index),
+  });
+  const guidage = creerGuidage(map, {
+    id: activite.id,
+    panneau,
+    bloc: $('.parcours-guidage'),
+    profil,
+    pratique: () => pratique,
+    analyse: () => analyse,
+    // Allure du champ de l'éditeur (min/km gardées), en heures par km
+    allure: () => {
+      if (!activite.allure) return null;
+      const minutes = lireDuree(lire(`${activite.id}-allure`, '10:00'));
+      return minutes > 0 ? minutes / 60 : null;
+    },
+    cadrer: (chaine) => cadrer(chaine),
   });
 
   // ---------- Couches ----------
@@ -573,6 +594,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const jeton = jetonAnalyse;
     const chaine = etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []);
     boutonGpx.disabled = true;
+    if (!guidage.actif) boutonDemarrer.hidden = true;
     if (chaine.length < 2) {
       analyse = null;
       profil.definir(null);
@@ -593,6 +615,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         rendreAlertes();
         dessinerTrace();
         boutonGpx.disabled = false;
+        boutonDemarrer.hidden = false;
         onAnalyse?.(analyse);
       } catch (erreur) {
         if (jeton !== jetonAnalyse) return;
@@ -943,6 +966,11 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     rendreLegendeCouleur();
   });
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
+  boutonDemarrer.addEventListener('click', () => {
+    fermerPopup();
+    guidage.demarrer();
+    panneau.element.scrollTop = 0;
+  });
   boutonGpx.addEventListener('click', exporterGpx);
   boutonPartager.addEventListener('click', partager);
   boutonEnregistrer.addEventListener('click', enregistrer);
@@ -1091,6 +1119,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     },
     // Itinéraire balisé ou trace importée : consultation d'abord, modification ensuite si besoin
     ouvrirTrace({ nom: nomTrace, chaine, lignes, avecSauts = false, lien, meta = '', infos = [], onRetour: retour = null, onAnalyse: rappel = null }) {
+      guidage.arreter();
       controleur?.abort();
       retourCourant = retour ?? onRetour;
       onAnalyse = rappel;
@@ -1135,6 +1164,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     },
     // Un parcours enregistré se rouvre tel quel : son tracé n'a pas à être recalculé
     ouvrirEnregistre(parcours, { recu = false } = {}) {
+      guidage.arreter();
       controleur?.abort();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
@@ -1159,6 +1189,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     },
     // Nouveau parcours de `depart` à `arrivee` ([lng, lat]), depuis la fiche d'un point (« Y aller »)
     ouvrirVers({ depart, arrivee, nom, onRetour: retour = null }) {
+      guidage.arreter();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
       retourCourant = retour ?? onRetour;
@@ -1180,6 +1211,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     },
     // Toujours un parcours neuf : celui d'avant a été enregistré ou abandonné en le quittant
     ouvrirCreation() {
+      guidage.arreter();
       controleur?.abort();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
@@ -1207,6 +1239,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     fermer() {
       controleur?.abort();
       controleur = null;
+      guidage.arreter();
       edition = false;
       idParcours = null;
       aEnregistrer = false;

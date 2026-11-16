@@ -2901,6 +2901,38 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
   border-radius: 9px; background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte-2); font-size: 12px; line-height: 1.4; pointer-events: none;
 }
 .parcours-bulle strong { color: var(--texte); font-size: 12.5px; }
+.parcours-sortie { display: flex; gap: 6px; }
+.parcours-sortie > * { flex: 1 1 0; min-width: 0; }
+.parcours-sortie > [hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-demarrer { display: none; }
+/* Guidage : ce qui reste, les temps et les repères ; le profil reste, le reste du panneau se tait */
+.parcours-guidage { display: grid; gap: 10px; }
+.parcours-guidage[hidden] { display: none; }
+.bf-parcours-guidage :is(.parcours-stats, .parcours-alertes, .parcours-repartition, .parcours-couleur, .parcours-legende-couleur, .parcours-nom, .parcours-pied, .parcours-sortie, .pc-infos, .parcours-source, .parcours-etat) { display: none !important; }
+.guidage-etat { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.guidage-etat:empty { display: none; }
+.guidage-stats { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+.guidage-stat, .guidage-temps > div { display: grid; gap: 1px; min-width: 0; }
+.guidage-stat span, .guidage-temps span { color: var(--texte-2); font-size: 11px; }
+.guidage-stat strong { color: var(--texte); font-size: 16px; font-variant-numeric: tabular-nums; }
+.guidage-stat-principale strong { color: var(--vent-couleur); font-size: 26px; line-height: 1.1; }
+.guidage-temps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.guidage-temps strong { color: var(--texte); font-size: 18px; font-variant-numeric: tabular-nums; }
+.guidage-temps small { font-size: 11.5px; font-weight: 650; }
+.guidage-avance { color: #43c98b; }
+.guidage-retard { color: #ffb020; }
+.guidage-reperes { display: grid; gap: 5px; }
+.guidage-reperes[hidden] { display: none; }
+.guidage-reperes h4 { margin: 0; color: var(--texte-2); font: 700 11px var(--police); letter-spacing: .06em; text-transform: uppercase; }
+.guidage-reperes ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.guidage-reperes li { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.guidage-reperes li strong { min-width: 0; overflow: hidden; color: var(--texte); text-overflow: ellipsis; white-space: nowrap; }
+.guidage-reperes li small { flex: none; color: var(--texte-2); }
+.guidage-rejoindre { display: grid; gap: 7px; padding: 9px 10px; border: 1px solid #ffb020; border-radius: 10px; background: color-mix(in srgb, #ffb020 10%, transparent); }
+.guidage-rejoindre[hidden] { display: none; }
+.guidage-rejoindre p { margin: 0; color: var(--texte); font-size: 12.5px; line-height: 1.4; }
+.guidage-actions { display: flex; gap: 6px; }
+.guidage-actions > * { flex: 1 1 0; }
+.guidage-actions > [hidden] { display: none; }
 .parcours-trajet { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 0 10px; text-decoration: none; }
 .parcours-trajet[hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-trajet { display: none; }
 .parcours-trajet svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
