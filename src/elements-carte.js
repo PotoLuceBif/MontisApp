@@ -2,6 +2,7 @@ import { lire, ecrire, quandPret } from './reglages.js';
 import { afficherSommets } from './sommets.js';
 import { afficherVilles, afficherRefuges, afficherFrontieres } from './lieux.js';
 import { afficherBatiments } from './batiments.js';
+import { afficherGares, afficherRails } from './transports.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
 import { poser, surLangue, t } from './i18n.js';
 import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
@@ -33,6 +34,9 @@ const GROUPES = [
     nom: 'elements.construit',
     calques: [
       { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: true, appliquer: afficherBatiments },
+      // Voies ferrées : déjà dans le fond Montis, allumées par défaut comme les bâtiments (sans pastille)
+      { cle: 'rails', label: 'elements.rails', aide: 'elements.rails-aide', defaut: true, appliquer: afficherRails },
+      { cle: 'gares', label: 'elements.gares', aide: 'elements.gares-aide', defaut: false, appliquer: afficherGares },
     ],
   },
 ];
@@ -114,7 +118,8 @@ export function creerElementsCarte(map) {
       rang += 1;
 
       // Rétablit l'état précédent dès que la carte est prête
-      if (actifAuDepart) quandPret(map, () => c.appliquer(map, true));
+      // Un élément allumé par défaut est dans le style : éteint par l'utilisateur, il faut le cacher aussi
+      if (actifAuDepart || c.defaut) quandPret(map, () => c.appliquer(map, actifAuDepart));
       pastille.montrer(actifAuDepart);
 
       input.addEventListener('change', () => {

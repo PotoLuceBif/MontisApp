@@ -2882,7 +2882,74 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
   display: grid; place-items: center; min-height: 40px; padding: 0; border: 1px solid var(--bord); border-radius: 8px;
   background: var(--surface-2); color: var(--texte); cursor: pointer;
 }
-.parcours-commandes button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+/* Survol seulement à la souris : au doigt, il restait collé après l'appui (bouton ligne droite encore rose une fois éteint) */
+@media (hover: hover) { .parcours-commandes button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); } }
+.parcours-commandes { -webkit-touch-callout: none; user-select: none; }
+.parcours-commandes .parcours-bouton-aide { color: var(--texte-2); }
+.parcours-commandes .parcours-bouton-aide[aria-expanded='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.parcours-aide { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.parcours-aide[hidden] { display: none; }
+.parcours-aide h4 { margin: 0; color: var(--texte-2); font: 700 11px var(--police); letter-spacing: .06em; text-transform: uppercase; }
+.parcours-aide ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.parcours-aide li { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: start; gap: 9px; }
+.parcours-aide li svg { width: 30px; height: 30px; padding: 5px; box-sizing: border-box; border: 1px solid var(--bord); border-radius: 7px; background: var(--surface); fill: none; stroke: var(--texte); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.parcours-aide li span { display: grid; gap: 1px; }
+.parcours-aide li strong { color: var(--texte); font-size: 12.5px; font-weight: 650; }
+.parcours-aide li small, .parcours-aide p { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.4; }
+.parcours-bulle {
+  position: fixed; z-index: 60; display: grid; gap: 2px; max-width: min(280px, calc(100vw - 16px)); padding: 8px 10px; border: 1px solid var(--accent);
+  border-radius: 9px; background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte-2); font-size: 12px; line-height: 1.4; pointer-events: none;
+}
+.parcours-bulle strong { color: var(--texte); font-size: 12.5px; }
+.parcours-sortie { display: flex; gap: 6px; }
+.parcours-sortie > * { flex: 1 1 0; min-width: 0; }
+.parcours-sortie > [hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-demarrer { display: none; }
+/* Guidage : ce qui reste, les temps et les repères ; le profil reste, le reste du panneau se tait */
+.parcours-guidage { display: grid; gap: 10px; }
+.parcours-guidage[hidden] { display: none; }
+.bf-parcours-guidage :is(.parcours-stats, .parcours-alertes, .parcours-repartition, .parcours-couleur, .parcours-legende-couleur, .parcours-nom, .parcours-pied, .parcours-sortie, .pc-infos, .parcours-source, .parcours-etat) { display: none !important; }
+.guidage-etat { margin: 0; color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.guidage-etat:empty { display: none; }
+.guidage-stats { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+.guidage-stat, .guidage-temps > div { display: grid; gap: 1px; min-width: 0; }
+.guidage-stat span, .guidage-temps span { color: var(--texte-2); font-size: 11px; }
+.guidage-stat strong { color: var(--texte); font-size: 16px; font-variant-numeric: tabular-nums; }
+.guidage-stat-principale strong { color: var(--vent-couleur); font-size: 26px; line-height: 1.1; }
+.guidage-temps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 9px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.guidage-temps strong { color: var(--texte); font-size: 18px; font-variant-numeric: tabular-nums; }
+.guidage-temps small { font-size: 11.5px; font-weight: 650; }
+.guidage-avance { color: #43c98b; }
+.guidage-retard { color: #ffb020; }
+.guidage-reperes { display: grid; gap: 5px; }
+.guidage-reperes[hidden] { display: none; }
+.guidage-reperes h4 { margin: 0; color: var(--texte-2); font: 700 11px var(--police); letter-spacing: .06em; text-transform: uppercase; }
+.guidage-reperes ul { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.guidage-reperes li { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.guidage-reperes li strong { min-width: 0; overflow: hidden; color: var(--texte); text-overflow: ellipsis; white-space: nowrap; }
+.guidage-reperes li small { flex: none; color: var(--texte-2); }
+.guidage-rejoindre { display: grid; gap: 7px; padding: 9px 10px; border: 1px solid #ffb020; border-radius: 10px; background: color-mix(in srgb, #ffb020 10%, transparent); }
+.guidage-rejoindre[hidden] { display: none; }
+.guidage-rejoindre p { margin: 0; color: var(--texte); font-size: 12.5px; line-height: 1.4; }
+.guidage-actions { display: flex; gap: 6px; }
+.guidage-actions > * { flex: 1 1 0; }
+.guidage-actions > [hidden] { display: none; }
+.parcours-trajet { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 0 10px; text-decoration: none; }
+.parcours-trajet[hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-trajet { display: none; }
+.parcours-trajet svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.dialogue-fond { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(4, 7, 12, .6); }
+.dialogue {
+  box-sizing: border-box; display: grid; gap: 12px; width: min(360px, 100%); padding: 18px; border: 1px solid var(--bord); border-radius: 14px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte);
+}
+.dialogue h3 { margin: 0; font-size: 16px; }
+.dialogue p { margin: 0; color: var(--texte-2); font-size: 13px; line-height: 1.45; }
+.dialogue-champ { display: grid; gap: 5px; color: var(--texte-2); font-size: 12px; }
+.dialogue-champ input {
+  box-sizing: border-box; width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--bord); border-radius: 8px;
+  background: var(--surface-2); color: var(--texte); font: 600 14px var(--police);
+}
+.dialogue-boutons { display: grid; gap: 8px; }
+.dialogue-boutons .para-bouton { min-height: 42px; font-size: 13px; }
 .parcours-commandes button:disabled { opacity: .35; cursor: default; }
 .parcours-commandes button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
 .parcours-commandes svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -3055,6 +3122,8 @@ button.parcours-alerte { cursor: pointer; }
 .bf-parcours-lecture .parcours-commandes, .bf-parcours-lecture .parcours-pratiques-panneau, .bf-parcours-lecture .parcours-etat, .bf-parcours-lecture .parcours-preferences { display: none; }
 .bf-parcours-lecture.bf-parcours-ensemble .parcours-etat { display: block; }
 .bf-parcours-ensemble :is(.parcours-pied, .parcours-nom) { display: none; }
+/* Le nom ne se change qu'en modifiant le tracé : le titre du panneau suffit en lecture */
+.bf-parcours-lecture .parcours-nom { display: none; }
 .parcours-etape {
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%;
   background: var(--parcours-couleur); color: #0b111b; box-shadow: 0 1px 5px rgba(0, 0, 0, .55); font: 800 12px var(--police); cursor: grab; touch-action: none;
@@ -3192,7 +3261,7 @@ body:has(#menu-tiroir.ouvert) .hl-pastille { visibility: hidden; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-canvas { max-height: 28dvh; }
   .vent-volume:not(.vent-volume-plein) .vent-volume-detail { display: none; }
   /* Pendant l'édition, la carte passe d'abord : le détail vient avec « Terminer » */
-  .bf-parcours:not(.bf-parcours-lecture) :is(.parcours-profil, .parcours-repartition, .parcours-couleur, .parcours-legende-couleur, .parcours-nom, .parcours-alertes) { display: none; }
+  .bf-parcours:not(.bf-parcours-lecture) :is(.parcours-profil, .parcours-repartition, .parcours-couleur, .parcours-legende-couleur, .parcours-alertes) { display: none; }
   .bf-rose-dessin { width: 92px; height: 92px; }
   .bf-valeur-principale strong { font-size: 30px; }
   .bf-graphique { height: 176px; }

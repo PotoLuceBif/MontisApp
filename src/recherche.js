@@ -345,11 +345,8 @@ export function initRecherche(map) {
       }
       setTimeout(() => (poser(copier, 'lieu.copier')), 1500);
     });
-    const retirer = document.createElement('button');
-    retirer.type = 'button';
-    poser(retirer, 'rech.retirer');
-    retirer.addEventListener('click', effacerTout);
-    actions.append(copier, retirer);
+    // Pas de bouton « Retirer » : un appui sur la carte à côté enlève le repère
+    actions.append(copier);
 
     boite.append(nom, sous, coord, actions);
     return boite;
@@ -378,6 +375,12 @@ export function initRecherche(map) {
       .addTo(map);
     repere.togglePopup();
   }
+
+  // Un appui sur la carte à côté du repère l'enlève (le pin lui-même ouvre ou ferme sa bulle) ;
+  // se déplacer ou zoomer le laisse en place (demande du propriétaire du 16 novembre 2026)
+  map.on('click', () => {
+    if (repere) effacerTout();
+  });
 
   function aller(r) {
     if (r.bounds) {

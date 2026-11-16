@@ -466,7 +466,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
     const { retour, ...trajet } = demande;
     editeur.ouvrirVers({
       ...trajet,
-      // Le brouillon reste : « Créer un parcours » le reprend
+      // La flèche retour pose la question « Enregistrer ce tracé ? » avant de revenir à la fiche
       onRetour: retour ? () => {
         editeur.fermer();
         retour();

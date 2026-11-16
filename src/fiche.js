@@ -13,11 +13,6 @@ const GENRE_PAR_COUCHE = {
   'lieux-bourgs': 'lieu',
   'lieux-villages': 'lieu',
   'lieux-hameaux': 'lieu',
-  'nature-rivieres': 'riviere',
-  'nature-rivieres-noms': 'riviere',
-  'nature-lacs': 'lac',
-  'nature-lacs-noms-ligne': 'lac',
-  'nature-lacs-noms-point': 'lac',
   'nature-glaciers': 'glacier',
   'nature-glaciers-motif': 'glacier',
   'nature-glaciers-bord': 'glacier',
@@ -32,11 +27,10 @@ const GENRE_PAR_COUCHE = {
 };
 
 // Quand plusieurs éléments se superposent : le plus précis gagne
-const PRIORITE = ['sommet', 'refuge', 'lieu', 'riviere', 'lac', 'glacier', 'foret', 'parc'];
+// Plus de fiche pour l'eau (mer, lacs, cours d'eau) : demande du propriétaire du 16 novembre 2026
+const PRIORITE = ['sommet', 'refuge', 'lieu', 'glacier', 'foret', 'parc'];
 
 const NOMS_LIEUX = { city: 'fiche.ville', town: 'fiche.ville', village: 'fiche.village', hamlet: 'fiche.hameau' };
-const NOMS_COURS = { river: 'fiche.riviere', stream: 'fiche.ruisseau', canal: 'fiche.canal' };
-const NOMS_EAUX = { lake: 'fiche.lac', ocean: 'fiche.mer', river: 'fiche.cours-eau', pond: 'fiche.etang' };
 const NOMS_PARCS = { national_park: 'fiche.parc-national', nature_reserve: 'fiche.reserve', protected_area: 'fiche.zone-protegee' };
 
 const humaniser = (c) => c.replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase());
@@ -48,7 +42,6 @@ const rangParc = (e) => (e.tags.boundary === 'national_park' ? 0 : e.tags.leisur
 const FILTRES = {
   foret: (t) => t.natural === 'wood' || t.landuse === 'forest',
   glacier: (t) => t.natural === 'glacier',
-  lac: (t) => t.natural === 'water' || t.landuse === 'reservoir',
 };
 
 let bloque = false;
@@ -74,8 +67,6 @@ function decrire(f, genre) {
         ele: p.ele || undefined,
       };
     case 'lieu': return { icone: '🏘️', type: tr(NOMS_LIEUX[p.class] || 'fiche.lieu'), nom };
-    case 'riviere': return { icone: '🌊', type: tr(NOMS_COURS[p.class] || 'fiche.cours-eau'), nom };
-    case 'lac': return { icone: '💧', type: tr(NOMS_EAUX[p.class] || 'fiche.plan-eau'), nom };
     case 'glacier': return { icone: '🧊', type: tr('fiche.glacier'), nom };
     case 'foret': return { icone: '🌲', type: tr('fiche.foret'), nom };
     default:

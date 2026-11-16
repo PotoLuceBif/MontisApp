@@ -42,8 +42,7 @@ export function creerStockageParcours(activite) {
     },
     supprimer: (id) => ecrireJson(cleParcours, lister().filter((parcours) => parcours.id !== id)),
     renommer: (id, nom) => ecrireJson(cleParcours, lister().map((parcours) => (parcours.id === id ? { ...parcours, nom } : parcours))),
-    lireBrouillon: () => lireJson(cleBrouillon, null),
-    ecrireBrouillon: (brouillon) => ecrireJson(cleBrouillon, brouillon),
+    // Ancien brouillon que « Créer un parcours » reprenait : effacé, plus jamais écrit
     effacerBrouillon() {
       try {
         localStorage.removeItem(cleBrouillon);
