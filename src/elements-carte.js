@@ -3,6 +3,7 @@ import { afficherSommets } from './sommets.js';
 import { afficherVilles, afficherRefuges, afficherFrontieres } from './lieux.js';
 import { afficherBatiments } from './batiments.js';
 import { afficherGares, afficherRails } from './transports.js';
+import { afficherPointUtile } from './points-utiles.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
 import { poser, surLangue, t } from './i18n.js';
 import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
@@ -16,6 +17,8 @@ const GROUPES = [
       { cle: 'villes', label: 'elements.villes', aide: 'elements.villes-aide', defaut: false, appliquer: afficherVilles },
       { cle: 'refuges', label: 'elements.refuges', aide: 'elements.refuges-aide', defaut: false, appliquer: afficherRefuges },
       { cle: 'frontieres', label: 'elements.frontieres', aide: 'elements.frontieres-aide', defaut: false, appliquer: afficherFrontieres },
+      { cle: 'abris', label: 'elements.abris', aide: 'elements.abris-aide', defaut: false, appliquer: (map, oui) => afficherPointUtile(map, 'abris', oui) },
+      { cle: 'points-eau', label: 'elements.points-eau', aide: 'elements.points-eau-aide', defaut: false, appliquer: (map, oui) => afficherPointUtile(map, 'points-eau', oui) },
     ],
   },
   {
@@ -36,6 +39,7 @@ const GROUPES = [
       { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: true, appliquer: afficherBatiments },
       // Voies ferrées : déjà dans le fond Montis, allumées par défaut comme les bâtiments (sans pastille)
       { cle: 'rails', label: 'elements.rails', aide: 'elements.rails-aide', defaut: true, appliquer: afficherRails },
+      { cle: 'parkings', label: 'elements.parkings', aide: 'elements.parkings-aide', defaut: false, appliquer: (map, oui) => afficherPointUtile(map, 'parkings', oui) },
       { cle: 'gares', label: 'elements.gares', aide: 'elements.gares-aide', defaut: false, appliquer: afficherGares },
     ],
   },
