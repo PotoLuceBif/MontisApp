@@ -21,6 +21,7 @@ dist-ssr
 scripts/cache-refuges.json
 scripts/cache-bike-parks.json
 scripts/cache-lune-*
+scripts/cache-pays-*
 
 # Editor directories and files
 .vscode/*

@@ -4288,3 +4288,82 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .icone-terre .contour { fill: none; stroke: currentColor; stroke-width: 1.6; }
 .lune-visite-quitter .icone-terre { color: #6fb6ff; stroke: none; }
 .lune-bulle-retour .icone-terre { stroke: none; }
+
+/* ---------- Jeux (lot P.4a) : quiz des pays sur le globe ---------- */
+.jeux { display: grid; gap: 12px; padding-bottom: 4px; }
+.jeux .note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.45; }
+.jeux-reglage { display: grid; gap: 6px; }
+.jeux-reglage[hidden] { display: none; }
+.jeux-legende { color: var(--texte-2); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.jeux-zones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.jeux-zones button {
+  display: grid; gap: 1px; min-height: 46px; padding: 6px 4px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 650 12px/1.2 var(--police); cursor: pointer;
+}
+.jeux-zones button small { color: var(--texte-2); font-size: 10.5px; font-weight: 600; }
+.jeux-zones button.actif { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); }
+.jeux-zones button.actif small { color: var(--texte); }
+.jeux-record { margin: 0; color: var(--texte); font-size: 12.5px; font-weight: 600; }
+.jeux-jouer, .jeux-suivant, .jeux-rejouer {
+  min-height: 46px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-texte);
+  font: 750 15px/1 var(--police); cursor: pointer;
+}
+.jeux-jouer:disabled { opacity: 0.6; cursor: progress; }
+.jeux-credits { font-size: 11px !important; }
+
+.bf-jeu .bf-corps { display: grid; gap: 10px; }
+.jeux-consigne { margin: 0; font-size: 14px; font-weight: 650; text-align: center; }
+.jeux-drapeau {
+  display: block; width: min(220px, 70%); aspect-ratio: 4 / 3; margin: 2px auto 0; object-fit: cover;
+  border-radius: 8px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.jeux-capitale { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 4px 0 0; font: 800 24px/1.15 var(--police); text-align: center; }
+.jeux-capitale img { width: 40px; height: 30px; object-fit: cover; border-radius: 4px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.jeux-choix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.jeux-choix button, .jeux-suggestions button, .jeux-passer, .jeux-autre, .jeux-abandon, .jeux-saisie button {
+  min-height: 48px; padding: 6px 8px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 650 13.5px/1.2 var(--police); cursor: pointer;
+}
+.jeux-choix-drapeaux button { padding: 6px; }
+.jeux-choix-drapeaux img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 5px; }
+.jeux-choix button:disabled, .jeux-suggestions button:disabled { cursor: default; opacity: 0.55; }
+.jeux-choix button.juste, .jeux-suggestions button.juste { border-color: #3ddc97; background: rgba(61, 220, 151, 0.2); opacity: 1; }
+.jeux-choix button.faux, .jeux-suggestions button.faux { border-color: #ff5c7a; background: rgba(255, 92, 122, 0.2); opacity: 1; }
+.jeux-saisie { display: flex; gap: 6px; }
+.jeux-saisie input {
+  flex: 1; min-width: 0; min-height: 46px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 600 16px/1 var(--police);
+}
+.jeux-saisie input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.jeux-suggestions { display: grid; gap: 6px; }
+.jeux-suggestions:empty { display: none; }
+.jeux-passer, .jeux-abandon { min-height: 40px; color: var(--texte-2); }
+.jeux-retour { display: grid; gap: 8px; margin: 0; min-height: 1.2em; font-size: 13.5px; font-weight: 650; text-align: center; }
+.jeux-retour:empty { display: none; }
+.jeux-retour p { margin: 0; }
+.jeux-bravo { color: #3ddc97; font-weight: 700; }
+.jeux-rate, .jeux-inconnu { color: #ff8da1; }
+.jeux-liste-tete { display: flex; align-items: baseline; justify-content: space-between; }
+.jeux-chrono { font: 800 28px/1 var(--police); font-variant-numeric: tabular-nums; }
+.jeux-chrono-fin { color: #ff8da1; }
+.jeux-compte { color: var(--texte-2); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.jeux-trouves, .jeux-manques { display: flex; flex-wrap: wrap; gap: 5px; max-height: 150px; overflow-y: auto; }
+.jeux-trouve, .jeux-manques button {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border: 1px solid var(--bord);
+  border-radius: 999px; background: var(--surface-2); color: var(--texte); font: 600 12px/1.3 var(--police);
+}
+.jeux-manques button { min-height: 32px; cursor: pointer; }
+.jeux-trouve img, .jeux-manques img { width: 20px; height: 15px; object-fit: cover; border-radius: 2px; }
+.jeux-score { display: grid; justify-items: center; gap: 3px; text-align: center; }
+.jeux-score strong { font: 800 40px/1 var(--police); }
+.jeux-score strong small { color: var(--texte-2); font-size: 20px; }
+.jeux-score span { color: var(--texte-2); font-size: 13px; }
+.jeux-score p { margin: 4px 0 0; }
+.jeux-fin-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) {
+  .bf-jeu .jeux-drapeau { width: min(150px, 48%); }
+  .bf-jeu .jeux-choix-drapeaux { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .bf-jeu .jeux-choix-drapeaux button { min-height: 0; padding: 4px; }
+  .bf-jeu .jeux-trouves { max-height: 76px; }
+  .bf-jeu .jeux-manques { max-height: 110px; }
+}

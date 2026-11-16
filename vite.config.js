@@ -4,7 +4,7 @@ import { join, relative, sep } from 'node:path';
 import { defineConfig } from 'vite';
 
 // Pistes, massifs d’avalanche et itinéraires de ski de rando se chargent à la demande : pas à garder d’office
-const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/', '/data/bike-parks/', '/data/avalanches/', '/data/skitour/', '/data/lune/'];
+const EXCLUS_DU_SERVICE_WORKER = ['/data/pistes/', '/data/bike-parks/', '/data/avalanches/', '/data/skitour/', '/data/lune/', '/data/jeux/'];
 
 function fichiersPublics(dossier, racine = dossier) {
   return readdirSync(dossier).flatMap((nom) => {

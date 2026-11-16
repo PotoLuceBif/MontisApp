@@ -169,7 +169,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(requete.url);
   if (url.origin === self.location.origin) {
     if (requete.mode === 'navigate') event.respondWith(serviePage(requete));
-    else if (/^\/data\/(pistes|bike-parks|avalanches|skitour|lune)\//.test(url.pathname)) event.respondWith(servieDonnees(requete, false));
+    else if (/^\/data\/(pistes|bike-parks|avalanches|skitour|lune|jeux)\//.test(url.pathname)) event.respondWith(servieDonnees(requete, false));
     else if (FICHIERS.includes(url.pathname)) event.respondWith(servieFichier(requete));
     return;
   }
