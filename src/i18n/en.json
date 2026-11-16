@@ -1454,6 +1454,7 @@
   "ombres.jour-suivant": "Next day",
   "ombres.prudence": "Computed on terrain of about 30 m, without trees or buildings; clouds are ignored. Estimates: check on the ground.",
   "ombres.choisir-jour": "Choose the day",
+  "exposition.evaluer": "Check sun exposure",
   "lune.titre": "Moon",
   "lune.phase-nouvelle": "New moon",
   "lune.phase-premier-croissant": "Waxing crescent",

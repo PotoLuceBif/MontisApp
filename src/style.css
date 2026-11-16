@@ -674,6 +674,7 @@ a.point-lien { box-sizing: border-box; text-decoration: none; }
 .point-terrain summary::-webkit-details-marker { display: none; }
 .point-terrain p { margin: 2px 0 0; line-height: 1.45; }
 .point-lien span { flex: 1; min-width: 0; }
+.fiche-exposition { flex-basis: 100%; }
 .point-lien svg { flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .point-lien-icone { width: 18px; height: 18px; color: var(--accent); }
 .point-lien-chevron { width: 16px; height: 16px; color: var(--texte-2); }
@@ -2935,7 +2936,8 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
   border-radius: 9px; background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte-2); font-size: 12px; line-height: 1.4; pointer-events: none;
 }
 .parcours-bulle strong { color: var(--texte); font-size: 12.5px; }
-.parcours-sortie { display: flex; gap: 6px; }
+.parcours-sortie { display: flex; flex-wrap: wrap; gap: 6px; }
+.parcours-sortie > .parcours-exposition { flex-basis: 100%; }
 .parcours-sortie > * { flex: 1 1 0; min-width: 0; }
 .parcours-sortie > [hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-demarrer { display: none; }
 /* Guidage : ce qui reste, les temps et les repères ; le profil reste, le reste du panneau se tait */

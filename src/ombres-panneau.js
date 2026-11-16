@@ -2,6 +2,7 @@
 // chargent qu'à la première activation, ou au démarrage si les ombres étaient allumées.
 import { lire, ecrire } from './reglages.js';
 import { poser, ta } from './i18n.js';
+import { ALLUMER_OMBRES } from './exposition.js';
 
 const ICONE_SOLEIL = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
   <circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>`;
@@ -46,6 +47,12 @@ export function creerOptionOmbres(map, partage) {
   }
 
   bouton.addEventListener('click', () => basculer(!actif));
+  // « Évaluer l'exposition » (exposition.js) : allume l'ombre, et dit comment l'éteindre au retour
+  window.addEventListener(ALLUMER_OMBRES, (event) => {
+    if (actif) return;
+    basculer(true);
+    event.detail?.allumee(() => basculer(false));
+  });
   majBouton();
   if (actif) basculer(true);
   return { bloc, actif: () => actif };

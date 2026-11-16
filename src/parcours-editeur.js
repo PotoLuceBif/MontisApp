@@ -21,6 +21,7 @@ import { poser, poserAttribut, t, ta, ti, tt } from './i18n.js';
 import { demanderChoix } from './dialogue.js';
 import { adresseTrajet, plateformeDe } from './trajet-calcul.js';
 import { creerGuidage } from './parcours-guidage.js';
+import { evaluerExposition, ICONE_EXPOSITION } from './exposition.js';
 
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
@@ -180,6 +181,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     <div class="parcours-sortie">
     <button type="button" class="para-bouton para-bouton-principal parcours-demarrer" hidden ${ti('guidage.demarrer')}>${t('guidage.demarrer')}</button>
     <a class="para-bouton parcours-trajet" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_TRAJET}</svg><span ${ti('editeur.s-y-rendre')}>${t('editeur.s-y-rendre')}</span></a>
+    <button type="button" class="para-bouton parcours-trajet parcours-exposition" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${ICONE_EXPOSITION}</svg><span ${ti('exposition.evaluer')}>${t('exposition.evaluer')}</span></button>
     </div>
     <div class="parcours-pied">
       <button type="button" class="para-bouton parcours-terminer">${t('editeur.terminer')}</button>
@@ -216,6 +218,13 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const boutonAide = $('.parcours-bouton-aide');
   const blocAide = $('.parcours-aide');
   const lienTrajet = $('.parcours-trajet');
+  // « Évaluer l'exposition » : Soleil et Lune › Ombre du soleil cadrée sur le tracé ; l'éditeur reste ouvert
+  const boutonExpo = $('.parcours-exposition');
+  boutonExpo.addEventListener('click', () => {
+    const chaine = lignesEnsemble?.flat() ?? etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []);
+    const cadre = panneau.element.getBoundingClientRect();
+    evaluerExposition(map, { points: chaine, centre: etapes[0] ? [etapes[0].lng, etapes[0].lat] : null, gauche: cadre.right + 30 });
+  });
   const plateforme = plateformeDe(navigator.userAgent, navigator.maxTouchPoints);
   const boutonDemarrer = $('.parcours-demarrer');
   const source = $('.parcours-source');
@@ -932,6 +941,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const [lng, lat] = etapes.length ? [etapes[0].lng, etapes[0].lat] : lignesEnsemble?.[0]?.[0] ?? [];
     const adresse = lng === undefined ? null : adresseTrajet({ lng, lat }, plateforme);
     lienTrajet.hidden = !adresse;
+    boutonExpo.hidden = !adresse;
     if (!adresse) {
       lienTrajet.removeAttribute('href');
       return;
