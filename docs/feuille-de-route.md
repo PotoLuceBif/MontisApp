@@ -56,7 +56,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 ## Fait
 
-- **Phase 0, fondations :** 0.1 Ménage · 0.2 Découpage du bundle · 0.2 bis Activités chargées à la demande · 0.3 Tests automatiques · 0.4 Captures automatiques · 0.5 Activités et pratiques · 0.7 Robustesse.
+- **Phase 0, fondations :** 0.1 Ménage · 0.2 Découpage du bundle · 0.2 bis Activités chargées à la demande · 0.3 Tests automatiques · 0.4 Captures automatiques · 0.5 Activités et pratiques · 0.7 Robustesse · 0.9 Le fond Montis.
 - **Phase 1, le point et le terrain :** 1.1 Soleil · 1.2 Fiche universelle du point · 1.3 Pentes et orientation · 1.3 bis Pastilles Météo · 1.4 Ombre du relief · 1.4 bis Soleil en 3D et ombre dans les visites · 1.5 Frise météo commune · 1.6 Ouverture sur sa position.
 - **Phase 2, revoir ses sorties :** 2.1 Import et Mes traces · 2.2 Vue d'une sortie · 2.3 Curseur et lecture · 2.4 Le contexte de la sortie.
 - **Hors phase :** 2.0 Balises et terrains FFVL · 3.9 Géologie · 3.10 Fonds topo · 4.5 Partage par lien.
@@ -73,13 +73,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
   - **Mesurer d'abord :** temps de démarrage (chargement, menu visible, carte utilisable) sur un téléphone moyen simulé en 4G lente, fluidité de la carte avec plusieurs couches allumées (pentes, ombre, vent), mémoire sur téléphone. Rapport chiffré avant et après, dans `docs/historique.md`.
   - **Alléger :** ne charger au démarrage que la langue choisie (les deux fichiers font 135 Ko) ; repérer le code chargé au démarrage sans en avoir besoin ; garder en cache les réponses lentes (Overpass, avalanches, balises) plutôt que de les redemander à chaque ouverture ; vérifier que les mises à jour du service worker arrivent bien chez les utilisateurs.
   - **Déployer en une commande :** `npm run deployer` lance les tests et le build, publie la preview Vercel, pose l'alias `montisapp-git-<branche>` et donne le lien ; il s'arrête au premier échec.
-- [ ] **0.9 Le fond Montis** (demandé par le propriétaire le 11 novembre 2026, « dans pas très longtemps » : ce qui doit démarquer Montis). Le fond « Montis · relief » est entièrement à nous : données OpenFreeMap (OSM, sans couleur), style écrit dans `style-montis.js`, ombrage et courbes calculés sur l'appareil depuis Terrain Tiles. Pistes, de la plus visible à la plus fine :
-  - **Version sombre** du fond, assortie aux thèmes sombre et cyberpunk (aujourd'hui la carte reste claire quand l'interface est sombre).
-  - **Caractère montagne** : rochers et éboulis, sable, zones humides (déjà dans les tuiles, pas dessinés) ; glaciers plus lisibles ; ombrage du relief travaillé (double éclairage, ombres teintées) ; teintes d'altitude, à la manière des cartes suisses.
-  - **Courbes** : maîtresses marquées, intermédiaires discrètes, cotes mieux placées.
-  - **Sentiers** : hiérarchie chemin carrossable, sentier, passage difficile, couleurs pensées pour la rando et le vélo.
-  - **Noms** : lacs, rivières, cols, glaciers, routes ; police plus élégante servie par Montis (fin de la dépendance au serveur de démonstration `demotiles.maplibre.org`).
-  - **À décider :** la direction visuelle, d'après des captures de cartes que le propriétaire aime (swisstopo, IGN, une appli…) ; l'ordre des pistes ou tout d'un coup.
+- [x] **0.9 Le fond Montis** (fait le 16 novembre 2026, détail élément par élément dans `docs/lot-0-9-fond.md`). Mélange d'IGN et d'appli moderne : relief ombré bleuté, rochers, éboulis, glaciers et zones humides, forêts à lisière, alpages, zones habitées gris rosé, courbes allégées, sentiers en tireté rouge, routes aux violets de la DA, remontées à pylônes, voies ferrées, noms d'eau, de sommets et de cols, liseré des parcs, frontières fines au dézoom ; fond Auto · Jour · Nuit (nuit cyberpunk) ; parkings (avec leur fiche), abris et points d'eau dans Éléments de la carte, pictos dans la DA. Écartés : teintes d'altitude, falaises en trait (pas dans les données), police propre à Montis. Détail dans `docs/historique.md`.
 
 ### Phase 1 : fin
 
