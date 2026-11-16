@@ -256,6 +256,14 @@ const { fragment: LIEN_PARCOURS } = await fragmentParcours({
   ],
 });
 
+// Visite de la Lune, ouverte depuis Soleil et Lune ; sa carte est accessible par window.mapLune
+const ALLER_LUNE = [vue(MATIN), module('lune'), attendre('.lune-visiter'), clic('.lune-visiter'), attendre('.lune-visite.prete')];
+const vueLune = (options) => (page) => page.evaluate((o) => { window.mapLune.jumpTo(o); }, options);
+const clicLune = (lngLat) => async (page) => {
+  const { x, y } = await page.evaluate((ll) => { const p = window.mapLune.project(ll); return { x: p.x, y: p.y }; }, lngLat);
+  await page.mouse.click(x, y);
+};
+
 const ECRANS = [
   { nom: 'accueil', actions: [] },
   // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
@@ -596,6 +604,46 @@ const ECRANS = [
     actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
+  },
+  // Visiter la Lune (lot 4.10) : bouton en bas de la ligne Lune, globe lunaire, temps réel, gros plan 3D, fiche
+  { nom: 'ciel-lune-visiter', actions: [vue(MATIN), module('lune'), attendre('.lune-visiter'), (p) => p.waitForTimeout(800), defiler('.lune-visiter')] },
+  { nom: 'lune-visite', actions: [...ALLER_LUNE, (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
+  // Copernic en 3D, incliné, panneau réduit
+  {
+    nom: 'lune-visite-copernic',
+    actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [-20.08, 8.2], zoom: 6.2, pitch: 62, bearing: 0 }), (p) => p.waitForTimeout(12000)],
+  },
+  // Mer de la Tranquillité et Apollo 11, puis la fiche du site
+  {
+    nom: 'lune-visite-fiche',
+    actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [23.47, 0.67], zoom: 4.2, pitch: 0, bearing: 0 }), (p) => p.waitForTimeout(8000), clicLune([23.473, 0.674]), (p) => p.waitForTimeout(1500)],
+  },
+  // La Lune du ciel touchée au dézoom : bulle Informations ou Visiter la Lune
+  {
+    nom: 'globe-lune-bulle',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            // 14° du nadir, au nord ou au sud : sur l'écran étroit d'un téléphone, la Lune reste visible au-dessus ou au-dessous de la Terre
+            const lune = getMoonPosition(maintenant, lat, lng);
+            const ecart = Math.abs(lune.altitude + 76) + Math.min(Math.abs(lune.azimuth % 180), 180 - Math.abs(lune.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointLune());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(1000),
+    ],
   },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },

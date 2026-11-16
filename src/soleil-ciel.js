@@ -25,6 +25,15 @@ export function creerSoleilCiel(map) {
   elementLune.setAttribute('aria-hidden', 'true');
   elementLune.innerHTML = `${svgLune({ contour: true })}<i class="lune-ciel-fleche"></i>`;
   map.getCanvasContainer().append(element, elementLune);
+  // Un appui sur la Lune propose ses informations ou sa visite (lune-bulle.js)
+  elementLune.querySelector('svg').addEventListener('click', (event) => {
+    event.stopPropagation();
+    const cadre = map.getContainer().getBoundingClientRect();
+    const disque = event.currentTarget.getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent('montis:lune-touchee', {
+      detail: { x: disque.left + disque.width / 2 - cadre.left, y: disque.top + disque.height / 2 - cadre.top },
+    }));
+  });
   const fleche = element.querySelector('.soleil-ciel-fleche');
   const phaseLune = elementLune.querySelector('.lune-phase-chemin');
   const flecheLune = elementLune.querySelector('.lune-ciel-fleche');

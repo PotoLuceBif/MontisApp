@@ -22,6 +22,7 @@ import { initHorsLigne } from './hors-ligne.js';
 import { initGlobeNuit } from './globe-nuit.js';
 import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
+import { initBulleLune } from './lune-bulle.js';
 import { surPreferences } from './preferences.js';
 import { surLangue, t } from './i18n.js';
 import { imperial, PIEDS } from './unites.js';
@@ -368,7 +369,7 @@ map.once('style.load', () => {
   retablirFond(map);
   initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
-  initCiel(map); // étoiles et Lune autour du globe, derrière la carte
+  initBulleLune(map, initCiel(map)); // étoiles et Lune autour du globe, derrière la carte ; la Lune se touche
   initAtmosphere(map); // halo et liseré du globe, éclairés du côté du soleil
   initRecherche(map);
   initFiches(map);

@@ -54,7 +54,9 @@ const genererVoieLactee = () => {
   return voieLactee;
 };
 
-export function initCiel(map) {
+// `astres` : dessin propre des astres à la place du soleil et de la Lune (la visite de la Lune y pose la Terre),
+// appelé avec { contexte, centre, maintenant, projeter(direction) }
+export function initCiel(map, { astres = null } = {}) {
   const toile = document.createElement('canvas');
   toile.className = 'ciel-etoiles';
   toile.setAttribute('aria-hidden', 'true');
@@ -146,9 +148,12 @@ export function initCiel(map) {
     contexte.fill();
   }
 
+  // Position de la Lune à l'écran, pour qu'un appui la touche (lune-bulle.js)
+  let pointLune = null;
   function dessinerLune(cam, { lng, lat }, maintenant) {
     const lune = getMoonPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(lune.azimuth), hauteur: lune.altitude }, cam);
+    pointLune = point && { x: point.x, y: point.y, rayon: RAYON_LUNE };
     if (!point) return;
     const soleil = getPosition(maintenant, lat, lng);
     const versSoleil = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
@@ -179,8 +184,10 @@ export function initCiel(map) {
     contexte.restore();
   }
 
+  let retiree = false;
   function dessiner() {
     prevu = false;
+    if (retiree) return;
     const zoom = map.getZoom();
     const opacite = opaciteCiel(zoom);
     const { clientWidth: l, clientHeight: h } = map.getContainer();
@@ -192,6 +199,7 @@ export function initCiel(map) {
     contexte.setTransform(ratio, 0, 0, ratio, 0, 0);
     contexte.clearRect(0, 0, l, h);
     toile.hidden = opacite <= 0;
+    pointLune = null;
     if (opacite <= 0) return;
     if (!etoiles.length) {
       chargerEtoiles().then((liste) => {
@@ -243,8 +251,12 @@ export function initCiel(map) {
       contexte.arc(point.x, point.y, rayon, 0, Math.PI * 2);
       contexte.fill();
     }
-    dessinerSoleil(cam, centre, maintenant);
-    dessinerLune(cam, centre, maintenant);
+    if (astres) {
+      astres({ contexte, centre, maintenant, projeter: (direction) => projeterDirection(direction, cam) });
+    } else {
+      dessinerSoleil(cam, centre, maintenant);
+      dessinerLune(cam, centre, maintenant);
+    }
     contexte.globalAlpha = 1;
   }
 
@@ -258,8 +270,18 @@ export function initCiel(map) {
     if (map.getZoom() < ZOOM_MAX || !toile.hidden) planifier();
   });
   map.on('resize', planifier);
-  setInterval(() => {
+  const minute = setInterval(() => {
     if (map.getZoom() < ZOOM_MAX) planifier(); // le ciel tourne lentement : une fois par minute
   }, 60000);
+  // Carte de la Lune, retirée en quittant : plus rien à dessiner
+  map.on('remove', () => {
+    clearInterval(minute);
+    retiree = true;
+  });
   planifier();
+  return {
+    // Lune visible à l'écran : { x, y, rayon } en px CSS, sinon null
+    pointLune: () => (toile.hidden ? null : pointLune),
+    redessiner: planifier,
+  };
 }

@@ -9,6 +9,7 @@ import {
 import { heureDuLieu, jourLocal } from './soleil.js';
 import { codeCardinal } from './vent-calcul.js';
 import { svgLune } from './lune-dessin.js';
+import { visiterLaLune } from './lune-bulle.js';
 import { formatDate, poser, surLangue, t, ta } from './i18n.js';
 import { nombre, pourcent } from './unites.js';
 
@@ -59,6 +60,11 @@ export function creerLune(map, partage, reglage) {
         <div class="lunaison-phases"></div>
       </div>
     </div>
+    <button type="button" class="lune-visiter">
+      ${svgLune({ fraction: 1, classe: 'lune-icone' })}
+      <span class="lune-visiter-textes"><strong data-i18n="lune-visite.visiter"></strong><small data-i18n="lune-visite.visiter-detail"></small></span>
+      <svg class="lune-visiter-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
   `;
   panneau.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   const $ = (selecteur) => panneau.querySelector(selecteur);
@@ -74,6 +80,8 @@ export function creerLune(map, partage, reglage) {
     const decalage = reglage.decalage();
     reglage.placer(plusHautDuJour(jourLocal(instant, decalage), lat, lng, decalage));
   }
+  // Tout en bas : partir sur la Lune, au moment affiché (pour son éclairage en temps réel)
+  $('.lune-visiter').addEventListener('click', () => visiterLaLune(map, { instant: reglage.instant() }));
   // Jour par jour, à la même heure
   const decaler = (jours) => reglage.placer(reglage.instant() + jours * JOUR);
   panneau.querySelectorAll('.lunaison-pas').forEach((b) => b.addEventListener('click', () => decaler(Number(b.dataset.pas))));
