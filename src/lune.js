@@ -4,10 +4,11 @@
 // frise de la rubrique va à ce jour-là, quand la Lune est au plus haut). Au centre de la carte, à l'heure de
 // la rubrique (soleil-lune.js).
 import {
-  ageLune, cycleLunaire, plusHautDuJour, dessinPhase, DUREE_LUNAISON, eclairementLune, journeeLune, positionLune,
+  ageLune, cycleLunaire, plusHautDuJour, DUREE_LUNAISON, eclairementLune, journeeLune, positionLune,
 } from './lune-calcul.js';
 import { heureDuLieu, jourLocal } from './soleil.js';
 import { codeCardinal } from './vent-calcul.js';
+import { svgLune } from './lune-dessin.js';
 import { formatDate, poser, surLangue, t, ta } from './i18n.js';
 import { nombre, pourcent } from './unites.js';
 
@@ -22,7 +23,7 @@ const ECLAIRAGE_PHASE = {
 };
 const iconePhase = (code, sud, classe = 'lune-icone') => {
   const [fraction, croissante] = ECLAIRAGE_PHASE[code];
-  return `<svg class="${classe}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="lune-icone-fond"/><path class="lune-icone-eclairee" d="${dessinPhase(fraction, croissante, { sud })}"/></svg>`;
+  return svgLune({ fraction, croissante, sud, classe });
 };
 
 const CADRAN = `<svg class="ombres-cadran lune-cadran" viewBox="0 0 24 24" aria-hidden="true">
@@ -36,9 +37,7 @@ export function creerLune(map, partage, reglage) {
   panneau.className = 'lune-panneau';
   panneau.innerHTML = `
     <div class="lune-phase">
-      <svg class="lune-icone" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" class="lune-icone-fond"/><path class="lune-icone-eclairee"/>
-      </svg>
+      <span class="lune-icone-boite"></span>
       <div class="lune-phase-textes"><strong class="lune-nom"></strong><span class="lune-fraction"></span></div>
     </div>
     <div class="ombres-soleil lune-position" role="status">${CADRAN}<span class="lune-position-texte"></span></div>
@@ -107,7 +106,7 @@ export function creerLune(map, partage, reglage) {
     const eclairage = eclairementLune(instant);
 
     // Phase : vue de l'hémisphère du lieu (éclairée à droite au nord quand elle croît, à gauche au sud)
-    $('.lune-icone-eclairee').setAttribute('d', dessinPhase(eclairage.fraction, eclairage.croissante, { sud: lat < 0 }));
+    $('.lune-icone-boite').innerHTML = svgLune({ fraction: eclairage.fraction, croissante: eclairage.croissante, sud: lat < 0, classe: 'lune-icone' });
     $('.lune-nom').textContent = t(`lune.phase-${eclairage.code}`);
     $('.lune-fraction').textContent = t('lune.eclairee', { pourcent: pourcent(eclairage.fraction * 100) });
 

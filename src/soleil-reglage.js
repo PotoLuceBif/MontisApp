@@ -4,6 +4,7 @@
 // Lune ; les deux astres suivent le curseur, se lèvent et se couchent sur la ligne d'horizon.
 import { courseSoleil, decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
 import { courseLune, dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
+import { svgLune } from './lune-dessin.js';
 import { codeCardinal } from './vent-calcul.js';
 import { lire, ecrire } from './reglages.js';
 import { formatDate, poser, surLangue, t, ta } from './i18n.js';
@@ -69,7 +70,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
           <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
         </svg>
         <i class="ciel-course-repere ciel-course-lever"></i><i class="ciel-course-repere ciel-course-coucher"></i>
-        <svg class="ciel-course-lune" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="lune-icone-fond"/><path class="lune-icone-eclairee"/></svg>
+        <span class="ciel-course-lune">${svgLune({ classe: 'lune-icone' })}</span>
         <i class="ciel-course-soleil"></i>
       </div>` : ''}
       <input type="range" class="ombres-curseur" min="0" max="${24 * 60 - PAS_CURSEUR}" step="${PAS_CURSEUR}" ${ta('aria-label', 'ombres.heure')}>
@@ -186,7 +187,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     const lune = positionLune(instant(), lieu.lat, lieu.lng);
     const eclairage = eclairementLune(instant());
     const icone = boite.querySelector('.ciel-course-lune');
-    icone.querySelector('path').setAttribute('d', dessinPhase(eclairage.fraction, eclairage.croissante, { sud: lieu.lat < 0 }));
+    icone.querySelector('.lune-phase-chemin').setAttribute('d', dessinPhase(eclairage.fraction, eclairage.croissante, { sud: lieu.lat < 0 }));
     placer(icone, lune.hauteur);
   }
 

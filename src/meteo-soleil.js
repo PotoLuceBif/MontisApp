@@ -11,7 +11,8 @@ import {
   nomDecalage,
   positionSoleil,
 } from './soleil.js';
-import { dessinPhase, eclairementLune } from './lune-calcul.js';
+import { eclairementLune } from './lune-calcul.js';
+import { svgLune } from './lune-dessin.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const LARGEUR = 300;
@@ -66,7 +67,7 @@ export function creerSectionSoleil() {
     <div class="soleil-grille"></div>
     <div class="soleil-plages"></div>
     <div class="soleil-lune" role="group">
-      <svg class="lune-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" class="lune-icone-fond"/><path class="lune-icone-eclairee"/></svg>
+      <span class="lune-icone-boite"></span>
       <div class="lune-phase-textes"><strong></strong><span></span></div>
     </div>
     <p class="soleil-note"></p>
@@ -196,7 +197,7 @@ export function creerSectionSoleil() {
 
     // Phase de la Lune, maintenant ou à midi du jour affiché (vue de l'hémisphère du lieu)
     const eclairage = eclairementLune(estAujourdhui ? maintenant : `${jourAffiche}T12:00:00Z`);
-    lune.querySelector('path').setAttribute('d', dessinPhase(eclairage.fraction, eclairage.croissante, { sud: position.latitude < 0 }));
+    lune.querySelector('.lune-icone-boite').innerHTML = svgLune({ fraction: eclairage.fraction, croissante: eclairage.croissante, sud: position.latitude < 0, classe: 'lune-icone' });
     const nomPhase = t(`lune.phase-${eclairage.code}`);
     const eclairee = t('lune.eclairee', { pourcent: pourcent(eclairage.fraction * 100) });
     lune.querySelector('strong').textContent = nomPhase;

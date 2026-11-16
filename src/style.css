@@ -455,7 +455,8 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .ciel-course-soleil, .ciel-course-lune { position: absolute; pointer-events: none; }
 .ciel-course-soleil { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); box-shadow: 0 0 10px 3px rgb(255 200 90 / .5); }
 .ciel-course-soleil.couche { background: var(--texte-2); box-shadow: none; opacity: .55; }
-.ciel-course-lune { width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; filter: drop-shadow(0 0 3px rgb(220 228 255 / .45)); }
+.ciel-course-lune { display: block; width: 14px; height: 14px; margin: -7px 0 0 -7px; filter: drop-shadow(0 0 3px rgb(220 228 255 / .45)); }
+.ciel-course-lune .lune-icone { display: block; width: 100%; height: 100%; }
 .ciel-course-lune.couche { opacity: .35; }
 .mini-icone-ciel svg { width: 18px; height: 18px; display: block; color: var(--accent); }
 /* Cycle de la Lune (lune.js) */
@@ -487,6 +488,8 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .lune-panneau { display: grid; gap: 12px; }
 .lune-phase { display: flex; align-items: center; gap: 12px; }
 .lune-icone { width: 44px; height: 44px; flex: none; }
+.lune-icone .lune-cendree { opacity: .3; }
+.lune-icone-boite { display: flex; flex: none; }
 .lune-icone-fond { fill: color-mix(in srgb, var(--texte-2) 22%, transparent); stroke: var(--bord); stroke-width: 0.6; }
 .lune-icone-eclairee { fill: color-mix(in srgb, var(--texte) 14%, #f1f3f8); }
 .lune-phase-textes { display: grid; gap: 2px; min-width: 0; }
@@ -3947,8 +3950,9 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Lune dans le ciel en 3D (soleil-ciel.js) : côté éclairé tourné vers le soleil */
 .lune-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
 .lune-ciel[hidden] { display: none; }
-.lune-ciel svg { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 0 7px rgb(225 232 255 / .55)); }
-.lune-ciel-cendree { opacity: .2; } /* face sombre, à peine éclairée par la Terre */
+.lune-ciel svg { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 0 1.5px rgb(14 20 42 / .9)) drop-shadow(0 0 9px rgb(225 232 255 / .65)); }
+.lune-ciel .lune-cendree { opacity: .28; } /* face sombre, à peine éclairée par la Terre */
+.lune-contour { fill: none; stroke: #f1f4fb; stroke-width: .75; opacity: .95; }
 .lune-ciel.derriere { opacity: .45; }
 .lune-ciel-fleche { display: none; }
 .lune-ciel.bord svg { left: -10px; top: -10px; width: 20px; height: 20px; }
