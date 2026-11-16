@@ -689,6 +689,13 @@ const ECRANS = [
       (p) => p.waitForTimeout(1000),
     ],
   },
+  // Même option au dézoom (zoom 7, globe) : le ciel 3D prend le relais du ciel du globe
+  {
+    nom: 'ciel-lune-3d-dezoom',
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+      clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
+  },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },

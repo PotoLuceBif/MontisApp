@@ -123,6 +123,7 @@ export function creerSoleilLune(map) {
     if (oui) await charger();
     majCiel();
     majPastille();
+    etat.redessinerCiel?.();
   }
   boutonCiel.addEventListener('click', () => basculerCiel(!cielActif));
 
@@ -132,6 +133,7 @@ export function creerSoleilLune(map) {
     reglage.calculer();
     if (visible()) majTextes();
     majCiel();
+    etat.redessinerCiel?.(); // le ciel du globe (ciel.js) suit l'heure choisie
     if (pastille.visible) pastille.maj();
     abonnes.forEach((f) => f(options));
   }
@@ -158,6 +160,8 @@ export function creerSoleilLune(map) {
     majCiel,
   };
 
+  // Heure du ciel du globe (ciel.js) : celle de la rubrique quand on y regarde le ciel, sinon maintenant
+  etat.instantCiel = () => (reglage && (cielActif || visible() || Boolean(ombres?.actif())) ? reglage.instant() : null);
   ombres = creerOptionOmbres(map, partage);
   // Une visite ou une sortie rappelle etat.majOmbres ; ombres.js la remplace (et rappelle majCiel) une fois chargé
   etat.majOmbres ??= majCiel;

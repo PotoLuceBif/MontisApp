@@ -315,3 +315,17 @@ export const fractionTerre = (fractionLune) => 1 - fractionLune;
 export function texteCoordonnees(lng, lat, { nombre = (v) => v.toFixed(3), langue = 'fr' } = {}) {
   return `${nombre(Math.abs(lat))}° ${lat >= 0 ? 'N' : 'S'} · ${nombre(Math.abs(lng))}° ${lng >= 0 ? 'E' : langue === 'en' ? 'W' : 'O'}`;
 }
+
+// ---------- Altitude lue dans les tuiles de relief (public/data/lune/relief) ----------
+// Tuile Mercator et pixel d'un point, au zoom `z` (tuiles de `cote` pixels)
+export function pixelTuile(lng, lat, z, cote = 512) {
+  const n = 2 ** z;
+  const l = Math.max(-85.0511, Math.min(85.0511, lat)) * RAD;
+  const mx = ((normaliserLng(lng) + 180) / 360) * n;
+  const my = ((1 - Math.log(Math.tan(l) + 1 / Math.cos(l)) / Math.PI) / 2) * n;
+  const x = Math.min(n - 1, Math.floor(mx));
+  const y = Math.min(n - 1, Math.floor(my));
+  return { x, y, px: Math.min(cote - 1, Math.floor((mx - x) * cote)), py: Math.min(cote - 1, Math.floor((my - y) * cote)) };
+}
+// Encodage Terrarium : altitude vraie de la Lune, en mètres (sans l'exagération de la carte)
+export const decoderTerrarium = (r, v, b) => r * 256 + v + b / 256 - 32768;

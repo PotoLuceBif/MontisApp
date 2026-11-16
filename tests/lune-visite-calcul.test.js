@@ -155,3 +155,17 @@ describe('aller voir la Terre', () => {
     expect(centre.cap).toBeCloseTo(270); // vers l'ouest
   });
 });
+
+describe('altitude dans les tuiles de relief', () => {
+  it('trouve la tuile et le pixel d’un point', async () => {
+    const { pixelTuile } = await import('../src/lune-visite-calcul.js');
+    expect(pixelTuile(0, 0, 0, 512)).toEqual({ x: 0, y: 0, px: 256, py: 256 });
+    expect(pixelTuile(-179.99, 85, 4, 512)).toMatchObject({ x: 0, y: 0 });
+    expect(pixelTuile(179.99, -85, 4, 512)).toMatchObject({ x: 15, y: 15 });
+  });
+  it('décode le Terrarium', async () => {
+    const { decoderTerrarium } = await import('../src/lune-visite-calcul.js');
+    expect(decoderTerrarium(128, 0, 0)).toBe(0);
+    expect(decoderTerrarium(120, 128, 0)).toBe(-1920);
+  });
+});

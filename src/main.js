@@ -369,7 +369,10 @@ map.once('style.load', () => {
   retablirFond(map);
   initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte
   initGlobeNuit(map); // après les fonds : le globe passe au-dessus d'eux au dézoom
-  initBulleLune(map, initCiel(map)); // étoiles et Lune autour du globe, derrière la carte ; la Lune se touche
+  // Étoiles, soleil et Lune autour du globe, derrière la carte, à l'heure de Soleil et Lune ; Lune et soleil se touchent
+  const ciel = initCiel(map, { instant: () => etat.instantCiel?.() });
+  etat.redessinerCiel = ciel.redessiner;
+  initBulleLune(map, ciel);
   initAtmosphere(map); // halo et liseré du globe, éclairés du côté du soleil
   initRecherche(map);
   initFiches(map);

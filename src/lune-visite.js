@@ -8,7 +8,7 @@ import * as maplibregl from 'maplibre-gl';
 import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { ajouterProtocoleLune, PROTOCOLE_LUNE } from './lune-tuiles.js';
 import {
-  ECHELLE_LUNE, POINT_SOUS_TERRE, altitudeReelle, calottesLune, pointVersTerre, directionDepuis, fractionTerre, lieuxEnGeojson,
+  ECHELLE_LUNE, POINT_SOUS_TERRE, calottesLune, decoderTerrarium, pixelTuile, pointVersTerre, directionDepuis, fractionTerre, lieuxEnGeojson,
   pointSubsolaireLune, sitesEnGeojson, texteCoordonnees,
 } from './lune-visite-calcul.js';
 import { chercherLieux, sitesParDate, zoomPourLieu } from './lune-recherche-calcul.js';
@@ -171,7 +171,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
           },
         },
       ],
-      terrain: { source: 'relief', exaggeration: ECHELLE_LUNE },
     },
     center: [0, 0], // face visible, comme on la voit depuis la Terre
     zoom: telephone() ? 0.4 : 1.2,
@@ -179,6 +178,19 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     renderWorldCopies: false,
   });
   if (import.meta.env.DEV) window.mapLune = map;
+
+  // Relief 3D seulement de près, comme sur la Terre (main.js) : en vue globe, globe et relief ensemble font sauter
+  // la caméra pendant les déplacements (retour du propriétaire du 16 novembre 2026) ; de loin, on ne le voit pas
+  const ZOOM_RELIEF = 4;
+  let terrainActif = false;
+  function majTerrain() {
+    const veut = map.getZoom() >= ZOOM_RELIEF;
+    if (veut === terrainActif) return;
+    map.setTerrain(veut ? { source: 'relief', exaggeration: ECHELLE_LUNE } : null);
+    terrainActif = veut;
+  }
+  map.on('load', majTerrain);
+  map.on('zoomend', majTerrain);
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
   // Vue depuis la Terre : dans le panneau, sous le choix de l'éclairage (demande du propriétaire du 16 novembre 2026)
   const boutonVueTerre = $('.lune-visite-vue-terre');
@@ -227,9 +239,15 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     // Sous l'horizon du centre, elle est derrière la Lune : seulement sa direction, au bord
     const haut = racine.querySelector('.lune-visite-haut').getBoundingClientRect().bottom + 16;
     const marge = { haut, bas: margeBas() + 28, gauche: 20, droite: 64 };
-    const place = placerSoleil(direction.hauteur > 0 ? projection : { ...projection, devant: false }, {
-      largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: 12,
-    });
+    // À sa place seulement dans la partie libre de l'écran : sous la barre de recherche ou le panneau, elle était
+    // comptée comme visible alors qu'on ne la voyait pas ; elle va alors au bord, avec sa flèche
+    const libre = projection.devant && direction.hauteur > 0
+      && projection.x >= marge.gauche && projection.x <= cam.largeur - marge.droite
+      && projection.y >= marge.haut && projection.y <= cam.hauteurEcran - marge.bas;
+    const place = libre ? { x: projection.x, y: projection.y, dedans: true } : placerSoleil(
+      direction.hauteur > 0 ? projection : { ...projection, devant: false },
+      { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran) },
+    );
     // Toujours affichée (demande du propriétaire du 16 novembre 2026) : juste derrière la caméra, au départ ou en vue
     // depuis la Terre, elle se pose en bas, flèche vers le bas
     const auBord = !place.dedans;
@@ -421,17 +439,46 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     fermerBulle();
     bulle = new maplibregl.Popup({ className: 'lune-fiche', maxWidth: '280px', offset: 10 })
       .setLngLat(lngLat).setHTML(html).addTo(map);
+    remplirAltitude();
   }
   const echapper = (texte) => String(texte).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const altitudeIci = (lngLat) => {
-    const brute = map.queryTerrainElevation(lngLat);
-    // MapLibre rend l'altitude exagérée : on la ramène à la vraie Lune
-    return brute === null || brute === undefined ? null : altitudeReelle(brute);
-  };
-  const ligneAltitude = (lngLat) => {
-    const a = altitudeIci(lngLat);
-    return a === null ? '' : `<p class="lune-fiche-ligne">${echapper(t('lune-visite.altitude', { altitude: formatAltitude(a) }))}</p>`;
-  };
+  // Altitude lue dans les tuiles de relief, et non sur le relief 3D : celui-ci n'existe que de près et n'est pas
+  // encore chargé à l'arrivée d'un vol (la fiche disait « 0 m »)
+  const tuilesRelief = new Map();
+  function pixelsRelief(x, y) {
+    const cle = `${x}/${y}`;
+    if (!tuilesRelief.has(cle)) {
+      const promesse = fetch(RELIEF.replace('{z}', 4).replace('{x}', x).replace('{y}', y))
+        .then((reponse) => (reponse.ok ? reponse.blob() : Promise.reject(new Error(`HTTP ${reponse.status}`))))
+        .then((blob) => createImageBitmap(blob))
+        .then((image) => {
+          const toile = document.createElement('canvas');
+          toile.width = image.width;
+          toile.height = image.height;
+          const contexte = toile.getContext('2d', { willReadFrequently: true });
+          contexte.drawImage(image, 0, 0);
+          return contexte.getImageData(0, 0, image.width, image.height);
+        });
+      promesse.catch(() => tuilesRelief.delete(cle));
+      tuilesRelief.set(cle, promesse);
+    }
+    return tuilesRelief.get(cle);
+  }
+  async function altitudeLune({ lng, lat }) {
+    const { x, y, px, py } = pixelTuile(lng, lat, 4, 512);
+    const { data, width } = await pixelsRelief(x, y);
+    const i = (py * width + px) * 4;
+    return decoderTerrarium(data[i], data[i + 1], data[i + 2]);
+  }
+  // Ligne vide dans la fiche, remplie une fois l'altitude lue (remplirAltitude)
+  const ligneAltitude = ({ lng, lat }) => `<p class="lune-fiche-ligne lune-fiche-altitude" data-lng="${lng}" data-lat="${lat}"></p>`;
+  function remplirAltitude() {
+    const ligne = bulle?.getElement().querySelector('.lune-fiche-altitude');
+    if (!ligne) return;
+    altitudeLune({ lng: Number(ligne.dataset.lng), lat: Number(ligne.dataset.lat) })
+      .then((a) => { ligne.textContent = t('lune-visite.altitude', { altitude: formatAltitude(a) }); })
+      .catch(() => ligne.remove());
+  }
   const coordonnees = ({ lng, lat }) => texteCoordonnees(lng, lat, { nombre: (v) => nombre(v, 3), langue: langue() });
 
   const htmlSite = (site, lngLat) => `

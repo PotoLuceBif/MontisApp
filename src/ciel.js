@@ -56,7 +56,8 @@ const genererVoieLactee = () => {
 
 // `astres` : dessin propre des astres à la place du soleil et de la Lune (la visite de la Lune y pose la Terre),
 // appelé avec { contexte, centre, maintenant, projeter(direction) }
-export function initCiel(map, { astres = null } = {}) {
+// `instant` : moment du ciel (celui de Soleil et Lune quand on y règle l'heure), sinon maintenant
+export function initCiel(map, { astres = null, instant = null } = {}) {
   const toile = document.createElement('canvas');
   toile.className = 'ciel-etoiles';
   toile.setAttribute('aria-hidden', 'true');
@@ -232,7 +233,7 @@ export function initCiel(map, { astres = null } = {}) {
     }
     const cam = camera();
     const centre = map.getCenter();
-    const maintenant = new Date();
+    const maintenant = new Date(instant?.() ?? Date.now());
     const ts = tempsSideral(maintenant);
     contexte.globalAlpha = opacite;
     if (galaxie) {

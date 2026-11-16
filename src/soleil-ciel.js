@@ -5,7 +5,9 @@ import { placerSoleil, positionCamera, projeterSoleil } from './soleil-ciel-calc
 import { dessinPhase } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 
-const ZOOM_MIN = 9; // en dessous, projection globe (main.js)
+// Dès que le ciel du globe s'efface (ciel.js, zoom 6) : plus de trou entre les deux au dézoom (demande du
+// propriétaire du 16 novembre 2026)
+const ZOOM_MIN = 6;
 // Au bord, le petit soleil s'écarte ensuite des boutons et panneaux qui le couvriraient (`placerAuLarge`)
 const MARGE_BORD = { haut: 30, bas: 30, gauche: 30, droite: 30 };
 const METRES_PAR_DEGRE = 111_320;
