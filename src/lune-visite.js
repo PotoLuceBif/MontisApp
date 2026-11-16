@@ -8,7 +8,7 @@ import * as maplibregl from 'maplibre-gl';
 import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { ajouterProtocoleLune, PROTOCOLE_LUNE } from './lune-tuiles.js';
 import {
-  ECHELLE_LUNE, POINT_SOUS_TERRE, altitudeReelle, calottesLune, directionDepuis, fractionTerre, lieuxEnGeojson,
+  ECHELLE_LUNE, POINT_SOUS_TERRE, altitudeReelle, calottesLune, pointVersTerre, directionDepuis, fractionTerre, lieuxEnGeojson,
   pointSubsolaireLune, sitesEnGeojson, texteCoordonnees,
 } from './lune-visite-calcul.js';
 import { chercherLieux, sitesParDate, zoomPourLieu } from './lune-recherche-calcul.js';
@@ -63,7 +63,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
         <div class="lune-recherche-liste" role="listbox" hidden></div>
       </div>
     </div>
-    <button type="button" class="lune-visite-vue-terre">${ICONE_VUE}<span data-i18n="lune-visite.vue-terre"></span></button>
     <aside class="bf lune-visite-panneau">
       <button type="button" class="lune-visite-barre">
         <span class="lune-visite-barre-icone"></span>
@@ -78,6 +77,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
         <button type="button" data-eclairage="eclairee" data-i18n="lune-visite.eclairee"></button>
         <button type="button" data-eclairage="reel" data-i18n="lune-visite.temps-reel"></button>
       </div>
+      <button type="button" class="lune-visite-vue-terre">${ICONE_VUE}<span data-i18n="lune-visite.vue-terre"></span></button>
       <p class="note lune-visite-note-eclairee" data-i18n="lune-visite.note-eclairee"></p>
       <div class="lune-visite-reel">
         <div class="lunaison-entete">
@@ -152,7 +152,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
           },
         },
         {
-          id: 'sites-point', type: 'circle', source: 'sites', minzoom: 2.2,
+          id: 'sites-point', type: 'circle', source: 'sites', minzoom: 3,
           paint: {
             'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 3.5, 8, 6],
             'circle-color': ['case', ['==', ['get', 'equipage'], 1], '#ff9f43', '#c9b8ff'],
@@ -160,7 +160,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
           },
         },
         {
-          id: 'sites-nom', type: 'symbol', source: 'sites', minzoom: 3.2,
+          id: 'sites-nom', type: 'symbol', source: 'sites', minzoom: 3.8,
           layout: {
             'text-field': ['get', 'nom'], 'text-font': ['literal', POLICE_GRAS], 'text-size': 11.5,
             'text-anchor': 'left', 'text-offset': [0.8, 0], 'text-optional': true,
@@ -175,11 +175,13 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     },
     center: [0, 0], // face visible, comme on la voit depuis la Terre
     zoom: telephone() ? 0.4 : 1.2,
-    maxPitch: 80,
+    maxPitch: 85,
     renderWorldCopies: false,
   });
   if (import.meta.env.DEV) window.mapLune = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+  // Vue depuis la Terre : dans le panneau, sous le choix de l'éclairage (demande du propriétaire du 16 novembre 2026)
+  const boutonVueTerre = $('.lune-visite-vue-terre');
 
   // ---------- Ciel : étoiles et, en temps réel, le soleil ----------
   const ciel = initCiel(map, { astres: dessinerAstres });
@@ -203,6 +205,8 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   const elementTerre = document.createElement('button');
   elementTerre.type = 'button';
   elementTerre.className = 'lune-ciel terre-ciel';
+  elementTerre.setAttribute('aria-label', t('lune-visite.regarder-terre'));
+  elementTerre.title = t('lune-visite.regarder-terre');
   elementTerre.innerHTML = `${svgTerre()}<i class="lune-ciel-fleche"></i>`;
   map.getCanvasContainer().append(elementTerre);
   const phaseTerre = elementTerre.querySelector('.terre-phase-chemin');
@@ -217,7 +221,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     const direction = directionDepuis(lng, lat, POINT_SOUS_TERRE);
     const projection = projeterSoleil(direction, cam);
     // Sous l'horizon du centre, elle est derrière la Lune : seulement sa direction, au bord
-    const haut = racine.querySelector('.lune-visite-vue-terre').getBoundingClientRect().bottom + 16;
+    const haut = racine.querySelector('.lune-visite-haut').getBoundingClientRect().bottom + 16;
     const marge = { haut, bas: margeBas() + 28, gauche: 20, droite: 64 };
     const place = placerSoleil(direction.hauteur > 0 ? projection : { ...projection, devant: false }, {
       largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: 12,
@@ -259,8 +263,24 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       duration: 1800,
     });
   }
-  elementTerre.addEventListener('click', vueDepuisTerre);
-  $('.lune-visite-vue-terre').addEventListener('click', vueDepuisTerre);
+  boutonVueTerre.addEventListener('click', vueDepuisTerre);
+
+  // Aller la voir : la caméra ne peut pas regarder au zénith, on va donc près du bord de la face visible, tourné
+  // vers elle ; elle s'y lève au-dessus de l'horizon (un appui sur la Terre ou sur sa flèche)
+  function regarderTerre() {
+    const { lng, lat } = map.getCenter();
+    const cible = pointVersTerre(lng, lat);
+    fermerBulle();
+    map.flyTo({
+      center: [cible.lng, cible.lat],
+      zoom: 6,
+      pitch: 84,
+      bearing: cible.cap,
+      padding: { top: 0, right: 0, left: 0, bottom: margeBas() },
+      duration: 2600,
+    });
+  }
+  elementTerre.addEventListener('click', regarderTerre);
 
   // ---------- Noms ----------
   let lieux = null;
@@ -280,6 +300,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     fermerListe();
     poserNoms();
     majPanneau();
+    elementTerre.setAttribute('aria-label', t('lune-visite.regarder-terre'));
   });
 
   // ---------- Éclairage ----------

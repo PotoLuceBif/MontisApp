@@ -213,15 +213,19 @@ const GRANDS = new Set(['ME', 'OC']);
 const ETENDUS = new Set(['LC', 'SI', 'PA', 'MO', 'VA', 'RU', 'PL']);
 
 // Zoom à partir duquel un nom apparaît : mers d'abord, puis selon la taille
+// Vue d'ensemble légère (demande du propriétaire du 16 novembre 2026) : les grandes mers seules, puis les détails
+// en se rapprochant ; rainures, dorsales et chaînes de cratères un cran plus tard
+const DETAILS = new Set(['RI', 'DO', 'CA', 'LF', 'PR', 'ST', 'AL']);
 export function zoomNom(code, diametre) {
-  if (GRANDS.has(code)) return diametre > 500 ? 0 : 1.5;
+  if (GRANDS.has(code)) return diametre > 500 ? 0 : 2.2;
   const d = diametre * (ETENDUS.has(code) ? 1.5 : 1);
-  if (d >= 200) return 2;
-  if (d >= 100) return 2.8;
-  if (d >= 50) return 3.6;
-  if (d >= 25) return 4.6;
-  if (d >= 10) return 5.6;
-  return 6.6;
+  const retard = DETAILS.has(code) ? 1 : 0;
+  if (d >= 200) return 2.8 + retard;
+  if (d >= 100) return 3.5 + retard;
+  if (d >= 50) return 4.3 + retard;
+  if (d >= 25) return 5.2 + retard;
+  if (d >= 10) return 6.2 + retard;
+  return 7.2 + retard;
 }
 
 // Lieux du gazetteer (`[nom, code, diamètre, lng, lat, origine]`) en GeoJSON pour la carte
@@ -290,6 +294,20 @@ export function directionDepuis(lng, lat, cible) {
   return { hauteur, azimut: (azimut + 360) % 360 };
 }
 export const POINT_SOUS_TERRE = { lng: 0, lat: 0 };
+// Vue d'un point de la face visible, la Terre est presque au zénith : hors de portée de la caméra. Pour la voir,
+// on va près du bord de la face visible (à `distance` degrés du point sous la Terre, du côté du centre actuel) :
+// elle s'y lève juste au-dessus de l'horizon. Renvoie le point et le cap qui regarde vers elle.
+export function pointVersTerre(lng, lat, distance = 86) {
+  const versCentre = directionDepuis(POINT_SOUS_TERRE.lng, POINT_SOUS_TERRE.lat, { lng, lat });
+  const loin = 90 - versCentre.hauteur; // distance angulaire au point sous la Terre
+  const cap = loin < 1 ? 90 : versCentre.azimut; // au centre de la face visible : vers l'est (mer des Crises)
+  const d = distance * RAD;
+  const c0 = cap * RAD;
+  const latArrivee = Math.asin(Math.sin(d) * Math.cos(c0));
+  const lngArrivee = Math.atan2(Math.sin(c0) * Math.sin(d), Math.cos(d));
+  const point = { lng: normaliserLng(lngArrivee / RAD), lat: latArrivee / RAD };
+  return { ...point, cap: directionDepuis(point.lng, point.lat, POINT_SOUS_TERRE).azimut };
+}
 // Vue de la Lune, la Terre est « pleine » à la nouvelle lune, et inversement
 export const fractionTerre = (fractionLune) => 1 - fractionLune;
 

@@ -141,3 +141,17 @@ describe('pôles de la Lune', () => {
     expect(new Set(couleurs).size).toBeGreaterThan(1);
   });
 });
+
+describe('aller voir la Terre', () => {
+  it('va près du bord de la face visible, du côté du centre, et regarde vers la Terre', async () => {
+    const { pointVersTerre, directionDepuis } = await import('../src/lune-visite-calcul.js');
+    const nord = pointVersTerre(0, 30);
+    expect(nord.lat).toBeCloseTo(86, 5);
+    expect(nord.cap).toBeCloseTo(180); // la Terre au sud
+    const depuisFaceCachee = pointVersTerre(170, -10);
+    expect(directionDepuis(depuisFaceCachee.lng, depuisFaceCachee.lat, { lng: 0, lat: 0 }).hauteur).toBeCloseTo(4, 5);
+    const centre = pointVersTerre(0, 0);
+    expect(centre.lng).toBeCloseTo(86, 5);
+    expect(centre.cap).toBeCloseTo(270); // vers l'ouest
+  });
+});

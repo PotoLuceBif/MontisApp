@@ -4158,13 +4158,11 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .lune-recherche-pastille.site { background: #c9b8ff; }
 .lune-recherche-pastille.site.equipage { background: #ff9f43; }
 .lune-visite-vue-terre {
-  position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 54px); left: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
-  min-height: 40px; padding: 0 14px 0 10px; border: 1px solid var(--bord); border-radius: 999px;
-  background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font: 600 13px var(--police); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
 }
 .lune-visite-vue-terre:hover { background: var(--survol); }
 .lune-visite-vue-terre svg { stroke: #6fb6ff; }
-body .lune-visite .lune-visite-panneau.bf { top: 128px; }
 .terre-ciel { padding: 0; border: 0; background: none; }
 .terre-ciel svg { left: -22px; top: -22px; width: 44px; height: 44px; filter: drop-shadow(0 0 8px rgb(110 180 255 / .55)); }
 .terre-ciel.bord svg { left: -13px; top: -13px; width: 26px; height: 26px; }
