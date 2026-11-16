@@ -1,16 +1,16 @@
-// Bloc « Ombre du soleil » du panneau Relief. Le calcul du soleil et les couches (ombres.js) ne se chargent
-// qu'à la première activation, ou au démarrage si les ombres étaient allumées.
+// Bloc « Ombre du soleil » de la rubrique Soleil et Lune (soleil-lune.js). Les couches (ombres.js) ne se
+// chargent qu'à la première activation, ou au démarrage si les ombres étaient allumées.
 import { lire, ecrire } from './reglages.js';
 import { poser, ta } from './i18n.js';
 
 const ICONE_SOLEIL = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
   <circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>`;
 
-export function creerOptionOmbres(map) {
+// `partage` : jour et heure communs de la rubrique (soleil-lune.js)
+export function creerOptionOmbres(map, partage) {
   const bloc = document.createElement('div');
   bloc.className = 'relief-ombres';
   bloc.innerHTML = `
-    <h3 data-i18n="ombres.titre"></h3>
     <div class="relief-bascule ombres-choix" role="group" ${ta('aria-label', 'ombres.titre')}>
       <button type="button" aria-pressed="false">${ICONE_SOLEIL}<span data-i18n="ombres.afficher"></span></button>
     </div>
@@ -24,7 +24,8 @@ export function creerOptionOmbres(map) {
   let module = null; // promesse de l'interface chargée (ombres.js)
 
   const charger = () => {
-    module ??= import('./ombres.js').then((m) => m.initOmbres(map, { details, eteindre: () => basculer(false) }));
+    module ??= Promise.all([import('./ombres.js'), partage.charger()])
+      .then(([m, reglage]) => m.initOmbres(map, { details, reglage, partage, eteindre: () => basculer(false) }));
     return module;
   };
 
@@ -47,5 +48,5 @@ export function creerOptionOmbres(map) {
   bouton.addEventListener('click', () => basculer(!actif));
   majBouton();
   if (actif) basculer(true);
-  return bloc;
+  return { bloc, actif: () => actif };
 }

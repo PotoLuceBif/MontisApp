@@ -1,6 +1,8 @@
 // Le soleil dessiné dans le ciel en 3D, quand l'ombre du soleil est allumée : on voit d'où vient l'ombre.
 // Hors du champ, un petit soleil au bord de l'écran montre sa direction. Derrière une montagne, il pâlit.
+// La Lune aussi, à sa place et avec sa phase (côté éclairé vers le soleil), seulement quand elle est à l'écran.
 import { placerSoleil, positionCamera, projeterSoleil } from './soleil-ciel-calcul.js';
+import { dessinPhase } from './lune-calcul.js';
 
 const ZOOM_MIN = 9; // en dessous, projection globe (main.js)
 // Au bord, le petit soleil s'écarte ensuite des boutons et panneaux qui le couvriraient (`placerAuLarge`)
@@ -15,13 +17,20 @@ export function creerSoleilCiel(map) {
   element.hidden = true;
   element.setAttribute('aria-hidden', 'true');
   element.innerHTML = '<i class="soleil-ciel-halo"></i><i class="soleil-ciel-disque"></i><i class="soleil-ciel-fleche"></i>';
-  map.getCanvasContainer().append(element);
+  const elementLune = document.createElement('div');
+  elementLune.className = 'lune-ciel';
+  elementLune.hidden = true;
+  elementLune.setAttribute('aria-hidden', 'true');
+  elementLune.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="lune-ciel-fond"/><path class="lune-ciel-eclairee"/></svg>';
+  map.getCanvasContainer().append(element, elementLune);
   const fleche = element.querySelector('.soleil-ciel-fleche');
+  const dessinLune = elementLune.querySelector('svg');
 
   let soleil = null; // { azimut, hauteur } ou null pour le cacher
+  let lune = null; // { azimut, hauteur, fraction } ou null
 
-  // Le relief cache-t-il le soleil, vu depuis la caméra ?
-  function cacheParRelief() {
+  // Le relief cache-t-il cet astre (le soleil par défaut), vu depuis la caméra ?
+  function cacheParRelief(astre = soleil) {
     if (!map.getTerrain()) return false;
     const centre = map.getCenter();
     const { lng, lat, altitude } = positionCamera({
@@ -34,8 +43,8 @@ export function creerSoleilCiel(map) {
       hauteurEcran: map.getContainer().clientHeight,
       altitudeCentre: map.getCenterElevation(),
     });
-    const az = (soleil.azimut * Math.PI) / 180;
-    const pente = Math.tan((soleil.hauteur * Math.PI) / 180);
+    const az = (astre.azimut * Math.PI) / 180;
+    const pente = Math.tan((astre.hauteur * Math.PI) / 180);
     const cosLat = Math.cos((lat * Math.PI) / 180) || 1e-6;
     return PAS_RELIEF.some((d) => {
       const sol = map.queryTerrainElevation([
@@ -70,19 +79,48 @@ export function creerSoleilCiel(map) {
     }
   }
 
-  function placer() {
-    const voir = soleil && soleil.hauteur > 0 && map.getPitch() > 1 && map.getZoom() >= ZOOM_MIN;
-    element.hidden = !voir;
-    if (!voir) return;
+  const camera = () => {
     const { clientWidth: largeur, clientHeight: hauteurEcran } = map.getContainer();
-    const projection = projeterSoleil(soleil, {
+    return {
       bearing: map.getBearing(),
       pitch: map.getPitch(),
       fov: map.getVerticalFieldOfView(),
       largeur,
       hauteurEcran,
       padding: map.getPadding(),
-    });
+    };
+  };
+  const ciel3D = () => map.getPitch() > 1 && map.getZoom() >= ZOOM_MIN;
+
+  // La Lune : à sa place, ou au bord de l'écran dans sa direction (plus petite), comme le soleil
+  function placerLune() {
+    const cam = camera();
+    const voir = lune && lune.hauteur > 0 && ciel3D();
+    elementLune.hidden = !voir;
+    if (!voir) return;
+    const projection = projeterSoleil(lune, cam);
+    const place = placerSoleil(projection, { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge: MARGE_BORD, margeVisible: 8 });
+    // Côté éclairé tourné vers le soleil : vers son point à l'écran, sinon vers sa direction
+    let angle = 0;
+    if (soleil) {
+      const versSoleil = projeterSoleil(soleil, cam);
+      angle = versSoleil.devant && place.dedans
+        ? Math.atan2(versSoleil.y - place.y, versSoleil.x - place.x)
+        : Math.atan2(versSoleil.dy - projection.dy, versSoleil.dx - projection.dx);
+    }
+    dessinLune.style.transform = `rotate(${((angle * 180) / Math.PI).toFixed(1)}deg)`;
+    elementLune.classList.toggle('bord', !place.dedans);
+    elementLune.classList.toggle('derriere', place.dedans && cacheParRelief(lune));
+    elementLune.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
+  }
+
+  function placer() {
+    placerLune();
+    const voir = soleil && soleil.hauteur > 0 && ciel3D();
+    element.hidden = !voir;
+    if (!voir) return;
+    const { largeur, hauteurEcran, ...reste } = camera();
+    const projection = projeterSoleil(soleil, { largeur, hauteurEcran, ...reste });
     const place = placerAuLarge(projection, largeur, hauteurEcran);
     element.classList.toggle('bord', !place.dedans);
     element.classList.toggle('derriere', place.dedans && cacheParRelief());
@@ -95,8 +133,13 @@ export function creerSoleilCiel(map) {
   map.on('idle', placer); // le relief a pu arriver entre-temps
 
   return {
-    montrer(nouveau) {
+    // `nouvelleLune` : { azimut, hauteur, fraction } ou rien
+    montrer(nouveau, nouvelleLune = null) {
       soleil = nouveau;
+      if (nouvelleLune && Math.round((nouvelleLune.fraction ?? 0) * 200) !== Math.round((lune?.fraction ?? -1) * 200)) {
+        dessinLune.querySelector('path').setAttribute('d', dessinPhase(nouvelleLune.fraction, true));
+      }
+      lune = nouvelleLune;
       placer();
     },
   };

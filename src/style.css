@@ -414,6 +414,28 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .relief-ombres .ombres-etat { margin: -4px 0 0; color: var(--texte); }
 .relief-ombres .note { margin: 0; }
 .relief-altitude > div { border-top-color: var(--bord) !important; }
+/* Rubrique Soleil et Lune (soleil-lune.js) : jour et heure communs en tête */
+.ciel-entete { display: grid; gap: 10px; margin: 0 0 8px; padding: 2px 0 12px; border-bottom: 1px solid var(--bord); }
+.ciel-entete > .soleil-reglage { display: grid; gap: 10px; }
+.ciel-entete .note { margin: 0; }
+/* Lune (lune.js) */
+.lune-panneau { display: grid; gap: 12px; }
+.lune-phase { display: flex; align-items: center; gap: 12px; }
+.lune-icone { width: 44px; height: 44px; flex: none; }
+.lune-icone-fond { fill: color-mix(in srgb, var(--texte-2) 22%, transparent); stroke: var(--bord); stroke-width: 0.6; }
+.lune-icone-eclairee { fill: color-mix(in srgb, var(--texte) 14%, #f1f3f8); }
+.lune-phase-textes { display: grid; gap: 2px; min-width: 0; }
+.lune-phase-textes strong { font-size: 15px; font-weight: 650; }
+.lune-phase-textes span { color: var(--texte-2); font-size: 13px; }
+.lune-cadran-astre { fill: color-mix(in srgb, var(--texte) 14%, #f1f3f8); stroke: var(--texte-2); stroke-width: 0.6; }
+svg.nuit .lune-cadran-astre { fill: var(--texte-2); opacity: 0.6; }
+.lune-heures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lune-heures > div { display: grid; gap: 2px; padding: 8px 4px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); text-align: center; }
+.lune-heures span { color: var(--texte-2); font-size: 11.5px; }
+.lune-heures strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.lune-panneau .note, .lune-prochaines { margin: 0; }
+.lune-prochaines { color: var(--texte-2); font-size: 12.5px; }
+.lune-regime[hidden] { display: none; }
 .altitude-reglages div[style*='#666'] { color: var(--texte-2) !important; }
 
 /* Cases à cocher */
@@ -2563,6 +2585,13 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
   color: var(--accent);
 }
 .outil-rapide-bouton.appui-long > span { max-width: 64px; opacity: 1; }
+/* « Soleil et Lune » : nom plus long que Météo et Carte */
+#outil-rapide-bouton-ciel.appui-long { width: 148px; }
+#outil-rapide-bouton-ciel.appui-long > span { max-width: 96px; }
+@media (hover: hover) and (pointer: fine) {
+  #outil-rapide-bouton-ciel:is(:hover, :focus-visible, [aria-expanded='true']) { width: 148px; }
+  #outil-rapide-bouton-ciel:is(:hover, :focus-visible, [aria-expanded='true']) > span { max-width: 96px; }
+}
 .outil-rapide-bouton:focus-visible,
 .outil-rapide-fermer:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .outil-rapide-panneau {
@@ -3672,11 +3701,12 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     right: 19px;
     gap: 8px;
   }
+  /* Sous les trois boutons : Météo, Carte, Soleil et Lune */
   .outil-rapide-panneau {
-    top: 356px;
+    top: 404px;
     right: 10px;
     width: min(360px, calc(100vw - 20px));
-    max-height: calc(100dvh - 376px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 424px - env(safe-area-inset-bottom));
     border-radius: 15px;
   }
   .outil-rapide-entete { min-height: 48px; }
@@ -3713,7 +3743,7 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     grid-template-columns: repeat(2, 40px);
   }
   .outil-rapide-panneau {
-    top: 172px;
+    top: 220px;
     right: 10px;
     bottom: max(10px, env(safe-area-inset-bottom));
     left: 10px;
@@ -3843,6 +3873,14 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .soleil-ciel-fleche { display: none; }
 .soleil-ciel.derriere { opacity: .4; }
 .soleil-ciel.derriere .soleil-ciel-halo { display: none; }
+/* Lune dans le ciel en 3D (soleil-ciel.js) : côté éclairé tourné vers le soleil */
+.lune-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
+.lune-ciel[hidden] { display: none; }
+.lune-ciel svg { position: absolute; left: -13px; top: -13px; width: 26px; height: 26px; overflow: visible; transform-origin: center; filter: drop-shadow(0 0 6px rgb(225 232 255 / .6)); }
+.lune-ciel-fond { fill: rgb(70 76 92 / .45); }
+.lune-ciel-eclairee { fill: #eef0f6; }
+.lune-ciel.derriere { opacity: .4; }
+.lune-ciel.bord svg { scale: .7; opacity: .85; }
 /* Hors du champ : petit soleil au bord, flèche vers lui */
 .soleil-ciel.bord .soleil-ciel-halo { left: -22px; top: -22px; width: 44px; height: 44px; }
 .soleil-ciel.bord .soleil-ciel-disque { left: -9px; top: -9px; width: 18px; height: 18px; box-shadow: 0 0 10px 3px rgb(255 210 110 / .55), 0 0 0 2px rgb(14 20 42 / .55); }

@@ -3,7 +3,6 @@ import { lire, ecrire } from './reglages.js';
 import { t, ta, ti, tt } from './i18n.js';
 import { nombre } from './unites.js';
 import { creerOptionPentes } from './pentes-panneau.js';
-import { creerOptionOmbres } from './ombres-panneau.js';
 
 const SOURCE_RELIEF = 'relief';
 
@@ -79,9 +78,6 @@ export function creerOptionRelief(map) {
 
   // ---------- Pentes et orientation (2D et 3D : la couche se drape sur le relief) ----------
   panneau.append(creerOptionPentes(map));
-
-  // ---------- Ombre du soleil (2D et 3D) ----------
-  panneau.append(creerOptionOmbres(map));
 
   return {
     id: 'relief',

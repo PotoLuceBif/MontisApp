@@ -2,6 +2,7 @@ import { creerFondDeCarte } from './fond-de-carte.js';
 import { creerOptionRelief } from './relief.js';
 import { creerElementsCarte } from './elements-carte.js';
 import { creerNatureSousSol } from './nature-sous-sol.js';
+import { creerSoleilLune } from './soleil-lune.js';
 import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
@@ -18,6 +19,9 @@ const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
   meteo: '<path d="M7 18h10a4 4 0 0 0 .4-8A6 6 0 0 0 6 9.5 4.2 4.2 0 0 0 7 18Z"/><path d="m9 21-1 2m6-2-1 2m6-2-1 2"/>',
   carte: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/>',
+  ciel: '<circle cx="9" cy="9" r="3.2"/><path d="M9 2.5v1.3M2.5 9h1.3M14.2 9h1.3M9 14.2v1.3M4.4 4.4l.9.9M12.7 5.3l.9-.9M4.4 13.6l.9-.9"/><path d="M21.5 17.2a4.6 4.6 0 1 1-5-5 3.7 3.7 0 0 0 5 5Z"/>',
+  ombre: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  lune: '<path d="M20 14.6A8.2 8.2 0 1 1 9.4 4a6.5 6.5 0 0 0 10.6 10.6Z"/>',
   radar: '<path d="M12 12 20 5"/><path d="M5.6 18.4a9 9 0 1 1 12.8 0"/><path d="M8.4 15.6a5 5 0 1 1 7.2 0"/><circle cx="12" cy="12" r="1"/>',
   vent: '<path d="M3 8h12a3 3 0 1 0-3-3"/><path d="M2 12h16a3 3 0 1 1-3 3"/><path d="M4 16h6a3 3 0 1 1-3 3"/>',
   fond: '<path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/>',
@@ -206,6 +210,7 @@ export function initMenu(map) {
     boutonsFlottants.get(id).setAttribute('aria-expanded', 'true');
   };
 
+  const soleilLune = creerSoleilLune(map);
   const categories = [
     {
       id: 'activites',
@@ -278,6 +283,25 @@ export function initMenu(map) {
         immediat(creerElementsCarte(map)),
         immediat(creerNatureSousSol(map)),
         immediat(creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') })),
+      ],
+      emplacement: 'flottant',
+    },
+    {
+      // Lot 4.7 : jour et heure communs en tête, puis l'ombre du soleil et la Lune
+      id: 'ciel',
+      titre: 'menu.ciel',
+      icone: 'ciel',
+      aide: 'menu.aide-ciel',
+      exclusif: false,
+      entete: soleilLune.entete,
+      surOuverture: soleilLune.surOuverture,
+      modules: [
+        // Immédiat : l'ombre se rétablit au démarrage si elle était allumée
+        immediat(soleilLune.ombres),
+        differer({ id: 'lune', labelCle: 'lune.titre', icone: 'lune' }, () =>
+          Promise.all([import('./lune.js'), soleilLune.partage.charger()])
+            .then(([m, reglage]) => m.creerLune(map, soleilLune.partage, reglage))
+        ),
       ],
       emplacement: 'flottant',
     },
@@ -446,6 +470,8 @@ export function initMenu(map) {
       </header>
     `;
 
+    if (categorie.entete) vue.appendChild(categorie.entete);
+
     if (categorie.emplacement === 'menu') {
       corps.appendChild(vue);
     } else {
@@ -462,7 +488,7 @@ export function initMenu(map) {
       const panneauOutil = document.createElement('aside');
       panneauOutil.className = 'outil-rapide-panneau';
       panneauOutil.id = `outil-rapide-panneau-${categorie.id}`;
-      poserAttribut(panneauOutil, 'aria-label', categorie.id === 'meteo' ? 'menu.outils-meteo' : 'menu.outils-carte-court');
+      poserAttribut(panneauOutil, 'aria-label', `menu.outils-${categorie.id === 'carte' ? 'carte-court' : categorie.id}`);
       panneauOutil.hidden = true;
       panneauOutil.innerHTML = `
         <header class="outil-rapide-entete">
@@ -511,6 +537,7 @@ export function initMenu(map) {
         if (ouvrirPanneau) {
           panneauOutil.hidden = false;
           boutonOutil.setAttribute('aria-expanded', 'true');
+          categorie.surOuverture?.();
         }
       });
       panneauOutil.querySelector('.outil-rapide-fermer').addEventListener('click', () => {
