@@ -32,6 +32,46 @@ const VOIE_LACTEE = { largeur: 2048, hauteur: 1024, nombre: 25000 };
 const PIXELS_VOIE_LACTEE = 90000; // taille du dessin, agrandi ensuite : la Voie lactée est diffuse
 const AZIMUT = (azimuth) => ((azimuth % 360) + 360) % 360; // suncalc 2 : degrés depuis le nord
 
+// Soleil du mode espace (demande du propriétaire du 16 novembre 2026 : plus qu'un rond jaune) : disque blanc
+// assombri vers le bord, couronne, halo large et aigrettes de diffraction, comme sur une photo prise de l'espace.
+// Commun au ciel de la Terre et à celui de la Lune (lune-visite.js).
+export function dessinerSoleilEspace(contexte, x, y, rayon = 9) {
+  const tache = (r, arrets) => {
+    const degrade = contexte.createRadialGradient(x, y, 0, x, y, r);
+    arrets.forEach(([position, couleur]) => degrade.addColorStop(position, couleur));
+    contexte.fillStyle = degrade;
+    contexte.beginPath();
+    contexte.arc(x, y, r, 0, Math.PI * 2);
+    contexte.fill();
+  };
+  // Halo large, puis couronne
+  tache(rayon * 9, [[0, 'rgba(255, 236, 200, 0.32)'], [0.25, 'rgba(255, 214, 160, 0.12)'], [1, 'rgba(255, 190, 120, 0)']]);
+  tache(rayon * 2.6, [[0, 'rgba(255, 252, 240, 0.95)'], [0.45, 'rgba(255, 238, 200, 0.55)'], [1, 'rgba(255, 220, 160, 0)']]);
+  // Aigrettes : quatre longues, quatre courtes en diagonale, qui s'effacent vers leur pointe
+  const aigrette = (angle, longueur, largeur, opacite) => {
+    contexte.save();
+    contexte.translate(x, y);
+    contexte.rotate(angle);
+    const degrade = contexte.createLinearGradient(0, 0, longueur, 0);
+    degrade.addColorStop(0, `rgba(255, 248, 230, ${opacite})`);
+    degrade.addColorStop(1, 'rgba(255, 236, 200, 0)');
+    contexte.fillStyle = degrade;
+    contexte.beginPath();
+    contexte.moveTo(0, -largeur);
+    contexte.lineTo(longueur, 0);
+    contexte.lineTo(0, largeur);
+    contexte.closePath();
+    contexte.fill();
+    contexte.restore();
+  };
+  for (let i = 0; i < 4; i++) {
+    aigrette((i * Math.PI) / 2 + 0.26, rayon * 7, rayon * 0.16, 0.75);
+    aigrette((i * Math.PI) / 2 + 0.26 + Math.PI / 4, rayon * 3.6, rayon * 0.1, 0.45);
+  }
+  // Disque : blanc au centre, légèrement doré et plus sombre au bord (assombrissement centre-bord)
+  tache(rayon, [[0, 'rgb(255, 255, 252)'], [0.7, 'rgb(255, 248, 228)'], [0.92, 'rgb(255, 228, 176)'], [1, 'rgba(255, 214, 150, 0.9)']]);
+}
+
 let chargement = null;
 const chargerEtoiles = () => {
   chargement ??= fetch(CATALOGUE)
@@ -154,18 +194,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     const point = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
     pointSoleil = point && { x: point.x, y: point.y, rayon: 11 };
     if (!point) return;
-    const halo = contexte.createRadialGradient(point.x, point.y, 0, point.x, point.y, 60);
-    halo.addColorStop(0, 'rgba(255, 244, 214, 0.9)');
-    halo.addColorStop(0.2, 'rgba(255, 220, 150, 0.35)');
-    halo.addColorStop(1, 'rgba(255, 200, 120, 0)');
-    contexte.fillStyle = halo;
-    contexte.beginPath();
-    contexte.arc(point.x, point.y, 60, 0, Math.PI * 2);
-    contexte.fill();
-    contexte.fillStyle = 'rgb(255, 250, 235)';
-    contexte.beginPath();
-    contexte.arc(point.x, point.y, 11, 0, Math.PI * 2);
-    contexte.fill();
+    dessinerSoleilEspace(contexte, point.x, point.y);
   }
 
   // La vraie Lune (lune-vue-calcul.js) : images de la NASA chargées à la première apparition du ciel, repeinte

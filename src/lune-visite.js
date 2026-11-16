@@ -17,7 +17,7 @@ import { peindreTerre, pointSousLune, soleilSurTerre } from './terre-vue-calcul.
 import { requete } from './requete.js';
 import { svgLune } from './lune-dessin.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
-import { initCiel } from './ciel.js';
+import { dessinerSoleilEspace, initCiel } from './ciel.js';
 import { opaciteCiel } from './ciel-calcul.js';
 import { codeCardinal } from './vent-calcul.js';
 import { lire, ecrire } from './reglages.js';
@@ -247,20 +247,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   function dessinerAstres({ contexte, centre, projeter }) {
     if (eclairage() === 'reel') {
       const soleil = projeter(directionDepuis(centre.lng, centre.lat, pointSubsolaireLune(moment)));
-      if (soleil) {
-        const halo = contexte.createRadialGradient(soleil.x, soleil.y, 0, soleil.x, soleil.y, 60);
-        halo.addColorStop(0, 'rgba(255, 244, 214, 0.9)');
-        halo.addColorStop(0.2, 'rgba(255, 220, 150, 0.35)');
-        halo.addColorStop(1, 'rgba(255, 200, 120, 0)');
-        contexte.fillStyle = halo;
-        contexte.beginPath();
-        contexte.arc(soleil.x, soleil.y, 60, 0, Math.PI * 2);
-        contexte.fill();
-        contexte.fillStyle = 'rgb(255, 250, 235)';
-        contexte.beginPath();
-        contexte.arc(soleil.x, soleil.y, 11, 0, Math.PI * 2);
-        contexte.fill();
-      }
+      if (soleil) dessinerSoleilEspace(contexte, soleil.x, soleil.y);
     }
     const terre = projeter(directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE));
     pointTerre = terre && { x: terre.x, y: terre.y, rayon: RAYON_TERRE };

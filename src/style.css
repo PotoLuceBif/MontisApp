@@ -4200,3 +4200,32 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .ciel-course-heure-lever { transform: translateX(-80%); }
 .ciel-course-heure-coucher { transform: translateX(-20%); }
 .soleil-heures { margin-top: 2px; }
+
+/* Ombre du soleil dans la ligne Soleil : une ligne avec interrupteur, au lieu d'un bouton dans un cadre */
+.relief-ombres .ombres-choix { margin: 0; border: 0; overflow: visible; }
+.relief-ombres .ombres-choix button {
+  justify-content: flex-start; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 12px;
+  background: var(--surface-2); color: var(--texte); text-align: left;
+}
+.relief-ombres .ombres-choix button span { flex: 1; }
+.relief-ombres .ombres-choix button::after {
+  content: ''; flex: none; width: 38px; height: 22px; border-radius: 999px; transition: background .2s;
+  background: radial-gradient(circle at 11px 50%, var(--texte-2) 7px, transparent 7.5px), var(--surface);
+  box-shadow: inset 0 0 0 1px var(--bord);
+}
+.relief-ombres .ombres-choix button.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--texte); }
+.relief-ombres .ombres-choix button.actif::after { background: radial-gradient(circle at 27px 50%, var(--accent-texte) 7px, transparent 7.5px), var(--accent); box-shadow: none; }
+.relief-ombres .ombres-choix button.actif svg { color: var(--accent); }
+
+/* Frise : astres et traits qui ressortent sur le décor */
+.ciel-course .ciel-course-soleil { width: 18px; height: 18px; margin: -9px 0 0 -9px; box-shadow: 0 0 0 2px #1b0d33, 0 0 0 3px rgb(255 214 150 / .7), 0 0 14px 4px rgb(255 200 90 / .55); }
+.ciel-course .ciel-course-soleil.couche { opacity: .75; box-shadow: 0 0 0 2px #1b0d33, 0 0 0 3px rgb(220 225 255 / .45); }
+.ciel-course .ciel-course-lune { width: 20px; height: 20px; margin: -10px 0 0 -10px; border-radius: 50%; background: #0d0a24; box-shadow: 0 0 0 1.5px rgb(236 240 255 / .9), 0 0 12px 3px rgb(220 228 255 / .55); filter: none; }
+.ciel-course .ciel-course-lune .lune-cendree { opacity: .45; }
+.ciel-course .ciel-course-lune.couche { opacity: .7; }
+.ciel-course .ciel-course-lune-trace { stroke: #f1f4ff; stroke-width: 1.8; stroke-dasharray: 1.5 4; opacity: 1; }
+.ciel-course .ciel-course-soleil-jour { stroke: #ffc14d; stroke-width: 2.6; }
+.ciel-course .ciel-course-soleil-nuit { stroke: rgb(255 214 170 / .85); stroke-width: 1.4; }
+/* Déjà dans le cadre de la ligne Soleil : pas de second cadre */
+.relief-ombres .ombres-choix button, .relief-ombres .ombres-choix button.actif { padding: 6px 4px; border: 0; background: transparent; }
+.relief-ombres .ombres-choix button:hover:not(.actif) { background: transparent; }
