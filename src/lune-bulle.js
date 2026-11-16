@@ -90,10 +90,13 @@ export function initBulleLune(map, ciel) {
     indice.title = t('lune-visite.montrer-lune');
   };
   nommerIndice();
+  const ZOOM_INDICE = 1.8; // flèche de la Lune : seulement très dézoomé
   const MARGE_INDICE = { haut: 86, bas: 44, gauche: 18, droite: 72 };
   function placerIndice() {
     const { clientWidth: l, clientHeight: h } = map.getContainer();
-    if (opaciteCiel(map.getZoom()) < 0.5) {
+    // Seulement très dézoomé, la Terre vue en entier (demande du propriétaire du 17 novembre 2026 : dès l'apparition
+    // des étoiles, elle venait trop tôt)
+    if (map.getZoom() > ZOOM_INDICE || opaciteCiel(map.getZoom()) < 0.5) {
       indice.hidden = true;
       return;
     }
