@@ -4292,6 +4292,34 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 /* ---------- Jeux (lot P.4a) : quiz des pays sur le globe ---------- */
 .jeux { display: grid; gap: 12px; padding-bottom: 4px; }
 .jeux .note { margin: 0; color: var(--texte-2); font-size: 12px; line-height: 1.45; }
+.jeux-accueil, .jeux-options { display: grid; gap: 12px; }
+.jeux-accueil[hidden], .jeux-options[hidden] { display: none; }
+.jeux-cartes { display: grid; gap: 8px; }
+.jeux-carte {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 76px; padding: 10px 10px 10px 12px;
+  border: 1px solid var(--bord); border-radius: 14px; background: var(--surface-2); color: var(--texte);
+  font: inherit; text-align: left; cursor: pointer; transition: border-color 0.16s ease, transform 0.12s ease;
+}
+.jeux-carte:hover { border-color: var(--accent); }
+.jeux-carte:active { transform: scale(0.985); }
+/* Carrés arrondis en dégradé et pictogramme blanc, comme les icônes des activités */
+.jeux-carte-icone { display: grid; flex: 0 0 48px; width: 48px; height: 48px; place-items: center; border-radius: 13px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+.jeux-carte-icone svg { width: 28px; height: 28px; fill: none; stroke: #ffffff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.jeux-carte-drapeaux { background: linear-gradient(145deg, #ff4fd8, #7b3dff); }
+.jeux-carte-capitales { background: linear-gradient(145deg, #4debd4, #2f6bff); }
+.jeux-carte-liste { background: linear-gradient(145deg, #ffb547, #ff4f7b); }
+.jeux-carte-textes { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.jeux-carte-textes strong { font-size: 15.5px; font-weight: 750; }
+.jeux-carte-textes > span { color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }
+.jeux-carte-record { color: var(--accent); font-size: 11.5px; font-weight: 650; }
+.jeux-carte-record[hidden] { display: none; }
+.jeux-carte-fleche { flex: 0 0 18px; width: 18px; height: 18px; fill: none; stroke: var(--texte-2); stroke-width: 2; }
+.jeux-retour-cartes {
+  display: flex; align-items: center; gap: 6px; justify-self: start; min-height: 40px; padding: 0 10px 0 4px;
+  border: 0; border-radius: 10px; background: none; color: var(--texte); font: 750 17px/1 var(--police); cursor: pointer;
+}
+.jeux-retour-cartes:hover { background: var(--survol); }
+.jeux-retour-cartes svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; }
 .jeux-reglage { display: grid; gap: 6px; }
 .jeux-reglage[hidden] { display: none; }
 .jeux-legende { color: var(--texte-2); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }

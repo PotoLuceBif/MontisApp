@@ -17,6 +17,12 @@ const COUCHES = ['jeu-pays-fond', 'jeu-pays-contour', 'jeu-pays-points', 'jeu-pa
 const SOURCE_CAPITALE = 'jeu-capitale';
 const COUCHES_CAPITALE = ['jeu-capitale-point', 'jeu-capitale-noms', 'jeu-capitale-nom'];
 const ZOOM_PAYS = 4; // cadrage d'un pays après une réponse
+// Pictogrammes des cartes de jeu (traits, comme les icônes du menu)
+const ICONES_MODES = {
+  drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
+  capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/>',
+  liste: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
+};
 // Carte de montagne cachée pendant la partie, avec tous les textes : le globe seul, et le rose du pays à trouver
 // ne se perd plus parmi les routes roses de la nuit
 const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments)|courbes)/;
@@ -61,70 +67,95 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   };
   const records = () => lire('jeux-records', {});
 
+  // Deux écrans : les cartes des jeux, puis les options du jeu choisi (demande du propriétaire du 17 novembre 2026)
+  const MODES = ['drapeaux', 'capitales', 'liste'];
   const panneau = document.createElement('div');
   panneau.className = 'jeux';
   panneau.innerHTML = `
-    <p class="note" ${ti('jeux.intro')}>${t('jeux.intro')}</p>
-    <div class="jeux-reglage">
-      <span class="jeux-legende" ${ti('jeux.mode')}>${t('jeux.mode')}</span>
-      <div class="segments" data-choix="mode" role="group" ${ta('aria-label', 'jeux.mode')}>
-        <button type="button" data-valeur="drapeaux" ${ti('jeux.mode-drapeaux')}>${t('jeux.mode-drapeaux')}</button>
-        <button type="button" data-valeur="capitales" ${ti('jeux.mode-capitales')}>${t('jeux.mode-capitales')}</button>
-        <button type="button" data-valeur="liste" ${ti('jeux.mode-liste')}>${t('jeux.mode-liste')}</button>
+    <div class="jeux-accueil">
+      <p class="note" ${ti('jeux.intro')}>${t('jeux.intro')}</p>
+      <div class="jeux-cartes">
+        ${MODES.map((mode) => `
+          <button type="button" class="jeux-carte" data-mode="${mode}">
+            <span class="jeux-carte-icone jeux-carte-${mode}" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES_MODES[mode]}</svg></span>
+            <span class="jeux-carte-textes">
+              <strong ${ti(`jeux.carte-${mode}`)}>${t(`jeux.carte-${mode}`)}</strong>
+              <span ${ti(`jeux.carte-${mode}-aide`)}>${t(`jeux.carte-${mode}-aide`)}</span>
+              <small class="jeux-carte-record"></small>
+            </span>
+            <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </button>`).join('')}
       </div>
+      <p class="note jeux-credits" ${ti('jeux.credits')}>${t('jeux.credits')}</p>
+    </div>
+    <div class="jeux-options" hidden>
+      <button type="button" class="jeux-retour-cartes" ${ta('aria-label', 'jeux.retour-cartes')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg><strong class="jeux-options-titre"></strong>
+      </button>
       <p class="note jeux-aide-mode"></p>
-    </div>
-    <div class="jeux-reglage" data-pour="drapeaux">
-      <span class="jeux-legende" ${ti('jeux.question')}>${t('jeux.question')}</span>
-      <div class="segments" data-choix="sens" role="group" ${ta('aria-label', 'jeux.question')}>
-        <button type="button" data-valeur="drapeau" ${ti('jeux.sens-drapeau')}>${t('jeux.sens-drapeau')}</button>
-        <button type="button" data-valeur="pays" ${ti('jeux.sens-pays')}>${t('jeux.sens-pays')}</button>
+      <div class="jeux-reglage" data-pour="drapeaux">
+        <span class="jeux-legende" ${ti('jeux.question')}>${t('jeux.question')}</span>
+        <div class="segments" data-choix="sens" role="group" ${ta('aria-label', 'jeux.question')}>
+          <button type="button" data-valeur="drapeau" ${ti('jeux.sens-drapeau')}>${t('jeux.sens-drapeau')}</button>
+          <button type="button" data-valeur="pays" ${ti('jeux.sens-pays')}>${t('jeux.sens-pays')}</button>
+        </div>
       </div>
-    </div>
-    <div class="jeux-reglage" data-pour="capitales">
-      <span class="jeux-legende" ${ti('jeux.question')}>${t('jeux.question')}</span>
-      <div class="segments" data-choix="sensCapitales" role="group" ${ta('aria-label', 'jeux.question')}>
-        <button type="button" data-valeur="pays" ${ti('jeux.sens-capitale')}>${t('jeux.sens-capitale')}</button>
-        <button type="button" data-valeur="capitale" ${ti('jeux.sens-drapeau')}>${t('jeux.sens-drapeau')}</button>
+      <div class="jeux-reglage" data-pour="capitales">
+        <span class="jeux-legende" ${ti('jeux.question')}>${t('jeux.question')}</span>
+        <div class="segments" data-choix="sensCapitales" role="group" ${ta('aria-label', 'jeux.question')}>
+          <button type="button" data-valeur="pays" ${ti('jeux.sens-capitale')}>${t('jeux.sens-capitale')}</button>
+          <button type="button" data-valeur="capitale" ${ti('jeux.sens-drapeau')}>${t('jeux.sens-drapeau')}</button>
+        </div>
       </div>
-    </div>
-    <div class="jeux-reglage" data-pour="niveau">
-      <span class="jeux-legende" ${ti('jeux.niveau')}>${t('jeux.niveau')}</span>
-      <div class="segments" data-choix="niveau" role="group" ${ta('aria-label', 'jeux.niveau')}>
-        <button type="button" data-valeur="choix" ${ti('jeux.niveau-choix')}>${t('jeux.niveau-choix')}</button>
-        <button type="button" data-valeur="expert" ${ti('jeux.niveau-expert')}>${t('jeux.niveau-expert')}</button>
+      <div class="jeux-reglage">
+        <span class="jeux-legende" ${ti('jeux.zone')}>${t('jeux.zone')}</span>
+        <div class="jeux-zones" data-choix="zone" role="group" ${ta('aria-label', 'jeux.zone')}>
+          ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
+        </div>
       </div>
-    </div>
-    <div class="jeux-reglage">
-      <span class="jeux-legende" ${ti('jeux.zone')}>${t('jeux.zone')}</span>
-      <div class="jeux-zones" data-choix="zone" role="group" ${ta('aria-label', 'jeux.zone')}>
-        ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
+      <div class="jeux-reglage" data-pour="niveau">
+        <span class="jeux-legende" ${ti('jeux.niveau')}>${t('jeux.niveau')}</span>
+        <div class="segments" data-choix="niveau" role="group" ${ta('aria-label', 'jeux.niveau')}>
+          <button type="button" data-valeur="choix" ${ti('jeux.niveau-choix')}>${t('jeux.niveau-choix')}</button>
+          <button type="button" data-valeur="expert" ${ti('jeux.niveau-expert')}>${t('jeux.niveau-expert')}</button>
+        </div>
       </div>
-    </div>
-    <div class="jeux-reglage" data-pour="questions">
-      <span class="jeux-legende" ${ti('jeux.longueur')}>${t('jeux.longueur')}</span>
-      <div class="segments" data-choix="longueur" role="group" ${ta('aria-label', 'jeux.longueur')}>
-        <button type="button" data-valeur="courte"></button>
-        <button type="button" data-valeur="complete"></button>
+      <div class="jeux-reglage" data-pour="questions">
+        <span class="jeux-legende" ${ti('jeux.longueur')}>${t('jeux.longueur')}</span>
+        <div class="segments" data-choix="longueur" role="group" ${ta('aria-label', 'jeux.longueur')}>
+          <button type="button" data-valeur="courte"></button>
+          <button type="button" data-valeur="complete"></button>
+        </div>
       </div>
+      <p class="jeux-record"></p>
+      <button type="button" class="jeux-jouer">${tt('jeux.jouer')}</button>
+      <p class="note jeux-message" role="status" hidden></p>
     </div>
-    <p class="jeux-record"></p>
-    <button type="button" class="jeux-jouer">${tt('jeux.jouer')}</button>
-    <p class="note jeux-message" role="status" hidden></p>
-    <p class="note jeux-credits" ${ti('jeux.credits')}>${t('jeux.credits')}</p>
   `;
   const $ = (selecteur, racine = panneau) => racine.querySelector(selecteur);
   // Le niveau expert fait taper un nom : « Trouve le drapeau » se joue toujours en quatre choix
   const niveauImpose = (c) => c.mode === 'drapeaux' && c.sens === 'pays';
   // Ce que joue la partie : un seul sens, celui du mode choisi
-  const reglageEffectif = () => ({
-    mode: choix.mode,
-    zone: choix.zone,
-    longueur: choix.longueur,
-    sens: choix.mode === 'capitales' ? choix.sensCapitales : choix.sens,
-    niveau: niveauImpose(choix) ? 'choix' : choix.niveau,
-  });
+  const reglageEffectif = (mode = choix.mode) => {
+    const c = { ...choix, mode };
+    return {
+      mode,
+      zone: c.zone,
+      longueur: c.longueur,
+      sens: mode === 'capitales' ? c.sensCapitales : c.sens,
+      niveau: niveauImpose(c) ? 'choix' : c.niveau,
+    };
+  };
+  const texteRecord = (record) => t('jeux.record', { bonnes: record.bonnes, total: record.total, duree: formatChrono(record.duree) });
   let nombres = null; // pays par zone, connus après le premier chargement
+  let ecran = 'accueil';
+
+  function montrerEcran(nouveau) {
+    ecran = nouveau;
+    $('.jeux-accueil').hidden = ecran !== 'accueil';
+    $('.jeux-options').hidden = ecran !== 'options';
+    rendreReglage();
+  }
 
   function rendreReglage() {
     panneau.querySelectorAll('[data-choix]').forEach((groupe) => {
@@ -134,7 +165,15 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         bouton.setAttribute('aria-pressed', String(actif));
       });
     });
+    // Cartes : le record de chaque jeu avec ses derniers réglages
+    panneau.querySelectorAll('.jeux-carte').forEach((carte) => {
+      const record = records()[cleRecord(reglageEffectif(carte.dataset.mode))];
+      const petit = $('.jeux-carte-record', carte);
+      petit.textContent = record ? `${t(`jeux.zone-${choix.zone}`)} · ${texteRecord(record)}` : '';
+      petit.hidden = !record;
+    });
     const { mode } = choix;
+    $('.jeux-options-titre').textContent = t(`jeux.carte-${mode}`);
     $('[data-pour="drapeaux"]').hidden = mode !== 'drapeaux';
     $('[data-pour="capitales"]').hidden = mode !== 'capitales';
     $('[data-pour="questions"]').hidden = mode === 'liste';
@@ -149,12 +188,22 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     $('[data-valeur="courte"]').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
     $('[data-valeur="complete"]').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
     const record = records()[cleRecord(reglageEffectif())];
-    $('.jeux-record').textContent = record
-      ? t('jeux.record', { bonnes: record.bonnes, total: record.total, duree: formatChrono(record.duree) })
-      : t('jeux.record-aucun');
+    $('.jeux-record').textContent = record ? texteRecord(record) : t('jeux.record-aucun');
   }
 
   panneau.addEventListener('click', (event) => {
+    const carte = event.target.closest('.jeux-carte');
+    if (carte) {
+      choix.mode = carte.dataset.mode;
+      ecrire('jeux-choix', choix);
+      montrerEcran('options');
+      panneau.closest('.menu-contenu')?.previousElementSibling?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return;
+    }
+    if (event.target.closest('.jeux-retour-cartes')) {
+      montrerEcran('accueil');
+      return;
+    }
     const bouton = event.target.closest('[data-choix] button');
     if (!bouton) return;
     choix[bouton.closest('[data-choix]').dataset.choix] = bouton.dataset.valeur;
@@ -731,6 +780,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       $('.jeux-rejouer', jeu.corps).addEventListener('click', () => this.demarrer({ ...p.reglage }));
       $('.jeux-autre', jeu.corps).addEventListener('click', () => {
         this.quitter();
+        montrerEcran('accueil');
         ouvrirMenu();
       });
       if (!liste || manques.length < p.codesZone.length) globe.zone(p.reglage.zone);
@@ -747,7 +797,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     id: 'quiz-pays',
     panneau,
     activer() {
-      rendreReglage();
+      montrerEcran('accueil');
       // Les nombres de pays par zone apparaissent dès que les contours sont là ; sinon ils viendront avec la partie
       preparer().catch(() => {});
     },
