@@ -117,3 +117,27 @@ describe('ciel lunaire', () => {
     expect(texteCoordonnees(-23.4, -3.01, { langue: 'en', nombre: (v) => v.toFixed(1) })).toBe('3.0° S · 23.4° W');
   });
 });
+
+describe('pôles de la Lune', () => {
+  it('prend une image plus fine près des pôles', async () => {
+    const { niveauPourTuile } = await import('../src/lune-visite-calcul.js');
+    expect(niveauPourTuile(4, 8, 8)).toBe(3); // à l'équateur : z - 1
+    expect(niveauPourTuile(4, 0, 8)).toBeGreaterThan(3); // vers 80° N
+    expect(niveauPourTuile(12, 0, 8)).toBe(8); // plafonné
+  });
+  it('fond l’image vers la calotte de 83,6° à 85°', async () => {
+    const { fonduPolaire } = await import('../src/lune-visite-calcul.js');
+    expect(fonduPolaire(80)).toBe(0);
+    expect(fonduPolaire(-85)).toBe(1);
+    expect(fonduPolaire(84.3)).toBeCloseTo(0.5);
+  });
+  it('pose deux calottes, assombries côté nuit en temps réel', async () => {
+    const { calottesLune, GRIS_POLAIRE } = await import('../src/lune-visite-calcul.js');
+    const jour = calottesLune(null, 4);
+    expect(jour.features).toHaveLength(8);
+    expect(jour.features[0].properties.couleur).toBe(`rgb(${GRIS_POLAIRE.join(', ')})`);
+    const reel = calottesLune({ lng: 0, lat: 0 }, 4);
+    const couleurs = reel.features.map((f) => f.properties.couleur);
+    expect(new Set(couleurs).size).toBeGreaterThan(1);
+  });
+});

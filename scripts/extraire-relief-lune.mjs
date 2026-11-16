@@ -130,6 +130,23 @@ function png(rgb, cote) {
   ]);
 }
 
+// Pôles : au-delà de 85°, MapLibre étire la dernière rangée jusqu'au pôle. De 82° à 85°, le relief se fond
+// vers l'altitude moyenne de la calotte, comme l'image (lune-visite-calcul.js, fonduPolaire)
+const moyenneCalotte = (nord) => {
+  let somme = 0;
+  let n = 0;
+  const lignes = nord ? [0, 5 * PPD] : [HAUTEUR - 5 * PPD, HAUTEUR];
+  for (let y = lignes[0]; y < lignes[1]; y++) for (let x = 0; x < LARGEUR; x += 8) { somme += grille[y * LARGEUR + x]; n++; }
+  return somme / n;
+};
+const CALOTTE = { nord: moyenneCalotte(true), sud: moyenneCalotte(false) };
+const fondu = (lat) => Math.max(0, Math.min(1, (Math.abs(lat) - 82) / 3));
+const altitudePolaire = (niveau, lng, lat) => {
+  const f = fondu(lat);
+  const a = altitude(niveau, lng, lat);
+  return f ? a * (1 - f) + (lat > 0 ? CALOTTE.nord : CALOTTE.sud) * f : a;
+};
+
 if (existsSync(SORTIE)) rmSync(SORTIE, { recursive: true });
 let total = 0;
 let nombre = 0;
@@ -146,7 +163,7 @@ for (let z = 0; z <= ZOOM_MAX; z++) {
         const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * my))) * 180) / Math.PI;
         for (let px = 0; px < TUILE; px++) {
           const lng = ((tx + (px + 0.5) / TUILE) / n) * 360 - 180;
-          const v = Math.round(altitude(niveau, lng, lat) / PAS) * PAS + 32768;
+          const v = Math.round(altitudePolaire(niveau, lng, lat) / PAS) * PAS + 32768;
           const i = (py * TUILE + px) * 3;
           rgb[i] = (v >> 8) & 0xff;
           rgb[i + 1] = v & 0xff;

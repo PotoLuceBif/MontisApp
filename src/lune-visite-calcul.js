@@ -53,6 +53,38 @@ export function latitudeLigne(z, y, py, cote) {
 }
 // Niveau plate carrée de même finesse à l'équateur (2^(n+1) × 2^n tuiles de 256 px au niveau n), plafonné
 export const niveauPlateCarree = (z, max) => Math.max(0, Math.min(max, z - 1));
+// Près des pôles, Mercator étire les tuiles : il faut une image plate carrée plus fine, sinon tout se pixelise
+export function niveauPourTuile(z, y, max) {
+  const b = boiteTuile(z, 0, y);
+  const lat = Math.min(Math.abs(b.nord), Math.abs(b.sud), 89);
+  const etirement = (b.nord > 0) === (b.sud > 0) ? Math.log2(1 / Math.cos(lat * RAD)) : 0;
+  return Math.max(0, Math.min(max, z - 1 + Math.round(etirement)));
+}
+
+// ---------- Pôles ----------
+// Au-delà de 85°, MapLibre étire la dernière rangée de pixels jusqu'au pôle : des rayons. L'image se fond donc
+// vers une teinte unie de 83,6° à 85°, et deux calottes de cette teinte couvrent le reste.
+export const GRIS_POLAIRE = [84, 84, 87];
+export const fonduPolaire = (lat) => Math.max(0, Math.min(1, (Math.abs(lat) - 83.6) / 1.4));
+// Bandes au bord du monde, en tranches de longitude (nuit lunaire comprise en temps réel)
+export function calottesLune(sub = null, secteurs = 48) {
+  const pas = 360 / secteurs;
+  const features = [];
+  for (const nord of [true, false]) {
+    const [bas, haut] = nord ? [84.9, 86] : [-86, -84.9];
+    for (let i = 0; i < secteurs; i += 1) {
+      const ouest = -180 + i * pas;
+      const nuit = sub ? opaciteNuit(hauteurSoleilLune(ouest + pas / 2, nord ? 85 : -85, sub)) : 0;
+      const couleur = GRIS_POLAIRE.map((c, k) => Math.round(c * (1 - nuit) + [6, 8, 16][k] * nuit));
+      features.push({
+        type: 'Feature',
+        properties: { couleur: `rgb(${couleur.join(', ')})` },
+        geometry: { type: 'Polygon', coordinates: [[[ouest, bas], [ouest + pas, bas], [ouest + pas, haut], [ouest, haut], [ouest, bas]]] },
+      });
+    }
+  }
+  return { type: 'FeatureCollection', features };
+}
 // Position en pixels, au niveau n, d'un point (colonne 0 à -180°, ligne 0 à 90° N)
 export function pixelPlateCarree(n, lng, lat, cote = 256) {
   return { x: ((lng + 180) / 360) * 2 ** (n + 1) * cote, y: ((90 - lat) / 180) * 2 ** n * cote };

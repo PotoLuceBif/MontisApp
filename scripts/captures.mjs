@@ -13,7 +13,7 @@ import { createServer } from 'vite';
 import { archiveSimulee, previsionsSimulees } from './meteo-simulee.mjs';
 import { gpxRando, gpxSki, igcVol, tcxVelo } from './sorties-demo.mjs';
 import { fragmentParcours } from '../src/partage-calcul.js';
-import { getMoonPosition } from 'suncalc';
+import { getMoonPosition, getPosition } from 'suncalc';
 import { directionEtoile, tempsSideral } from '../src/ciel-calcul.js';
 
 const require = createRequire(import.meta.url);
@@ -619,6 +619,46 @@ const ECRANS = [
   {
     nom: 'lune-visite-fiche',
     actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [23.47, 0.67], zoom: 4.2, pitch: 0, bearing: 0 }), (p) => p.waitForTimeout(8000), clicLune([23.473, 0.674]), (p) => p.waitForTimeout(1500)],
+  },
+  // Pôle nord, incliné : ni rayons ni pixels (fondu vers les calottes)
+  { nom: 'lune-visite-pole', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 80], zoom: 2.4, pitch: 30, bearing: 0 }), (p) => p.waitForTimeout(9000)] },
+  // La Terre dans le ciel lunaire, au-dessus de l'horizon sud, vue depuis la mer du Froid
+  { nom: 'lune-visite-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 62], zoom: 5, pitch: 78, bearing: 180 }), (p) => p.waitForTimeout(9000)] },
+  // Terre hors champ : au bord, avec sa flèche
+  { nom: 'lune-visite-terre-bord', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 40], zoom: 5, pitch: 70, bearing: 0 }), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
+  {
+    nom: 'lune-visite-recherche',
+    actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tran'); }, (p) => p.waitForTimeout(1500)],
+  },
+  { nom: 'lune-visite-sites', actions: [...ALLER_LUNE, clic('.lune-recherche-sites'), (p) => p.waitForTimeout(1500)] },
+  {
+    nom: 'lune-visite-recherche-tycho',
+    actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tycho'); }, (p) => p.waitForTimeout(800), clic('.lune-recherche-item'), (p) => p.waitForTimeout(9000)],
+  },
+  // Le soleil du ciel touché au dézoom : bulle Informations seule
+  {
+    nom: 'globe-soleil-bulle',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            const soleil = getPosition(maintenant, lat, lng);
+            const ecart = Math.abs(soleil.altitude + 76) + Math.min(Math.abs(soleil.azimuth % 180), 180 - Math.abs(soleil.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointSoleil());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(1000),
+    ],
   },
   // La Lune du ciel touchée au dézoom : bulle Informations ou Visiter la Lune
   {

@@ -3950,7 +3950,7 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Lune dans le ciel en 3D (soleil-ciel.js) : côté éclairé tourné vers le soleil */
 .lune-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
 .lune-ciel[hidden] { display: none; }
-.lune-ciel svg { pointer-events: auto; cursor: pointer; } /* elle se touche : lune-bulle.js */
+.lune-ciel svg, .soleil-ciel-disque { pointer-events: auto; cursor: pointer; } /* ils se touchent : lune-bulle.js */
 .lune-ciel svg { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 0 1.5px rgb(14 20 42 / .9)) drop-shadow(0 0 9px rgb(225 232 255 / .65)); }
 .lune-ciel .lune-cendree { opacity: .28; } /* face sombre, à peine éclairée par la Terre */
 .lune-contour { fill: none; stroke: #f1f4fb; stroke-width: .75; opacity: .95; }
@@ -4124,3 +4124,55 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .lune-visiter-textes strong { font-size: 14px; }
 .lune-visiter-textes small { color: var(--texte-2); font-size: 12px; }
 .lune-visiter-fleche { width: 18px; height: 18px; margin-left: auto; flex: none; fill: none; stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lune-visite-haut { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 70px; z-index: 4; display: flex; gap: 8px; align-items: flex-start; }
+.lune-visite .lune-visite-quitter { position: static; flex: none; }
+.lune-recherche { position: relative; flex: 0 1 320px; min-width: 0; }
+.lune-recherche-champ {
+  box-sizing: border-box; width: 100%; height: 44px; padding: 0 48px 0 14px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font: 14px var(--police);
+}
+.lune-recherche-champ::placeholder { color: var(--texte-2); }
+.lune-recherche-sites {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.lune-recherche-sites:hover, .lune-recherche-sites.actif { background: var(--accent); color: var(--accent-texte); }
+.lune-recherche-sites svg, .lune-visite-vue-terre svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.lune-recherche-liste {
+  position: absolute; top: 50px; left: 0; right: 0; display: grid; max-height: min(60dvh, 420px); overflow-y: auto; padding: 6px;
+  border: 1px solid var(--bord); border-radius: 14px; background: var(--surface); box-shadow: var(--ombre-forte);
+}
+.lune-recherche-liste[hidden] { display: none; }
+.lune-recherche-titre, .lune-recherche-vide { margin: 4px 8px 6px; color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.lune-recherche-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--texte); text-align: left; cursor: pointer; font-family: var(--police);
+}
+.lune-recherche-item:hover, .lune-recherche-item:focus-visible { background: var(--survol); }
+.lune-recherche-item > span:last-child { display: grid; min-width: 0; }
+.lune-recherche-item strong { font-size: 14px; }
+.lune-recherche-item em { color: var(--texte-2); font-size: 12px; }
+.lune-recherche-item em:empty { display: none; }
+.lune-recherche-item small { color: var(--texte-2); font-size: 12px; }
+.lune-recherche-pastille { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #c9ccd4; }
+.lune-recherche-pastille.site { background: #c9b8ff; }
+.lune-recherche-pastille.site.equipage { background: #ff9f43; }
+.lune-visite-vue-terre {
+  position: absolute; top: calc(max(14px, env(safe-area-inset-top)) + 54px); left: 14px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 14px 0 10px; border: 1px solid var(--bord); border-radius: 999px;
+  background: var(--surface); color: var(--texte); box-shadow: var(--ombre-forte); font: 600 13px var(--police); cursor: pointer;
+}
+.lune-visite-vue-terre:hover { background: var(--survol); }
+.lune-visite-vue-terre svg { stroke: #6fb6ff; }
+body .lune-visite .lune-visite-panneau.bf { top: 128px; }
+.terre-ciel { padding: 0; border: 0; background: none; }
+.terre-ciel svg { left: -22px; top: -22px; width: 44px; height: 44px; filter: drop-shadow(0 0 8px rgb(110 180 255 / .55)); }
+.terre-ciel.bord svg { left: -13px; top: -13px; width: 26px; height: 26px; }
+.terre-ciel .terre-nuit { opacity: .2; }
+.terre-ciel .terre-contour { fill: none; stroke: rgb(190 225 255 / .45); stroke-width: .5; }
+@media (max-width: 640px) {
+  .lune-visite .lune-visite-quitter { padding: 0 12px; }
+  .lune-visite .lune-visite-quitter span { display: none; }
+  .lune-recherche { flex: 1 1 auto; }
+  body .lune-visite .lune-visite-panneau.bf { top: auto; }
+}

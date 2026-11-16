@@ -4,7 +4,8 @@
 // - `nuit/<lng>/<lat>/z/x/y` : nuit lunaire, pixel par pixel, selon la hauteur du soleil (éclairage réel).
 import { addProtocol } from 'maplibre-gl';
 import {
-  boiteTuile, hauteurSoleilLune, latitudeLigne, niveauPlateCarree, opaciteNuit, pixelPlateCarree, tuilesCouvrantes,
+  GRIS_POLAIRE, boiteTuile, fonduPolaire, hauteurSoleilLune, latitudeLigne, niveauPourTuile, opaciteNuit, pixelPlateCarree,
+  tuilesCouvrantes,
 } from './lune-visite-calcul.js';
 
 export const PROTOCOLE_LUNE = 'montis-lune';
@@ -31,7 +32,7 @@ async function tuileSource(couche, n, ligne, colonne, signal) {
 
 // Dessine une couche plate carrée sur la tuile Mercator z/x/y
 async function dessinerCouche(contexte, couche, z, x, y, signal) {
-  const n = niveauPlateCarree(z, COUCHES[couche].max);
+  const n = niveauPourTuile(z, y, COUCHES[couche].max);
   const { col0, col1, lig0, lig1 } = tuilesCouvrantes(z, x, y, n, COTE);
   // Mosaïque des tuiles sources, puis chaque ligne Mercator y prend sa ligne plate carrée
   const mosaique = toile((col1 - col0 + 1) * COTE, (lig1 - lig0 + 1) * COTE);
@@ -66,6 +67,16 @@ async function tuileImages(z, x, y, signal) {
   contexte.globalCompositeOperation = 'soft-light';
   contexte.globalAlpha = 0.75;
   await dessinerCouche(contexte, 'ombrage', z, x, y, signal).catch(() => {});
+  // Près des pôles, fondu vers la teinte des calottes (lune-visite-calcul.js)
+  contexte.globalCompositeOperation = 'source-over';
+  contexte.fillStyle = `rgb(${GRIS_POLAIRE.join(', ')})`;
+  for (let py = 0; py < COTE; py++) {
+    const fondu = fonduPolaire(latitudeLigne(z, y, py, COTE));
+    if (!fondu) continue;
+    contexte.globalAlpha = fondu;
+    contexte.fillRect(0, py, COTE, 1);
+  }
+  contexte.globalAlpha = 1;
   return surface;
 }
 

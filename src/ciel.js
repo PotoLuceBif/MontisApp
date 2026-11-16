@@ -130,9 +130,11 @@ export function initCiel(map, { astres = null } = {}) {
     contexte.globalAlpha = alpha;
   }
 
+  let pointSoleil = null;
   function dessinerSoleil(cam, { lng, lat }, maintenant) {
     const soleil = getPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
+    pointSoleil = point && { x: point.x, y: point.y, rayon: 11 };
     if (!point) return;
     const halo = contexte.createRadialGradient(point.x, point.y, 0, point.x, point.y, 60);
     halo.addColorStop(0, 'rgba(255, 244, 214, 0.9)');
@@ -200,6 +202,7 @@ export function initCiel(map, { astres = null } = {}) {
     contexte.clearRect(0, 0, l, h);
     toile.hidden = opacite <= 0;
     pointLune = null;
+    pointSoleil = null;
     if (opacite <= 0) return;
     if (!etoiles.length) {
       chargerEtoiles().then((liste) => {
@@ -282,6 +285,7 @@ export function initCiel(map, { astres = null } = {}) {
   return {
     // Lune visible à l'écran : { x, y, rayon } en px CSS, sinon null
     pointLune: () => (toile.hidden ? null : pointLune),
+    pointSoleil: () => (toile.hidden ? null : pointSoleil),
     redessiner: planifier,
   };
 }
