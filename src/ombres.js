@@ -1,25 +1,25 @@
 // Ombre du soleil : ombrage du relief éclairé depuis la position réelle du soleil, et ombre portée par les
-// montagnes voisines (calculée dans le travailleur des pentes). Réglages du jour et de l'heure, pastille,
-// soleil dans le ciel en 3D. Chargé à la première activation (ombres-panneau.js).
+// montagnes voisines (calculée dans le travailleur des pentes). Pastille ; le soleil et la Lune dans le ciel
+// sont dessinés par la rubrique (soleil-lune.js). Le jour et l'heure sont ceux de la rubrique Soleil et Lune
+// (soleil-lune.js). Chargé à la première activation (ombres-panneau.js).
 import { REPERE_CALQUES } from './style-montis.js';
 import { ZOOM_MAX_OMBRES } from './ombre-tuile.js';
 import { ZOOM_MIN_PORTEES } from './ombre-calcul.js';
 import { adresseTuilesOmbre, ajouterProtocoleOmbre, eclairer, PEINTURE_OMBRAGE } from './ombre-couches.js';
-import { cadran, creerReglageSoleil, tournerCadrans } from './soleil-reglage.js';
-import { creerSoleilCiel } from './soleil-ciel.js';
-import { heureDuLieu, nomDecalage } from './soleil.js';
+import { cadran, tournerCadrans } from './soleil-reglage.js';
+import { heureDuLieu } from './soleil.js';
 import { etat, majOmbrage } from './options-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { estHorsLigne } from './hors-ligne.js';
 import { poser, surLangue, t, ta } from './i18n.js';
-import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
+import { creerPastilleCouche } from './couches-actives.js';
 import { pourcent } from './unites.js';
 
 const SOURCE_PORTEE = 'ombre-portee';
 const COUCHE_OMBRAGE = 'ombre-soleil';
 const AVANT = ['pentes-pentes', REPERE_CALQUES, 'montis-road-casing', 'courbes']; // pentes, routes et sentiers restent lisibles
 
-export function initOmbres(map, { details, eteindre }) {
+export function initOmbres(map, { details, reglage, partage, eteindre }) {
   ajouterProtocoleOmbre();
 
   // ---------- Couches ----------
@@ -54,7 +54,6 @@ export function initOmbres(map, { details, eteindre }) {
   let erreurs = 0;
 
   // ---------- Panneau ----------
-  const reglage = creerReglageSoleil(map, { surChangement: (options) => tout(options), actif: () => actif });
   details.innerHTML = `
     <label class="ligne-coche ombres-portees-ligne"><input type="checkbox" class="ombres-portees"> <span data-i18n="ombres.portees"></span></label>
     <p class="note ombres-etat" role="status" hidden></p>
@@ -65,16 +64,13 @@ export function initOmbres(map, { details, eteindre }) {
       </div>
       <input type="range" class="ombres-intensite" min="0.2" max="1" step="0.05" ${ta('aria-label', 'ombres.intensite')}>
     </div>
-    <p class="note ombres-fuseau"></p>
     <p class="note pentes-prudence" data-i18n="ombres.prudence"></p>
   `;
-  details.prepend(reglage.element); // en `display: contents` : la grille du panneau reste la même
   details.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   const casePortees = details.querySelector('.ombres-portees');
   const note = details.querySelector('.ombres-etat');
   const curseurIntensite = details.querySelector('.ombres-intensite');
   const valeurIntensite = details.querySelector('.ombres-intensite-valeur');
-  const fuseau = details.querySelector('.ombres-fuseau');
 
   const soleil = () => reglage.soleil();
   const nuit = () => reglage.nuit();
@@ -84,8 +80,8 @@ export function initOmbres(map, { details, eteindre }) {
     ordre: 1,
     nom: () => t(nuit() ? 'ombres.pastille-nuit' : 'ombres.pastille', { heure: heureDuLieu(reglage.instant(), reglage.decalage()) }),
     legende: () => cadran('mini-cadran'),
-    rubrique: 'relief',
-    onOuvrir: () => ouvrirReglage('relief'),
+    rubrique: 'ciel',
+    onOuvrir: () => window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'ciel', module: 'ombres' } })),
     onRetirer: () => eteindre(),
   });
 
@@ -95,10 +91,8 @@ export function initOmbres(map, { details, eteindre }) {
     tournerCadrans(details, soleil(), map.getBearing());
   }
 
-  // ---------- Soleil dans le ciel, en 3D ----------
-  const ciel = creerSoleilCiel(map);
-  // Une visite ou une sortie montre son propre soleil (visite-station.js, sortie-ombre.js)
-  const majCiel = () => ciel.montrer(actif && etat.mode3D && !etat.enVisite && !etat.ombreSortie ? soleil() : null);
+  // Soleil et Lune dans le ciel, en 3D : dessinés par la rubrique, avec l'ombre ou l'option « Dans le ciel »
+  const majCiel = () => partage.majCiel();
 
   // ---------- Couches selon le soleil ----------
   let adresse = null;
@@ -136,8 +130,6 @@ export function initOmbres(map, { details, eteindre }) {
 
   // ---------- Textes ----------
   function majTextes() {
-    reglage.majTextes();
-    fuseau.textContent = t('soleil.fuseau-appareil', { fuseau: nomDecalage(reglage.decalage()) });
     valeurIntensite.textContent = pourcent(intensite * 100);
     majEtat();
     majCadrans();
@@ -176,8 +168,8 @@ export function initOmbres(map, { details, eteindre }) {
   });
 
   // ---------- Carte ----------
-  // Le soleil se calcule au centre de la carte : un grand déplacement le change un peu
-  map.on('moveend', () => tout());
+  // Jour, heure ou lieu changés dans la rubrique (soleil-lune.js)
+  partage.abonner((options) => tout(options));
   map.on('rotate', majCadrans);
   map.on('zoom', () => { if (actif) majEtat(); });
   map.on('error', (e) => {
@@ -187,7 +179,7 @@ export function initOmbres(map, { details, eteindre }) {
   });
   window.addEventListener('mode3d', () => { if (actif) appliquer(); });
   surLangue(() => { if (actif) majTextes(); });
-  etat.majOmbres = () => { if (actif) appliquer(); else majCiel(); };
+  etat.majOmbres = () => { if (actif) appliquer(); majCiel(); };
 
   return {
     afficher(oui) {

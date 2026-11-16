@@ -1,6 +1,7 @@
 // Section « Soleil » des conditions locales : tout est calculé sur l'appareil, donc disponible hors ligne
 import { codeCardinal } from './vent-calcul.js';
 import { formatDate, t, ta, ti, poser } from './i18n.js';
+import { pourcent } from './unites.js';
 import {
   courseSoleil,
   formatDuree,
@@ -10,6 +11,8 @@ import {
   nomDecalage,
   positionSoleil,
 } from './soleil.js';
+import { eclairementLune } from './lune-calcul.js';
+import { svgLune } from './lune-dessin.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const LARGEUR = 300;
@@ -63,6 +66,10 @@ export function creerSectionSoleil() {
     <p class="soleil-regime" hidden></p>
     <div class="soleil-grille"></div>
     <div class="soleil-plages"></div>
+    <div class="soleil-lune" role="group">
+      <span class="lune-icone-boite"></span>
+      <div class="lune-phase-textes"><strong></strong><span></span></div>
+    </div>
     <p class="soleil-note"></p>
   `;
   const titre = section.querySelector('h3');
@@ -71,6 +78,7 @@ export function creerSectionSoleil() {
   const grille = section.querySelector('.soleil-grille');
   const plages = section.querySelector('.soleil-plages');
   const note = section.querySelector('.soleil-note');
+  const lune = section.querySelector('.soleil-lune');
   const cases = {
     lever: creerCase('soleil-lever', 'lever'),
     coucher: creerCase('soleil-coucher', 'coucher'),
@@ -186,6 +194,15 @@ export function creerSectionSoleil() {
       const fin = sansValeur(journee.crepuscule && heure(journee.crepuscule));
       remplirCase(cases.aube, `${debut}\n${fin}`, t('soleil.mot-aube'), t('soleil.aube-aria', { plages: `${debut} · ${fin}` }));
     }
+
+    // Phase de la Lune, maintenant ou à midi du jour affiché (vue de l'hémisphère du lieu)
+    const eclairage = eclairementLune(estAujourdhui ? maintenant : `${jourAffiche}T12:00:00Z`);
+    lune.querySelector('.lune-icone-boite').innerHTML = svgLune({ fraction: eclairage.fraction, croissante: eclairage.croissante, sud: position.latitude < 0, classe: 'lune-icone' });
+    const nomPhase = t(`lune.phase-${eclairage.code}`);
+    const eclairee = t('lune.eclairee', { pourcent: pourcent(eclairage.fraction * 100) });
+    lune.querySelector('strong').textContent = nomPhase;
+    lune.querySelector('span').textContent = eclairee;
+    lune.setAttribute('aria-label', `${nomPhase}, ${eclairee}`);
 
     note.textContent = fuseauDuLieu
       ? t('soleil.relief')

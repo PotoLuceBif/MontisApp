@@ -1,6 +1,10 @@
-// Réglage du jour et de l'heure du soleil, avec sa position (cadran et texte) : commun à Carte › Relief
-// (ombres.js) et aux visites de stations (visite-station.js). Le soleil se calcule au centre de la carte.
-import { decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
+// Réglage du jour et de l'heure du soleil, avec sa position (cadran et texte) : commun à Soleil et Lune
+// (soleil-lune.js) et aux visites de stations (visite-station.js). Le soleil se calcule au centre de la carte.
+// Option `course` (Soleil et Lune) : au-dessus du curseur, la course du soleil et, plus discrète, celle de la
+// Lune ; les deux astres suivent le curseur, se lèvent et se couchent sur la ligne d'horizon.
+import { courseSoleil, decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
+import { courseLune, dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
+import { svgLune } from './lune-dessin.js';
 import { codeCardinal } from './vent-calcul.js';
 import { lire, ecrire } from './reglages.js';
 import { formatDate, poser, surLangue, t, ta } from './i18n.js';
@@ -8,6 +12,15 @@ import { nombre } from './unites.js';
 
 const MINUTE = 60000;
 const PAS_CURSEUR = 5;
+// Dessin de la course : largeur arbitraire (étirée), horizon à 40 px. Au-dessus, l'échelle suit le soleil du
+// jour (au plus haut à 34 px, même en hiver) ; en dessous, la nuit est tassée
+const LARGEUR_COURSE = 288;
+const HAUTEUR_COURSE = 62;
+const HORIZON = 40;
+let echelleCourse = 1;
+const yCourse = (hauteur) => Math.max(3, Math.min(HAUTEUR_COURSE - 3, HORIZON - hauteur * (hauteur > 0 ? echelleCourse : 0.35)));
+const xCourse = (minutes) => (minutes / (24 * 60)) * LARGEUR_COURSE;
+const traceCourse = (points) => points.map((p, i) => `${i ? 'L' : 'M'}${xCourse(p.minutes).toFixed(1)} ${yCourse(p.hauteur).toFixed(1)}`).join('');
 
 // Petit cadran : le soleil sur le cercle, dans sa direction à l'écran (carte tournée comprise)
 export const cadran = (classe) => `<svg class="${classe}" viewBox="0 0 24 24" aria-hidden="true">
@@ -28,7 +41,7 @@ export function tournerCadrans(racine, soleil, bearing) {
 
 // `surChangement({ attendre })` : le soleil a changé (`attendre` pendant un glissement du curseur).
 // `actif()` : faut-il suivre l'horloge quand l'heure est « maintenant » ?
-export function creerReglageSoleil(map, { surChangement, actif }) {
+export function creerReglageSoleil(map, { surChangement, actif, course = false }) {
   const element = document.createElement('div');
   element.className = 'soleil-reglage';
   element.innerHTML = `
@@ -47,6 +60,19 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
         <span data-i18n="ombres.heure"></span>
         <strong class="ombres-heure-valeur"></strong>
       </div>
+      ${course ? `<div class="ciel-course" aria-hidden="true">
+        <svg viewBox="0 0 ${LARGEUR_COURSE} ${HAUTEUR_COURSE}" preserveAspectRatio="none">
+          <defs><clipPath id="ciel-course-jour"><rect x="0" y="0" width="${LARGEUR_COURSE}" height="${HORIZON}"/></clipPath></defs>
+          <path class="ciel-course-aire" clip-path="url(#ciel-course-jour)"/>
+          <line class="ciel-course-horizon" x1="0" x2="${LARGEUR_COURSE}" y1="${HORIZON}" y2="${HORIZON}"/>
+          <path class="ciel-course-lune-trace"/>
+          <path class="ciel-course-soleil-nuit"/>
+          <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
+        </svg>
+        <i class="ciel-course-repere ciel-course-lever"></i><i class="ciel-course-repere ciel-course-coucher"></i>
+        <span class="ciel-course-lune">${svgLune({ classe: 'lune-icone' })}</span>
+        <i class="ciel-course-soleil"></i>
+      </div>` : ''}
       <input type="range" class="ombres-curseur" min="0" max="${24 * 60 - PAS_CURSEUR}" step="${PAS_CURSEUR}" ${ta('aria-label', 'ombres.heure')}>
       <div class="ombres-piste" aria-hidden="true"><i></i></div>
       <div class="ombres-reperes">
@@ -68,12 +94,15 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
   const piste = element.querySelector('.ombres-piste i');
   const texteSoleil = element.querySelector('.ombres-soleil-texte');
 
+  let fuseauLieu = null; // minutes à l'est de UTC du lieu choisi (Soleil et Lune), sinon l'appareil
   let decalage = decalageAppareil();
   let jour = jourLocal(Date.now(), decalage);
   // « maintenant » suit l'horloge ; sinon, minutes depuis minuit
   let heure = lire('ombres-heure', 'maintenant');
   let soleil = null; // { azimut, hauteur } au centre de la carte
   let journee = null;
+  let lieu = null; // { lng, lat } du dernier calcul
+  let courseCle = null; // jour et lieu de la course dessinée
 
   const minutesMaintenant = () => {
     const d = new Date(Date.now() + decalage * MINUTE);
@@ -85,6 +114,7 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
 
   function calculer() {
     const { lng, lat } = map.getCenter();
+    lieu = { lng, lat };
     const position = positionSoleil(instant(), lat, lng);
     soleil = { azimut: position.azimut, hauteur: position.hauteur };
     journee = journeeSoleil(jour, lat, lng, decalage);
@@ -119,6 +149,46 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
         : t('ombres.soleil', { hauteur: `${nombre(Math.round(soleil.hauteur))}°`, direction });
     }
     tournerCadrans(element, soleil, map.getBearing());
+    if (course) majCourse();
+  }
+
+  // Courbes redessinées quand le jour ou le lieu change ; astres placés à chaque heure
+  function majCourse() {
+    if (!lieu) return;
+    const boite = element.querySelector('.ciel-course');
+    const cle = `${jour}/${decalage}/${lieu.lng.toFixed(2)}/${lieu.lat.toFixed(2)}`;
+    if (cle !== courseCle) {
+      courseCle = cle;
+      const pointsSoleil = courseSoleil(jour, lieu.lat, lieu.lng, decalage);
+      const pointsLune = courseLune(jour, lieu.lat, lieu.lng, decalage);
+      echelleCourse = 34 / Math.max(20, ...pointsSoleil.map((p) => p.hauteur), ...pointsLune.map((p) => p.hauteur));
+      const trace = traceCourse(pointsSoleil);
+      boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
+      boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);
+      boite.querySelector('.ciel-course-aire').setAttribute('d', `${trace}L${LARGEUR_COURSE} ${HORIZON}L0 ${HORIZON}Z`);
+      boite.querySelector('.ciel-course-lune-trace').setAttribute('d', traceCourse(pointsLune));
+      // Lever et coucher marqués sur l'horizon
+      const debut = midiLocal(jour, decalage).getTime() - 12 * 60 * MINUTE;
+      const repere = (classe, date) => {
+        const el = boite.querySelector(classe);
+        el.hidden = !date;
+        if (date) el.style.left = `${(((date.getTime() - debut) / MINUTE) / (24 * 60)) * 100}%`;
+      };
+      repere('.ciel-course-lever', journee?.lever);
+      repere('.ciel-course-coucher', journee?.coucher);
+    }
+    const minutes = minutesChoisies();
+    const placer = (el, hauteur) => {
+      el.style.left = `${(minutes / (24 * 60)) * 100}%`;
+      el.style.top = `${(yCourse(hauteur) / HAUTEUR_COURSE) * 100}%`;
+      el.classList.toggle('couche', hauteur <= 0);
+    };
+    if (soleil) placer(boite.querySelector('.ciel-course-soleil'), soleil.hauteur);
+    const lune = positionLune(instant(), lieu.lat, lieu.lng);
+    const eclairage = eclairementLune(instant());
+    const icone = boite.querySelector('.ciel-course-lune');
+    icone.querySelector('.lune-phase-chemin').setAttribute('d', dessinPhase(eclairage.fraction, eclairage.croissante, { sud: lieu.lat < 0 }));
+    placer(icone, lune.hauteur);
   }
 
   function changerJour(nouveau) {
@@ -147,10 +217,32 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
   element.querySelector('.ombres-maintenant').addEventListener('click', () => {
     heure = 'maintenant';
     ecrire('ombres-heure', heure);
-    decalage = decalageAppareil();
+    decalage = fuseauLieu ?? decalageAppareil();
     jour = jourLocal(Date.now(), decalage);
     surChangement({});
   });
+
+  // Aller à un instant (phase de la Lune) : son jour, à cinq minutes près
+  function placer(date) {
+    const d = new Date(date).getTime();
+    jour = jourLocal(d, decalage);
+    const local = new Date(d + decalage * MINUTE);
+    heure = Math.round((local.getUTCHours() * 60 + local.getUTCMinutes()) / PAS_CURSEUR) * PAS_CURSEUR % (24 * 60);
+    ecrire('ombres-heure', heure);
+    surChangement({});
+  }
+
+  // Heures au fuseau du lieu (null : celui de l'appareil). Le jour et l'heure affichés restent les mêmes
+  function changerFuseau(minutes) {
+    const nouveau = minutes ?? decalageAppareil();
+    fuseauLieu = minutes;
+    if (nouveau === decalage) return;
+    const maintenant = heure === 'maintenant' && jour === jourLocal(Date.now(), decalage);
+    decalage = nouveau;
+    if (maintenant) jour = jourLocal(Date.now(), decalage);
+    courseCle = null;
+    surChangement({});
+  }
 
   map.on('rotate', () => tournerCadrans(element, soleil, map.getBearing()));
   // L'heure « maintenant » avance toute seule
@@ -164,6 +256,9 @@ export function creerReglageSoleil(map, { surChangement, actif }) {
     instant,
     nuit,
     decalage: () => decalage,
+    fuseauLieu: () => fuseauLieu,
+    changerFuseau,
     soleil: () => soleil,
+    placer,
   };
 }

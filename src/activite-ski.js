@@ -1,5 +1,6 @@
 import { distance } from './rando-api.js';
 import { creerVisiteStation } from './visite-station.js';
+import { boutonExposition, evaluerExposition } from './exposition.js';
 import { lire, ecrire } from './reglages.js';
 import { creerFavoris, creerFicheLieu, creerItemLieu, creerNiveaux, creerPosition, el, km, stat } from './fiche-lieu.js';
 import { contientMot, creerRechercheLieux, creerReperesZone, lieuxDansLaVue, normaliser, scoreRecherche } from './zone-lieux.js';
@@ -273,6 +274,18 @@ function creerSkiPiste(map) {
     },
     rendreActions(actions, contenu, feature) {
       const station = feature.properties;
+      // La visite garde son propre bouton « Ombre du soleil »
+      if (!fiche.enVisite) {
+        const exposition = boutonExposition(() => {
+          fiche.fermer();
+          evaluerExposition(map, {
+            centre: feature.geometry.coordinates,
+            rayon: tailleStation(feature) ? 4000 : 2000,
+            retour: () => fiche.ouvrir(feature, false),
+          });
+        }, 'point-lien lien-exposition fiche-exposition');
+        actions.append(exposition);
+      }
       if (!tailleStation(feature)) {
         const domaine = domaineProche(feature);
         if (domaine) {

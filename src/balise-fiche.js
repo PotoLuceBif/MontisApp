@@ -9,6 +9,7 @@ import { cadranVent, couleurInterface, heureCourte, texteProvenance } from './ve
 import { formatAltitude, formatTemp, libelleVent, valeurVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { t, ta, ti, tt, poser } from './i18n.js';
+import { boutonExposition, evaluerExposition } from './exposition.js';
 
 const CLE_LIEU_METEO = 'meteo-position';
 
@@ -303,6 +304,10 @@ export function creerFicheBalise(map, { onFermer = () => {}, onRetour = null, on
         analyserVent({ lon: ici.station.lon, lat: ici.station.lat }, revenir, 'parapente');
       }));
     }
+    liens.push(boutonExposition(() => {
+      fermer();
+      evaluerExposition(map, { centre: [ici.station.lon, ici.station.lat], rayon: 1500, retour: revenir });
+    }));
     $('.bf-raccourcis').replaceChildren(...liens);
   }
 

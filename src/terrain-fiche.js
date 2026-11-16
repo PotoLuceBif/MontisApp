@@ -8,6 +8,7 @@ import { couleurInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { formatDate, t, poser } from './i18n.js';
+import { boutonExposition, evaluerExposition } from './exposition.js';
 
 const LIEN_TERRAINS = 'https://www.data.gouv.fr/fr/datasets/terrains-de-pratique-de-la-ffvl-federation-francaise-de-vol-libre/';
 const CLE_LIEU_METEO = 'meteo-position';
@@ -160,6 +161,15 @@ export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {
     return bouton;
   }
 
+  // Un versant au soleil : c'est aussi là que les thermiques démarrent
+  function boutonEvaluerExposition() {
+    const ici = terrain;
+    return boutonExposition(() => {
+      fermer();
+      evaluerExposition(map, { centre: [ici.lon, ici.lat], rayon: 1500, retour: () => revenir(ici) });
+    });
+  }
+
   function boutonPrevisions() {
     const bouton = document.createElement('button');
     bouton.type = 'button';
@@ -255,6 +265,7 @@ export function creerFicheTerrain(map, { onOuvrir = () => {}, onFermer = () => {
       ...(details ? [details] : []),
       ...[boutonAnalyseVent()].filter(Boolean),
       boutonPrevisions(),
+      boutonEvaluerExposition(),
       source,
       prudence,
     );

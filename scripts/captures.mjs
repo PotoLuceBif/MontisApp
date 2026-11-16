@@ -90,6 +90,12 @@ const clicCouche = (couche) => async (page) => {
   await page.mouse.click(boite.x + point.x, boite.y + point.y);
 };
 const MATIN = { center: [6.9, 45.88], zoom: 12.3, bearing: 0, pitch: 0 }; // vallée de Chamonix
+// Jour fixé au calendrier de Soleil et Lune : la Lune y est au même endroit à chaque série
+const JOUR_LUNE = (page) => page.evaluate(() => {
+  const champ = document.querySelector('.ombres-calendrier');
+  champ.value = '2026-11-16';
+  champ.dispatchEvent(new Event('change', { bubbles: true }));
+});
 // Place le curseur d'heure de l'ombre du soleil (minutes depuis minuit)
 const heureOmbres = (minutes) => async (page) => {
   await page.waitForSelector('.ombres-curseur', { state: 'attached', timeout: 8000 });
@@ -292,6 +298,8 @@ const ECRANS = [
   // Pins des terrains et leur anneau d'orientations, carte tournée : l'anneau suit la carte
   { nom: 'parapente-terrains-pins', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
   { nom: 'parapente-terrain', actions: TERRAIN },
+  // « Évaluer l'exposition » (lot 4.7) : Soleil et Lune › Ombre du soleil, cadrée sur le décollage
+  { nom: 'parapente-terrain-exposition', actions: [...TERRAIN, attendre('.lien-exposition'), clicVisible('.lien-exposition'), (p) => p.waitForTimeout(4000)] },
   // Lien vers la balise la plus proche (24 h), puis flèche retour vers le terrain
   { nom: 'parapente-terrain-balise', actions: [...TERRAIN, clic('.tf-balise'), (p) => p.waitForTimeout(3000)] },
   { nom: 'parapente-terrain-retour', actions: [...TERRAIN, clic('.tf-balise'), (p) => p.waitForTimeout(3000), clicVisible('.bf-retour'), (p) => p.waitForTimeout(1500)] },
@@ -329,6 +337,8 @@ const ECRANS = [
   { nom: 'ski-rando-piste', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1000), clic('.ski-pratiques [data-pratique="piste"]'), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
+  // Phase de la Lune sous le Soleil des conditions locales (lot 4.7)
+  { nom: 'meteo-lune', simuler: true, actions: [module('meteo-locale'), attendre('.soleil-lune'), (p) => p.waitForTimeout(1500), defiler('.meteo-soleil .soleil-plages')] },
   { nom: 'meteo-pin-ferme', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(2000), clicVisible('.outil-rapide-panneau:not([hidden]) .outil-rapide-fermer'), (p) => p.waitForTimeout(1000)] },
   // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
   // Pin de la recherche : bulle avec « Copier » seul ; un appui sur la carte à côté l'enlève
@@ -537,31 +547,56 @@ const ECRANS = [
   // Activité en cours, menu fermé : sa pastille avec les couches
   { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
-  { nom: 'carte-ombres', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
-    nom: 'carte-ombres-3d',
-    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
+    nom: 'ciel-ombres-3d',
+    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60), clic('.relief-bascule [data-mode="3d"]'),
       (p) => p.waitForTimeout(1200), vue({ ...MATIN, pitch: 60, bearing: 200 }), (p) => p.waitForTimeout(5000)],
   },
   // Le soleil dans le ciel en 3D, en fin d'après-midi, face à lui
   {
-    nom: 'carte-ombres-3d-soleil',
-    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
-      clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
+    nom: 'ciel-ombres-3d-soleil',
+    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(16 * 60 + 30), clic('.relief-bascule [data-mode="3d"]'),
+      clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 238 }), (p) => p.waitForTimeout(5000)],
   },
-  { nom: 'carte-ombres-ferme', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'ciel-ombres-ferme', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(9 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'), (p) => p.waitForTimeout(5000)] },
   // Un jour choisi au calendrier (appui sur le nom du jour)
   {
-    nom: 'carte-ombres-jour',
-    actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(12 * 60),
+    nom: 'ciel-ombres-jour',
+    actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(12 * 60),
       (p) => p.evaluate(() => {
         const champ = document.querySelector('.ombres-calendrier');
         champ.value = '2027-02-15';
         champ.dispatchEvent(new Event('change', { bubbles: true }));
       }), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')],
   },
-  { nom: 'carte-ombres-nuit', actions: [vue(MATIN), module('relief'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
+  { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
+  // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
+  { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
+  // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
+  {
+    nom: 'ciel-lieu',
+    actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
+      async (page) => {
+        await page.fill('.ciel-lieu-champ', 'Tokyo');
+        await page.waitForSelector('.ciel-lieu-liste .rando-item', { timeout: 15000 }).catch(() => {});
+      },
+      clic('.ciel-lieu-liste .rando-item'), (p) => p.waitForTimeout(5000)],
+  },
+  { nom: 'ciel-soleil', actions: [vue(MATIN), module('ombres'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1000), defiler('.ciel-position-soleil')] },
+  { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-position')] },
+  // Appui sur la pleine lune du cycle : la frise passe à ce jour, quand la Lune est au plus haut
+  { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-phase:nth-child(3)'), (p) => p.waitForTimeout(1000)] },
+  // Flèche › : le jour suivant, entre deux phases
+  { nom: 'ciel-lune-jour', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-pas[data-pas="1"]'), (p) => p.waitForTimeout(800), defiler('.lunaison')] },
+  // Option « Soleil et Lune dans le ciel » sans l'ombre : la Lune basse au sud-ouest (16 novembre 2026, 22 h 40)
+  {
+    nom: 'ciel-lune-3d',
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+      clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
+      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
+  },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: [module('elements')] },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
@@ -618,6 +653,8 @@ const ECRANS = [
       console.log('NOM', JSON.stringify(await champ.inputValue()));
     }, clicVisible('.parcours-enregistrer'), (p) => p.waitForTimeout(800)] },
   { nom: 'parcours-lecture-trajet', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), (p) => p.waitForTimeout(2000), defiler('.parcours-trajet')] },
+  { nom: 'parcours-lecture-exposition', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), (p) => p.waitForTimeout(2000), defiler('.parcours-exposition')] },
+  { nom: 'parcours-exposition', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), (p) => p.waitForTimeout(2000), clicVisible('.parcours-exposition'), (p) => p.waitForTimeout(4000)] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
   // L'analyse du vent par-dessus une visite de station : la visite continue, la station reste visible
   {
