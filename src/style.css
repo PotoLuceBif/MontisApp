@@ -2516,7 +2516,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
 .soleil-point { fill: var(--soleil); stroke: var(--surface); stroke-width: 2; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--soleil) 70%, transparent)); }
 .soleil-point.sous-horizon { fill: var(--texte-2); filter: none; }
 .soleil-regime { margin: 0; color: var(--soleil); font-size: 11.5px; font-weight: 600; }
-.soleil-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.soleil-grille { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .soleil-plages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .soleil-case {
   display: grid;
@@ -4251,3 +4251,20 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .relief-ombres .ombres-details { padding: 0 4px; }
 /* Frise : la course de la Lune pleine quand elle est levée, en pointillés quand elle est couchée */
 .ciel-course .ciel-course-lune-jour { fill: none; stroke: #eef2ff; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+/* Météo › Soleil et Lune : deux blocs, soleil puis Lune, et un lien vers la rubrique */
+.meteo-astre { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); }
+.meteo-astre.soleil-lune { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: linear-gradient(135deg, color-mix(in srgb, #9fb2ff 12%, var(--surface-2)) 0%, var(--surface-2) 65%); }
+.meteo-astre.soleil-lune .lune-icone { width: 42px; height: 42px; filter: drop-shadow(0 0 6px rgb(220 228 255 / .3)); }
+.meteo-astre.soleil-lune .lune-phase-textes { display: grid; gap: 1px; }
+.meteo-astre.soleil-lune .lune-phase-textes strong { font-size: 14px; }
+.meteo-astre.soleil-lune .lune-phase-textes span { color: var(--texte-2); font-size: 12px; }
+.meteo-astre .soleil-case { background: var(--surface); }
+.soleil-dorees { margin: 0; color: var(--soleil); font-size: 12px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.soleil-dorees:empty { display: none; }
+.meteo-astres-lien {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: transparent; color: var(--accent); font: 600 12.5px var(--police); cursor: pointer; text-align: left;
+}
+.meteo-astres-lien:hover { background: var(--survol); }
+.meteo-astres-lien svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

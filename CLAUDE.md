@@ -220,7 +220,7 @@ src/                    Tout le code (détail ci-dessous)
 |---|---|
 | `meteo.js`, `meteo-icone.js` | Conditions locales et prévisions, radar de pluie ; pictogramme et description d'un code météo |
 | `meteo-frise.js`, `frise-calcul.js` | Frise heure par heure (Météo et fiche du point) ; ses calculs : orage, échelles, heures |
-| `soleil.js`, `meteo-soleil.js` | Calcul du soleil (`suncalc`) : lever, coucher, heures dorées, position ; section Soleil des conditions locales |
+| `soleil.js`, `meteo-soleil.js` | Calcul du soleil (`suncalc`) : lever, coucher, heures dorées, position ; section Soleil et Lune des conditions locales (course, lever, coucher et durée du jour, heures dorées ; phase, lever et coucher de la Lune ; lien vers la rubrique Soleil et Lune) |
 | `carte-vent.js` | Analyse du vent sur la carte (panneau, grille, niveaux, échéances) |
 | `vent-calcul.js`, `vent-cadran.js` | Calcul du vent ; échelle de couleurs et cadran communs |
 | `vent-couche-carte.js`, `vent-volume-3d.js` | Flèches et traînées sur la carte ; bloc 3D du vent |

@@ -351,7 +351,7 @@ const ECRANS = [
   // `simuler` : prévisions Open-Meteo simulées (scripts/meteo-simulee.mjs), injoignable en session cloud
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
   // Phase de la Lune sous le Soleil des conditions locales (lot 4.7)
-  { nom: 'meteo-lune', simuler: true, actions: [module('meteo-locale'), attendre('.soleil-lune'), (p) => p.waitForTimeout(1500), defiler('.meteo-soleil .soleil-plages')] },
+  { nom: 'meteo-lune', simuler: true, actions: [module('meteo-locale'), attendre('.soleil-lune'), (p) => p.waitForTimeout(1500), defiler('.meteo-soleil')] },
   { nom: 'meteo-pin-ferme', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(2000), clicVisible('.outil-rapide-panneau:not([hidden]) .outil-rapide-fermer'), (p) => p.waitForTimeout(1000)] },
   // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
   // Pin de la recherche : bulle avec « Copier » seul ; un appui sur la carte à côté l'enlève
