@@ -2,7 +2,7 @@
 // (soleil-lune.js) et aux visites de stations (visite-station.js). Le soleil se calcule au centre de la carte.
 // Option `course` (Soleil et Lune) : au-dessus du curseur, la course du soleil et, plus discrète, celle de la
 // Lune ; les deux astres suivent le curseur, se lèvent et se couchent sur la ligne d'horizon.
-import { courseSoleil, decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
+import { courseSoleil, decalageAppareil, hauteurMaxAnnee, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
 import { courseLune, dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 import { codeCardinal } from './vent-calcul.js';
@@ -12,13 +12,17 @@ import { nombre } from './unites.js';
 
 const MINUTE = 60000;
 const PAS_CURSEUR = 5;
-// Dessin de la course : largeur arbitraire (étirée), horizon à 40 px. Au-dessus, l'échelle suit le soleil du
-// jour (au plus haut à 34 px, même en hiver) ; en dessous, la nuit est tassée
+// Dessin de la course : largeur arbitraire (étirée), horizon au milieu, même échelle au-dessus et en dessous : de
+// vraies sinusoïdes, sans plat la nuit (demande du propriétaire du 16 novembre 2026). L'échelle est fixe pour un lieu,
+// calée sur le soleil le plus haut de l'année (un peu plus pour la Lune, qui monte jusqu'à 5° plus haut) : l'été
+// monte plus haut que l'hiver, et rien ne bouge d'un jour à l'autre. Avant, elle suivait chaque jour le plus haut
+// du soleil et de la Lune, et le soleil semblait monter et descendre au rythme de la Lune.
 const LARGEUR_COURSE = 288;
 const HAUTEUR_COURSE = 62;
-const HORIZON = 40;
+const HORIZON = HAUTEUR_COURSE / 2;
+const AMPLITUDE = HORIZON - 3;
 let echelleCourse = 1;
-const yCourse = (hauteur) => Math.max(3, Math.min(HAUTEUR_COURSE - 3, HORIZON - hauteur * (hauteur > 0 ? echelleCourse : 0.35)));
+const yCourse = (hauteur) => Math.max(2, Math.min(HAUTEUR_COURSE - 2, HORIZON - hauteur * echelleCourse));
 const xCourse = (minutes) => (minutes / (24 * 60)) * LARGEUR_COURSE;
 const traceCourse = (points) => points.map((p, i) => `${i ? 'L' : 'M'}${xCourse(p.minutes).toFixed(1)} ${yCourse(p.hauteur).toFixed(1)}`).join('');
 
@@ -161,7 +165,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       courseCle = cle;
       const pointsSoleil = courseSoleil(jour, lieu.lat, lieu.lng, decalage);
       const pointsLune = courseLune(jour, lieu.lat, lieu.lng, decalage);
-      echelleCourse = 34 / Math.max(20, ...pointsSoleil.map((p) => p.hauteur), ...pointsLune.map((p) => p.hauteur));
+      echelleCourse = AMPLITUDE / Math.min(90, hauteurMaxAnnee(lieu.lat) + 5.2);
       const trace = traceCourse(pointsSoleil);
       boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
       boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);

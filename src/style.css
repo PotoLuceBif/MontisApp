@@ -450,7 +450,7 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .ciel-course-soleil-jour { fill: none; stroke: #f2b33d; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .ciel-course-soleil-nuit { fill: none; stroke: var(--texte-2); stroke-width: 1.2; stroke-dasharray: 3 4; opacity: .45; vector-effect: non-scaling-stroke; }
 .ciel-course-lune-trace { fill: none; stroke: #b9c3da; stroke-width: 1.4; stroke-dasharray: 1 4; stroke-linecap: round; opacity: .7; vector-effect: non-scaling-stroke; }
-.ciel-course-repere { position: absolute; top: 64.5%; width: 2px; height: 9px; margin: -4.5px 0 0 -1px; border-radius: 1px; background: #f2b33d; }
+.ciel-course-repere { position: absolute; top: 50%; width: 2px; height: 9px; margin: -4.5px 0 0 -1px; border-radius: 1px; background: #f2b33d; }
 .ciel-course-repere[hidden] { display: none; }
 .ciel-course-soleil, .ciel-course-lune { position: absolute; pointer-events: none; }
 .ciel-course-soleil { width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); box-shadow: 0 0 10px 3px rgb(255 200 90 / .5); }
