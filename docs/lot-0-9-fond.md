@@ -49,6 +49,14 @@ Ce qu'on peut dessiner dépend des données d'OpenFreeMap (OpenStreetMap simplif
 
 - [x] **Tunnels** (17, retour du propriétaire : le tunnel du Mont-Blanc barrait les glaciers) : plus de trait plein ni de cerne, un fin pointillé discret de la couleur de la route ; sur les glaciers, le voile le cache presque.
 
+## Fait le 16 novembre 2026 : finitions (à valider, branche `lot-0-9-fin`)
+- [x] **Lisière des forêts** (1) : trait fin vert foncé au bord des bois, dès le zoom 12 (vert profond la nuit). Le motif d'arbres reste écarté.
+- [x] **Zones habitées** (7) : gris rosé léger sous les villages et les villes (habitat, commerces, industrie) ; bleu nuit la nuit.
+- [x] **Parcs nationaux et réserves** (8) : liseré vert en tirets toujours là dans le fond, plus marqué pour un parc national ; l'élément Parcs ajoute teinte et noms.
+- [x] **Points utiles** (22) : pictos parking (P), abri et point d'eau (goutte), pastilles arrondies cerclées de blanc, à partir du zoom 14,5 ; eau et abris passent avant les parkings quand la place manque. Mêmes pictos de jour et de nuit.
+- Écrans `fond-pictos`, `fond-lisieres`, `fond-parcs`, `fond-nuit-pictos` dans les captures.
+- Restent écartés : teintes d'altitude (11), falaises en trait (12, pas dans les données), police propre à Montis.
+
 ## À revoir (prévu le 15 novembre 2026)
 - **Voie lactée autour du globe.** Deux essais retirés le 14 novembre : contours de d3-celestial en taches floues (trop discret ou voile gris), puis photo du ciel de l'ESO (eso0932a, S. Brunier, CC BY 4.0) projetée pixel par pixel, proche du rendu de Google Earth (4 000 px, 1,3 Mo hors préchargement, éclat 55 %). Le code de l'essai photo n'est pas gardé ; la piste à reprendre est celle-là.
 

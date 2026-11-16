@@ -11,10 +11,12 @@ export const CALQUES_MONTIS = [
   'montis-rochers',
   'montis-zones-humides',
   'montis-relief',
+  'montis-forets-lisiere',
   'montis-glaciers-bord',
   'montis-water',
   'montis-waterway',
   'montis-boundary',
+  'montis-parcs-bord',
   'montis-building',
   'montis-road-casing',
   'montis-road',
@@ -27,6 +29,7 @@ export const CALQUES_MONTIS = [
   'montis-rail-tirets',
   'montis-remontees',
   'montis-remontees-pylones',
+  'montis-pictos',
   'montis-eau-noms-ligne',
   'montis-eau-noms-point',
   'montis-rivieres-noms',
@@ -36,7 +39,7 @@ export const CALQUES_MONTIS = [
 
 // Les bâtiments en volume se posent tout en haut et cachaient le nom des villes : les noms du fond repassent
 // juste au-dessus d'eux. Pas sous une carte nationale, où ils restent dessous (fond-de-carte.js).
-const NOMS_MONTIS = ['montis-eau-noms-ligne', 'montis-eau-noms-point', 'montis-rivieres-noms', 'montis-place', 'montis-summit'];
+const NOMS_MONTIS = ['montis-pictos', 'montis-eau-noms-ligne', 'montis-eau-noms-point', 'montis-rivieres-noms', 'montis-place', 'montis-summit'];
 export function nomsAuDessusDesBatiments(map) {
   const ids = map.getStyle().layers.map(({ id }) => id);
   const batiments = ids.indexOf('batiments-3d');
@@ -143,8 +146,71 @@ export const texteSommetMontis = (nuit = false) =>
   expressionSommet(['case', EST_COL, NOM_SOMMET, ['upcase', NOM_SOMMET]], { 'font-scale': 1.05, 'text-color': (nuit ? SOMMET_NUIT : SOMMET_JOUR).accent });
 const tailleSommet = (base) => ['case', EST_COL, base, ['>=', ['to-number', ['get', 'ele'], 0], 4000], base + 2, ['>=', ['to-number', ['get', 'ele'], 0], 3000], base + 1, base];
 
+// Pictos des points utiles : pastille arrondie de couleur, signe blanc, lisibles de jour comme de nuit
+const PICTOS = {
+  parking: {
+    couleur: '#4b5a9e',
+    signe(g) {
+      g.font = 'bold 22px sans-serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText('P', 18, 19.5);
+    },
+  },
+  shelter: {
+    couleur: '#7d5b86',
+    signe(g) {
+      // Toit et murs d'un abri
+      g.beginPath();
+      g.moveTo(8, 18);
+      g.lineTo(18, 9);
+      g.lineTo(28, 18);
+      g.closePath();
+      g.fill();
+      g.fillRect(11, 18, 14, 9);
+      g.clearRect(16, 21, 4, 6);
+    },
+  },
+  drinking_water: {
+    couleur: '#1b8bb8',
+    signe(g) {
+      // Goutte
+      g.beginPath();
+      g.moveTo(18, 7);
+      g.bezierCurveTo(22, 14, 26, 18, 26, 22);
+      g.arc(18, 22, 8, 0, Math.PI);
+      g.bezierCurveTo(10, 18, 14, 14, 18, 7);
+      g.fill();
+    },
+  },
+};
+function imagePicto({ couleur, signe }) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 36;
+  canvas.height = 36;
+  const g = canvas.getContext('2d');
+  g.beginPath();
+  g.roundRect(2, 2, 32, 32, 8);
+  g.fillStyle = '#ffffff';
+  g.fill();
+  g.beginPath();
+  g.roundRect(4, 4, 28, 28, 6.5);
+  g.fillStyle = couleur;
+  g.fill();
+  g.fillStyle = '#ffffff';
+  signe(g);
+  // Le creux de la porte de l'abri laisse voir la couleur, pas un trou
+  g.globalCompositeOperation = 'destination-over';
+  g.fillStyle = couleur;
+  g.fillRect(4, 4, 28, 28);
+  return g.getImageData(0, 0, 36, 36);
+}
+
 export function ajouterMotifsMontis(map) {
   if (!map.hasImage(IMAGE_SOMMET)) map.addImage(IMAGE_SOMMET, triangleSommet(), { pixelRatio: 2, sdf: true });
+  for (const [classe, picto] of Object.entries(PICTOS)) {
+    if (!map.hasImage(`montis-picto-${classe}`)) map.addImage(`montis-picto-${classe}`, imagePicto(picto), { pixelRatio: 2 });
+  }
   for (const [nom, tracer] of Object.entries(MOTIFS)) {
     if (map.hasImage(nom)) continue;
     const canvas = document.createElement('canvas');
@@ -219,6 +285,8 @@ const VERSIONS_ROUTES = {
 export const VERSION_ROUTES = 'montis';
 const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
 
+const ZONES_HABITEES = ['residential', 'commercial', 'retail', 'industrial', 'neighbourhood', 'suburb', 'quarter'];
+
 const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
 
 const NOM_EAU = {
@@ -243,8 +311,12 @@ export const STYLE_MONTIS = {
       type: 'fill',
       source: SOURCE_VECTEUR,
       'source-layer': 'landuse',
-      filter: classes(['park', 'nature_reserve', 'wood', 'forest', 'cemetery', 'allotments']),
-      paint: { 'fill-color': '#b7d6a3', 'fill-opacity': 0.8 },
+      filter: classes(['park', 'nature_reserve', 'wood', 'forest', 'cemetery', 'allotments', ...ZONES_HABITEES]),
+      paint: {
+        // Zones habitées en gris rosé léger : les villages se repèrent sans alourdir la vallée
+        'fill-color': ['match', ['get', 'class'], ZONES_HABITEES, '#e2d5dc', '#b7d6a3'],
+        'fill-opacity': 0.8,
+      },
     },
     {
       id: 'montis-landcover',
@@ -312,6 +384,21 @@ export const STYLE_MONTIS = {
         'hillshade-accent-color': 'rgba(0, 0, 0, 0)',
       },
     },
+    // Lisière des forêts, au-dessus de l'ombrage comme le bord des glaciers : un trait fin plus foncé, comme l'IGN
+    {
+      id: 'montis-forets-lisiere',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'landcover',
+      minzoom: 12,
+      filter: classes(['wood', 'forest']),
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': '#4f8f4c',
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0, 13, 0.6, 16, 0.8],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 16, 1.2],
+      },
+    },
     // Contour des glaciers, au-dessus de l'ombrage pour rester net
     {
       id: 'montis-glaciers-bord',
@@ -357,6 +444,22 @@ export const STYLE_MONTIS = {
         'line-opacity': 0.55,
         'line-width': ['interpolate', ['linear'], ['zoom'], 4, 0.5, 10, 1.2],
         'line-dasharray': [2, 2],
+      },
+    },
+    // Parcs nationaux et réserves : un liseré discret toujours là, l'élément Parcs de la carte ajoute teinte et noms
+    {
+      id: 'montis-parcs-bord',
+      type: 'line',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'park',
+      minzoom: 6,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      layout: { 'line-join': 'round' },
+      paint: {
+        'line-color': '#3f8f62',
+        'line-opacity': ['match', ['get', 'class'], 'national_park', 0.7, 0.5],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.6, 12, 1.4, 16, 2],
+        'line-dasharray': [3, 2],
       },
     },
     {
@@ -549,6 +652,22 @@ export const STYLE_MONTIS = {
         'line-opacity': 0.85,
         'line-width': ['interpolate', ['linear'], ['zoom'], 13, 4, 17, 6],
         'line-dasharray': [0.3, 10],
+      },
+    },
+    // Points utiles de près : parkings (départs de sentier), abris, points d'eau
+    {
+      id: 'montis-pictos',
+      type: 'symbol',
+      source: SOURCE_VECTEUR,
+      'source-layer': 'poi',
+      minzoom: 14.5,
+      filter: classes(Object.keys(PICTOS)),
+      layout: {
+        'icon-image': ['concat', 'montis-picto-', ['get', 'class']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.75, 17, 1],
+        'icon-padding': 2,
+        // L'eau et les abris passent avant les parkings quand la place manque
+        'symbol-sort-key': ['match', ['get', 'class'], 'drinking_water', 0, 'shelter', 1, 2],
       },
     },
     // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là

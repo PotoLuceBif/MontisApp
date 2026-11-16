@@ -22,7 +22,10 @@ const EAU_NUIT = { ...TEXTE_NUIT, 'text-color': '#7fdcf5' };
 // Couche → propriétés de nuit. Les couches absentes (éléments jamais allumés) sont ignorées.
 const NUIT = {
   'montis-background': { 'background-color': '#0c1320' },
-  'montis-landuse': { 'fill-color': '#12271f', 'fill-opacity': 0.7 },
+  'montis-landuse': {
+    'fill-color': ['match', ['get', 'class'], ['residential', 'commercial', 'retail', 'industrial', 'neighbourhood', 'suburb', 'quarter'], '#1a1d2c', '#12271f'],
+    'fill-opacity': 0.7,
+  },
   'montis-landcover': {
     'fill-color': [
       'match', ['get', 'class'],
@@ -45,6 +48,8 @@ const NUIT = {
   },
   'montis-glaciers-voile': { 'fill-color': '#1b2a3b', 'fill-opacity': 0.45 },
   'montis-glaciers-bord': { 'line-color': '#3fc6ef', 'line-opacity': 0.9 },
+  'montis-forets-lisiere': { 'line-color': '#2c7a55' },
+  'montis-parcs-bord': { 'line-color': '#3fcf8a' },
   'montis-water': { 'fill-color': '#0d3550' },
   'montis-waterway': { 'line-color': '#22b8e6' },
   'montis-boundary': { 'line-color': '#8b74b8' },
