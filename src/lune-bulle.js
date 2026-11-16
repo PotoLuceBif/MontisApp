@@ -3,7 +3,10 @@
 // bulle propose, pour la Lune, « Informations » (Soleil et Lune › Lune) et « Visiter la Lune » ; pour le
 // soleil, « Informations » (Soleil et Lune › Soleil), sans visite.
 import { ouvrirSoleilLune } from './soleil-lune.js';
-import { poser } from './i18n.js';
+import { poser, t } from './i18n.js';
+import { getMoonPosition } from 'suncalc';
+import { opaciteCiel } from './ciel-calcul.js';
+import { etat } from './options-carte.js';
 
 const MARGE = 14; // px autour du disque : les astres sont petits, le doigt ne l'est pas
 
@@ -69,5 +72,66 @@ export function initBulleLune(map, ciel) {
   });
   window.addEventListener('montis:astre-touche', ({ detail }) => setTimeout(() => ouvrir(detail.x, detail.y, detail.astre)));
   map.on('movestart', (event) => { if (event.originalEvent) fermer(); });
+
+  // ---------- Flèche de la Lune en mode espace (demande du propriétaire du 16 novembre 2026) ----------
+  // Comme la flèche de la Terre sur la Lune : quand le ciel est là mais qu'on ne voit pas la Lune (derrière le
+  // globe ou derrière la caméra), une petite Lune au bord de l'écran montre de quel côté elle est ; un appui va à
+  // une vue nord en haut où elle dépasse au-dessus de la Terre.
+  const indice = document.createElement('button');
+  indice.type = 'button';
+  indice.className = 'astre-indice';
+  indice.hidden = true;
+  indice.innerHTML = '<i class="astre-indice-lune"></i><i class="astre-indice-fleche"></i>';
+  map.getContainer().append(indice);
+  const nommerIndice = () => {
+    indice.setAttribute('aria-label', t('lune-visite.montrer-lune'));
+    indice.title = t('lune-visite.montrer-lune');
+  };
+  nommerIndice();
+  const MARGE_INDICE = { haut: 86, bas: 44, gauche: 18, droite: 72 };
+  function placerIndice() {
+    const { clientWidth: l, clientHeight: h } = map.getContainer();
+    if (opaciteCiel(map.getZoom()) < 0.5) {
+      indice.hidden = true;
+      return;
+    }
+    const lune = ciel?.pointLune();
+    const dansLecran = lune && lune.x > 0 && lune.x < l && lune.y > 0 && lune.y < h;
+    let visible = false;
+    if (dansLecran) {
+      const retour = map.project(map.unproject([lune.x, lune.y]));
+      visible = Math.hypot(retour.x - lune.x, retour.y - lune.y) >= 3; // hors du globe : on la voit
+    }
+    indice.hidden = visible;
+    if (visible) return;
+    // Direction de la Lune vue du centre de la carte, ramenée au bord libre de l'écran
+    const { lng, lat } = map.getCenter();
+    const instant = new Date(etat.instantCiel?.() ?? Date.now());
+    const a = ((getMoonPosition(instant, lat, lng).azimuth - map.getBearing()) * Math.PI) / 180;
+    const dx = Math.sin(a);
+    const dy = -Math.cos(a);
+    const cx = l / 2;
+    const cy = h / 2;
+    const limites = [];
+    if (dx > 1e-6) limites.push((l - MARGE_INDICE.droite - cx) / dx);
+    if (dx < -1e-6) limites.push((MARGE_INDICE.gauche - cx) / dx);
+    if (dy > 1e-6) limites.push((h - MARGE_INDICE.bas - cy) / dy);
+    if (dy < -1e-6) limites.push((MARGE_INDICE.haut - cy) / dy);
+    const k = Math.min(...limites);
+    indice.style.transform = `translate(${(cx + dx * k).toFixed(1)}px, ${(cy + dy * k).toFixed(1)}px)`;
+    indice.querySelector('.astre-indice-fleche').style.transform = `rotate(${((a * 180) / Math.PI).toFixed(1)}deg)`;
+  }
+  // La Lune du ciel est redessinée à l'image suivante : la flèche suit après elle
+  map.on('move', () => requestAnimationFrame(placerIndice));
+  map.on('resize', placerIndice);
+  map.on('idle', placerIndice);
+  indice.addEventListener('click', (event) => {
+    event.stopPropagation();
+    import('./terre-vue-calcul.js').then(({ pointSousLune, vueLuneAuNord }) => {
+      const instant = new Date(etat.instantCiel?.() ?? Date.now());
+      const vue = vueLuneAuNord(pointSousLune(instant));
+      map.flyTo({ center: [vue.lng, vue.lat], zoom: Math.min(map.getZoom(), 1.4), bearing: 0, pitch: 0, duration: 2200 });
+    });
+  });
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') fermer(); });
 }

@@ -36,6 +36,7 @@ const CHEVRON = '<svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true">
 const CHEVRON_HAUT = '<svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
 
 let visite = null; // une seule visite à la fois
+const VUE_TERRE_AU_NORD = [180, 12];
 const telephone = () => window.matchMedia('(max-width: 640px)').matches;
 
 const etiquette = (police) => ['format',
@@ -175,7 +176,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     },
     // Arrivée de l'autre côté : la Terre se lève au-dessus de la Lune, dans le fond étoilé (de la face visible, elle
     // est derrière la caméra) ; « Vue depuis la Terre » ramène à la face visible
-    center: [180, 12],
+    center: VUE_TERRE_AU_NORD,
     zoom: telephone() ? 0.3 : 1,
     minZoom: 0,
     maxPitch: 85,
@@ -356,12 +357,12 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     elementTerre.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
   }
   // Tourner la Lune pour voir la Terre dépasser de son bord, en haut de l'écran
+  // Nord en haut (demande du propriétaire du 16 novembre 2026 : tournée vers la Terre, la vue avait l'est en haut) :
+  // la face cachée à 12° N, d'où la Terre se voit au-dessus de la Lune, par-delà le pôle Nord (comme à l'arrivée)
   function montrerTerreDansEspace() {
-    const { lng, lat } = map.getCenter();
-    const cible = pointVersTerre(lng, lat, 168);
     map.flyTo({
-      center: [cible.lng, cible.lat],
-      bearing: cible.cap,
+      center: VUE_TERRE_AU_NORD,
+      bearing: 0,
       pitch: 0,
       zoom: Math.min(map.getZoom(), telephone() ? 0.9 : 1.7),
       padding: { top: 0, right: 0, left: 0, bottom: margeBas() },

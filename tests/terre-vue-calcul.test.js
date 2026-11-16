@@ -35,3 +35,14 @@ describe('la Terre vue de la Lune', () => {
     expect(lum(16, 10)).toBeGreaterThan(lum(3, 10) + 50); // côté est éclairé, ouest dans la nuit
   });
 });
+
+describe('vue où la Lune dépasse au nord du globe', () => {
+  it('place la Lune 15° au-dessus du nadir, plein nord', async () => {
+    const { vueLuneAuNord } = await import('../src/terre-vue-calcul.js');
+    const date = new Date('2026-11-16T20:00:00Z');
+    const v = vueLuneAuNord(pointSousLune(date));
+    const lune = getMoonPosition(date, v.lat, v.lng);
+    expect(lune.altitude).toBeCloseTo(-75, -1);
+    expect(Math.min(lune.azimuth % 360, 360 - (lune.azimuth % 360))).toBeLessThan(8); // vers le nord
+  });
+});

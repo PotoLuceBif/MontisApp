@@ -89,3 +89,10 @@ export function peindreTerre({ jour, nuit = null, largeur, centre, soleil = null
   }
   return pixels;
 }
+
+// Vue de la Terre, nord en haut, où la Lune dépasse au-dessus du globe dans le fond étoilé (flèche de la Lune en
+// mode espace, lune-bulle.js) : le centre sur le méridien opposé au point sous la Lune, à 165° de lui en passant
+// par le pôle Nord ; vue de là, la Lune est 15° au-dessus du nadir, plein nord, donc en haut de l'écran.
+export function vueLuneAuNord(sousLune) {
+  return { lng: ((((sousLune.lng + 180) % 360) + 540) % 360) - 180, lat: 15 - sousLune.lat };
+}

@@ -79,6 +79,9 @@ export function creerSoleilCiel(map) {
   };
   function placerAuLarge(projection, largeur, hauteurEcran) {
     const marge = { ...MARGE_BORD };
+    // Pendant un déplacement, la place simple : chercher un coin libre lit la mise en page jusqu'à 48 fois par image
+    // et faisait saccader la carte ; l'évitement se refait à l'arrêt (idle)
+    if (map.isMoving()) return placerSoleil(projection, { largeur, hauteurEcran, marge, margeVisible: 8 });
     for (let essai = 0; ; essai += 1) {
       const place = placerSoleil(projection, { largeur, hauteurEcran, marge, margeVisible: 8 });
       if (place.dedans || essai >= 24) return place;
