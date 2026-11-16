@@ -355,12 +355,12 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       && pointTerre.x > 0 && pointTerre.x < cam.largeur && pointTerre.y > 0 && pointTerre.y < cam.hauteurEcran;
     elementTerre.hidden = Boolean(visible);
     if (visible) return;
-    const angle = ((directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE).azimut - cam.bearing) * Math.PI) / 180;
-    const { top = 0, bottom = 0, left = 0, right = 0 } = cam.padding;
-    const place = placerSoleil({
-      devant: false, dx: Math.sin(angle), dy: -Math.cos(angle),
-      cx: left + (cam.largeur - left - right) / 2, cy: top + (cam.hauteurEcran - top - bottom) / 2,
-    }, { largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran) });
+    // Direction donnée par la vraie projection de la caméra (inclinaison comprise) : avec la seule boussole, une vue
+    // inclinée montrait le haut pour un astre qui était en bas (retour du propriétaire du 16 novembre 2026)
+    const projection = projeterSoleil(directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE), cam);
+    const place = placerSoleil(projection, {
+      largeur: cam.largeur, hauteurEcran: cam.hauteurEcran, marge, margeVisible: Math.max(cam.largeur, cam.hauteurEcran),
+    });
     elementTerre.classList.add('bord');
     elementTerre.querySelector('.lune-ciel-fleche').style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
     elementTerre.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
