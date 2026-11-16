@@ -443,8 +443,8 @@ svg.nuit .ombres-cadran-ombre { display: none; }
   background: var(--surface-2); color: var(--texte); font: 14px var(--police);
 }
 .ciel-lieu-champ:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
-.ciel-course { position: relative; height: 62px; margin: 6px 8px 0; }
-.ciel-course > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ciel-course { position: relative; height: 72px; margin: 8px 8px 2px; }
+.ciel-course > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .ciel-course-horizon { stroke: color-mix(in srgb, var(--texte-2) 55%, transparent); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .ciel-course-aire { fill: color-mix(in srgb, #f2b33d 13%, transparent); }
 .ciel-course-soleil-jour { fill: none; stroke: #f2b33d; stroke-width: 2.2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
@@ -4174,3 +4174,29 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .lune-bulle-retour { z-index: 5; }
 .lune-bulle-retour button { display: inline-flex; align-items: center; gap: 8px; }
 .lune-bulle-retour svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Frise de Soleil et Lune : ciel de coucher de soleil et mer (demande du propriétaire du 16 novembre 2026, « un peu Vice City ») */
+.ciel-course-decor { position: absolute; inset: 0 -8px; overflow: hidden; border-radius: 10px; }
+.ciel-course-decor i { position: absolute; left: 0; right: 0; }
+.ciel-course-ciel { top: 0; height: 50%; background: linear-gradient(180deg, #160c33 0%, #3d1a63 35%, #8a2f7a 68%, #e0526e 88%, #ff9a5c 100%); }
+.ciel-course-mer {
+  bottom: 0; height: 50%;
+  background:
+    radial-gradient(60% 55% at 50% 0%, rgb(255 140 110 / .45), transparent 70%),
+    repeating-linear-gradient(180deg, rgb(255 255 255 / .06) 0 1px, transparent 1px 5px),
+    linear-gradient(180deg, #2a1d5c 0%, #10264a 45%, #071224 100%);
+}
+.ciel-course > svg { z-index: 1; }
+.ciel-course .ciel-course-horizon { stroke: rgb(255 214 170 / .8); }
+.ciel-course .ciel-course-aire { fill: rgb(255 190 110 / .22); }
+.ciel-course .ciel-course-soleil-nuit { stroke: rgb(220 225 255 / .7); opacity: .8; }
+.ciel-course .ciel-course-lune-trace { stroke: #dfe6ff; opacity: .85; }
+.ciel-course-repere, .ciel-course-soleil, .ciel-course-lune { z-index: 2; }
+.ciel-course-heure {
+  position: absolute; top: calc(50% + 8px); z-index: 2; transform: translateX(-50%); padding: 1px 5px; border-radius: 6px;
+  background: rgb(7 18 36 / .55); color: #ffe2c4; font: 600 11px var(--police); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none;
+}
+.ciel-course-heure[hidden] { display: none; }
+.ciel-course-heure-lever { transform: translateX(-80%); }
+.ciel-course-heure-coucher { transform: translateX(-20%); }
+.soleil-heures { margin-top: 2px; }

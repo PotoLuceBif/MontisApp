@@ -18,7 +18,7 @@ const PAS_CURSEUR = 5;
 // monte plus haut que l'hiver, et rien ne bouge d'un jour à l'autre. Avant, elle suivait chaque jour le plus haut
 // du soleil et de la Lune, et le soleil semblait monter et descendre au rythme de la Lune.
 const LARGEUR_COURSE = 288;
-const HAUTEUR_COURSE = 62;
+const HAUTEUR_COURSE = 72;
 const HORIZON = HAUTEUR_COURSE / 2;
 const AMPLITUDE = HORIZON - 3;
 let echelleCourse = 1;
@@ -65,6 +65,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
         <strong class="ombres-heure-valeur"></strong>
       </div>
       ${course ? `<div class="ciel-course" aria-hidden="true">
+        <div class="ciel-course-decor"><i class="ciel-course-ciel"></i><i class="ciel-course-mer"></i></div>
         <svg viewBox="0 0 ${LARGEUR_COURSE} ${HAUTEUR_COURSE}" preserveAspectRatio="none">
           <defs><clipPath id="ciel-course-jour"><rect x="0" y="0" width="${LARGEUR_COURSE}" height="${HORIZON}"/></clipPath></defs>
           <path class="ciel-course-aire" clip-path="url(#ciel-course-jour)"/>
@@ -74,6 +75,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
           <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
         </svg>
         <i class="ciel-course-repere ciel-course-lever"></i><i class="ciel-course-repere ciel-course-coucher"></i>
+        <span class="ciel-course-heure ciel-course-heure-lever"></span><span class="ciel-course-heure ciel-course-heure-coucher"></span>
         <span class="ciel-course-lune">${svgLune({ classe: 'lune-icone' })}</span>
         <i class="ciel-course-soleil"></i>
       </div>` : ''}
@@ -136,8 +138,8 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     valeurHeure.textContent = heureDuLieu(instant(), decalage);
     curseur.value = minutesChoisies();
     element.querySelector('.ombres-maintenant').classList.toggle('actif', heure === 'maintenant' && jour === aujourdhui);
-    element.querySelector('.ombres-lever').textContent = journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
-    element.querySelector('.ombres-coucher').textContent = journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
+    element.querySelector('.ombres-lever').textContent = !course && journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
+    element.querySelector('.ombres-coucher').textContent = !course && journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
     // Bande du jour sous le curseur
     const position = (date) => ((date.getTime() - (midiLocal(jour, decalage).getTime() - 12 * 60 * MINUTE)) / (24 * 60 * MINUTE)) * 100;
     if (journee?.regime === 'jour-polaire') piste.style.cssText = 'left: 0; right: 0;';
@@ -180,6 +182,10 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       };
       repere('.ciel-course-lever', journee?.lever);
       repere('.ciel-course-coucher', journee?.coucher);
+      repere('.ciel-course-heure-lever', journee?.lever);
+      repere('.ciel-course-heure-coucher', journee?.coucher);
+      boite.querySelector('.ciel-course-heure-lever').textContent = journee?.lever ? `↑ ${heureDuLieu(journee.lever, decalage)}` : '';
+      boite.querySelector('.ciel-course-heure-coucher').textContent = journee?.coucher ? `${heureDuLieu(journee.coucher, decalage)} ↓` : '';
     }
     const minutes = minutesChoisies();
     const placer = (el, hauteur) => {
@@ -263,6 +269,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     fuseauLieu: () => fuseauLieu,
     changerFuseau,
     soleil: () => soleil,
+    journee: () => journee,
     placer,
   };
 }

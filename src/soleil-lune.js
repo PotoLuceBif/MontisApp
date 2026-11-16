@@ -31,6 +31,17 @@ export function creerSoleilLune(map) {
   const boutonCiel = choixCiel.querySelector('button');
   const fuseau = entete.querySelector('.ciel-fuseau');
 
+  // Lever, passage au plus haut et coucher, sous la position (aussi sur la frise, demande du propriétaire du
+  // 16 novembre 2026), comme dans la ligne Lune
+  const heuresSoleil = document.createElement('div');
+  heuresSoleil.className = 'lune-heures soleil-heures';
+  heuresSoleil.innerHTML = `
+    <div><span data-i18n="lune.lever"></span><strong class="soleil-lever"></strong></div>
+    <div><span data-i18n="lune.culmination"></span><strong class="soleil-midi"></strong></div>
+    <div><span data-i18n="lune.coucher"></span><strong class="soleil-coucher"></strong></div>
+  `;
+  heuresSoleil.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
+
   // Position du soleil, en tête de la ligne Soleil
   const position = document.createElement('div');
   position.className = 'ombres-soleil ciel-position-soleil';
@@ -81,6 +92,11 @@ export function creerSoleilLune(map) {
       position.querySelector('.ciel-position-texte').textContent = reglage.element.querySelector('.ombres-soleil-texte').textContent;
       m.r.tournerCadrans(position, soleil, map.getBearing());
     }
+    const journee = reglage.journee();
+    const heure = (date) => (date ? m.s.heureDuLieu(date, reglage.decalage()) : '–');
+    heuresSoleil.querySelector('.soleil-lever').textContent = heure(journee?.lever);
+    heuresSoleil.querySelector('.soleil-midi').textContent = heure(journee?.midiSolaire);
+    heuresSoleil.querySelector('.soleil-coucher').textContent = heure(journee?.coucher);
   }
 
   // ---------- Soleil et Lune dans le ciel, en 3D ----------
@@ -165,7 +181,7 @@ export function creerSoleilLune(map) {
   ombres = creerOptionOmbres(map, partage);
   // Une visite ou une sortie rappelle etat.majOmbres ; ombres.js la remplace (et rappelle majCiel) une fois chargé
   etat.majOmbres ??= majCiel;
-  ombres.bloc.prepend(position);
+  ombres.bloc.prepend(position, heuresSoleil);
   poserAttributCiel();
   majChoix();
   if (cielActif) basculerCiel(true);
