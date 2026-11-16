@@ -4,6 +4,7 @@
 import { lire, ecrire } from './reglages.js';
 import { etat, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { MODES_FOND, choisirModeFond, fondDeNuit, modeFond } from './fond-palette.js';
+import { COUCHES_RAILS, afficherRails } from './transports.js';
 import { CALQUES_MONTIS, REPERE_CALQUES, VOILE_GLACIERS, nomsAuDessusDesBatiments } from './style-montis.js';
 import { surLangue, t, ta, ti } from './i18n.js';
 import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
@@ -45,8 +46,11 @@ function appliquerFond(map, id) {
 
   // Fond Montis : seul, ou sous une carte nationale pour compléter au-delà de sa frontière
   for (const calque of CALQUES_MONTIS) {
+    if (COUCHES_RAILS.includes(calque)) continue;
     if (map.getLayer(calque)) map.setLayoutProperty(calque, 'visibility', choix.integre || national ? 'visible' : 'none');
   }
+  // Les voies ferrées sont un élément de la carte : elles suivent leur réglage, sur tous les fonds
+  afficherRails(map, lire('rails', true));
   // Routes et noms de Montis : sous la carte nationale, sinon au-dessus des calques
   const dessous = national ? coucheDe(choix) : map.getLayer(APRES_MONTIS) ? APRES_MONTIS : undefined;
   if (map.getLayer(coucheDe(choix)) || !national) {

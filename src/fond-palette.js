@@ -81,8 +81,8 @@ const NUIT = {
     'fill-extrusion-color': ['interpolate', ['linear'], ['to-number', ['get', 'render_height'], 6], 0, '#3a404c', 30, '#4a5160', 100, '#5d6575'],
   },
 };
-// Noms des éléments de la carte (lacs, rivières, parcs, villes, refuges, sommets) : texte clair, halo sombre
-const NOMS_ELEMENTS = /^(nature-.*noms|lieux|villes|refuges|sommets)/;
+// Noms des éléments de la carte (lacs, rivières, parcs, villes, refuges, sommets, gares) : texte clair, halo sombre
+const NOMS_ELEMENTS = /^(nature-.*noms|lieux|villes|refuges|sommets|gares)/;
 const LASER = ['montis-batiments-lueur', 'montis-batiments-contour'];
 
 let nuitActive = false;

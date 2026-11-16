@@ -43,6 +43,19 @@ const SWISSTOPO = '© swisstopo';
 export const FONDS = [
   // ---------- Monde entier ----------
   { id: 'montis', cle: 'fond.montis', desc: 'fond.desc-montis', pays: null, integre: true },
+  // Le satellite juste après Montis (demande du propriétaire du 16 novembre 2026)
+  {
+    id: 'esri-sat',
+    cle: 'fond.esri',
+    desc: 'fond.desc-esri',
+    pays: null,
+    photo: true,
+    source: {
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      maxzoom: 19,
+      attribution: 'Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community',
+    },
+  },
   {
     id: 'topo',
     nom: 'OpenTopoMap',
@@ -96,18 +109,6 @@ export const FONDS = [
       tiles: ['https://a.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png'],
       maxzoom: 18,
       get attribution() { return `© CyclOSM, ${t('fond.osm-attribution')}`; },
-    },
-  },
-  {
-    id: 'esri-sat',
-    cle: 'fond.esri',
-    desc: 'fond.desc-esri',
-    pays: null,
-    photo: true,
-    source: {
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      maxzoom: 19,
-      attribution: 'Tiles © Esri, Vantor, Earthstar Geographics, and the GIS User Community',
     },
   },
 

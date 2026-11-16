@@ -18,6 +18,8 @@ import { ICONE_PARTAGE, annoncer, partagerLien } from './partage.js';
 import { formatAltitude, formatDistance, formatLongueur, uniteAllure, uniteDistance, valeurDistance, versAllure, depuisAllure } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poser, poserAttribut, t, ta, ti, tt } from './i18n.js';
+import { demanderChoix } from './dialogue.js';
+import { adresseTrajet, plateformeDe } from './trajet-calcul.js';
 
 const TOLERANCE_CARTE = 24; // px pour lire le profil depuis la carte
 const POINTS_TRACE_REPRISE = 12; // une trace reprise garde ses détails entre quelques points déplaçables
@@ -39,6 +41,11 @@ const COMMANDES = [
 ];
 
 const DESSIN_FILTRE = '<path d="M4 5h16l-6 7.500V19l-4 2v-8.500z"/>';
+const DESSIN_AIDE = '<circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.700.300-1 .900-1 1.600v.600"/><path d="M12 17.200v.100"/>';
+const DESSIN_TRAJET = '<path d="M3 11 21 3l-8 18-2-8z"/>';
+const APPUI_LONG = 500; // ms
+// Explication de chaque bouton de la barre : bulle « ? » et appui long
+const AIDES = { annuler: 'editeur.aide-annuler', retablir: 'editeur.aide-retablir', libre: 'editeur.aide-libre', boucle: 'editeur.aide-boucle', allerRetour: 'editeur.aide-aller-retour', effacer: 'editeur.aide-effacer', preferences: 'editeur.aide-preferences' };
 
 const km = formatDistance;
 const copier = (etapes) => etapes.map((etape) => ({ ...etape }));
@@ -105,21 +112,34 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   let jetonAnalyse = 0;
   let minuteurAnalyse = null;
   let modeCouleur = MODES_COULEUR.some(([id]) => id === lire(`${activite.id}-couleur`, '')) ? lire(`${activite.id}-couleur`, '') : 'pratique';
+  let aEnregistrer = false; // tracé créé ou trajet changé depuis la dernière sauvegarde
+  let question = false;
 
   const panneau = creerPanneauCarte({
     cle: `${activite.id}-panneau-reduit`,
     libelle: activite.libelle,
     classe: 'bf-outil bf-parcours',
-    onFermer: () => onFermer(),
-    onRetour: () => retourCourant?.(),
+    onFermer: () => quitter(onFermer),
+    onRetour: () => quitter(() => retourCourant?.()),
   });
+  // Un autre panneau qui prend la place ne pose pas de question : seuls ✕ et la flèche retour le font
+  panneau.demanderFermeture = () => onFermer();
   panneau.corps.innerHTML = `
     <div class="parcours-pratiques parcours-pratiques-panneau" role="group" ${ta('aria-label', 'editeur.pratique')}${Object.keys(pratiques).length < 2 ? ' hidden' : ''}>
       ${Object.values(pratiques).map(({ id, cle }) => `<button type="button" data-pratique="${id}" aria-pressed="false" ${ti(cle)}>${t(cle)}</button>`).join('')}
     </div>
     <div class="parcours-commandes" role="group" ${ta('aria-label', 'editeur.modifier-parcours')}>
-      ${COMMANDES.map(([id, cle, dessin]) => `<button type="button" data-commande="${id}" ${ta('aria-label', cle)} ${ta('title', cle)}><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
-      ${choixPreferences.length ? `<button type="button" class="parcours-bouton-preferences" aria-expanded="false" ${ta('aria-label', 'preference.titre')} ${ta('title', 'preference.titre')}><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_FILTRE}</svg><span class="parcours-preferences-nombre" hidden></span></button>` : ''}
+      ${COMMANDES.map(([id, cle, dessin]) => `<button type="button" data-commande="${id}" data-aide="${id}" ${ta('aria-label', cle)} ${ta('title', cle)}><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg></button>`).join('')}
+      ${choixPreferences.length ? `<button type="button" class="parcours-bouton-preferences" data-aide="preferences" aria-expanded="false" ${ta('aria-label', 'preference.titre')} ${ta('title', 'preference.titre')}><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_FILTRE}</svg><span class="parcours-preferences-nombre" hidden></span></button>` : ''}
+      <button type="button" class="parcours-bouton-aide" aria-expanded="false" ${ta('aria-label', 'editeur.aide')} ${ta('title', 'editeur.aide')}><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_AIDE}</svg></button>
+    </div>
+    <div class="parcours-aide" hidden>
+      <h4 ${ti('editeur.aide')}>${t('editeur.aide')}</h4>
+      <ul>
+        ${COMMANDES.map(([id, cle, dessin]) => `<li><svg viewBox="0 0 24 24" aria-hidden="true">${dessin}</svg><span><strong ${ti(cle)}>${t(cle)}</strong><small ${ti(AIDES[id])}>${t(AIDES[id])}</small></span></li>`).join('')}
+        ${choixPreferences.length ? `<li><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_FILTRE}</svg><span><strong ${ti('preference.titre')}>${t('preference.titre')}</strong><small ${ti(AIDES.preferences)}>${t(AIDES.preferences)}</small></span></li>` : ''}
+      </ul>
+      <p ${ti('editeur.aide-points')}>${t('editeur.aide-points')}</p>
     </div>
     ${choixPreferences.length ? `<div class="parcours-preferences" hidden>
       <h4 ${ti('preference.titre')}>${t('preference.titre')}</h4>
@@ -155,6 +175,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <div class="parcours-legende-couleur" hidden></div>
     </div>
     <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
+    <a class="para-bouton parcours-trajet" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_TRAJET}</svg><span ${ti('editeur.s-y-rendre')}>${t('editeur.s-y-rendre')}</span></a>
     <div class="parcours-pied">
       <button type="button" class="para-bouton parcours-terminer">${t('editeur.terminer')}</button>
       <button type="button" class="para-bouton para-bouton-principal parcours-enregistrer" ${ti('editeur.enregistrer')}>${t('editeur.enregistrer')}</button>
@@ -187,6 +208,10 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const boutonPartager = $('.parcours-partager');
   const boutonEnregistrer = $('.parcours-enregistrer');
   const champNom = $('.parcours-nom input');
+  const boutonAide = $('.parcours-bouton-aide');
+  const blocAide = $('.parcours-aide');
+  const lienTrajet = $('.parcours-trajet');
+  const plateforme = plateformeDe(navigator.userAgent, navigator.maxTouchPoints);
   const source = $('.parcours-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
@@ -232,8 +257,29 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     });
   }
 
+  // Surface et difficulté ne se proposent que si une partie du tracé les renseigne
+  function modeDisponible(id) {
+    if (id === 'surface') return Boolean(repartition && repartition.total - repartition.voies.inconnu > 0);
+    if (id === 'difficulte') return Boolean(repartition && repartition.difficultes.some((longueur) => longueur > 0));
+    return true;
+  }
+  // Le choix enregistré reste : il revient sur un tracé qui a l'information
+  const modeAffiche = () => (modeDisponible(modeCouleur) ? modeCouleur : 'pratique');
+
+  function rendreChoixCouleur() {
+    const voulus = MODES_COULEUR.filter(([id]) => modeDisponible(id)).map(([id]) => id);
+    if ([...selecteurCouleur.options].map(({ value }) => value).join() !== voulus.join()) {
+      selecteurCouleur.innerHTML = MODES_COULEUR.filter(([id]) => voulus.includes(id)).map(([id, cle]) => {
+        const c = id === 'pratique' && Object.keys(pratiques).length < 2 ? 'editeur.couleur-unie' : cle;
+        return `<option value="${id}" ${ti(c)}>${t(c)}</option>`;
+      }).join('');
+    }
+    selecteurCouleur.value = modeAffiche();
+  }
+
   // Tracé en morceaux colorés, depuis l'échantillonnage du profil
   function morceauxColores() {
+    const modeCouleur = modeAffiche();
     const couleurs = paletteInterface();
     const { points, pentes, total } = analyse;
     const tronconsPlats = etapes.slice(1).flatMap(({ troncon }) => troncon?.troncons ?? []);
@@ -270,7 +316,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         type: 'Feature',
         geometry: { type: 'MultiLineString', coordinates: lignesEnsemble },
         properties: { couleur, libre: false },
-      }] : modeCouleur !== 'pratique' && analyse ? morceauxColores() : etapes.slice(1).filter(({ troncon }) => troncon).map(({ troncon }) => ({
+      }] : modeAffiche() !== 'pratique' && analyse ? morceauxColores() : etapes.slice(1).filter(({ troncon }) => troncon).map(({ troncon }) => ({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: troncon.geom },
         properties: { couleur, libre: troncon.source === 'libre' },
@@ -385,6 +431,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
 
   // ---------- Historique ----------
   function memoriser() {
+    aEnregistrer = true;
     passe.push(copier(etapes));
     if (passe.length > MAX_HISTORIQUE) passe.shift();
     futur = [];
@@ -514,10 +561,6 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     } else {
       poser(message, secours ? 'editeur.secours' : 'editeur.ajouter');
     }
-    if (edition) {
-      if (etapes.length) stockage.ecrireBrouillon({ nom, pratique: pratique.id, etapes: compacter(etapes) });
-      else stockage.effacerBrouillon();
-    }
     boutonEnregistrer.disabled = etapes.length < 2;
     boutonPartager.disabled = etapes.length < 2;
     panneau.definirResume({ detail: total ? km(total) : t('editeur.touchez-carte'), valeur: total ? valeurDistance(total) : '', unite: total ? uniteDistance() : '' });
@@ -586,7 +629,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   }
 
   function enregistrer() {
-    if (etapes.length < 2) return;
+    if (etapes.length < 2) return false;
     idParcours = idParcours ?? String(Date.now());
     const reussi = stockage.enregistrer({
       id: idParcours,
@@ -600,9 +643,38 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     if (reussi) poser(message, 'editeur.enregistre', { nom });
     else poser(message, 'editeur.stockage-plein');
     if (reussi) {
-      stockage.effacerBrouillon();
+      aEnregistrer = false;
       onEnregistre();
     }
+    return reussi;
+  }
+
+  // ✕ ou flèche retour : un tracé créé ou changé, pas encore gardé, ne part pas sans qu'on le demande
+  async function quitter(suite) {
+    if (question) return;
+    if (!aEnregistrer || etapes.length < 2 || lignesEnsemble) {
+      suite();
+      return;
+    }
+    question = true;
+    const { choix, valeur } = await demanderChoix({
+      titre: t('editeur.quitter-titre'),
+      texte: t('editeur.quitter-texte'),
+      champ: { libelle: t('editeur.nom'), valeur: nom === t('editeur.nouveau') ? '' : nom, indication: t('editeur.nom-placeholder') },
+      choix: [
+        { id: 'enregistrer', libelle: t('editeur.enregistrer'), principal: true },
+        { id: 'abandonner', libelle: t('editeur.ne-pas-enregistrer') },
+        { id: 'annuler', libelle: t('editeur.quitter-annuler') },
+      ],
+    });
+    question = false;
+    if (choix === 'annuler') return;
+    if (choix === 'enregistrer') {
+      definirNom(valeur || t('editeur.sans-nom'));
+      if (!enregistrer()) return;
+    }
+    aEnregistrer = false;
+    suite();
   }
 
   // Tout le tracé va dans le lien : il s'ouvre sans recalcul, même hors ligne
@@ -770,15 +842,12 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   // La pente a déjà la sienne sous le profil.
   function rendreLegendeCouleur() {
     const bloc = $('.parcours-legende-couleur');
-    const mode = ['surface', 'difficulte'].includes(modeCouleur) && repartition ? modeCouleur : null;
+    rendreChoixCouleur();
+    const mode = ['surface', 'difficulte'].includes(modeAffiche()) && repartition ? modeAffiche() : null;
     bloc.hidden = !mode;
     if (!mode) return;
     const { voies, difficultes, total } = repartition;
     const connues = mode === 'surface' ? total - voies.inconnu : difficultes.reduce((somme, longueur) => somme + longueur, 0);
-    if (!connues) {
-      bloc.innerHTML = `<p>${t(mode === 'surface' ? 'editeur.surface-inconnue' : 'editeur.difficulte-inconnue')}</p>`;
-      return;
-    }
     const parts = mode === 'surface'
       ? Object.entries(VOIES).map(([id, { libelle, couleur }]) => ({ libelle: activite.libelleVoies?.[id] ? t(activite.libelleVoies[id]) : libelle, couleur, longueur: voies[id] }))
       : [...DIFFICULTES.map(({ libelle, couleur }, index) => ({ libelle, couleur, longueur: difficultes[index] })), { libelle: t('editeur.non-cote'), couleur: VOIES.inconnu.couleur, longueur: total - connues }];
@@ -791,6 +860,12 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     map.getCanvas().style.cursor = edition ? 'crosshair' : '';
     poser(boutonTerminer, edition ? 'editeur.terminer' : 'editeur.modifier');
     panneau.element.classList.toggle('bf-parcours-lecture', !edition);
+    // Le nom ne se change qu'avec le tracé
+    champNom.disabled = !edition;
+    if (!edition) {
+      blocAide.hidden = true;
+      boutonAide.setAttribute('aria-expanded', 'false');
+    }
     fermerPopup();
     dessinerMarqueurs();
   }
@@ -814,6 +889,24 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       boutonPreferences.classList.toggle('actif', preferences.length > 0);
     }
     panneau.element.style.setProperty('--vent-couleur', pratique.couleur);
+    rendreTrajet();
+  }
+
+  // « S'y rendre » mène au départ du tracé
+  function rendreTrajet() {
+    const [lng, lat] = etapes.length ? [etapes[0].lng, etapes[0].lat] : lignesEnsemble?.[0]?.[0] ?? [];
+    const adresse = lng === undefined ? null : adresseTrajet({ lng, lat }, plateforme);
+    lienTrajet.hidden = !adresse;
+    if (!adresse) {
+      lienTrajet.removeAttribute('href');
+      return;
+    }
+    lienTrajet.href = adresse;
+    // Un lien geo: est confié au système : un nouvel onglet resterait vide
+    if (adresse.startsWith('http')) {
+      lienTrajet.target = '_blank';
+      lienTrajet.rel = 'noopener noreferrer';
+    } else lienTrajet.removeAttribute('target');
   }
 
   // ---------- Événements ----------
@@ -871,16 +964,77 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   });
   boutonsPratique.forEach((bouton) => {
     bouton.addEventListener('click', () => {
+      if (etapes.length > 1 && pratique.id !== bouton.dataset.pratique) aEnregistrer = true;
       pratique = pratiques[bouton.dataset.pratique];
       ecrire(`${activite.id}-pratique`, pratique.id);
       recalculer();
     });
   });
+  function deplier(bouton, bloc, ouvrir) {
+    if (!bouton || !bloc) return;
+    bloc.hidden = !ouvrir;
+    bouton.setAttribute('aria-expanded', String(ouvrir));
+  }
   boutonPreferences?.addEventListener('click', () => {
     const ouvrir = blocPreferences.hidden;
-    blocPreferences.hidden = !ouvrir;
-    boutonPreferences.setAttribute('aria-expanded', String(ouvrir));
+    deplier(boutonPreferences, blocPreferences, ouvrir);
+    if (ouvrir) deplier(boutonAide, blocAide, false);
   });
+  boutonAide.addEventListener('click', () => {
+    const ouvrir = blocAide.hidden;
+    deplier(boutonAide, blocAide, ouvrir);
+    if (ouvrir) deplier(boutonPreferences, blocPreferences, false);
+  });
+
+  // Appui long sur un bouton de la barre : sa bulle d'explication, à la place du survol
+  let minuteurAppui = null;
+  let bulle = null;
+  let appuiLongFait = false;
+  function fermerBulle() {
+    bulle?.remove();
+    bulle = null;
+  }
+  function montrerBulle(bouton) {
+    fermerBulle();
+    const id = bouton.dataset.aide;
+    const titre = id === 'preferences' ? 'preference.titre' : COMMANDES.find(([commandeId]) => commandeId === id)?.[1];
+    if (!titre) return;
+    bulle = document.createElement('div');
+    bulle.className = 'parcours-bulle';
+    bulle.setAttribute('role', 'tooltip');
+    bulle.innerHTML = '<strong></strong><span></span>';
+    bulle.querySelector('strong').textContent = t(titre);
+    bulle.querySelector('span').textContent = t(AIDES[id]);
+    document.body.append(bulle);
+    const cadre = bouton.getBoundingClientRect();
+    const largeur = bulle.offsetWidth;
+    const gauche = Math.min(Math.max(8, cadre.left + cadre.width / 2 - largeur / 2), window.innerWidth - largeur - 8);
+    bulle.style.left = `${gauche}px`;
+    bulle.style.top = `${Math.max(8, cadre.top - bulle.offsetHeight - 8)}px`;
+  }
+  const barreCommandes = $('.parcours-commandes');
+  barreCommandes.addEventListener('pointerdown', (event) => {
+    const bouton = event.target.closest('[data-aide]');
+    appuiLongFait = false;
+    clearTimeout(minuteurAppui);
+    if (!bouton) return;
+    minuteurAppui = setTimeout(() => {
+      appuiLongFait = true;
+      montrerBulle(bouton);
+    }, APPUI_LONG);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((type) => barreCommandes.addEventListener(type, () => clearTimeout(minuteurAppui)));
+  // Le clic qui suit un appui long ne doit pas actionner le bouton
+  barreCommandes.addEventListener('click', (event) => {
+    if (!appuiLongFait) return;
+    appuiLongFait = false;
+    event.stopPropagation();
+    event.preventDefault();
+  }, true);
+  barreCommandes.addEventListener('contextmenu', (event) => event.preventDefault());
+  document.addEventListener('pointerdown', (event) => {
+    if (bulle && !event.target.closest?.('.parcours-bulle')) fermerBulle();
+  }, true);
   boutonsPreference.forEach((bouton) => {
     bouton.addEventListener('click', () => {
       const id = bouton.dataset.preference;
@@ -889,6 +1043,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       else if (choisies.has(id)) choisies.delete(id);
       else choisies.add(id);
       preferences = nettoyerPreferences([...choisies], idsPreferences);
+      if (etapes.length > 1) aEnregistrer = true;
       ecrire(`${activite.id}-preferences`, preferences);
       // Les tronçons calculés reprennent les nouvelles préférences ; tracé libre et tronçons figés restent
       etapes.forEach((etape) => { if (etape.mode !== 'libre' && etape.mode !== 'fixe') etape.troncon = null; });
@@ -939,6 +1094,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       controleur?.abort();
       retourCourant = retour ?? onRetour;
       onAnalyse = rappel;
+      aEnregistrer = false;
       passe = [];
       futur = [];
       idParcours = null;
@@ -965,6 +1121,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         poser(message, longueur > LONGUEUR_MAX_DETAIL ? 'editeur.long-variantes' : 'editeur.long-morceaux', { distance: km(longueur) });
         panneau.definirResume({ detail: km(longueur), valeur: '', unite: '' });
         dessinerTrace();
+        rendreTrajet();
         cadrer(lignesEnsemble.flat());
         return;
       }
@@ -988,6 +1145,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       panneau.meta.textContent = '';
       rendreInfos([]);
       idParcours = parcours.id;
+      aEnregistrer = false;
       passe = [];
       futur = [];
       definirNom(parcours.nom);
@@ -1010,6 +1168,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       etapes = [depart, arrivee].map(([lng, lat]) => ({ lng, lat, mode: modeLibre ? 'libre' : 'route', troncon: null }));
       idParcours = null;
       definirNom(nom || t('editeur.nouveau'));
+      aEnregistrer = true;
       passe = [];
       futur = [];
       source.hidden = true;
@@ -1019,26 +1178,20 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       recalculer();
       cadrer([depart, arrivee]);
     },
-    // Reprend le parcours en cours s'il y en a un : le téléphone a pu fermer l'app entre-temps
+    // Toujours un parcours neuf : celui d'avant a été enregistré ou abandonné en le quittant
     ouvrirCreation() {
+      controleur?.abort();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
       retourCourant = onRetour;
       onAnalyse = null;
       panneau.meta.textContent = '';
       rendreInfos([]);
-      const brouillon = stockage.lireBrouillon();
-      if (edition && etapes.length) {
-        /* déjà en cours */
-      } else if (brouillon?.etapes?.length) {
-        etapes = brouillon.etapes.map((etape) => ({ ...etape }));
-        idParcours = null;
-        definirNom(brouillon.nom || t('editeur.nouveau'));
-      } else {
-        etapes = [];
-        idParcours = null;
-        definirNom(t('editeur.nouveau'));
-      }
+      stockage.effacerBrouillon(); // reste d'une version qui reprenait le dernier tracé
+      etapes = [];
+      idParcours = null;
+      aEnregistrer = false;
+      definirNom(t('editeur.nouveau'));
       passe = [];
       futur = [];
       source.hidden = true;
@@ -1056,6 +1209,8 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       controleur = null;
       edition = false;
       idParcours = null;
+      aEnregistrer = false;
+      fermerBulle();
       lignesEnsemble = null;
       panneau.element.classList.remove('bf-parcours-ensemble');
       bloquerFiches(false);

@@ -147,6 +147,24 @@ const ongletSites = async (page) => {
   });
 };
 // Le premier élément visible : plusieurs panneaux ont les mêmes boutons
+// Point posé par l'événement de MapLibre : au téléphone, un vrai clic peut tomber sur le panneau
+const poserPoint = (lngLat) => (page) => page.evaluate((p) => {
+  window.map.fire('click', { lngLat: { lng: p[0], lat: p[1] }, point: window.map.project(p), originalEvent: { target: document.body } });
+}, lngLat);
+// Appui long au doigt (souris tenue) sur le premier élément visible
+const appuiLongSur = (selecteur) => async (page) => {
+  const boite = await page.evaluate((sel) => {
+    const element = [...document.querySelectorAll(sel)].find((e) => e.offsetParent !== null);
+    if (!element) return null;
+    const { x, y, width, height } = element.getBoundingClientRect();
+    return { x, y, width, height };
+  }, selecteur);
+  if (!boite) return;
+  await page.mouse.move(boite.x + boite.width / 2, boite.y + boite.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(800);
+  await page.mouse.up();
+};
 const clicVisible = (selecteur) => (page) => page.evaluate((s) => [...document.querySelectorAll(s)].find((e) => e.offsetParent !== null)?.click(), selecteur);
 // Les relevés et les terrains arrivent en quelques secondes
 const SITES = [vue(ANNECY), module('parapente'), ongletSites, (p) => p.waitForTimeout(6000)];
@@ -276,7 +294,7 @@ const ECRANS = [
   { nom: 'ski-rando-itineraires-carte', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // Un itinéraire touché dans la liste s'ouvre dans l'éditeur, comme une trace importée
   { nom: 'ski-rando-trace', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000)] },
-  { nom: 'ski-rando-trace-surface', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000), choisirVisible('.parcours-couleur select', 'surface'), (p) => p.waitForTimeout(500), defiler('.parcours-couleur')] },
+  { nom: 'ski-rando-trace-couleur', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), attendre('.ski-activite .parcours-liste .parcours-item'), clic('.ski-activite .parcours-liste .parcours-item'), (p) => p.waitForTimeout(5000), defiler('.parcours-couleur')] },
   // Routage de montée : deux points posés sur la trace du col du Passon, le tracé la suit
   { nom: 'ski-rando-routage', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500), clicCarte([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), clicCarte([6.97771, 45.96735]), (p) => p.waitForTimeout(6000)] },
   { nom: 'ski-rando-ferme', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(1500), clic('#menu-fermer'), (p) => p.waitForTimeout(3000)] },
@@ -292,6 +310,9 @@ const ECRANS = [
   { nom: 'meteo', simuler: true, actions: [module('meteo-locale')] },
   { nom: 'meteo-pin-ferme', simuler: true, actions: [module('meteo-locale'), (p) => p.waitForTimeout(2000), clicVisible('.outil-rapide-panneau:not([hidden]) .outil-rapide-fermer'), (p) => p.waitForTimeout(1000)] },
   // Recherche du lieu des prévisions par son nom (Photon), puis lieu choisi
+  // Pin de la recherche : bulle avec « Copier » seul ; un appui sur la carte à côté l'enlève
+  { nom: 'recherche-pin', actions: [(p) => p.evaluate(() => document.querySelector('.rech-loupe')?.click()), (p) => p.fill('#rech-saisie', 'Chamonix'), attendre('.rech-item'), clic('.rech-item'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'recherche-pin-retire', actions: [(p) => p.evaluate(() => document.querySelector('.rech-loupe')?.click()), (p) => p.fill('#rech-saisie', 'Chamonix'), attendre('.rech-item'), clic('.rech-item'), (p) => p.waitForTimeout(3000), (p) => p.evaluate(() => window.map.fire('click', { lngLat: { lng: 0, lat: 0 }, point: { x: 10, y: 10 }, originalEvent: { target: document.body } })), (p) => p.waitForTimeout(800)] },
   { nom: 'meteo-recherche', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), (p) => p.waitForTimeout(3000)] },
   { nom: 'meteo-recherche-choisi', simuler: true, actions: [module('meteo-locale'), (p) => p.fill('.meteo-recherche-champ', 'Annecy'), attendre('.meteo-recherche-liste .rando-item'), clic('.meteo-recherche-liste .rando-item'), (p) => p.waitForTimeout(3000)] },
   // Frise heure par heure : lecture d'une heure, choix des lignes, jour choisi
@@ -462,6 +483,23 @@ const ECRANS = [
         if (case_ && !case_.checked) case_.click();
       }), (p) => p.waitForTimeout(4000)],
   },
+  // Voies ferrées et gares (Carte › Éléments de la carte › Construit), en gare de Chamonix ; puis sur le satellite
+  {
+    nom: 'carte-gares',
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), module('elements'), clicVisible('.fond-onglets button:last-child'),
+      (p) => p.evaluate(() => {
+        const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
+        if (case_ && !case_.checked) case_.click();
+      }), (p) => p.waitForTimeout(4000)],
+  },
+  {
+    nom: 'carte-gares-satellite',
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), module('elements'), clicVisible('.fond-onglets button:last-child'),
+      (p) => p.evaluate(() => {
+        const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
+        if (case_ && !case_.checked) case_.click();
+      }), module('fond'), choisirFond('esri-sat'), fermerCarte, (p) => p.waitForTimeout(5000)],
+  },
   // Vue détaillée : un appui sur la carte ouvre la bulle « sous ton doigt »
   {
     nom: 'carte-geologie-bulle',
@@ -538,6 +576,11 @@ const ECRANS = [
   // Préférences de routage (lot 3.0) : bouton filtre de l'éditeur, choix multiples
   { nom: 'parcours-preferences-rando', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences')] },
   { nom: 'parcours-preferences-velo', actions: [module('velo'), clic('.parcours-creer'), attendre('.parcours-bouton-preferences'), clicVisible('.parcours-bouton-preferences'), clicVisible('[data-preference="cyclables"]'), clicVisible('[data-preference="routes"]')] },
+  // Lot 3.12 : « ? » de la barre, appui long, question en quittant un tracé neuf, « S'y rendre »
+  { nom: 'parcours-aide', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-aide'), clicVisible('.parcours-bouton-aide')] },
+  { nom: 'parcours-appui-long', actions: [module('rando'), clic('.parcours-creer'), attendre('.parcours-bouton-aide'), (p) => p.waitForTimeout(800), appuiLongSur('[data-commande="libre"]')] },
+  { nom: 'parcours-quitter', actions: [vue(PASSON), module('rando'), attendre('.parcours-creer'), (p) => p.waitForTimeout(800), clic('.parcours-creer'), (p) => p.waitForTimeout(2500), poserPoint([6.98215, 45.95351]), (p) => p.waitForTimeout(1500), poserPoint([6.97771, 45.96735]), (p) => p.waitForTimeout(6000), clicVisible('.bf-parcours .bf-fermer'), attendre('.dialogue')] },
+  { nom: 'parcours-lecture-trajet', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), (p) => p.waitForTimeout(2000), defiler('.parcours-trajet')] },
   { nom: 'combine-parcours-carte', actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte')] },
   // L'analyse du vent par-dessus une visite de station : la visite continue, la station reste visible
   {
