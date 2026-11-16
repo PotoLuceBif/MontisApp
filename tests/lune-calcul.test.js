@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ageLune, codePhase, courseLune, culminationProche, cycleLunaire, dessinPhase, eclairementLune, journeeLune, positionLune, prochainePhase } from '../src/lune-calcul.js';
+import { ageLune, codePhase, courseLune, culminationProche, plusHautDuJour, cycleLunaire, dessinPhase, eclairementLune, journeeLune, positionLune, prochainePhase } from '../src/lune-calcul.js';
 
 const CHAMONIX = { lat: 45.92, lng: 6.87 };
 
@@ -111,5 +111,14 @@ describe('course de la Lune', () => {
     const a = (h, m) => course.find((p) => p.minutes === h * 60 + m).hauteur;
     expect(a(18, 0)).toBeGreaterThan(10); // au plus haut vers 18 h
     expect(a(9, 0)).toBeLessThan(0); // pas encore levée (lever 13 h 12)
+  });
+});
+
+describe('Lune au plus haut dans la journée', () => {
+  it('reste dans le jour demandé, même quand elle culmine après minuit', () => {
+    const instant = plusHautDuJour('2026-11-24', CHAMONIX.lat, CHAMONIX.lng, 60);
+    expect(instant >= new Date('2026-11-23T23:00:00Z')).toBe(true);
+    expect(instant < new Date('2026-11-24T23:00:00Z')).toBe(true);
+    expect(positionLune(instant, CHAMONIX.lat, CHAMONIX.lng).hauteur).toBeGreaterThan(40);
   });
 });

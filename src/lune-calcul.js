@@ -147,3 +147,12 @@ export function courseLune(jour, latitude, longitude, decalageMinutes, pas = 10)
   }
   return points;
 }
+
+// Instant où la Lune est le plus haut pendant le jour civil du lieu (`jour` « 2026-11-24 »)
+export function plusHautDuJour(jour, latitude, longitude, decalageMinutes) {
+  const [annee, mois, quantieme] = jour.split('-').map(Number);
+  const minuit = Date.UTC(annee, mois - 1, quantieme) - decalageMinutes * MINUTE;
+  const course = courseLune(jour, latitude, longitude, decalageMinutes, 5).slice(0, -1); // minuit suivant exclu
+  const meilleur = course.reduce((a, b) => (b.hauteur > a.hauteur ? b : a));
+  return new Date(minuit + meilleur.minutes * MINUTE);
+}

@@ -1,13 +1,14 @@
 // Ligne Lune de la rubrique Soleil et Lune (lot 4.7) : phase et éclairement, position dans le ciel à l'heure
-// choisie (cadran et texte), lever, passage au plus haut et coucher, progression du cycle en jours avec ses
-// quatre phases à toucher, et la prochaine pleine lune : un appui place la frise ce jour-là, à l'heure où la
-// Lune est au plus haut. Au centre de la carte, à l'heure de la rubrique (soleil-lune.js).
+// choisie (cadran et texte), lever, passage au plus haut et coucher, progression du cycle en jours : flèches
+// pour avancer jour par jour, appui sur la frise pour aller à un jour, et ses quatre phases à toucher (la
+// frise de la rubrique va à ce jour-là, quand la Lune est au plus haut). Au centre de la carte, à l'heure de
+// la rubrique (soleil-lune.js).
 import {
-  ageLune, culminationProche, cycleLunaire, dessinPhase, DUREE_LUNAISON, eclairementLune, journeeLune, positionLune, prochainePhase,
+  ageLune, cycleLunaire, plusHautDuJour, dessinPhase, DUREE_LUNAISON, eclairementLune, journeeLune, positionLune,
 } from './lune-calcul.js';
 import { heureDuLieu, jourLocal } from './soleil.js';
 import { codeCardinal } from './vent-calcul.js';
-import { formatDate, poser, surLangue, t } from './i18n.js';
+import { formatDate, poser, surLangue, t, ta } from './i18n.js';
 import { nombre, pourcent } from './unites.js';
 
 const MINUTE = 60000;
@@ -48,17 +49,17 @@ export function creerLune(map, partage, reglage) {
     </div>
     <p class="note lune-regime" hidden></p>
     <div class="lunaison">
-      <div class="lunaison-entete"><strong class="lunaison-jour"></strong><span class="lunaison-reste"></span></div>
+      <div class="lunaison-entete">
+        <button type="button" class="lunaison-pas" data-pas="-1" ${ta('aria-label', 'ombres.jour-precedent')}>‹</button>
+        <div class="lunaison-textes"><strong class="lunaison-jour"></strong><span class="lunaison-reste"></span></div>
+        <button type="button" class="lunaison-pas" data-pas="1" ${ta('aria-label', 'ombres.jour-suivant')}>›</button>
+      </div>
       <div class="lunaison-frise">
         <div class="lunaison-piste"><i class="lunaison-fait"></i></div>
         <i class="lunaison-curseur"></i>
         <div class="lunaison-phases"></div>
       </div>
     </div>
-    <button type="button" class="point-lien lune-aller">
-      <span class="lune-aller-icone"></span><span class="lune-aller-texte"></span>
-      <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-    </button>
   `;
   panneau.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   const $ = (selecteur) => panneau.querySelector(selecteur);
@@ -67,14 +68,24 @@ export function creerLune(map, partage, reglage) {
   let desabonner = null;
   let lune = null;
   let cycle = null; // phases du cycle affiché
-  let pleine = null; // prochaine pleine lune
 
-  // Va à une phase : son jour, quand la Lune y est au plus haut (on la voit dans le ciel)
+  // Va à une phase : son jour (celui de la date affichée), quand la Lune y est le plus haut
   function allerA(instant) {
     const { lng, lat } = map.getCenter();
-    reglage.placer(culminationProche(instant, lat, lng));
+    const decalage = reglage.decalage();
+    reglage.placer(plusHautDuJour(jourLocal(instant, decalage), lat, lng, decalage));
   }
-  $('.lune-aller').addEventListener('click', () => { if (pleine) allerA(pleine); });
+  // Jour par jour, à la même heure
+  const decaler = (jours) => reglage.placer(reglage.instant() + jours * JOUR);
+  panneau.querySelectorAll('.lunaison-pas').forEach((b) => b.addEventListener('click', () => decaler(Number(b.dataset.pas))));
+  // Un appui sur la frise, entre deux phases : ce jour du cycle, à la même heure
+  $('.lunaison-frise').addEventListener('click', (event) => {
+    if (!cycle || event.target.closest('.lunaison-phase')) return;
+    const cadre = $('.lunaison-frise').getBoundingClientRect();
+    const part = Math.min(1, Math.max(0, (event.clientX - cadre.left) / cadre.width));
+    const cible = cycle[0].instant.getTime() + part * DUREE_LUNAISON * JOUR;
+    decaler(Math.round((cible - reglage.instant()) / JOUR));
+  });
 
   const dateCourte = (instant, decalage) => formatDate(new Date(instant.getTime() + decalage * MINUTE), {
     weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
@@ -152,13 +163,6 @@ export function creerLune(map, partage, reglage) {
       const jours = Math.round((suivante.instant.getTime() - t0) / JOUR);
       const nom = t(`lune.phase-${suivante.code}`);
       $('.lunaison-reste').textContent = jours < 1 ? t('lune.phase-aujourdhui', { phase: nom }) : t('lune.phase-dans', { phase: nom, jours: nombre(jours) });
-    }
-    // Pleine lune à venir (celle du jour, si elle n'est pas encore passée)
-    pleine = prochainePhase(t0, 0.5);
-    $('.lune-aller-icone').innerHTML = iconePhase('pleine', sud, 'lune-icone point-lien-icone');
-    if (pleine) {
-      const jours = Math.max(0, Math.round((pleine.getTime() - t0) / JOUR));
-      $('.lune-aller-texte').textContent = t('lune.aller-pleine', { date: dateCourte(pleine, decalage), jours: nombre(jours) });
     }
   }
 

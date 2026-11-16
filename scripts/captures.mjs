@@ -574,10 +574,22 @@ const ECRANS = [
   { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.ombres-choix button'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
   { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
+  // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
+  {
+    nom: 'ciel-lieu',
+    actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
+      async (page) => {
+        await page.fill('.ciel-lieu-champ', 'Tokyo');
+        await page.waitForSelector('.ciel-lieu-liste .rando-item', { timeout: 15000 }).catch(() => {});
+      },
+      clic('.ciel-lieu-liste .rando-item'), (p) => p.waitForTimeout(5000)],
+  },
   { nom: 'ciel-soleil', actions: [vue(MATIN), module('ombres'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1000), defiler('.ciel-position-soleil')] },
   { nom: 'ciel-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), defiler('.lune-position')] },
-  // « Pleine lune » : la frise passe au jour de la pleine lune, quand elle est au plus haut
-  { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lune-aller'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lune-aller'), (p) => p.waitForTimeout(1000)] },
+  // Appui sur la pleine lune du cycle : la frise passe à ce jour, quand la Lune est au plus haut
+  { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-phase:nth-child(3)'), (p) => p.waitForTimeout(1000)] },
+  // Flèche › : le jour suivant, entre deux phases
+  { nom: 'ciel-lune-jour', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-pas[data-pas="1"]'), (p) => p.waitForTimeout(800), defiler('.lunaison')] },
   // Option « Soleil et Lune dans le ciel » sans l'ombre : la Lune basse au sud-ouest (16 novembre 2026, 22 h 40)
   {
     nom: 'ciel-lune-3d',

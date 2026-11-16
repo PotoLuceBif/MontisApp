@@ -42,6 +42,7 @@ export function creerSoleilLune(map) {
   let reglage = null;
   let m = null; // modules chargés : { r: réglage, s: soleil, l: Lune, c: ciel }
   let ciel = null;
+  let lieu = null;
   let chargement = null;
   const charger = () => {
     chargement ??= Promise.all([
@@ -49,7 +50,8 @@ export function creerSoleilLune(map) {
       import('./soleil.js'),
       import('./lune-calcul.js'),
       import('./soleil-ciel.js'),
-    ]).then(([r, s, l, c]) => {
+      import('./ciel-lieu.js'),
+    ]).then(([r, s, l, c, lieuModule]) => {
       m = { r, s, l };
       reglage = r.creerReglageSoleil(map, {
         course: true,
@@ -57,6 +59,9 @@ export function creerSoleilLune(map) {
         actif: () => visible() || Boolean(ombres?.actif()) || cielActif,
       });
       entete.prepend(reglage.element);
+      // Le lieu, en petit sous le jour
+      lieu = lieuModule.creerLieuCiel(map, { reglage, visible });
+      reglage.element.querySelector('.ombres-jour').after(lieu.element);
       position.innerHTML = `${r.cadran('ombres-cadran')}<span class="ciel-position-texte"></span>`;
       ciel = c.creerSoleilCiel(map);
       maj();
@@ -67,7 +72,9 @@ export function creerSoleilLune(map) {
 
   function majTextes() {
     reglage.majTextes();
-    fuseau.textContent = t('soleil.fuseau-appareil', { fuseau: m.s.nomDecalage(reglage.decalage()) });
+    const cle = reglage.fuseauLieu() === null ? 'soleil.fuseau-appareil' : 'ciel.fuseau-lieu';
+    fuseau.textContent = t(cle, { fuseau: m.s.nomDecalage(reglage.decalage()) });
+    lieu.majTextes();
     const soleil = reglage.soleil();
     if (soleil) {
       // Même texte que le réglage (« Soleil à 23°, vers 160° SSE »)
@@ -168,7 +175,10 @@ export function creerSoleilLune(map) {
     partage,
     entete,
     // Le panneau s'ouvre : le centre de la carte a pu changer depuis
-    surOuverture: () => charger().then(() => requestAnimationFrame(() => maj())),
+    surOuverture: () => charger().then(() => requestAnimationFrame(() => {
+      maj();
+      lieu.surOuverture();
+    })),
     ombres: {
       id: 'ombres',
       labelCle: 'soleil.titre',

@@ -424,6 +424,25 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .ciel-choix button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; font-size: 13px; }
 .ciel-choix svg { width: 18px; height: 18px; flex: none; }
 .ciel-position-soleil { margin-bottom: 4px; }
+/* Lieu de Soleil et Lune (ciel-lieu.js) : en petit sous le jour */
+.ciel-lieu { display: grid; gap: 6px; }
+.ciel-lieu-bouton {
+  display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px;
+  background: none; color: var(--texte-2); font: 500 12.5px var(--police); cursor: pointer; text-align: left;
+}
+.ciel-lieu-bouton:hover, .ciel-lieu-bouton[aria-expanded='true'] { background: var(--survol); color: var(--texte); }
+.ciel-lieu-bouton svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ciel-lieu-bouton svg:first-child { color: var(--accent); }
+.ciel-lieu-bouton svg:last-child { margin-left: auto; opacity: .7; }
+.ciel-lieu-nom { overflow: hidden; color: var(--texte); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.ciel-lieu-heure { flex: none; font-variant-numeric: tabular-nums; }
+.ciel-lieu-recherche { display: grid; gap: 6px; }
+.ciel-lieu-recherche[hidden], .ciel-lieu-liste[hidden] { display: none; }
+.ciel-lieu-champ {
+  box-sizing: border-box; width: 100%; min-height: 40px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 8px;
+  background: var(--surface-2); color: var(--texte); font: 14px var(--police);
+}
+.ciel-lieu-champ:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ciel-course { position: relative; height: 62px; margin: 6px 8px 0; }
 .ciel-course > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .ciel-course-horizon { stroke: color-mix(in srgb, var(--texte-2) 55%, transparent); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
@@ -441,9 +460,17 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .mini-icone-ciel svg { width: 18px; height: 18px; display: block; color: var(--accent); }
 /* Cycle de la Lune (lune.js) */
 .lunaison { display: grid; gap: 8px; padding: 10px 12px 6px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); }
-.lunaison-entete { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
-.lunaison-entete strong { font-weight: 650; }
-.lunaison-entete span { color: var(--texte-2); text-align: right; }
+.lunaison-entete { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 6px; }
+.lunaison-textes { display: grid; justify-items: center; gap: 1px; text-align: center; }
+.lunaison-textes strong { font-size: 13px; font-weight: 650; }
+.lunaison-textes span { color: var(--texte-2); font-size: 12px; }
+.lunaison-pas {
+  height: 40px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); color: var(--texte);
+  font: 600 20px/1 var(--police); cursor: pointer;
+}
+.lunaison-pas:hover { background: var(--survol); }
+.lunaison-pas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lunaison-frise { cursor: pointer; }
 .lunaison-frise { position: relative; height: 58px; margin: 0 14px; }
 .lunaison-piste { position: absolute; top: 15px; left: 0; right: 0; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--texte-2) 28%, transparent); overflow: hidden; }
 .lunaison-fait { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--accent) 70%, transparent); }
@@ -455,8 +482,7 @@ svg.nuit .ombres-cadran-ombre { display: none; }
 .lunaison-phase .lune-icone { width: 34px; height: 34px; padding: 2px; border-radius: 50%; background: var(--surface); box-sizing: border-box; }
 .lunaison-phase:hover .lune-icone, .lunaison-phase:focus-visible .lune-icone { outline: 2px solid var(--accent); }
 .lunaison-phase small { font-size: 10.5px; white-space: nowrap; }
-.lune-aller .lune-aller-icone { display: flex; flex: none; }
-.lune-aller .lune-icone { width: 22px; height: 22px; }
+
 /* Lune (lune.js) */
 .lune-panneau { display: grid; gap: 12px; }
 .lune-phase { display: flex; align-items: center; gap: 12px; }
@@ -3921,11 +3947,19 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 /* Lune dans le ciel en 3D (soleil-ciel.js) : côté éclairé tourné vers le soleil */
 .lune-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
 .lune-ciel[hidden] { display: none; }
-.lune-ciel svg { position: absolute; left: -13px; top: -13px; width: 26px; height: 26px; overflow: visible; transform-origin: center; filter: drop-shadow(0 0 6px rgb(225 232 255 / .6)); }
-.lune-ciel-fond { fill: rgb(70 76 92 / .45); }
-.lune-ciel-eclairee { fill: #eef0f6; }
-.lune-ciel.derriere { opacity: .4; }
-.lune-ciel.bord svg { scale: .7; opacity: .85; }
+.lune-ciel svg { position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; overflow: visible; filter: drop-shadow(0 0 7px rgb(225 232 255 / .55)); }
+.lune-ciel-cendree { opacity: .2; } /* face sombre, à peine éclairée par la Terre */
+.lune-ciel.derriere { opacity: .45; }
+.lune-ciel-fleche { display: none; }
+.lune-ciel.bord svg { left: -10px; top: -10px; width: 20px; height: 20px; }
+/* Hors du champ : petite Lune au bord, flèche grise vers elle (comme le soleil) */
+.lune-ciel.bord .lune-ciel-fleche {
+  position: absolute; display: block; left: -17px; top: -17px; width: 34px; height: 34px;
+}
+.lune-ciel.bord .lune-ciel-fleche::before {
+  content: ''; position: absolute; left: 50%; top: -7px; margin-left: -5px; border: 5px solid transparent; border-top: 0; border-bottom: 7px solid #c3c9d6;
+  filter: drop-shadow(0 0 2px rgb(14 20 42 / .8));
+}
 /* Hors du champ : petit soleil au bord, flèche vers lui */
 .soleil-ciel.bord .soleil-ciel-halo { left: -22px; top: -22px; width: 44px; height: 44px; }
 .soleil-ciel.bord .soleil-ciel-disque { left: -9px; top: -9px; width: 18px; height: 18px; box-shadow: 0 0 10px 3px rgb(255 210 110 / .55), 0 0 0 2px rgb(14 20 42 / .55); }

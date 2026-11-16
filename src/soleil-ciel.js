@@ -11,6 +11,31 @@ const METRES_PAR_DEGRE = 111_320;
 // Distances (horizontales) où l'on regarde si le relief cache le soleil
 const PAS_RELIEF = [150, 300, 500, 800, 1200, 1800, 2600, 3600, 5000, 7000, 9500, 13000, 17000, 22000, 30000];
 
+// Visage de la Lune vue de l'hémisphère nord, nord en haut : mers sombres et cratères à leur place
+// (Imbrium, Procellarum, Serenitatis, Tranquillitatis, Crisium, Fecunditatis, Nubium, Humorum, Frigoris ;
+// Copernic, Tycho). Dessiné sur l'appareil, sans image à charger.
+let numeroLune = 0;
+function visageLune(id) {
+  const mers = [
+    [9, 8, 2.6, 2.2], [6.8, 11.6, 2.3, 3.9], [12.7, 8.7, 1.6, 1.5], [14.3, 11.1, 2, 1.6], [17.6, 9.7, 1.1, 0.9],
+    [16.4, 13.5, 1.3, 1.6], [10.3, 15, 1.9, 1.4], [7.5, 15.1, 1, 0.9], [11.2, 5.4, 3.4, 0.7],
+  ].map(([cx, cy, rx, ry]) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`).join('');
+  return `<defs>
+    <radialGradient id="lune-sol-${id}" cx="42%" cy="40%" r="68%"><stop offset="0" stop-color="#f6f4ec"/><stop offset=".72" stop-color="#dcdad3"/><stop offset="1" stop-color="#aeada8"/></radialGradient>
+    <clipPath id="lune-disque-${id}"><circle cx="12" cy="12" r="9"/></clipPath>
+    <clipPath id="lune-phase-${id}"><path class="lune-ciel-phase"/></clipPath>
+    <g id="lune-visage-${id}" clip-path="url(#lune-disque-${id})">
+      <circle cx="12" cy="12" r="9" fill="url(#lune-sol-${id})"/>
+      <g fill="#7f838c" opacity=".5">${mers}</g>
+      <circle cx="9.3" cy="11.2" r=".55" fill="#fbfaf5"/><circle cx="10.8" cy="18.2" r=".6" fill="#fffef8"/>
+      <circle cx="15.2" cy="16.4" r=".45" fill="none" stroke="#9a9ca2" stroke-width=".25"/>
+      <circle cx="13.6" cy="5.2" r=".4" fill="none" stroke="#9a9ca2" stroke-width=".25"/>
+    </g>
+  </defs>
+  <use href="#lune-visage-${id}" class="lune-ciel-cendree"/>
+  <use href="#lune-visage-${id}" clip-path="url(#lune-phase-${id})"/>`;
+}
+
 export function creerSoleilCiel(map) {
   const element = document.createElement('div');
   element.className = 'soleil-ciel';
@@ -21,10 +46,12 @@ export function creerSoleilCiel(map) {
   elementLune.className = 'lune-ciel';
   elementLune.hidden = true;
   elementLune.setAttribute('aria-hidden', 'true');
-  elementLune.innerHTML = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" class="lune-ciel-fond"/><path class="lune-ciel-eclairee"/></svg>';
+  numeroLune += 1;
+  elementLune.innerHTML = `<svg viewBox="0 0 24 24">${visageLune(numeroLune)}</svg><i class="lune-ciel-fleche"></i>`;
   map.getCanvasContainer().append(element, elementLune);
   const fleche = element.querySelector('.soleil-ciel-fleche');
-  const dessinLune = elementLune.querySelector('svg');
+  const phaseLune = elementLune.querySelector('.lune-ciel-phase');
+  const flecheLune = elementLune.querySelector('.lune-ciel-fleche');
 
   let soleil = null; // { azimut, hauteur } ou null pour le cacher
   let lune = null; // { azimut, hauteur, fraction } ou null
@@ -108,8 +135,10 @@ export function creerSoleilCiel(map) {
         ? Math.atan2(versSoleil.y - place.y, versSoleil.x - place.x)
         : Math.atan2(versSoleil.dy - projection.dy, versSoleil.dx - projection.dx);
     }
-    dessinLune.style.transform = `rotate(${((angle * 180) / Math.PI).toFixed(1)}deg)`;
+    // Seule la partie éclairée tourne vers le soleil : le visage garde le nord en haut
+    phaseLune.setAttribute('transform', `rotate(${((angle * 180) / Math.PI).toFixed(1)} 12 12)`);
     elementLune.classList.toggle('bord', !place.dedans);
+    if (!place.dedans) flecheLune.style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
     elementLune.classList.toggle('derriere', place.dedans && cacheParRelief(lune));
     elementLune.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
   }
@@ -137,7 +166,7 @@ export function creerSoleilCiel(map) {
     montrer(nouveau, nouvelleLune = null) {
       soleil = nouveau;
       if (nouvelleLune && Math.round((nouvelleLune.fraction ?? 0) * 200) !== Math.round((lune?.fraction ?? -1) * 200)) {
-        dessinLune.querySelector('path').setAttribute('d', dessinPhase(nouvelleLune.fraction, true));
+        phaseLune.setAttribute('d', dessinPhase(nouvelleLune.fraction, true));
       }
       lune = nouvelleLune;
       placer();

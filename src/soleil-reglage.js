@@ -93,6 +93,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
   const piste = element.querySelector('.ombres-piste i');
   const texteSoleil = element.querySelector('.ombres-soleil-texte');
 
+  let fuseauLieu = null; // minutes à l'est de UTC du lieu choisi (Soleil et Lune), sinon l'appareil
   let decalage = decalageAppareil();
   let jour = jourLocal(Date.now(), decalage);
   // « maintenant » suit l'horloge ; sinon, minutes depuis minuit
@@ -159,7 +160,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       courseCle = cle;
       const pointsSoleil = courseSoleil(jour, lieu.lat, lieu.lng, decalage);
       const pointsLune = courseLune(jour, lieu.lat, lieu.lng, decalage);
-      echelleCourse = 34 / Math.max(20, ...pointsSoleil.map((p) => p.hauteur));
+      echelleCourse = 34 / Math.max(20, ...pointsSoleil.map((p) => p.hauteur), ...pointsLune.map((p) => p.hauteur));
       const trace = traceCourse(pointsSoleil);
       boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
       boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);
@@ -215,7 +216,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
   element.querySelector('.ombres-maintenant').addEventListener('click', () => {
     heure = 'maintenant';
     ecrire('ombres-heure', heure);
-    decalage = decalageAppareil();
+    decalage = fuseauLieu ?? decalageAppareil();
     jour = jourLocal(Date.now(), decalage);
     surChangement({});
   });
@@ -227,6 +228,18 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     const local = new Date(d + decalage * MINUTE);
     heure = Math.round((local.getUTCHours() * 60 + local.getUTCMinutes()) / PAS_CURSEUR) * PAS_CURSEUR % (24 * 60);
     ecrire('ombres-heure', heure);
+    surChangement({});
+  }
+
+  // Heures au fuseau du lieu (null : celui de l'appareil). Le jour et l'heure affichés restent les mêmes
+  function changerFuseau(minutes) {
+    const nouveau = minutes ?? decalageAppareil();
+    fuseauLieu = minutes;
+    if (nouveau === decalage) return;
+    const maintenant = heure === 'maintenant' && jour === jourLocal(Date.now(), decalage);
+    decalage = nouveau;
+    if (maintenant) jour = jourLocal(Date.now(), decalage);
+    courseCle = null;
     surChangement({});
   }
 
@@ -242,6 +255,8 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     instant,
     nuit,
     decalage: () => decalage,
+    fuseauLieu: () => fuseauLieu,
+    changerFuseau,
     soleil: () => soleil,
     placer,
   };
