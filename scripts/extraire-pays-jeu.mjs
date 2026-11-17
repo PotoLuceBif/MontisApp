@@ -87,6 +87,21 @@ function capitaleDe(code, villes) {
   return { fr, en, position, ...(autres.length ? { autres } : {}) };
 }
 
+// Aire d'un anneau sur la sphère, en km²
+function aireSphere(anneau) {
+  const rad = Math.PI / 180;
+  let s = 0;
+  for (let i = 0; i < anneau.length - 1; i += 1) {
+    const [l1, p1] = anneau[i];
+    const [l2, p2] = anneau[i + 1];
+    s += (l2 - l1) * rad * (2 + Math.sin(p1 * rad) + Math.sin(p2 * rad));
+  }
+  return Math.abs((s * 6371.0088 ** 2) / 2);
+}
+
+// Sous-régions de Natural Earth corrigées : celles des « mers » rattachées à leur continent
+const REGIONS_FORCEES = { SC: 'eastern-africa', MU: 'eastern-africa', MV: 'southern-asia' };
+
 const aire = (anneau) => {
   let s = 0;
   for (let i = 0, j = anneau.length - 1; i < anneau.length; j = i++) s += (anneau[j][0] + anneau[i][0]) * (anneau[j][1] - anneau[i][1]);
@@ -163,13 +178,17 @@ for (const code of codes) {
   const ys = plusGrand[0].map((c) => c[1]);
   const emprise = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => Math.round(v * 100) / 100);
   const centre = arrondir(centroide(plusGrand[0]));
+  // Superficie sur les contours d'origine (avant simplification), territoires d'outre-mer compris, comme les chiffres officiels
+  const km2 = polygones.reduce((s, [exterieur, ...trous]) => s + aireSphere(exterieur) - trous.reduce((t, trou) => t + aireSphere(trou), 0), 0);
+  const superficie = Number(km2.toPrecision(km2 < 1 ? 1 : 3));
+  const region = REGIONS_FORCEES[code] || principale.SUBREGION.toLowerCase().replace(/[^a-z]+/g, '-');
   const zones = ZONES_FORCEES[code] || [CONTINENTS[principale.CONTINENT]];
   if (!zones[0]) throw new Error(`Continent inconnu pour ${code} : ${principale.CONTINENT}`);
 
   pays.push({
     type: 'Feature',
     id: pays.length,
-    properties: { code, zones, centre, emprise, capitale: capitaleDe(code, villes), ...(petit ? { petit: true } : {}) },
+    properties: { code, zones, region, superficie, centre, emprise, capitale: capitaleDe(code, villes), ...(petit ? { petit: true } : {}) },
     geometry: { type: 'MultiPolygon', coordinates: coordonnees },
   });
 }

@@ -4308,6 +4308,10 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .jeux-carte-drapeaux { background: linear-gradient(145deg, #ff4fd8, #7b3dff); }
 .jeux-carte-capitales { background: linear-gradient(145deg, #4debd4, #2f6bff); }
 .jeux-carte-liste { background: linear-gradient(145deg, #ffb547, #ff4f7b); }
+.jeux-carte-ou { background: linear-gradient(145deg, #3ddc97, #1f8fb3); }
+.jeux-carte-revision { background: linear-gradient(145deg, #59607a, #2e3448); }
+.jeux-ou-aide { text-align: center; }
+.jeux-pays-villes { min-height: 46px; padding: 0 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: 650 15px/1 var(--police); }
 .jeux-carte-textes { display: grid; flex: 1; min-width: 0; gap: 2px; }
 .jeux-carte-textes strong { font-size: 15.5px; font-weight: 750; }
 .jeux-carte-textes > span { color: var(--texte-2); font-size: 12.5px; line-height: 1.35; }

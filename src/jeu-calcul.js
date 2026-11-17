@@ -167,3 +167,87 @@ export function formatChrono(secondes) {
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
+
+// ---------- Où est-ce ? (lot P.4b) ----------
+
+const RAYON_TERRE = 6371; // km
+
+// Distance à vol d'oiseau, en km
+export function distanceKm([lng1, lat1], [lng2, lat2]) {
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * RAYON_TERRE * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Point dans un anneau (lancer de rayon)
+function dansAnneau([x, y], anneau) {
+  let dedans = false;
+  for (let i = 0, j = anneau.length - 1; i < anneau.length; j = i++) {
+    const [xi, yi] = anneau[i];
+    const [xj, yj] = anneau[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) dedans = !dedans;
+  }
+  return dedans;
+}
+
+// Point dans un MultiPolygon GeoJSON (trous compris)
+export function dansPays(point, multipolygone) {
+  return multipolygone.some(([exterieur, ...trous]) => dansAnneau(point, exterieur) && !trous.some((trou) => dansAnneau(point, trou)));
+}
+
+// Distance d'un point à un segment, en km, sur une projection plate autour du point (assez juste à l'échelle d'un pays)
+function distanceSegment(p, a, b) {
+  const kx = Math.cos((p[1] * Math.PI) / 180) * 111.32;
+  const ky = 110.57;
+  const ax = (a[0] - p[0]) * kx;
+  const ay = (a[1] - p[1]) * ky;
+  const bx = (b[0] - p[0]) * kx;
+  const by = (b[1] - p[1]) * ky;
+  const dx = bx - ax;
+  const dy = by - ay;
+  const long2 = dx * dx + dy * dy;
+  const u = long2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / long2)) : 0;
+  return Math.hypot(ax + u * dx, ay + u * dy);
+}
+
+// Distance au pays, en km : 0 dedans, sinon jusqu'au bord le plus proche
+export function distancePays(point, multipolygone) {
+  if (dansPays(point, multipolygone)) return 0;
+  let mini = Infinity;
+  for (const polygone of multipolygone) {
+    for (const anneau of polygone) {
+      for (let i = 1; i < anneau.length; i += 1) {
+        // Les bords à l'autre bout du monde ne comptent pas : la projection plate n'y vaut rien
+        if (Math.abs(anneau[i][0] - point[0]) > 60 && Math.abs(anneau[i - 1][0] - point[0]) > 60) continue;
+        mini = Math.min(mini, distanceSegment(point, anneau[i - 1], anneau[i]));
+      }
+    }
+  }
+  return mini === Infinity ? distanceKm(point, multipolygone[0][0][0]) : mini;
+}
+
+// Taille d'un pays, en km : la diagonale de son emprise
+export const taillePays = ([ouest, sud, est, nord]) => distanceKm([ouest, sud], [est, nord]);
+
+// Écart accepté pour une ville : 150 km dans le monde ; dans un pays, selon sa taille (de 15 à 120 km)
+export function seuilVille(emprisePays = null) {
+  if (!emprisePays) return 150;
+  return Math.round(Math.min(120, Math.max(15, taillePays(emprisePays) * 0.05)));
+}
+
+// Un petit pays se touche mal : un appui à moins de 40 km de lui compte
+export const SEUIL_PETIT_PAYS = 40;
+
+// ---------- Révise tes erreurs ----------
+// Une erreur : « drapeau:FR », « capitale:FR », « pays:FR » (où est ce pays), « ville:123 »
+export function noterErreur(erreurs, cle, juste) {
+  const sans = erreurs.filter((e) => e !== cle);
+  return juste ? sans : [cle, ...sans].slice(0, 300);
+}
+
+export function lireErreur(cle) {
+  const [type, id] = String(cle).split(':');
+  return { type, id: type === 'ville' ? Number(id) : id };
+}

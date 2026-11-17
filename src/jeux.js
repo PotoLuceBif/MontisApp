@@ -1,4 +1,4 @@
-// Jeux (lot P.4a) : quiz de géographie joué sur le globe. Modes Drapeaux et Liste.
+// Jeux (lots P.4a et P.4b) : quiz de géographie joué sur le globe. Drapeaux, Capitales, Où est-ce ?, Liste chrono, Révise tes erreurs.
 // Chargé à la première ouverture de la ligne du menu ; contours et drapeaux à la première partie (public/data/jeux).
 import { creerPanneauCarte } from './panneau-carte.js';
 import { bloquerFiches } from './fiche.js';
@@ -8,8 +8,9 @@ import { langue } from './preferences.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
 import {
   DUREES_LISTE, LONGUEUR_COURTE, ZONES, cleRecord, formatChrono, index, indexCapitales, jumeau, meilleur, melanger, nomPays, paysDeZone,
-  proposerChoix, reconnaitre, suggerer,
+  proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur,
 } from './jeu-calcul.js';
+import { formatDistance } from './unites.js';
 
 const SOURCE = 'jeu-pays';
 const SOURCE_POINTS = 'jeu-pays-points';
@@ -22,10 +23,16 @@ const ICONES_MODES = {
   drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
   capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/>',
   liste: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
+  ou: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
+  revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/>',
 };
+const SOURCE_OU = 'jeu-ou';
+const COUCHES_OU = ['jeu-ou-trait', 'jeu-ou-points'];
+const ZOOM_MAX_VILLES_PAYS = 7; // « Villes d'un pays » : assez près pour placer une ville
+const MAX_REVISION = 15;
 // Carte de montagne cachée pendant la partie, avec tous les textes : le globe seul, et le rose du pays à trouver
 // ne se perd plus parmi les routes roses de la nuit
-const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments)|courbes)/;
+const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments|waterway)|nature-rivieres|courbes)/;
 // Pays de la question : le rose « laser » de la DA (autoroutes de nuit), avec un halo pour bien le voir
 const COULEURS = { question: '#ff4fd8', trouve: '#3ddc97', rate: '#ff5c7a' };
 const ZOOM_MAX_JEU = 5; // au-delà, le globe laisse place à la carte de montagne
@@ -54,12 +61,28 @@ function chargerPays() {
   return promessePays;
 }
 
+let promesseVilles = null;
+function chargerVilles() {
+  promesseVilles ??= fetch('/data/jeux/villes.json')
+    .then((reponse) => {
+      if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+      return reponse.json();
+    })
+    .catch((erreur) => {
+      promesseVilles = null;
+      throw erreur;
+    });
+  return promesseVilles;
+}
+
 export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   // ---------- Réglage de la partie, dans le menu ----------
   const choix = {
     mode: 'drapeaux',
     sens: 'drapeau',
     sensCapitales: 'pays',
+    cible: 'pays',
+    paysVilles: 'FR',
     niveau: 'choix',
     longueur: 'courte',
     zone: 'europe',
@@ -68,7 +91,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   const records = () => lire('jeux-records', {});
 
   // Deux écrans : les cartes des jeux, puis les options du jeu choisi (demande du propriétaire du 17 novembre 2026)
-  const MODES = ['drapeaux', 'capitales', 'liste'];
+  const MODES = ['drapeaux', 'capitales', 'ou', 'liste'];
   const panneau = document.createElement('div');
   panneau.className = 'jeux';
   panneau.innerHTML = `
@@ -85,7 +108,16 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
             </span>
             <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>`).join('')}
+        <button type="button" class="jeux-carte jeux-carte-revision-ligne" data-mode="revision">
+          <span class="jeux-carte-icone jeux-carte-revision" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES_MODES.revision}</svg></span>
+          <span class="jeux-carte-textes">
+            <strong ${ti('jeux.carte-revision')}>${t('jeux.carte-revision')}</strong>
+            <span class="jeux-revision-aide"></span>
+          </span>
+          <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
       </div>
+      <p class="note jeux-message-accueil" role="status" hidden></p>
       <p class="note jeux-credits" ${ti('jeux.credits')}>${t('jeux.credits')}</p>
     </div>
     <div class="jeux-options" hidden>
@@ -107,7 +139,19 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           <button type="button" data-valeur="capitale" ${ti('jeux.sens-drapeau')}>${t('jeux.sens-drapeau')}</button>
         </div>
       </div>
-      <div class="jeux-reglage">
+      <div class="jeux-reglage" data-pour="ou">
+        <span class="jeux-legende" ${ti('jeux.cible')}>${t('jeux.cible')}</span>
+        <div class="segments" data-choix="cible" role="group" ${ta('aria-label', 'jeux.cible')}>
+          <button type="button" data-valeur="pays" ${ti('jeux.cible-pays')}>${t('jeux.cible-pays')}</button>
+          <button type="button" data-valeur="villes" ${ti('jeux.cible-villes')}>${t('jeux.cible-villes')}</button>
+          <button type="button" data-valeur="ville-pays" ${ti('jeux.cible-ville-pays')}>${t('jeux.cible-ville-pays')}</button>
+        </div>
+      </div>
+      <label class="jeux-reglage" data-pour="ville-pays">
+        <span class="jeux-legende" ${ti('jeux.pays-villes')}>${t('jeux.pays-villes')}</span>
+        <select class="jeux-pays-villes"></select>
+      </label>
+      <div class="jeux-reglage" data-pour="zone">
         <span class="jeux-legende" ${ti('jeux.zone')}>${t('jeux.zone')}</span>
         <div class="jeux-zones" data-choix="zone" role="group" ${ta('aria-label', 'jeux.zone')}>
           ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
@@ -138,6 +182,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   // Ce que joue la partie : un seul sens, celui du mode choisi
   const reglageEffectif = (mode = choix.mode) => {
     const c = { ...choix, mode };
+    if (mode === 'ou') {
+      // « Villes d'un pays » : la zone est le pays choisi
+      return { mode, sens: c.cible, niveau: 'choix', longueur: c.longueur, zone: c.cible === 'ville-pays' ? c.paysVilles : c.zone };
+    }
     return {
       mode,
       zone: c.zone,
@@ -146,9 +194,32 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       niveau: niveauImpose(c) ? 'choix' : c.niveau,
     };
   };
+  const erreurs = () => lire('jeux-erreurs', []);
   const texteRecord = (record) => t('jeux.record', { bonnes: record.bonnes, total: record.total, duree: formatChrono(record.duree) });
   let nombres = null; // pays par zone, connus après le premier chargement
   let ecran = 'accueil';
+
+  // Villes du monde dont le pays est dans la zone
+  function villesDeZone(zone) {
+    if (!donnees) return [];
+    return donnees.villes.monde.filter((id) => zone === 'monde' || donnees.parCode.get(donnees.villes.villes[id].pays).zones.includes(zone));
+  }
+
+  // Pays jouables en « Villes d'un pays », par ordre alphabétique dans la langue de l'appli
+  let listePaysLangue = null;
+  function rendreChoixPays() {
+    const select = $('.jeux-pays-villes');
+    if (!donnees) return;
+    if (listePaysLangue !== langue()) {
+      listePaysLangue = langue();
+      const { nom } = lesNoms();
+      select.innerHTML = Object.keys(donnees.villes.parPays)
+        .map((code) => [code, nom(code)])
+        .sort((a, b) => a[1].localeCompare(b[1], langue()))
+        .map(([code, libelle]) => `<option value="${code}">${libelle}</option>`).join('');
+    }
+    select.value = choix.paysVilles;
+  }
 
   function montrerEcran(nouveau) {
     ecran = nouveau;
@@ -166,25 +237,40 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       });
     });
     // Cartes : le record de chaque jeu avec ses derniers réglages
-    panneau.querySelectorAll('.jeux-carte').forEach((carte) => {
+    panneau.querySelectorAll('.jeux-carte:not([data-mode="revision"])').forEach((carte) => {
       const record = records()[cleRecord(reglageEffectif(carte.dataset.mode))];
       const petit = $('.jeux-carte-record', carte);
       petit.textContent = record ? `${t(`jeux.zone-${choix.zone}`)} · ${texteRecord(record)}` : '';
       petit.hidden = !record;
     });
+    const n = erreurs().length;
+    $('.jeux-revision-aide').textContent = n ? t('jeux.carte-revision-aide', { n }) : t('jeux.carte-revision-vide');
     const { mode } = choix;
+    const ou = mode === 'ou';
+    const villesPays = ou && choix.cible === 'ville-pays';
     $('.jeux-options-titre').textContent = t(`jeux.carte-${mode}`);
     $('[data-pour="drapeaux"]').hidden = mode !== 'drapeaux';
     $('[data-pour="capitales"]').hidden = mode !== 'capitales';
+    $('[data-pour="ou"]').hidden = !ou;
+    $('[data-pour="ville-pays"]').hidden = !villesPays;
+    $('[data-pour="zone"]').hidden = villesPays;
     $('[data-pour="questions"]').hidden = mode === 'liste';
-    $('[data-pour="niveau"]').hidden = mode === 'liste' || niveauImpose(choix);
-    $('.jeux-aide-mode').textContent = t(`jeux.aide-${mode}`, {
+    $('[data-pour="niveau"]').hidden = mode === 'liste' || ou || niveauImpose(choix);
+    $('.jeux-aide-mode').textContent = t(ou ? `jeux.aide-ou-${choix.cible}` : `jeux.aide-${mode}`, {
       duree: formatChrono(DUREES_LISTE[choix.zone]),
     });
+    // Nombre de pays par zone, ou de villes pour « Villes »
+    const compte = (zone) => {
+      if (!nombres) return null;
+      if (ou && choix.cible === 'villes') return villesDeZone(zone).length;
+      return nombres[zone];
+    };
     panneau.querySelectorAll('.jeux-zones small').forEach((petit) => {
-      petit.textContent = nombres ? String(nombres[petit.parentElement.dataset.valeur]) : '';
+      const valeur = compte(petit.parentElement.dataset.valeur);
+      petit.textContent = valeur === null ? '' : String(valeur);
     });
-    const total = nombres?.[choix.zone];
+    rendreChoixPays();
+    const total = villesPays ? donnees?.villes.parPays[choix.paysVilles]?.length : compte(choix.zone);
     $('[data-valeur="courte"]').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
     $('[data-valeur="complete"]').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
     const record = records()[cleRecord(reglageEffectif())];
@@ -193,6 +279,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
 
   panneau.addEventListener('click', (event) => {
     const carte = event.target.closest('.jeux-carte');
+    if (carte?.dataset.mode === 'revision') {
+      lancer({ mode: 'revision', zone: 'monde', sens: '', niveau: 'choix', longueur: 'courte' }, $('.jeux-message-accueil'));
+      return;
+    }
     if (carte) {
       choix.mode = carte.dataset.mode;
       ecrire('jeux-choix', choix);
@@ -211,40 +301,52 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     rendreReglage();
   });
 
-  function message(texte) {
-    $('.jeux-message').textContent = texte;
-    $('.jeux-message').hidden = !texte;
+  $('.jeux-pays-villes').addEventListener('change', (event) => {
+    choix.paysVilles = event.target.value;
+    ecrire('jeux-choix', choix);
+    rendreReglage();
+  });
+
+  function message(texte, ou = $('.jeux-message')) {
+    ou.textContent = texte;
+    ou.hidden = !texte;
   }
 
   let donnees = null;
   async function preparer() {
     if (donnees) return donnees;
-    const brut = await chargerPays();
+    const [brut, villes] = await Promise.all([chargerPays(), chargerVilles()]);
     const pays = brut.features.map((f) => f.properties);
     nombres = Object.fromEntries(ZONES.map((zone) => [zone, paysDeZone(pays, zone).length]));
     const points = {
       type: 'FeatureCollection',
       features: pays.filter((p) => p.petit).map((p) => ({ type: 'Feature', properties: { code: p.code }, geometry: { type: 'Point', coordinates: p.centre } })),
     };
-    donnees = { brut, pays, parCode: new Map(pays.map((p) => [p.code, p])), points };
+    const geometries = new Map(brut.features.map((f) => [f.properties.code, f.geometry.coordinates]));
+    donnees = { brut, pays, parCode: new Map(pays.map((p) => [p.code, p])), points, villes, geometries };
     rendreReglage();
     return donnees;
   }
 
-  $('.jeux-jouer').addEventListener('click', async () => {
-    message('');
+  async function lancer(reglage, zoneMessage = $('.jeux-message')) {
+    message('', zoneMessage);
     $('.jeux-jouer').disabled = true;
     try {
       await preparer();
+      if (reglage.mode === 'revision' && !erreurs().length) {
+        message(t('jeux.carte-revision-vide'), zoneMessage);
+        return;
+      }
       fermerMenu();
-      partie.demarrer(reglageEffectif());
+      partie.demarrer(reglage);
     } catch (erreur) {
       console.warn('Jeux :', erreur);
-      message(t(navigator.onLine ? 'jeux.erreur-chargement' : 'jeux.erreur-hors-ligne'));
+      message(t(navigator.onLine ? 'jeux.erreur-chargement' : 'jeux.erreur-hors-ligne'), zoneMessage);
     } finally {
       $('.jeux-jouer').disabled = false;
     }
-  });
+  }
+  $('.jeux-jouer').addEventListener('click', () => lancer(reglageEffectif()));
 
   // ---------- Noms des pays dans la langue de l'appli ----------
   let noms = null;
@@ -273,7 +375,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     vueAvant: null,
     zoomMax: null,
     etats: new Map(),
-    poser(codesZone) {
+    poser(codesZone, zoomMax = ZOOM_MAX_JEU) {
       // « Rejouer » repose le globe sans perdre la vue d'avant la première partie
       const premiere = !this.vueAvant;
       if (premiere) {
@@ -322,7 +424,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       } else {
         COUCHES.forEach((id) => map.setFilter(id, dansZone));
       }
-      map.setMaxZoom(ZOOM_MAX_JEU);
+      map.setMaxZoom(zoomMax);
       if (!premiere) return;
       // Les noms de la carte (pays, villes) donneraient les réponses : masqués le temps de la partie.
       // D'autres modules remettent leurs couches visibles (zoom, jour et nuit) : on recache à chaque changement du style.
@@ -361,31 +463,29 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       // Sur téléphone, le panneau occupe le bas de l'écran : le globe se centre au-dessus
       const hauteur = estTelephone() ? jeu.element.getBoundingClientRect().height : 0;
       const gauche = estTelephone() ? 0 : jeu.element.getBoundingClientRect().right;
-      return { top: 60, bottom: Math.min(hauteur, window.innerHeight * 0.6) + 20, left: Math.max(20, gauche + 10), right: 20 };
+      // À droite, la colonne des boutons de la carte
+      return { top: 70, bottom: Math.min(hauteur, window.innerHeight * 0.6) + 20, left: Math.max(30, gauche + 10), right: 80 };
     },
     zone(zone) {
       const vue = VUES[zone];
       map.flyTo({ ...vue, zoom: vue.zoom - (estTelephone() ? 0.5 : 0), bearing: 0, pitch: 0, padding: this.marge(), duration: 1600 });
     },
     // Assez loin pour voir où est le pays, même petit (la Belgique remplissait l'écran)
-    allerA(code) {
+    allerA(code, zoomMax = ZOOM_PAYS) {
       const p = donnees.parCode.get(code);
       const [ouest, sud, est, nord] = p.emprise;
-      const camera = map.cameraForBounds([[ouest, sud], [est, nord]], { padding: this.marge(), maxZoom: ZOOM_PAYS });
+      const camera = map.cameraForBounds([[ouest, sud], [est, nord]], { padding: this.marge(), maxZoom: zoomMax });
       if (!camera) return;
-      map.flyTo({ ...camera, zoom: Math.max(1.6, Math.min(camera.zoom, ZOOM_PAYS)), bearing: 0, pitch: 0, duration: 1400 });
+      map.flyTo({ ...camera, zoom: Math.max(1.6, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: 1400 });
     },
     // Capitales sur le globe : celles trouvées restent toute la partie (on voit où on en est, on les retient),
     // celle de la dernière réponse en grand, même ratée ; `courant` null n'en montre aucune en grand
-    capitales(trouvees, courant = null, nom = (c) => c) {
-      const point = (code, actuelle) => ({
-        type: 'Feature',
-        properties: { nom: nom(code), actuelle },
-        geometry: { type: 'Point', coordinates: donnees.parCode.get(code).capitale.position },
-      });
+    // Lieux trouvés (capitales, villes), puis le courant en grand ; lieu : { position, nom }
+    lieux(trouves, courant = null) {
+      const point = (lieu, actuelle) => ({ type: 'Feature', properties: { nom: lieu.nom, actuelle }, geometry: { type: 'Point', coordinates: lieu.position } });
       const donneesPoints = {
         type: 'FeatureCollection',
-        features: [...trouvees.filter((c) => c !== courant).map((c) => point(c, false)), ...(courant ? [point(courant, true)] : [])],
+        features: [...trouves.filter((l) => l.nom !== courant?.nom).map((l) => point(l, false)), ...(courant ? [point(courant, true)] : [])],
       };
       const source = map.getSource(SOURCE_CAPITALE);
       if (source) {
@@ -421,10 +521,51 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         paint: { 'text-color': '#ffffff', 'text-halo-color': '#0b1020', 'text-halo-width': 2 },
       });
     },
+    // Appui et vrai lieu, reliés en tirets ; sans appui, tout s'efface
+    ecart(appui, cible, juste) {
+      const donneesOu = {
+        type: 'FeatureCollection',
+        features: appui ? [
+          { type: 'Feature', properties: { genre: 'trait' }, geometry: { type: 'LineString', coordinates: [appui, cible] } },
+          { type: 'Feature', properties: { genre: 'appui' }, geometry: { type: 'Point', coordinates: appui } },
+          { type: 'Feature', properties: { genre: juste ? 'juste' : 'faux' }, geometry: { type: 'Point', coordinates: cible } },
+        ] : [],
+      };
+      const source = map.getSource(SOURCE_OU);
+      if (source) {
+        source.setData(donneesOu);
+        return;
+      }
+      if (!appui) return;
+      map.addSource(SOURCE_OU, { type: 'geojson', data: donneesOu });
+      map.addLayer({
+        id: COUCHES_OU[0], type: 'line', source: SOURCE_OU, filter: ['==', ['get', 'genre'], 'trait'],
+        paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [2, 1.5], 'line-opacity': 0.85 },
+      });
+      map.addLayer({
+        id: COUCHES_OU[1], type: 'circle', source: SOURCE_OU, filter: ['!=', ['get', 'genre'], 'trait'],
+        paint: {
+          'circle-radius': ['match', ['get', 'genre'], 'appui', 6, 7],
+          'circle-color': ['match', ['get', 'genre'], 'appui', COULEURS.question, 'juste', COULEURS.trouve, COULEURS.rate],
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      });
+    },
+    // Cadre l'appui et la réponse ensemble, sans s'approcher plus que zoomMax
+    // `autres` : points à inclure aussi (les coins d'un pays)
+    cadrerPoints(a, b, zoomMax, autres = []) {
+      const tous = [a, b, ...autres];
+      const xs = tous.map((c) => c[0]);
+      const ys = tous.map((c) => c[1]);
+      const bornes = [[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]];
+      const camera = map.cameraForBounds(bornes, { padding: this.marge(), maxZoom: zoomMax });
+      if (camera) map.flyTo({ ...camera, zoom: Math.max(1.3, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: 1200 });
+    },
     retirer() {
       this.toutEffacer();
-      [...COUCHES, ...COUCHES_CAPITALE].forEach((id) => map.getLayer(id) && map.removeLayer(id));
-      [SOURCE, SOURCE_POINTS, SOURCE_CAPITALE].forEach((id) => map.getSource(id) && map.removeSource(id));
+      [...COUCHES, ...COUCHES_CAPITALE, ...COUCHES_OU].forEach((id) => map.getLayer(id) && map.removeLayer(id));
+      [SOURCE, SOURCE_POINTS, SOURCE_CAPITALE, SOURCE_OU].forEach((id) => map.getSource(id) && map.removeSource(id));
       map.off('styledata', this.surStyle);
       cancelAnimationFrame(this.attenteStyle);
       this.attenteStyle = 0;
@@ -449,46 +590,104 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     },
   });
 
+  // Une question : { type, code (pays), ville (indice), seuil (km), cle (erreur) }
+  // Types : drapeau (drapeau → pays), drapeau-pays (pays allumé → drapeau), capitale (pays → capitale),
+  // capitale-pays (capitale → pays), ou-pays et ou-ville (toucher le globe)
+  const TYPE_ERREUR = { drapeau: 'drapeau', 'drapeau-pays': 'drapeau', capitale: 'capitale', 'capitale-pays': 'capitale', 'ou-pays': 'pays', 'ou-ville': 'ville' };
+  const typeDe = ({ mode, sens }) => ({
+    drapeaux: sens === 'pays' ? 'drapeau-pays' : 'drapeau',
+    capitales: sens === 'pays' ? 'capitale' : 'capitale-pays',
+    ou: sens === 'pays' ? 'ou-pays' : 'ou-ville',
+  })[mode];
+  const ville = (id) => donnees.villes.villes[id];
+  const nomVille = (id) => ville(id)[langue()] || ville(id).fr;
+  const seuilDe = (id) => (donnees.villes.monde.includes(id) ? seuilVille() : seuilVille(donnees.parCode.get(ville(id).pays).emprise));
+  const avecCle = (q) => ({ ...q, cle: `${TYPE_ERREUR[q.type]}:${q.type === 'ou-ville' ? q.ville : q.code}` });
+
+  function construireQuestions(reglage) {
+    const { mode, zone, sens, longueur } = reglage;
+    const couper = (liste) => (longueur === 'complete' ? liste : liste.slice(0, LONGUEUR_COURTE));
+    if (mode === 'revision') {
+      return melanger(erreurs().slice(0, MAX_REVISION).map(lireErreur).map(({ type, id }) => {
+        if (type === 'ville') return ville(id) ? { type: 'ou-ville', ville: id, code: ville(id).pays, seuil: seuilDe(id), parPays: !donnees.villes.monde.includes(id) } : null;
+        if (!donnees.parCode.has(id)) return null;
+        return { type: { drapeau: 'drapeau', capitale: 'capitale', pays: 'ou-pays' }[type], code: id };
+      }).filter((q) => q?.type).map(avecCle));
+    }
+    const type = typeDe(reglage);
+    if (type === 'ou-ville') {
+      const ids = sens === 'ville-pays' ? donnees.villes.parPays[zone] : villesDeZone(zone);
+      const seuil = sens === 'ville-pays' ? seuilVille(donnees.parCode.get(zone).emprise) : seuilVille();
+      return couper(melanger(ids)).map((id) => avecCle({ type, ville: id, code: ville(id).pays, seuil, parPays: sens === 'ville-pays' }));
+    }
+    return couper(melanger(paysDeZone(donnees.pays, zone))).map((code) => avecCle({ type, code }));
+  }
+
+  // Titre de la partie : le jeu et sa zone (ou le pays des villes)
+  function titrePartie(reglage) {
+    if (reglage.mode === 'revision') return t('jeux.carte-revision');
+    const jeuNom = t(`jeux.carte-${reglage.mode}`);
+    const lieu = reglage.mode === 'ou' && reglage.sens === 'ville-pays' ? lesNoms().nom(reglage.zone) : t(`jeux.zone-${reglage.zone}`);
+    return `${jeuNom} · ${lieu}`;
+  }
+
   const partie = {
     en: null, // la partie en cours
     minuterie: null,
+    ecouteAppui: null,
 
     demarrer(reglage) {
       if (this.en) this.arreterSansRetour();
-      const codesZone = paysDeZone(donnees.pays, reglage.zone);
+      const villesPays = reglage.mode === 'ou' && reglage.sens === 'ville-pays';
+      const revision = reglage.mode === 'revision';
       const tous = donnees.pays.map((p) => p.code);
-      const ordre = melanger(codesZone);
+      const codesZone = villesPays ? [reglage.zone] : revision ? tous : paysDeZone(donnees.pays, reglage.zone);
       this.en = {
         reglage,
         codesZone,
         tous,
-        questions: reglage.mode === 'liste' || reglage.longueur === 'complete' ? ordre : ordre.slice(0, LONGUEUR_COURTE),
+        questions: reglage.mode === 'liste' ? codesZone : construireQuestions(reglage),
         indice: 0,
         bonnes: 0,
         serie: 0,
         meilleureSerie: 0,
         ratees: [],
         trouves: [],
-        capitalesTrouvees: [],
+        lieuxTrouves: [],
+        distances: [],
         debut: Date.now(),
         fin: null,
         repondu: false,
       };
       bloquerFiches(true);
-      jeu.titre.textContent = `${t(`jeux.mode-${reglage.mode}`)} · ${t(`jeux.zone-${reglage.zone}`)}`;
+      jeu.titre.textContent = titrePartie(reglage);
       jeu.afficher();
-      globe.poser(codesZone);
-      if (reglage.mode === 'liste') this.liste();
-      else this.question();
-      // « Trouve le drapeau » vole tout de suite au pays allumé
-      if (reglage.sens !== 'pays') requestAnimationFrame(() => globe.zone(reglage.zone));
+      globe.poser(codesZone, villesPays || revision ? ZOOM_MAX_VILLES_PAYS : ZOOM_MAX_JEU);
+      // Toucher le globe répond aux questions « Où est-ce ? »
+      this.ecouteAppui = (event) => this.appui([event.lngLat.lng, event.lngLat.lat]);
+      map.on('click', this.ecouteAppui);
+      if (reglage.mode === 'liste') {
+        this.liste();
+        requestAnimationFrame(() => globe.zone(reglage.zone));
+        return;
+      }
+      this.question();
+      // Les drapeaux et capitales restent sur la zone ; le reste se cadre à chaque question
+      const premiere = this.en.questions[0];
+      if (!revision && reglage.mode !== 'ou' && !['drapeau-pays', 'capitale'].includes(premiere?.type)) {
+        requestAnimationFrame(() => globe.zone(reglage.zone));
+      }
     },
 
     // Fermer sans retour à la vue d'avant (pour enchaîner une autre partie)
     arreterSansRetour() {
       window.clearInterval(this.minuterie);
       this.minuterie = null;
+      if (this.ecouteAppui) map.off('click', this.ecouteAppui);
+      this.ecouteAppui = null;
       globe.toutEffacer();
+      globe.ecart(null);
+      globe.lieux([]);
     },
 
     quitter() {
@@ -501,40 +700,63 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       bloquerFiches(false);
       jeu.masquer();
       globe.retirer();
+      rendreReglage();
     },
 
     resume() {
       const p = this.en;
       if (!p) return;
-      const { mode } = p.reglage;
-      const fait = mode === 'liste' ? p.trouves.length : Math.min(p.indice + (p.repondu ? 1 : 0), p.questions.length);
-      const total = mode === 'liste' ? p.codesZone.length : p.questions.length;
-      jeu.definirResume({ nom: t(`jeux.mode-${mode}`), detail: t(`jeux.zone-${p.reglage.zone}`), valeur: `${fait}/${total}`, unite: '' });
+      const liste = p.reglage.mode === 'liste';
+      const fait = liste ? p.trouves.length : Math.min(p.indice + (p.repondu ? 1 : 0), p.questions.length);
+      const total = liste ? p.codesZone.length : p.questions.length;
+      jeu.definirResume({ nom: titrePartie(p.reglage), detail: '', valeur: `${fait}/${total}`, unite: '' });
     },
 
-    // ----- Drapeaux et Capitales : une question, quatre choix ou le nom à taper -----
+    // Cadrage au début d'une question « Où est-ce ? » : la zone, ou le pays des villes
+    cadrerQuestion(q) {
+      const p = this.en;
+      if (q.parPays) globe.allerA(q.code, ZOOM_MAX_VILLES_PAYS);
+      else globe.zone(p.reglage.mode === 'revision' ? donnees.parCode.get(q.code).zones[0] : p.reglage.zone);
+    },
+
+    // ----- Une question : quatre choix, le nom à taper, ou toucher le globe -----
     question() {
       const p = this.en;
-      const code = p.questions[p.indice];
-      const { mode, sens, niveau } = p.reglage;
+      const q = p.questions[p.indice];
+      const { code, type } = q;
+      const niveau = p.reglage.niveau;
       p.repondu = false;
       const { nom, capitale } = lesNoms();
       jeu.meta.textContent = t('jeux.meta-question', { n: p.indice + 1, total: p.questions.length, bonnes: p.bonnes, serie: p.serie });
       this.resume();
-      globe.capitales(p.capitalesTrouvees, null, capitale);
+      globe.ecart(null);
+      globe.lieux(p.lieuxTrouves);
 
-      // Le pays de la question s'allume sur le globe quand c'est lui qu'on montre
-      const paysMontre = sens === 'pays';
-      // On cherche une capitale (« Trouve la capitale ») ou un pays (tout le reste)
-      const chercheCapitale = mode === 'capitales' && sens === 'pays';
+      if (type === 'ou-pays' || type === 'ou-ville') {
+        const nomCible = type === 'ou-ville' ? nomVille(q.ville) : nom(code);
+        const drapeauVille = type === 'ou-ville' && !q.parPays ? `<img src="${drapeau(code)}" alt="" draggable="false">` : '';
+        jeu.corps.innerHTML = `
+          <p class="jeux-consigne">${t(type === 'ou-ville' ? 'jeux.consigne-ou-ville' : 'jeux.consigne-ou-pays')}</p>
+          <p class="jeux-capitale">${drapeauVille}${nomCible}</p>
+          <p class="note jeux-ou-aide">${t('jeux.ou-aide')}</p>
+          <button type="button" class="jeux-passer">${t('jeux.passer')}</button>
+          <div class="jeux-retour" aria-live="polite"></div>
+        `;
+        $('.jeux-passer', jeu.corps).addEventListener('click', () => this.appui(null));
+        requestAnimationFrame(() => this.cadrerQuestion(q));
+        return;
+      }
+
+      // Pool des leurres : la zone de la partie, ou celle du pays en révision
+      const pool = p.reglage.mode === 'revision' ? paysDeZone(donnees.pays, donnees.parCode.get(code).zones[0]) : p.codesZone;
+      const choix = proposerChoix(code, pool, p.tous);
+      const chercheCapitale = type === 'capitale';
       const libelle = (c) => (chercheCapitale ? capitale(c) : nom(c));
-      const choix = proposerChoix(code, p.codesZone, p.tous);
-      let tete;
+      let tete = '';
       let consigne;
-      if (mode === 'drapeaux' && sens === 'pays') {
-        tete = '';
+      if (type === 'drapeau-pays') {
         consigne = t('jeux.consigne-pays');
-      } else if (mode === 'drapeaux') {
+      } else if (type === 'drapeau') {
         tete = `<img class="jeux-drapeau" src="${drapeau(code)}" alt="${t('jeux.drapeau-mystere')}" draggable="false">`;
         consigne = t('jeux.consigne-drapeau');
       } else if (chercheCapitale) {
@@ -544,7 +766,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         tete = `<p class="jeux-capitale">${capitale(code)}</p>`;
         consigne = t('jeux.consigne-capitale-pays');
       }
-      const reponses = mode === 'drapeaux' && sens === 'pays'
+      const reponses = type === 'drapeau-pays'
         ? `<div class="jeux-choix jeux-choix-drapeaux">
             ${choix.map((c) => `<button type="button" data-code="${c}" aria-label="${t('jeux.drapeau-de', { nom: nom(c) })}"><img src="${drapeau(c)}" alt="" draggable="false"></button>`).join('')}
           </div>`
@@ -562,10 +784,12 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         ${reponses}
         <div class="jeux-retour" aria-live="polite"></div>
       `;
-      if (paysMontre) {
+      if (type === 'drapeau-pays' || type === 'capitale') {
+        // Le pays de la question s'allume ; après le dessin du panneau, dont la hauteur décide de la marge
         globe.marquer(code, 'question');
-        // Après le dessin du panneau : sa hauteur décide de la marge du cadrage
         requestAnimationFrame(() => globe.allerA(code));
+      } else if (p.reglage.mode === 'revision') {
+        requestAnimationFrame(() => globe.zone(donnees.parCode.get(code).zones[0]));
       }
 
       jeu.corps.querySelectorAll('.jeux-choix button').forEach((bouton) => {
@@ -597,41 +821,102 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       }
     },
 
+    // Réponse à quatre choix ou tapée
     repondre(reponse) {
       const p = this.en;
       if (!p || p.repondu) return;
-      p.repondu = true;
-      const code = p.questions[p.indice];
+      const q = p.questions[p.indice];
+      const { code, type } = q;
       // Devant un drapeau, son jumeau est une bonne réponse (Monaco et Indonésie, Tchad et Roumanie)
-      const juste = reponse === code || (p.reglage.mode === 'drapeaux' && p.reglage.sens === 'drapeau' && reponse && reponse === jumeau(code));
+      const juste = reponse === code || (type === 'drapeau' && reponse && reponse === jumeau(code));
+      const { nom, capitale } = lesNoms();
+      globe.marquer(code, juste ? 'trouve' : 'rate');
+      if (type === 'capitale' || type === 'capitale-pays') {
+        const lieu = { position: donnees.parCode.get(code).capitale.position, nom: capitale(code) };
+        if (juste) p.lieuxTrouves.push(lieu);
+        globe.lieux(p.lieuxTrouves, lieu);
+      }
+      if (type === 'drapeau' || type === 'capitale-pays') globe.allerA(code);
+      jeu.corps.querySelectorAll('.jeux-choix button, .jeux-suggestions button').forEach((bouton) => {
+        bouton.disabled = true;
+        if (bouton.dataset.code === code) bouton.classList.add('juste');
+        else if (bouton.dataset.code === reponse) bouton.classList.add('faux');
+      });
+      jeu.corps.querySelectorAll('.jeux-saisie input, .jeux-saisie button').forEach((el) => { el.disabled = true; });
+      const capitales = type === 'capitale' || type === 'capitale-pays';
+      this.conclure(juste, capitales
+        ? t(juste ? 'jeux.bravo-capitale' : 'jeux.rate-capitale', { nom: nom(code), capitale: capitale(code) })
+        : t(juste ? 'jeux.bravo' : 'jeux.rate', { nom: nom(code) }));
+    },
+
+    // Appui sur le globe (null : « Je ne sais pas »)
+    appui(point) {
+      const p = this.en;
+      if (!p || p.repondu || p.fin) return;
+      const q = p.questions[p.indice];
+      if (!q || (q.type !== 'ou-pays' && q.type !== 'ou-ville')) return;
       const { nom } = lesNoms();
+      const zoomReponse = q.parPays ? 6 : 4.5;
+      if (q.type === 'ou-ville') {
+        const v = ville(q.ville);
+        const lieu = { position: v.position, nom: nomVille(q.ville) };
+        const distance = point ? distanceKm(point, v.position) : null;
+        const juste = distance !== null && distance <= q.seuil;
+        if (juste) p.lieuxTrouves.push(lieu);
+        globe.lieux(p.lieuxTrouves, lieu);
+        if (point) {
+          p.distances.push(distance);
+          globe.ecart(point, v.position, juste);
+          globe.cadrerPoints(point, v.position, zoomReponse);
+        } else {
+          globe.cadrerPoints(v.position, v.position, zoomReponse);
+        }
+        this.conclure(juste, point
+          ? t(juste ? 'jeux.ou-juste' : 'jeux.ou-rate', { nom: lieu.nom, distance: formatDistance(Math.round(distance) * 1000) })
+          : t('jeux.ou-passe', { nom: lieu.nom }));
+        return;
+      }
+      // Où est ce pays ? Juste dedans, ou tout près pour un petit pays
+      const pays = donnees.parCode.get(q.code);
+      const distance = point ? distancePays(point, donnees.geometries.get(q.code)) : null;
+      const juste = distance !== null && distance <= (pays.petit ? SEUIL_PETIT_PAYS : 0);
+      globe.marquer(q.code, juste ? 'trouve' : 'rate');
+      if (point) {
+        p.distances.push(distance);
+        if (!juste) globe.ecart(point, pays.centre, false);
+        const [ouest, sud, est, nord] = pays.emprise;
+        globe.cadrerPoints(point, pays.centre, ZOOM_PAYS, [[ouest, sud], [est, nord]]);
+      } else {
+        globe.allerA(q.code);
+      }
+      const touche = point && !juste ? donnees.pays.find((autre) => dansPays(point, donnees.geometries.get(autre.code))) : null;
+      let texte;
+      if (juste) texte = t('jeux.bravo', { nom: nom(q.code) });
+      else if (!point) texte = t('jeux.ou-passe', { nom: nom(q.code) });
+      else texte = t('jeux.ou-pays-rate', { nom: nom(q.code), distance: formatDistance(Math.round(distance) * 1000), touche: touche ? nom(touche.code) : t('jeux.la-mer') });
+      this.conclure(juste, texte);
+    },
+
+    // Fin d'une question : score, erreur notée pour la révision, bouton Suivant
+    conclure(juste, texte) {
+      const p = this.en;
+      p.repondu = true;
+      const q = p.questions[p.indice];
       if (juste) {
         p.bonnes += 1;
         p.serie += 1;
         p.meilleureSerie = Math.max(p.meilleureSerie, p.serie);
       } else {
         p.serie = 0;
-        p.ratees.push(code);
+        p.ratees.push(q);
       }
-      globe.marquer(code, juste ? 'trouve' : 'rate');
-      const capitales = p.reglage.mode === 'capitales';
-      if (capitales) {
-        if (juste) p.capitalesTrouvees.push(code);
-        globe.capitales(p.capitalesTrouvees, code, lesNoms().capitale);
-      }
-      if (p.reglage.sens !== 'pays') globe.allerA(code);
-      jeu.corps.querySelectorAll('.jeux-choix button, .jeux-suggestions button').forEach((bouton) => {
-        bouton.disabled = true;
-        if (bouton.dataset.code === code) bouton.classList.add('juste');
-        else if (bouton.dataset.code === reponse) bouton.classList.add('faux');
-      });
-      jeu.corps.querySelectorAll('.jeux-saisie input, .jeux-saisie button, .jeux-passer').forEach((el) => { el.disabled = true; });
+      ecrire('jeux-erreurs', noterErreur(erreurs(), q.cle, juste));
+      jeu.corps.querySelectorAll('.jeux-passer').forEach((el) => el.remove());
+      jeu.corps.querySelectorAll('.jeux-ou-aide').forEach((el) => el.remove());
       const derniere = p.indice === p.questions.length - 1;
       const retour = $('.jeux-retour', jeu.corps);
       retour.innerHTML = `
-        <p class="${juste ? 'jeux-bravo' : 'jeux-rate'}">${capitales
-          ? t(juste ? 'jeux.bravo-capitale' : 'jeux.rate-capitale', { nom: nom(code), capitale: lesNoms().capitale(code) })
-          : t(juste ? 'jeux.bravo' : 'jeux.rate', { nom: nom(code) })}</p>
+        <p class="${juste ? 'jeux-bravo' : 'jeux-rate'}">${texte}</p>
         <button type="button" class="jeux-suivant">${t(derniere ? 'jeux.voir-resultat' : 'jeux.suivant')}</button>
       `;
       jeu.meta.textContent = t('jeux.meta-question', { n: p.indice + 1, total: p.questions.length, bonnes: p.bonnes, serie: p.serie });
@@ -643,7 +928,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           return;
         }
         // La question suivante repart d'un globe propre, sauf les pays déjà joués, gardés en couleur
-        if (globe.etats.get(code) === 'question') globe.marquer(code, null);
+        if (globe.etats.get(q.code) === 'question') globe.marquer(q.code, null);
         p.indice += 1;
         this.question();
       });
@@ -732,29 +1017,40 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       window.clearInterval(this.minuterie);
       this.minuterie = null;
       p.fin = Date.now();
-      const liste = p.reglage.mode === 'liste';
+      const { mode } = p.reglage;
+      const liste = mode === 'liste';
       const total = liste ? p.codesZone.length : p.questions.length;
       const bonnes = liste ? p.trouves.length : p.bonnes;
       const duree = (p.fin - p.debut) / 1000;
-      const manques = liste ? p.codesZone.filter((c) => !p.trouves.includes(c)) : p.ratees;
       // Les oubliés de la liste s'affichent en rouge sur le globe
-      if (liste) manques.forEach((c) => globe.marquer(c, 'rate'));
+      const manques = liste ? p.codesZone.filter((c) => !p.trouves.includes(c)).map((code) => ({ type: 'liste', code })) : p.ratees;
+      if (liste) manques.forEach((q) => globe.marquer(q.code, 'rate'));
       for (const [code, etat] of globe.etats) if (etat === 'question') globe.marquer(code, null);
+      globe.ecart(null);
 
-      const cle = cleRecord(p.reglage);
+      // Pas de record pour la révision : ses questions changent à chaque fois
+      const cle = mode === 'revision' ? null : cleRecord(p.reglage);
       const tousRecords = records();
-      const ancien = tousRecords[cle];
+      const ancien = cle ? tousRecords[cle] : null;
       const resultat = { bonnes, total, duree: Math.round(duree) };
-      const garde = meilleur(ancien, resultat);
+      const garde = cle ? meilleur(ancien, resultat) : null;
       const nouveau = garde === resultat && bonnes > 0;
-      if (garde === resultat) ecrire('jeux-records', { ...tousRecords, [cle]: resultat });
+      if (cle && garde === resultat) ecrire('jeux-records', { ...tousRecords, [cle]: resultat });
 
-      const { nom } = lesNoms();
+      const { nom, capitale } = lesNoms();
+      const libelleManque = (q) => {
+        if (q.type === 'ou-ville') return `${nomVille(q.ville)} · ${nom(q.code)}`;
+        if (q.type === 'capitale' || q.type === 'capitale-pays') return `${nom(q.code)} · ${capitale(q.code)}`;
+        return nom(q.code);
+      };
+      const ecartMoyen = p.distances.length ? p.distances.reduce((s, d) => s + d, 0) / p.distances.length : null;
+      const restantes = erreurs().length;
       jeu.meta.textContent = t('jeux.meta-fin');
       jeu.corps.innerHTML = `
         <div class="jeux-score">
           <strong>${bonnes}<small> / ${total}</small></strong>
           <span>${t('jeux.en-temps', { duree: formatChrono(duree) })}${!liste && p.meilleureSerie > 1 ? ` · ${t('jeux.meilleure-serie', { n: p.meilleureSerie })}` : ''}</span>
+          ${ecartMoyen !== null ? `<span>${t('jeux.ecart-moyen', { distance: formatDistance(Math.round(ecartMoyen) * 1000) })}</span>` : ''}
           <p class="${nouveau ? 'jeux-bravo' : 'note'}">${nouveau
             ? t('jeux.nouveau-record')
             : ancien ? t('jeux.record', { bonnes: ancien.bonnes, total: ancien.total, duree: formatChrono(ancien.duree) }) : ''}</p>
@@ -762,10 +1058,11 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         ${manques.length ? `
           <p class="jeux-legende">${t(liste ? 'jeux.oublies' : 'jeux.erreurs', { n: manques.length })}</p>
           <div class="jeux-manques">
-            ${manques.map((c) => `<button type="button" data-code="${c}"><img src="${drapeau(c)}" alt="">${nom(c)}${p.reglage.mode === 'capitales' ? ` · ${lesNoms().capitale(c)}` : ''}</button>`).join('')}
+            ${manques.map((q, i) => `<button type="button" data-i="${i}"><img src="${drapeau(q.code)}" alt="">${libelleManque(q)}</button>`).join('')}
           </div>` : `<p class="jeux-bravo">${t('jeux.parfait')}</p>`}
+        ${!liste && restantes ? `<p class="note">${t('jeux.erreurs-a-reviser', { n: restantes })}</p>` : ''}
         <div class="jeux-fin-actions">
-          <button type="button" class="jeux-rejouer">${t('jeux.rejouer')}</button>
+          <button type="button" class="jeux-rejouer">${t(mode === 'revision' && restantes ? 'jeux.reviser-encore' : 'jeux.rejouer')}</button>
           <button type="button" class="jeux-autre">${t('jeux.autre-partie')}</button>
         </div>
       `;
@@ -773,17 +1070,31 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.agrandir();
       jeu.corps.querySelectorAll('.jeux-manques button').forEach((bouton) => {
         bouton.addEventListener('click', () => {
-          globe.allerA(bouton.dataset.code);
-          if (p.reglage.mode === 'capitales') globe.capitales(p.capitalesTrouvees, bouton.dataset.code, lesNoms().capitale);
+          const q = manques[Number(bouton.dataset.i)];
+          if (q.type === 'ou-ville') {
+            const v = ville(q.ville);
+            globe.lieux(p.lieuxTrouves, { position: v.position, nom: nomVille(q.ville) });
+            globe.cadrerPoints(v.position, v.position, q.parPays ? ZOOM_MAX_VILLES_PAYS : 4.5);
+            return;
+          }
+          globe.allerA(q.code);
+          if (q.type === 'capitale' || q.type === 'capitale-pays') {
+            globe.lieux(p.lieuxTrouves, { position: donnees.parCode.get(q.code).capitale.position, nom: capitale(q.code) });
+          }
         });
       });
-      $('.jeux-rejouer', jeu.corps).addEventListener('click', () => this.demarrer({ ...p.reglage }));
+      $('.jeux-rejouer', jeu.corps).addEventListener('click', () => {
+        if (mode === 'revision' && !erreurs().length) return;
+        this.demarrer({ ...p.reglage });
+      });
       $('.jeux-autre', jeu.corps).addEventListener('click', () => {
         this.quitter();
         montrerEcran('accueil');
         ouvrirMenu();
       });
-      if (!liste || manques.length < p.codesZone.length) globe.zone(p.reglage.zone);
+      if (mode === 'revision') return;
+      if (p.reglage.sens === 'ville-pays') globe.allerA(p.reglage.zone, ZOOM_MAX_VILLES_PAYS);
+      else if (!liste || manques.length < p.codesZone.length) globe.zone(p.reglage.zone);
     },
   };
 
