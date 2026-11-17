@@ -31,6 +31,10 @@ const ICONES_MODES = {
 const ICONE_RECOMMENCER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';
 const ICONE_LIVRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/></svg>';
 const CHEVRON_HAUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
+const CHEVRON_BAS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const ICONE_VALIDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+// « Je ne sais pas » : un bonhomme qui lève les épaules et les mains, paumes en l'air (comme 🤷)
+const ICONE_PASSER = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="2.6"/><path d="M9.2 11.2h5.6M9.6 11.2l.4 9.3M14.4 11.2l-.4 9.3"/><path d="M9.2 11.2 6.2 14 3.6 10.2M14.8 11.2l3 2.8 2.6-3.8"/><path d="M2.2 10.2h2.8M19 10.2h2.8"/></svg>';
 const SOURCE_OU = 'jeu-ou';
 const COUCHES_OU = ['jeu-ou-trait', 'jeu-ou-points', 'jeu-ou-distance'];
 const ZOOM_MAX_VILLES_PAYS = 7; // « Villes d'un pays » : assez près pour placer une ville
@@ -760,16 +764,27 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   const barre = document.createElement('div');
   barre.className = 'jeux-barre';
   barre.hidden = true;
+  // Une seule ligne fine (retour du 17 novembre 2026, deuxième passe) : chrono, avancement, puis la question
+  // (ou le champ de la liste chrono), ↻ et, sur téléphone, ⌄ pour réduire le panneau.
   barre.innerHTML = `
     <span class="jeux-barre-chrono" aria-live="off"></span>
     <span class="jeux-barre-compte"></span>
-    <button type="button" class="jeux-recommencer" ${ta('aria-label', 'jeux.recommencer-aide')} ${ta('title', 'jeux.recommencer-aide')}>${ICONE_RECOMMENCER}</button>
-    <button type="button" class="jeux-deplier" ${ta('aria-label', 'jeux.trouves-voir')} hidden>${CHEVRON_HAUT}</button>
+    <span class="jeux-barre-milieu"></span>
+    <button type="button" class="jeux-recommencer jeux-icone" ${ta('aria-label', 'jeux.recommencer-aide')} ${ta('title', 'jeux.recommencer-aide')}>${ICONE_RECOMMENCER}</button>
+    <button type="button" class="jeux-deplier jeux-icone" ${ta('aria-label', 'jeux.trouves-voir')} hidden>${CHEVRON_HAUT}</button>
+    <button type="button" class="jeux-reduire jeux-icone" ${ta('aria-label', 'jeux.reduire')} ${ta('title', 'jeux.reduire')}>${CHEVRON_BAS}</button>
   `;
   jeu.corps.before(barre);
   const barreChrono = $('.jeux-barre-chrono', barre);
   const barreCompte = $('.jeux-barre-compte', barre);
+  const barreMilieu = $('.jeux-barre-milieu', barre);
   $('.jeux-recommencer', barre).addEventListener('click', () => partie.recommencer());
+  const reduireJeu = () => {
+    document.activeElement?.blur?.();
+    deplier(false);
+    $('.bf-reduire', jeu.element).click();
+  };
+  $('.jeux-reduire', barre).addEventListener('click', reduireJeu);
   const deplier = (oui) => {
     // Le tiroir des trouvés se montre clavier fermé
     if (oui) document.activeElement?.blur?.();
@@ -778,7 +793,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     recadrerBientot();
   };
   $('.jeux-deplier', barre).addEventListener('click', () => deplier(!jeu.element.classList.contains('jeux-deplie')));
-  // Glisser la barre vers le haut déplie, vers le bas replie ; un appui ailleurs que sur un bouton rouvre le clavier
+  // Glisser la barre vers le haut déplie les trouvés (liste chrono), vers le bas les replie, puis réduit le panneau ;
+  // un appui ailleurs que sur un bouton ou le champ rouvre le clavier
   let departGlisse = null;
   barre.addEventListener('pointerdown', (event) => { departGlisse = event.clientY; });
   barre.addEventListener('pointerup', (event) => {
@@ -786,10 +802,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     const ecartY = event.clientY - departGlisse;
     departGlisse = null;
     if (jeu.element.classList.contains('jeux-compact') && Math.abs(ecartY) > 28) {
-      deplier(ecartY < 0);
+      const deplie = jeu.element.classList.contains('jeux-deplie');
+      if (ecartY < 0 && !$('.jeux-deplier', barre).hidden) deplier(true);
+      else if (ecartY > 0 && deplie) deplier(false);
+      else if (ecartY > 0) reduireJeu();
       return;
     }
-    if (!event.target.closest('button')) $('.jeux-saisie input:not([readonly])', jeu.corps)?.focus();
+    if (!event.target.closest('button, input')) $('.jeux-saisie input:not([readonly])', jeu.element)?.focus();
   });
   barre.addEventListener('pointercancel', () => { departGlisse = null; });
 
@@ -797,7 +816,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   // La barre de saisie se colle au-dessus du clavier : sa hauteur se lit dans visualViewport (iOS Safari ne
   // redimensionne pas la page, Chrome Android non plus par défaut ; s'il le fait, la hauteur lue vaut zéro et le
   // panneau, en bas de la page, est déjà au-dessus du clavier). La carte se recadre dans ce qui reste.
+  // Le clavier se juge à la hauteur visible, pas au focus : le geste retour d'Android ferme le clavier mais laisse le
+  // focus au champ (la barre restait alors en forme « clavier », sans « Je ne sais pas », et toucher ce champ ne
+  // rouvrait pas toujours le clavier). Clavier refermé avec le focus : le champ le rend, un appui le rouvre.
+  // La mise en page ne change qu'une fois le clavier levé : la changer dès le focus déplaçait le champ sous le doigt.
   let clavierOuvert = false;
+  const SEUIL_CLAVIER = 150; // px de hauteur perdue : en dessous, c'est la barre d'adresse qui bouge
+  const pleine = { largeur: 0, hauteur: 0 }; // hauteur de la page sans clavier, pour cette largeur
   let attenteRecadrage = 0;
   function recadrerBientot() {
     if (attenteRecadrage) return;
@@ -810,14 +835,26 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     const vv = window.visualViewport;
     const actif = document.activeElement;
     const saisie = estTelephone() && !jeu.element.hidden && jeu.element.contains(actif) && actif.matches('input[type="text"]');
+    // × scale : un zoom à deux doigts réduit aussi vv.height, sans clavier
+    const visible = vv ? vv.height * vv.scale : window.innerHeight;
+    if (window.innerWidth !== pleine.largeur) Object.assign(pleine, { largeur: window.innerWidth, hauteur: 0 });
+    pleine.hauteur = Math.max(pleine.hauteur, window.innerHeight);
+    const leve = saisie && pleine.hauteur - visible > SEUIL_CLAVIER;
+    if (clavierOuvert && !leve && saisie) {
+      // Clavier fermé par le geste retour, champ toujours au focus
+      clavierOuvert = false;
+      actif.blur();
+      return;
+    }
     const hauteur = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
-    jeu.element.style.setProperty('--clavier', `${saisie ? hauteur : 0}px`);
-    if (vv) jeu.element.style.setProperty('--hauteur-visible', `${Math.round(vv.height)}px`);
-    const change = saisie !== clavierOuvert;
-    clavierOuvert = saisie;
-    jeu.element.classList.toggle('jeux-clavier', saisie);
-    if (change || saisie) recadrerBientot();
+    jeu.element.style.setProperty('--clavier', `${leve ? hauteur : 0}px`);
+    jeu.element.style.setProperty('--hauteur-visible', `${Math.round(vv ? vv.height : visible)}px`);
+    const change = leve !== clavierOuvert;
+    clavierOuvert = leve;
+    jeu.element.classList.toggle('jeux-clavier', leve);
+    if (change || leve) recadrerBientot();
   }
+  window.addEventListener('resize', majClavier);
   window.visualViewport?.addEventListener('resize', majClavier);
   window.visualViewport?.addEventListener('scroll', majClavier);
   jeu.element.addEventListener('focusin', majClavier);
@@ -831,6 +868,30 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   const fermerClavier = () => {
     if (clavierOuvert) document.activeElement?.blur();
   };
+
+  // ---------- Geste retour sur téléphone ----------
+  // Pendant une partie, une entrée d'historique est posée : le retour (glissé du bord, bouton d'Android) réduit le
+  // panneau au lieu de quitter l'appli. Panneau déjà réduit, le retour suivant fait son office habituel.
+  let entreeRetour = false;
+  const armerRetour = () => {
+    if (entreeRetour || !estTelephone() || !partie.en || partie.en.fin || jeu.element.hidden || jeu.element.classList.contains('bf-reduite')) return;
+    history.pushState({ montisJeu: true }, '');
+    entreeRetour = true;
+  };
+  const desarmerRetour = () => {
+    if (!entreeRetour) return;
+    entreeRetour = false;
+    if (history.state?.montisJeu) history.back();
+  };
+  window.addEventListener('popstate', () => {
+    if (!entreeRetour) return;
+    entreeRetour = false;
+    if (partie.en && !jeu.element.hidden) reduireJeu();
+  });
+  window.addEventListener('panneau-carte', () => {
+    if (jeu.element.hidden || jeu.element.classList.contains('bf-reduite') || !partie.en || partie.en.fin) desarmerRetour();
+    else armerRetour();
+  });
 
   // R relance la partie sur ordinateur (Alt+R depuis un champ de saisie)
   document.addEventListener('keydown', (event) => {
@@ -888,6 +949,12 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   // Fiches à réviser, triées par région et d'ouest en est
   const ordonner = (codes) => trierFiches([...new Set(codes)].map((c) => donnees.parCode.get(c)).filter(Boolean), 'monde').flatMap((g) => g.codes);
 
+  // La question dans la barre : `consigne` en entier pour les lecteurs d'écran et au survol, `court` à l'écran
+  function poserQuestion(consigne, court, contenu) {
+    barreMilieu.innerHTML = `<span class="jeux-question" title="${consigne}" aria-label="${consigne}"><small>${court}</small>${contenu}</span>`;
+  }
+  const boutonPasser = () => `<button type="button" class="jeux-passer jeux-icone" aria-label="${t('jeux.passer')}" title="${t('jeux.passer')}">${ICONE_PASSER}</button>`;
+
   const partie = {
     en: null, // la partie en cours
     minuterie: null,
@@ -943,13 +1010,16 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       map.on('touchstart', fermerClavier);
       map.on('mousedown', fermerClavier);
       barre.hidden = false;
+      barreMilieu.innerHTML = '';
       this.lancerChrono();
       if (liste) {
         this.liste();
         requestAnimationFrame(() => globe.zone(reglage.zone));
         return;
       }
-      jeu.element.classList.remove('jeux-compact');
+      // Sur téléphone, plus d'en-tête : la barre fine porte tout, ⌄ réduit le panneau
+      jeu.element.classList.toggle('jeux-compact', estTelephone());
+      jeu.agrandir();
       $('.jeux-deplier', barre).hidden = true;
       this.question();
       // Les drapeaux et capitales restent sur la zone ; le reste se cadre à chaque question
@@ -1002,6 +1072,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
 
     quitter() {
       barre.hidden = true;
+      barreMilieu.innerHTML = '';
       jeu.element.classList.remove('jeux-compact', 'jeux-deplie', 'jeux-clavier');
       if (!this.en) {
         jeu.masquer();
@@ -1067,11 +1138,12 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       if (type === 'ou-pays' || type === 'ou-ville') {
         // Le drapeau du pays n'aide pas à le placer ; pour une ville du monde, il dit son pays (indice voulu)
         const cible = type === 'ou-ville' ? `${q.parPays ? '' : `<img src="${drapeau(code)}" alt="" draggable="false">`}${nomVille(q.ville)}` : `<img src="${drapeau(code)}" alt="" draggable="false">${nom(code)}`;
+        poserQuestion(t(type === 'ou-ville' ? 'jeux.consigne-ou-ville' : 'jeux.consigne-ou-pays'), t('jeux.court-ou'), `<b>${cible}</b>`);
         jeu.corps.innerHTML = `
-          <p class="jeux-consigne">${t(type === 'ou-ville' ? 'jeux.consigne-ou-ville' : 'jeux.consigne-ou-pays')}</p>
-          <p class="jeux-capitale">${cible}</p>
-          <p class="note jeux-ou-aide">${t('jeux.ou-aide')}</p>
-          <button type="button" class="jeux-passer">${t('jeux.passer')}</button>
+          <div class="jeux-ou-ligne">
+            <p class="note jeux-ou-aide">${t('jeux.ou-aide')}</p>
+            ${boutonPasser()}
+          </div>
           <div class="jeux-retour" aria-live="polite"></div>
         `;
         $('.jeux-passer', jeu.corps).addEventListener('click', () => this.appui(null));
@@ -1085,19 +1157,15 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const chercheCapitale = type === 'capitale';
       // Les pays proposés pour une capitale ont leur drapeau ; devant un drapeau, non (il donnerait la réponse)
       const libelle = (c) => (chercheCapitale ? capitale(c) : type === 'capitale-pays' ? paysAvecDrapeau(c) : nom(c));
-      let tete = '';
-      let consigne;
+      // La question tient dans la barre : une consigne courte, puis le drapeau, le pays ou la capitale
       if (type === 'drapeau-pays') {
-        consigne = t('jeux.consigne-pays');
+        poserQuestion(t('jeux.consigne-pays'), t('jeux.court-drapeau-pays'), '');
       } else if (type === 'drapeau') {
-        tete = `<img class="jeux-drapeau" src="${drapeau(code)}" alt="${t('jeux.drapeau-mystere')}" draggable="false">`;
-        consigne = t('jeux.consigne-drapeau');
+        poserQuestion(t('jeux.consigne-drapeau'), t('jeux.court-pays'), `<img class="jeux-drapeau" src="${drapeau(code)}" alt="${t('jeux.drapeau-mystere')}" draggable="false">`);
       } else if (chercheCapitale) {
-        tete = `<p class="jeux-capitale"><img src="${drapeau(code)}" alt="" draggable="false">${nom(code)}</p>`;
-        consigne = t('jeux.consigne-capitale');
+        poserQuestion(t('jeux.consigne-capitale'), t('jeux.court-capitale'), `<b><img src="${drapeau(code)}" alt="" draggable="false">${nom(code)}</b>`);
       } else {
-        tete = `<p class="jeux-capitale">${capitale(code)}</p>`;
-        consigne = t('jeux.consigne-capitale-pays');
+        poserQuestion(t('jeux.consigne-capitale-pays'), t('jeux.court-pays'), `<b>${capitale(code)}</b>`);
       }
       const placeholder = t(chercheCapitale ? 'jeux.taper-capitale' : 'jeux.taper-pays');
       const reponses = type === 'drapeau-pays'
@@ -1108,13 +1176,11 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           ? `<div class="jeux-suggestions"></div>
             <form class="jeux-saisie" autocomplete="off">
               <input type="text" enterkeyhint="go" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="${placeholder}" aria-label="${placeholder}">
-              <button type="submit">${t('jeux.valider')}</button>
-            </form>
-            <button type="button" class="jeux-passer">${t('jeux.passer')}</button>`
+              <button type="submit" class="jeux-valider jeux-icone" aria-label="${t('jeux.valider')}" title="${t('jeux.valider')}">${ICONE_VALIDER}</button>
+              ${boutonPasser()}
+            </form>`
           : `<div class="jeux-choix">${choix.map((c) => `<button type="button" data-code="${c}">${libelle(c)}</button>`).join('')}</div>`;
       jeu.corps.innerHTML = `
-        ${tete}
-        <p class="jeux-consigne">${consigne}</p>
         ${reponses}
         <div class="jeux-retour" aria-live="polite"></div>
       `;
@@ -1388,10 +1454,12 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.agrandir();
       $('.jeux-deplier', barre).hidden = false;
       $('.jeux-deplier', barre).setAttribute('aria-expanded', 'false');
-      jeu.corps.innerHTML = `
+      // Le champ prend place dans la barre, entre l'avancement et ↻ : une seule ligne
+      barreMilieu.innerHTML = `
         <form class="jeux-saisie" autocomplete="off">
           <input type="text" enterkeyhint="done" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="${t('jeux.taper-pays')}" aria-label="${t('jeux.taper-pays')}">
-        </form>
+        </form>`;
+      jeu.corps.innerHTML = `
         <p class="jeux-retour" aria-live="polite"></p>
         <div class="jeux-liste-tiroir">
           <p class="note jeux-liste-entree">${t('jeux.liste-entree')}</p>
@@ -1400,7 +1468,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           <button type="button" class="jeux-abandon">${t('jeux.terminer')}</button>
         </div>
       `;
-      const champ = $('.jeux-saisie input', jeu.corps);
+      const champ = $('.jeux-saisie input', barre);
       const retour = $('.jeux-retour', jeu.corps);
       const majCompte = () => {
         $('.jeux-trouves-titre', jeu.corps).textContent = t('jeux.trouves-titre', { n: p.trouves.length });
@@ -1446,7 +1514,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       };
       // Un nom juste est pris dès qu'il est tapé ; Entrée accepte aussi une faute de frappe
       champ.addEventListener('input', () => essayer(false));
-      $('.jeux-saisie', jeu.corps).addEventListener('submit', (event) => {
+      $('.jeux-saisie', barre).addEventListener('submit', (event) => {
         event.preventDefault();
         essayer(true);
       });
@@ -1464,6 +1532,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       this.minuterie = null;
       p.fin = Date.now();
       document.activeElement?.blur?.();
+      desarmerRetour();
       const { mode } = p.reglage;
       const liste = mode === 'liste';
       const total = liste ? p.codesZone.length : p.questions.length;
