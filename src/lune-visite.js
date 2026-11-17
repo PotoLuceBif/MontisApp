@@ -343,18 +343,19 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     if (!place.dedans) fleche.style.transform = `rotate(${place.angle.toFixed(1)}deg)`;
     element.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
   }
-  // Vue d'ensemble : la Terre se voit dans le fond étoilé quand elle dépasse du bord de la Lune. Sinon (derrière la
-  // Lune ou derrière la caméra), une petite flèche au bord de l'écran montre de quel côté elle est (demande du
+  // Vue d'ensemble : la Terre se voit dans le fond étoilé quand elle dépasse du bord de la Lune. Hors de l'écran
+  // ou derrière la caméra, une petite flèche au bord de l'écran montre de quel côté elle est (demande du
   // propriétaire du 16 novembre 2026) ; un appui fait tourner la Lune jusqu'à la voir.
-  const surLaLune = ({ x, y }) => {
-    const retour = map.project(map.unproject([x, y]));
-    return Math.hypot(retour.x - x, retour.y - y) < 3;
-  };
   function indiquerTerre(cam, marge, centre) {
-    const visible = pointTerre && opaciteCiel(map.getZoom()) > 0.5 && !surLaLune(pointTerre)
+    // Dans l'écran, visible ou cachée par la Lune : pas de flèche. Derrière la Lune, sa direction n'a pas de sens
+    // (la flèche partait n'importe où, retour du propriétaire du 17 novembre 2026)
+    const dansLecran = pointTerre && opaciteCiel(map.getZoom()) > 0.5
       && pointTerre.x > 0 && pointTerre.x < cam.largeur && pointTerre.y > 0 && pointTerre.y < cam.hauteurEcran;
-    elementTerre.hidden = Boolean(visible);
-    if (visible) return;
+    if (dansLecran) {
+      elementTerre.hidden = true;
+      return;
+    }
+    elementTerre.hidden = false;
     // Direction donnée par la vraie projection de la caméra (inclinaison comprise) : avec la seule boussole, une vue
     // inclinée montrait le haut pour un astre qui était en bas (retour du propriétaire du 16 novembre 2026)
     const projection = projeterSoleil(directionDepuis(centre.lng, centre.lat, POINT_SOUS_TERRE), cam);
