@@ -75,8 +75,8 @@ export function initBulleLune(map, ciel) {
   map.on('movestart', (event) => { if (event.originalEvent) fermer(); });
 
   // ---------- Flèche de la Lune en mode espace (demande du propriétaire du 16 novembre 2026) ----------
-  // Comme la flèche de la Terre sur la Lune : quand le ciel est là mais qu'on ne voit pas la Lune (derrière le
-  // globe ou derrière la caméra), une petite Lune au bord de l'écran montre de quel côté elle est ; un appui va à
+  // Comme la flèche de la Terre sur la Lune : quand le ciel est là et que la Lune est hors de l'écran (ou
+  // derrière la caméra), une petite Lune au bord de l'écran montre de quel côté elle est ; un appui va à
   // une vue nord en haut où elle dépasse au-dessus de la Terre.
   const indice = document.createElement('button');
   indice.type = 'button';
@@ -102,13 +102,13 @@ export function initBulleLune(map, ciel) {
     }
     const lune = ciel?.pointLune();
     const dansLecran = lune && lune.x > 0 && lune.x < l && lune.y > 0 && lune.y < h;
-    let visible = false;
     if (dansLecran) {
-      const retour = map.project(map.unproject([lune.x, lune.y]));
-      visible = Math.hypot(retour.x - lune.x, retour.y - lune.y) >= 3; // hors du globe : on la voit
+      // Visible, ou cachée par la Terre : pas de flèche. Derrière le globe, sa direction n'a pas de sens (la flèche
+      // partait n'importe où, retour du propriétaire du 17 novembre 2026) ; elle réapparaît en tournant la Terre.
+      indice.hidden = true;
+      return;
     }
-    indice.hidden = visible;
-    if (visible) return;
+    indice.hidden = false;
     // Direction de la Lune par la vraie projection de la caméra, inclinaison comprise (avec la seule boussole, une vue
     // inclinée montrait le haut pour une Lune qui était en bas), ramenée au bord libre de l'écran
     const { lng, lat } = map.getCenter();
