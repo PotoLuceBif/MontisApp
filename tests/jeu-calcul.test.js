@@ -192,3 +192,28 @@ describe('tirages et scores', () => {
     expect(formatChrono(125.4)).toBe('2:05');
   });
 });
+
+describe('liste chrono : saisie prise au vol', async () => {
+  const { priseAuVol } = await import('../src/jeu-calcul.js');
+  it('UK attend tant que l’Ukraine reste à trouver', () => {
+    expect(priseAuVol('uk', entreesFr)).toBeNull();
+    expect(priseAuVol('ukraine', entreesFr)).toBe('UA');
+    expect(priseAuVol('uk', entreesFr, ['UA'])).toBe('GB');
+  });
+
+  it('Niger, Guinée, Soudan, Congo attendent la suite ou Entrée', () => {
+    expect(priseAuVol('niger', entreesFr)).toBeNull();
+    expect(priseAuVol('nigeria', entreesFr)).toBe('NG');
+    expect(priseAuVol('niger', entreesFr, ['NG'])).toBe('NE');
+    expect(priseAuVol('guinee', entreesFr)).toBeNull();
+    expect(priseAuVol('soudan', entreesFr)).toBeNull();
+    expect(priseAuVol('congo', entreesFr)).toBeNull();
+    expect(priseAuVol('dominica', entreesEn, [], 'en')).toBeNull();
+  });
+
+  it('un pays déjà trouvé ne coupe pas la saisie', () => {
+    expect(priseAuVol('uk', entreesFr, ['GB'])).toBeNull();
+    expect(priseAuVol('france', entreesFr, ['FR'])).toBeNull();
+    expect(priseAuVol('france', entreesFr)).toBe('FR');
+  });
+});

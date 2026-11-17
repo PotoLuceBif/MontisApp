@@ -4315,6 +4315,13 @@ body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left:
 .jeux-carte-fiches { background: linear-gradient(145deg, #6d7cff, #22d3ee); }
 .jeux-fiches { display: grid; gap: 12px; }
 .jeux-fiches[hidden] { display: none; }
+.jeux-fiches-recherche { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface-2); }
+.jeux-fiches-recherche:focus-within { border-color: var(--accent); }
+.jeux-fiches-recherche svg { flex: 0 0 18px; width: 18px; height: 18px; fill: none; stroke: var(--texte-2); stroke-width: 2; }
+.jeux-fiches-recherche input, .jeux-fiches-recherche input:focus, .jeux-fiches-recherche input:focus-visible { flex: 1; min-width: 0; min-height: 0; padding: 0; border: 0; outline: 0; box-shadow: none; background: none; color: var(--texte); font: 600 16px/1 var(--police); }
+.jeux-liste-entree { font-size: 11.5px !important; }
+/* Le cadre de la barre de recherche montre déjà le focus : pas de second contour sur le champ */
+:root .jeux-fiches-recherche input:focus-visible, :root[data-theme='cyberpunk'] .jeux-fiches-recherche input:focus-visible { outline: none; box-shadow: none; }
 .jeux-fiches-liste { display: grid; gap: 4px; }
 .jeux-fiches-region { margin: 10px 2px 2px; color: var(--accent); font-size: 11.5px; font-weight: 750; letter-spacing: 0.04em; text-transform: uppercase; }
 .jeux-fiche-ligne { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: inherit; text-align: left; cursor: pointer; }

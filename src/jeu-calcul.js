@@ -275,3 +275,16 @@ export function trierFiches(pays, zone) {
     .sort(([a], [b]) => rang(a) - rang(b))
     .map(([region, liste]) => ({ region, codes: liste.sort((a, b) => a.centre[0] - b.centre[0]).map((p) => p.code) }));
 }
+
+// Liste chrono : un nom tapé est pris tout seul seulement s'il n'est le début d'aucun autre pays restant à trouver
+// (« UK » attend : « Ukraine » commence pareil ; de même Niger et Nigeria, Guinée et Guinée-Bissau, Soudan, Congo).
+// Un pays déjà trouvé ne coupe pas la saisie : on peut être en train d'écrire un autre nom.
+export function priseAuVol(saisie, entrees, trouves = [], langue = 'fr') {
+  const texte = normaliser(saisie, langue);
+  if (!texte) return null;
+  const exact = entrees.find((e) => e.ecritures.includes(texte));
+  if (!exact || trouves.includes(exact.code)) return null;
+  const ambigu = entrees.some((e) => e.code !== exact.code && !trouves.includes(e.code)
+    && e.ecritures.some((ecriture) => ecriture.length > texte.length && ecriture.startsWith(texte)));
+  return ambigu ? null : exact.code;
+}

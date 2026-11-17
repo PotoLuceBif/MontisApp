@@ -2,13 +2,13 @@
 // Chargé à la première ouverture de la ligne du menu ; contours et drapeaux à la première partie (public/data/jeux).
 import { creerPanneauCarte } from './panneau-carte.js';
 import { bloquerFiches } from './fiche.js';
-import { POLICE, POLICE_GRAS } from './polices.js';
+import { POLICE_GRAS } from './polices.js';
 import { lire, ecrire } from './reglages.js';
 import { langue } from './preferences.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
 import {
   DUREES_LISTE, LONGUEUR_COURTE, ZONES, cleRecord, formatChrono, index, indexCapitales, jumeau, meilleur, melanger, nomPays, paysDeZone,
-  proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur, trierFiches,
+  proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur, trierFiches, priseAuVol, normaliser,
 } from './jeu-calcul.js';
 import { formatDistance, formatSurface, nombre } from './unites.js';
 
@@ -16,7 +16,7 @@ const SOURCE = 'jeu-pays';
 const SOURCE_POINTS = 'jeu-pays-points';
 const COUCHES = ['jeu-pays-fond', 'jeu-pays-contour', 'jeu-pays-points', 'jeu-pays-halo'];
 const SOURCE_CAPITALE = 'jeu-capitale';
-const COUCHES_CAPITALE = ['jeu-capitale-point', 'jeu-capitale-noms', 'jeu-capitale-nom'];
+const COUCHES_CAPITALE = ['jeu-lieux-anneau', 'jeu-lieux-noms', 'jeu-lieux-nom', 'jeu-lieux-coeur', 'jeu-noms-pays'];
 const ZOOM_PAYS = 4; // cadrage d'un pays après une réponse
 // Pictogrammes des cartes de jeu (traits, comme les icônes du menu)
 const ICONES_MODES = {
@@ -137,6 +137,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg><strong ${ti('jeux.carte-fiches')}>${t('jeux.carte-fiches')}</strong>
       </button>
       <p class="note" ${ti('jeux.fiches-aide')}>${t('jeux.fiches-aide')}</p>
+      <label class="jeux-fiches-recherche">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input type="search" enterkeyhint="search" autocapitalize="off" spellcheck="false" ${ta('placeholder', 'jeux.fiches-chercher')} ${ta('aria-label', 'jeux.fiches-chercher')}>
+      </label>
       <div class="jeux-zones" data-choix="zoneFiches" role="group" ${ta('aria-label', 'jeux.zone')}>
         ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
       </div>
@@ -258,8 +262,21 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     const liste = $('.jeux-fiches-liste');
     if (!donnees) return;
     const { nom, capitale } = lesNoms();
-    const groupes = trierFiches(donnees.pays, choix.zoneFiches);
+    // Recherche : sur tous les pays, par nom (noms courants compris) ou par capitale ; la zone ne compte plus
+    const recherche = normaliser($('.jeux-fiches-recherche input').value, langue());
+    $('.jeux-fiches [data-choix="zoneFiches"]').hidden = Boolean(recherche);
+    let pays = donnees.pays;
+    if (recherche) {
+      const { entrees, capitales } = lesNoms();
+      const trouve = (liste, code) => liste.find((e) => e.code === code).ecritures.some((e) => e.includes(recherche));
+      pays = pays.filter((p) => trouve(entrees, p.code) || trouve(capitales, p.code));
+    }
+    const groupes = trierFiches(pays, recherche ? 'monde' : choix.zoneFiches);
     ordreFiches = groupes.flatMap((g) => g.codes);
+    if (!ordreFiches.length) {
+      liste.innerHTML = `<p class="note">${t('jeux.fiches-aucun')}</p>`;
+      return;
+    }
     liste.innerHTML = groupes.map((g) => `
       <h4 class="jeux-fiches-region">${t(`jeux.region-${g.region}`)}</h4>
       ${g.codes.map((code) => `
@@ -356,6 +373,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     if (ecran === 'fiches') rendreFiches();
   });
 
+  $('.jeux-fiches-recherche input').addEventListener('input', () => rendreFiches());
   $('.jeux-pays-villes').addEventListener('change', (event) => {
     choix.paysVilles = event.target.value;
     ecrire('jeux-choix', choix);
@@ -533,14 +551,23 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       if (!camera) return;
       map.flyTo({ ...camera, zoom: Math.max(1.6, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: 1400 });
     },
-    // Capitales sur le globe : celles trouvées restent toute la partie (on voit où on en est, on les retient),
-    // celle de la dernière réponse en grand, même ratée ; `courant` null n'en montre aucune en grand
-    // Lieux trouvés (capitales, villes), puis le courant en grand ; lieu : { position, nom }
-    lieux(trouves, courant = null) {
-      const point = (lieu, actuelle) => ({ type: 'Feature', properties: { nom: lieu.nom, actuelle }, geometry: { type: 'Point', coordinates: lieu.position } });
+    // Repères de la partie, gardés jusqu'à la fin : villes et capitales répondues (juste en vert, ratée en rouge,
+    // demande du propriétaire du 17 novembre 2026), la dernière en grand, et le nom des pays répondus.
+    // Lieu : { position, nom, juste } (juste null : une fiche, en rose) ; pays : même forme, à leur centre.
+    lieux(liste, courant = null, pays = []) {
+      const etat = (juste) => (juste === true ? 'juste' : juste === false ? 'faux' : 'neutre');
+      const point = (lieu, genre, actuelle = false) => ({
+        type: 'Feature',
+        properties: { nom: lieu.nom, genre, actuelle, etat: etat(lieu.juste) },
+        geometry: { type: 'Point', coordinates: lieu.position },
+      });
       const donneesPoints = {
         type: 'FeatureCollection',
-        features: [...trouves.filter((l) => l.nom !== courant?.nom).map((l) => point(l, false)), ...(courant ? [point(courant, true)] : [])],
+        features: [
+          ...pays.map((l) => point(l, 'pays')),
+          ...liste.filter((l) => l.nom !== courant?.nom).map((l) => point(l, 'lieu')),
+          ...(courant ? [point(courant, 'lieu', true)] : []),
+        ],
       };
       const source = map.getSource(SOURCE_CAPITALE);
       if (source) {
@@ -549,31 +576,49 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       }
       if (!donneesPoints.features.length) return;
       map.addSource(SOURCE_CAPITALE, { type: 'geojson', data: donneesPoints });
+      const couleur = ['match', ['get', 'etat'], 'juste', COULEURS.trouve, 'faux', COULEURS.rate, COULEURS.question];
+      const texte = ['match', ['get', 'etat'], 'juste', '#e9fff6', 'faux', '#ffe9ed', '#ffffff'];
+      const halo = ['match', ['get', 'etat'], 'juste', 'rgba(61, 220, 151, 0.5)', 'faux', 'rgba(255, 92, 122, 0.5)', 'rgba(255, 79, 216, 0.5)'];
+      const estLieu = ['==', ['get', 'genre'], 'lieu'];
+      // Nom des pays : petites capitales espacées, sous les repères
       map.addLayer({
-        id: COUCHES_CAPITALE[0], type: 'circle', source: SOURCE_CAPITALE,
+        id: COUCHES_CAPITALE[4], type: 'symbol', source: SOURCE_CAPITALE, filter: ['==', ['get', 'genre'], 'pays'],
+        layout: {
+          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': 10.5, 'text-transform': 'uppercase',
+          'text-letter-spacing': 0.14, 'text-max-width': 8, 'text-optional': true,
+        },
+        paint: { 'text-color': texte, 'text-opacity': 0.9, 'text-halo-color': halo, 'text-halo-width': 1.4, 'text-halo-blur': 1 },
+      });
+      // Repère : un anneau à la couleur de la réponse, un point au centre
+      map.addLayer({
+        id: COUCHES_CAPITALE[0], type: 'circle', source: SOURCE_CAPITALE, filter: estLieu,
         paint: {
-          'circle-radius': ['case', ['get', 'actuelle'], 5.5, 3.5],
-          'circle-color': '#ffffff',
-          'circle-stroke-color': '#0b1020',
-          'circle-stroke-width': ['case', ['get', 'actuelle'], 2, 1.5],
+          'circle-radius': ['case', ['get', 'actuelle'], 6.5, 4.5],
+          'circle-color': '#0b1020',
+          'circle-stroke-color': couleur,
+          'circle-stroke-width': ['case', ['get', 'actuelle'], 2.5, 2],
         },
       });
-      // Les capitales trouvées s'effacent entre elles si elles se chevauchent ; la dernière passe toujours
       map.addLayer({
-        id: COUCHES_CAPITALE[1], type: 'symbol', source: SOURCE_CAPITALE, filter: ['!', ['get', 'actuelle']],
+        id: COUCHES_CAPITALE[3], type: 'circle', source: SOURCE_CAPITALE, filter: estLieu,
+        paint: { 'circle-radius': ['case', ['get', 'actuelle'], 2.4, 1.7], 'circle-color': couleur },
+      });
+      // Les noms gardés s'effacent entre eux s'ils se chevauchent ; la dernière réponse passe toujours
+      map.addLayer({
+        id: COUCHES_CAPITALE[1], type: 'symbol', source: SOURCE_CAPITALE, filter: ['all', estLieu, ['!', ['get', 'actuelle']]],
         layout: {
-          'text-field': ['get', 'nom'], 'text-font': POLICE, 'text-size': 11.5, 'text-anchor': 'left', 'text-offset': [0.6, 0],
-          'text-optional': true,
+          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': 12, 'text-letter-spacing': 0.03,
+          'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-optional': true,
         },
-        paint: { 'text-color': '#e8ecff', 'text-halo-color': '#0b1020', 'text-halo-width': 1.5 },
+        paint: { 'text-color': texte, 'text-halo-color': halo, 'text-halo-width': 1.6, 'text-halo-blur': 1 },
       });
       map.addLayer({
-        id: COUCHES_CAPITALE[2], type: 'symbol', source: SOURCE_CAPITALE, filter: ['get', 'actuelle'],
+        id: COUCHES_CAPITALE[2], type: 'symbol', source: SOURCE_CAPITALE, filter: ['all', estLieu, ['get', 'actuelle']],
         layout: {
-          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': 15, 'text-anchor': 'left', 'text-offset': [0.8, 0],
-          'text-allow-overlap': true, 'text-ignore-placement': true,
+          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': 15.5, 'text-letter-spacing': 0.03,
+          'text-anchor': 'left', 'text-offset': [0.8, 0], 'text-allow-overlap': true, 'text-ignore-placement': true,
         },
-        paint: { 'text-color': '#ffffff', 'text-halo-color': '#0b1020', 'text-halo-width': 2 },
+        paint: { 'text-color': texte, 'text-halo-color': halo, 'text-halo-width': 2, 'text-halo-blur': 1.2 },
       });
     },
     // Appui et vrai lieu, reliés en tirets ; sans appui, tout s'efface
@@ -708,7 +753,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         meilleureSerie: 0,
         ratees: [],
         trouves: [],
-        lieuxTrouves: [],
+        lieux: [], // villes et capitales répondues
+        paysRepondus: new Map(), // code → juste
+        courant: null,
         distances: [],
         debut: Date.now(),
         fin: null,
@@ -767,6 +814,14 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.definirResume({ nom: titrePartie(p.reglage), detail: '', valeur: `${fait}/${total}`, unite: '' });
     },
 
+    // Repères gardés sur le globe, et le nom des pays répondus ; `courant` : la dernière réponse, en grand
+    afficherLieux(courant = null) {
+      const p = this.en;
+      const { nom } = lesNoms();
+      const pays = [...p.paysRepondus].map(([code, juste]) => ({ position: donnees.parCode.get(code).centre, nom: nom(code), juste }));
+      globe.lieux(p.lieux, courant, pays);
+    },
+
     // Cadrage au début d'une question « Où est-ce ? » : la zone, ou le pays des villes
     cadrerQuestion(q) {
       const p = this.en;
@@ -785,7 +840,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.meta.textContent = t('jeux.meta-question', { n: p.indice + 1, total: p.questions.length, bonnes: p.bonnes, serie: p.serie });
       this.resume();
       globe.ecart(null);
-      globe.lieux(p.lieuxTrouves);
+      p.courant = null;
+      this.afficherLieux();
 
       if (type === 'ou-pays' || type === 'ou-ville') {
         const nomCible = type === 'ou-ville' ? nomVille(q.ville) : nom(code);
@@ -887,9 +943,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const { nom, capitale } = lesNoms();
       globe.marquer(code, juste ? 'trouve' : 'rate');
       if (type === 'capitale' || type === 'capitale-pays') {
-        const lieu = { position: donnees.parCode.get(code).capitale.position, nom: capitale(code) };
-        if (juste) p.lieuxTrouves.push(lieu);
-        globe.lieux(p.lieuxTrouves, lieu);
+        p.courant = { position: donnees.parCode.get(code).capitale.position, nom: capitale(code), juste };
+        p.lieux.push(p.courant);
       }
       if (type === 'drapeau' || type === 'capitale-pays') globe.allerA(code);
       jeu.corps.querySelectorAll('.jeux-choix button, .jeux-suggestions button').forEach((bouton) => {
@@ -914,11 +969,11 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const zoomReponse = q.parPays ? 6 : 4.5;
       if (q.type === 'ou-ville') {
         const v = ville(q.ville);
-        const lieu = { position: v.position, nom: nomVille(q.ville) };
         const distance = point ? distanceKm(point, v.position) : null;
         const juste = distance !== null && distance <= q.seuil;
-        if (juste) p.lieuxTrouves.push(lieu);
-        globe.lieux(p.lieuxTrouves, lieu);
+        const lieu = { position: v.position, nom: nomVille(q.ville), juste };
+        p.lieux.push(lieu);
+        p.courant = lieu;
         if (point) {
           p.distances.push(distance);
           globe.ecart(point, v.position, juste);
@@ -966,6 +1021,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         p.ratees.push(q);
       }
       ecrire('jeux-erreurs', noterErreur(erreurs(), q.cle, juste));
+      if (q.type !== 'ou-ville') p.paysRepondus.set(q.code, juste);
+      this.afficherLieux(p.courant);
       jeu.corps.querySelectorAll('.jeux-passer').forEach((el) => el.remove());
       jeu.corps.querySelectorAll('.jeux-ou-aide').forEach((el) => el.remove());
       const derniere = p.indice === p.questions.length - 1;
@@ -1008,7 +1065,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const { nom, capitale } = lesNoms();
       globe.toutEffacer();
       globe.marquer(code, 'question');
-      globe.lieux([], { position: pays.capitale.position, nom: capitale(code) });
+      globe.lieux([], { position: pays.capitale.position, nom: capitale(code), juste: null });
       const position = `${p.indice + 1} / ${p.fiches.length}`;
       jeu.meta.textContent = position;
       jeu.definirResume({ nom: nom(code), detail: t('jeux.carte-fiches'), valeur: position, unite: '' });
@@ -1055,6 +1112,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         <form class="jeux-saisie" autocomplete="off">
           <input type="text" enterkeyhint="done" autocapitalize="off" spellcheck="false" placeholder="${t('jeux.taper-pays')}" aria-label="${t('jeux.taper-pays')}">
         </form>
+        <p class="note jeux-liste-entree">${t('jeux.liste-entree')}</p>
         <p class="jeux-retour" aria-live="polite"></p>
         <div class="jeux-trouves"></div>
         <button type="button" class="jeux-abandon">${t('jeux.terminer')}</button>
@@ -1070,11 +1128,16 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         retour.textContent = texte;
         retour.className = `jeux-retour ${classe}`.trim();
       };
-      const essayer = (tolerant) => {
+      // Pendant la frappe (entree false) : seulement un nom sans ambiguïté, d'un pays de la zone pas encore trouvé
+      // (priseAuVol : « UK » attend l'Ukraine). Entrée : le nom tel quel, faute de frappe comprise, avec un message sinon.
+      const essayer = (entree) => {
         const { entrees, nom } = lesNoms();
-        const code = reconnaitre(champ.value, entrees, { tolerant, langue: langue() });
+        const code = entree
+          ? reconnaitre(champ.value, entrees, { tolerant: true, langue: langue() })
+          : priseAuVol(champ.value, entrees, p.trouves, langue());
+        if (!entree && (!code || !p.codesZone.includes(code))) return;
         if (!code) {
-          if (tolerant && champ.value.trim()) dire(t('jeux.inconnu'), 'jeux-inconnu');
+          if (champ.value.trim()) dire(t('jeux.inconnu'), 'jeux-inconnu');
           return;
         }
         champ.value = '';
@@ -1087,6 +1150,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           return;
         }
         p.trouves.push(code);
+        p.paysRepondus.set(code, true);
+        this.afficherLieux();
         globe.marquer(code, 'trouve');
         dire(t('jeux.trouve', { nom: nom(code) }), 'jeux-bravo');
         const pastille = document.createElement('span');
@@ -1132,7 +1197,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const duree = (p.fin - p.debut) / 1000;
       // Les oubliés de la liste s'affichent en rouge sur le globe
       const manques = liste ? p.codesZone.filter((c) => !p.trouves.includes(c)).map((code) => ({ type: 'liste', code })) : p.ratees;
-      if (liste) manques.forEach((q) => globe.marquer(q.code, 'rate'));
+      if (liste) {
+        manques.forEach((q) => {
+          globe.marquer(q.code, 'rate');
+          p.paysRepondus.set(q.code, false);
+        });
+        this.afficherLieux();
+      }
       for (const [code, etat] of globe.etats) if (etat === 'question') globe.marquer(code, null);
       globe.ecart(null);
 
@@ -1181,13 +1252,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           const q = manques[Number(bouton.dataset.i)];
           if (q.type === 'ou-ville') {
             const v = ville(q.ville);
-            globe.lieux(p.lieuxTrouves, { position: v.position, nom: nomVille(q.ville) });
+            this.afficherLieux({ position: v.position, nom: nomVille(q.ville), juste: false });
             globe.cadrerPoints(v.position, v.position, q.parPays ? ZOOM_MAX_VILLES_PAYS : 4.5);
             return;
           }
           globe.allerA(q.code);
           if (q.type === 'capitale' || q.type === 'capitale-pays') {
-            globe.lieux(p.lieuxTrouves, { position: donnees.parCode.get(q.code).capitale.position, nom: capitale(q.code) });
+            this.afficherLieux({ position: donnees.parCode.get(q.code).capitale.position, nom: capitale(q.code), juste: false });
           }
         });
       });
