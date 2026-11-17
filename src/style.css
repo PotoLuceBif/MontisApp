@@ -3035,15 +3035,17 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .guidage-actions > [hidden] { display: none; }
 .guidage-temps .guidage-standard { color: var(--texte-2); font-weight: 500; }
 .guidage-temps .guidage-standard:empty { display: none; }
-/* Enregistrement : interrupteur sous « Démarrer la sortie », pastille rouge pendant la sortie */
-.parcours-sortie > .guidage-option-trace { flex-basis: 100%; }
+/* Enregistrement : interrupteur dans le bandeau du guidage, pastille rouge pendant l'enregistrement */
 .guidage-option-trace { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer; }
+.guidage-option-trace > span { display: flex; align-items: center; gap: 7px; }
+.guidage-option-trace > span i { display: none; width: 8px; height: 8px; border-radius: 50%; background: #ff4d5e; animation: guidage-rec 1.6s ease-in-out infinite; }
+.guidage-option-trace.actif > span i { display: block; }
 .guidage-option-trace.actif { border-color: color-mix(in srgb, var(--accent) 55%, var(--bord)); }
 .guidage-option-trace.actif .interrupteur { background: var(--accent); box-shadow: none; }
 .guidage-option-trace.actif .interrupteur::after { transform: translateX(18px); background: var(--accent-texte); }
-.guidage-enregistre, .guidage-poche-rec { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--texte-2); font-size: 12px; }
-.guidage-enregistre[hidden], .guidage-poche-rec[hidden] { display: none; }
-.guidage-enregistre i, .guidage-poche-rec i { width: 8px; height: 8px; border-radius: 50%; background: #ff4d5e; animation: guidage-rec 1.6s ease-in-out infinite; }
+.guidage-poche-rec { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--texte-2); font-size: 12px; }
+.guidage-poche-rec[hidden] { display: none; }
+.guidage-poche-rec i { width: 8px; height: 8px; border-radius: 50%; background: #ff4d5e; animation: guidage-rec 1.6s ease-in-out infinite; }
 @keyframes guidage-rec { 50% { opacity: .35; } }
 /* Position : point, cône de la boussole et flèche du déplacement (MapLibre place l'élément) */
 .guidage-position { width: 120px; height: 120px; pointer-events: none; }
