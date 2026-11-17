@@ -166,6 +166,7 @@
   "jeux.passer": "Je ne sais pas",
   "jeux.inconnu": "Pays inconnu : vérifie l’orthographe.",
   "jeux.bravo": "Bravo, c’est {nom} !",
+  "jeux.bravo-jumeau": "Bravo, c’est bien {nom} ! Son drapeau est presque identique à celui de {autre} : les deux réponses comptent.",
   "jeux.rate": "Raté : c’était {nom}.",
   "jeux.suivant": "Suivant",
   "jeux.voir-resultat": "Voir le résultat",

@@ -166,6 +166,7 @@
   "jeux.passer": "I don’t know",
   "jeux.inconnu": "Unknown country: check the spelling.",
   "jeux.bravo": "Well done, it’s {nom}!",
+  "jeux.bravo-jumeau": "Well done, it’s {nom}! Its flag is almost identical to {autre}’s, so both answers count.",
   "jeux.rate": "Missed: it was {nom}.",
   "jeux.suivant": "Next",
   "jeux.voir-resultat": "See the result",

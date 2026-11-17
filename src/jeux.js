@@ -40,7 +40,9 @@ const MAX_REVISION = 15;
 const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments|waterway)|nature-rivieres|courbes)/;
 // Pays de la question : le rose « laser » de la DA (autoroutes de nuit), avec un halo pour bien le voir
 const COULEURS = { question: '#ff4fd8', trouve: '#3ddc97', rate: '#ff5c7a' };
-const ZOOM_MAX_JEU = 5; // au-delà, le globe laisse place à la carte de montagne
+// Assez près pour aller voir une petite île (retour du propriétaire du 17 novembre 2026 : à 5, ses pays et leur nom
+// restaient introuvables) ; au-delà, le globe laisse place à la carte de montagne
+const ZOOM_MAX_JEU = 7;
 const VUES = {
   europe: { center: [15, 53], zoom: 3 },
   monde: { center: [12, 22], zoom: 1.3 },
@@ -606,7 +608,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const etat = (juste) => (juste === true ? 'juste' : juste === false ? 'faux' : 'neutre');
       const point = (lieu, genre, actuelle = false) => ({
         type: 'Feature',
-        properties: { nom: lieu.nom, genre, actuelle, etat: etat(lieu.juste) },
+        properties: { nom: lieu.nom, genre, actuelle, etat: etat(lieu.juste), petit: Boolean(lieu.petit) },
         geometry: { type: 'Point', coordinates: lieu.position },
       });
       const donneesPoints = {
@@ -631,9 +633,15 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       // Nom des pays : petites capitales espacées, sous les repères
       map.addLayer({
         id: COUCHES_CAPITALE[4], type: 'symbol', source: SOURCE_CAPITALE, filter: ['==', ['get', 'genre'], 'pays'],
+        // Un petit pays (île, micro-État) passe en premier et cherche une place à côté de son point : au centre,
+        // son nom était caché par celui d'un voisin ou par son propre repère
         layout: {
-          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': 10.5, 'text-transform': 'uppercase',
-          'text-letter-spacing': 0.14, 'text-max-width': 8, 'text-optional': true,
+          'text-field': ['get', 'nom'], 'text-font': POLICE_GRAS, 'text-size': ['case', ['get', 'petit'], 9.5, 10.5], 'text-transform': 'uppercase',
+          'text-letter-spacing': 0.14, 'text-max-width': 8, 'text-padding': 1,
+          'symbol-sort-key': ['case', ['get', 'petit'], 0, 1],
+          'text-variable-anchor-offset': ['case', ['get', 'petit'],
+            ['literal', ['left', [0.9, 0], 'right', [-0.9, 0], 'top', [0, 0.9], 'bottom', [0, -0.9]]],
+            ['literal', ['center', [0, 0]]]],
         },
         paint: { 'text-color': texte, 'text-opacity': 0.9, 'text-halo-color': halo, 'text-halo-width': 1.4, 'text-halo-blur': 1 },
       });
@@ -1021,7 +1029,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     afficherLieux(courant = null) {
       const p = this.en;
       const { nom } = lesNoms();
-      const pays = [...p.paysRepondus].map(([code, juste]) => ({ position: donnees.parCode.get(code).centre, nom: nom(code), juste }));
+      const pays = [...p.paysRepondus].map(([code, juste]) => ({ position: donnees.parCode.get(code).centre, nom: nom(code), juste, petit: donnees.parCode.get(code).petit }));
       globe.lieux(p.lieux, courant, pays);
     },
 
@@ -1160,14 +1168,17 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const q = p.questions[p.indice];
       const { code, type } = q;
       // Devant un drapeau, son jumeau est une bonne réponse (Monaco et Indonésie, Tchad et Roumanie)
-      const juste = reponse === code || (type === 'drapeau' && reponse && reponse === jumeau(code));
+      const parJumeau = type === 'drapeau' && reponse && reponse !== code && reponse === jumeau(code);
+      const juste = reponse === code || parJumeau;
       const { capitale } = lesNoms();
       globe.marquer(code, juste ? 'trouve' : 'rate');
+      // Drapeau jumeau (Monaco et Indonésie, Tchad et Roumanie) : le pays répondu est juste aussi, la carte y va
+      if (parJumeau) globe.marquer(reponse, 'trouve');
       if (type === 'capitale' || type === 'capitale-pays') {
         p.courant = { position: donnees.parCode.get(code).capitale.position, nom: capitale(code), juste };
         p.lieux.push(p.courant);
       }
-      if (type === 'drapeau' || type === 'capitale-pays') globe.allerA(code);
+      if (type === 'drapeau' || type === 'capitale-pays') globe.allerA(parJumeau ? reponse : code);
       jeu.corps.querySelectorAll('.jeux-choix button, .jeux-suggestions button').forEach((bouton) => {
         bouton.disabled = true;
         if (bouton.dataset.code === code) bouton.classList.add('juste');
@@ -1186,7 +1197,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       p.reponseDonnee = { reponse };
       this.conclure(juste, capitales
         ? t(juste ? 'jeux.bravo-capitale' : 'jeux.rate-capitale', { nom: paysAvecDrapeau(code), capitale: capitale(code) })
-        : t(juste ? 'jeux.bravo' : 'jeux.rate', { nom: paysAvecDrapeau(code) }));
+        : parJumeau
+          ? t('jeux.bravo-jumeau', { nom: paysAvecDrapeau(reponse), autre: paysAvecDrapeau(code) })
+          : t(juste ? 'jeux.bravo' : 'jeux.rate', { nom: paysAvecDrapeau(code) }));
     },
 
     // Appui sur le globe (null : « Je ne sais pas »)
