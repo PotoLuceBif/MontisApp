@@ -63,7 +63,10 @@ function appliquerFond(map, id) {
   // Le voile des glaciers ne vaut que pour le fond Montis seul : il délaverait une carte nationale
   if (map.getLayer(VOILE_GLACIERS.id)) map.setLayoutProperty(VOILE_GLACIERS.id, 'visibility', choix.integre ? 'visible' : 'none');
 
+  const avant = etat.fond;
   etat.fond = choix.integre ? 'montis' : national ? 'national' : 'autre';
+  // Éléments de la carte : bâtiments, eaux et voies ferrées remis en revenant au fond Montis, pastilles selon le fond
+  if (etat.fond !== avant) window.dispatchEvent(new CustomEvent('montis:fond-change', { detail: { fond: etat.fond, avant } }));
   majOmbrage(map);
   etat.majPaletteFond?.(); // avant les courbes : en quittant la nuit, elle leur rend leurs couleurs de jour
 

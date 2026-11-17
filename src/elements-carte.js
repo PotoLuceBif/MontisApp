@@ -7,7 +7,12 @@ import { afficherPointUtile } from './points-utiles.js';
 import { afficherForets, afficherEaux, afficherGlaciers, afficherParcs } from './nature.js';
 import { poser, surLangue, t } from './i18n.js';
 import { creerPastilleCouche, ouvrirReglage } from './couches-actives.js';
+import { etat } from './options-carte.js';
 
+// fondMontis : élément qui fait partie du fond Montis (bâtiments, eaux, voies ferrées) : sur ce fond,
+// pas de pastille, et il est rallumé chaque fois qu'on revient au fond Montis ; on peut l'éteindre
+// ici. Sur les autres fonds, il a sa pastille comme les autres éléments (demande du propriétaire
+// du 17 novembre 2026).
 // Pour ajouter un élément : une ligne dans le bon groupe (ou un nouveau groupe = un nouvel onglet)
 const GROUPES = [
   {
@@ -27,7 +32,7 @@ const GROUPES = [
     calques: [
       { cle: 'sommets', label: 'elements.sommets', aide: 'elements.sommets-aide', defaut: false, appliquer: afficherSommets },
       { cle: 'forets', label: 'elements.forets', aide: 'elements.forets-aide', defaut: false, appliquer: afficherForets },
-      { cle: 'eaux', label: 'elements.eaux', aide: 'elements.eaux-aide', defaut: true, appliquer: afficherEaux },
+      { cle: 'eaux', label: 'elements.eaux', aide: 'elements.eaux-aide', defaut: true, fondMontis: true, appliquer: afficherEaux },
       { cle: 'glaciers', label: 'elements.glaciers', aide: 'elements.glaciers-aide', defaut: false, appliquer: afficherGlaciers },
       { cle: 'parcs', label: 'elements.parcs', aide: 'elements.parcs-aide', defaut: false, appliquer: afficherParcs },
     ],
@@ -36,9 +41,8 @@ const GROUPES = [
     id: 'construit',
     nom: 'elements.construit',
     calques: [
-      { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: true, appliquer: afficherBatiments },
-      // Voies ferrées : déjà dans le fond Montis, allumées par défaut comme les bâtiments (sans pastille)
-      { cle: 'rails', label: 'elements.rails', aide: 'elements.rails-aide', defaut: true, appliquer: afficherRails },
+      { cle: 'batiments', label: 'elements.batiments', aide: 'elements.batiments-aide', defaut: true, fondMontis: true, appliquer: afficherBatiments },
+      { cle: 'rails', label: 'elements.rails', aide: 'elements.rails-aide', defaut: true, fondMontis: true, appliquer: afficherRails },
       { cle: 'parkings', label: 'elements.parkings', aide: 'elements.parkings-aide', defaut: false, appliquer: (map, oui) => afficherPointUtile(map, 'parkings', oui) },
       { cle: 'gares', label: 'elements.gares', aide: 'elements.gares-aide', defaut: false, appliquer: afficherGares },
     ],
@@ -101,8 +105,8 @@ export function creerElementsCarte(map) {
       bloc.appendChild(ligne);
 
       // Pastille sur la carte tant que l'élément est affiché : ✕ l'enlève, un appui ouvre son onglet.
-      // Un élément allumé par défaut (bâtiments) n'en a pas, comme les courbes : il fait partie du fond.
-      const avecPastille = !c.defaut;
+      // Un élément du fond Montis n'en a pas sur ce fond, comme les courbes.
+      const avecPastille = () => !(c.fondMontis && etat.fond === 'montis');
       const pastilleCouche = creerPastilleCouche({
         rubrique: 'elements',
         ordre: 10 + rang,
@@ -118,7 +122,7 @@ export function creerElementsCarte(map) {
           input.dispatchEvent(new Event('change'));
         },
       });
-      const pastille = { montrer: (oui) => pastilleCouche.montrer(oui && avecPastille) };
+      const pastille = { montrer: (oui) => pastilleCouche.montrer(oui && avecPastille()) };
       rang += 1;
 
       // Rétablit l'état précédent dès que la carte est prête
@@ -133,6 +137,16 @@ export function creerElementsCarte(map) {
         majOnglets();
         window.dispatchEvent(new CustomEvent('calque', { detail: { cle: c.cle, actif: input.checked } }));
       });
+
+      if (c.fondMontis) {
+        window.addEventListener('montis:fond-change', ({ detail }) => {
+          if (detail.fond === 'montis' && detail.avant !== 'montis' && !input.checked) {
+            input.checked = true;
+            input.dispatchEvent(new Event('change'));
+          }
+          pastille.montrer(input.checked);
+        });
+      }
 
       // Reste synchronisé avec les raccourcis d'autres panneaux (ex. activité Randonnée)
       window.addEventListener('calque', (e) => {
