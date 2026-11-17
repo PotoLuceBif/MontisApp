@@ -35,6 +35,8 @@ const ICONES_MENU = {
   'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
   sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
   parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
+  jeux: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -44,6 +46,7 @@ const ICONES_ACTIVITES = {
   rando: 'randonnee',
   velo: 'velo',
   ski: 'ski',
+  'culture-geo': 'culture-geo',
 };
 
 const CHEVRON_BAS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
@@ -249,6 +252,20 @@ export function initMenu(map) {
         ),
         differer({ id: 'parcours', labelCle: 'traces.parcours', icone: 'parcours' }, () =>
           import('./mes-traces.js').then((m) => m.creerParcoursTraces(map, { fermerMenu }))
+        ),
+      ],
+      emplacement: 'menu',
+    },
+    {
+      // Lot P.4a : on joue sur le globe sans quitter son activité
+      id: 'jeux',
+      titre: 'menu.jeux',
+      icone: 'jeux',
+      aide: 'menu.aide-jeux',
+      exclusif: false,
+      modules: [
+        differer({ id: 'quiz-pays', labelCle: 'jeux.quiz', icone: 'culture-geo' }, () =>
+          import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu }))
         ),
       ],
       emplacement: 'menu',
