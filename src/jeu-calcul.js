@@ -288,3 +288,35 @@ export function priseAuVol(saisie, entrees, trouves = [], langue = 'fr') {
     && e.ecritures.some((ecriture) => ecriture.length > texte.length && ecriture.startsWith(texte)));
   return ambigu ? null : exact.code;
 }
+
+// ---------- Fiches des pays (retour du propriétaire du 17 novembre 2026) ----------
+
+// Décalage horaire en minutes → « UTC+1 », « UTC+5:30 », « UTC−3 » (vrai signe moins), « UTC » pour zéro
+export function texteFuseau(minutes) {
+  if (!minutes) return 'UTC';
+  const absolu = Math.abs(minutes);
+  const heures = Math.floor(absolu / 60);
+  const reste = absolu % 60;
+  return `UTC${minutes < 0 ? '−' : '+'}${heures}${reste ? `:${String(reste).padStart(2, '0')}` : ''}`;
+}
+
+// Fuseaux d'un pays : jusqu'à trois, tous ; au-delà, l'étendue (« UTC−10 → UTC+12 ») et leur nombre
+export function resumeFuseaux(fuseaux) {
+  const tries = [...new Set(fuseaux)].sort((a, b) => a - b);
+  if (!tries.length) return { texte: '', nombre: 0 };
+  if (tries.length <= 3) return { texte: tries.map(texteFuseau).join(' · '), nombre: tries.length };
+  return { texte: `${texteFuseau(tries[0])} → ${texteFuseau(tries[tries.length - 1])}`, nombre: tries.length };
+}
+
+// Habitants par km², arrondis (au dixième sous 10)
+export function densite(population, superficie) {
+  if (!population || !superficie) return null;
+  const valeur = population / superficie;
+  return valeur < 10 ? Math.round(valeur * 10) / 10 : Math.round(valeur);
+}
+
+// « Rejouer mes erreurs » en liste : 10 s par pays oublié, entre 1 min et la durée de la zone
+export const dureeListeErreurs = (nombre, zone) => Math.min(DUREES_LISTE[zone] ?? 600, Math.max(60, nombre * 10));
+
+// Question rejouée telle quelle : sans la réponse donnée la première fois
+export const questionSeule = ({ reponse, point, distance, ...question }) => question;

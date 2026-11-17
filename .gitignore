@@ -43,3 +43,5 @@ captures/
 
 # Fichiers réels de montre du propriétaire (positions personnelles)
 exemples/
+scripts/cache-fiches-*
+captures-360/
