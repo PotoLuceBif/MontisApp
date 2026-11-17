@@ -613,6 +613,8 @@ const ECRANS = [
   // Visiter la Lune (lot 4.10) : bouton en bas de la ligne Lune, globe lunaire, temps réel, gros plan 3D, fiche
   { nom: 'ciel-lune-visiter', actions: [vue(MATIN), module('lune'), attendre('.lune-visiter'), (p) => p.waitForTimeout(800), defiler('.lune-visiter')] },
   { nom: 'lune-visite', actions: [...ALLER_LUNE, (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-terre-vue', actions: [...ALLER_LUNE, clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-terre-vue-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
   // Copernic en 3D, incliné, panneau réduit
@@ -631,13 +633,13 @@ const ECRANS = [
   { nom: 'lune-visite-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 62], zoom: 5, pitch: 78, bearing: 180 }), (p) => p.waitForTimeout(9000)] },
   // Appui sur la Terre (ou sa flèche) : près du bord de la face visible, tourné vers elle, elle se lève sur l'horizon
   // Vue depuis la Terre (nord en haut) : la Terre est derrière, sa flèche le dit ; un appui la fait apparaître
-  { nom: 'lune-visite-fleche-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
-  { nom: 'lune-visite-fleche-terre-appui', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(3000), clic('.terre-ciel-image'), (p) => p.waitForTimeout(9000)] },
+  { nom: 'lune-visite-fleche-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-fleche-terre-appui', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(3000), clic('.terre-ciel-image'), (p) => p.waitForTimeout(9000)] },
   // Terre visible dans le ciel, touchée : bulle « Retourner sur la Terre »
   { nom: 'lune-visite-retour-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(3000), toucherTerre, (p) => p.waitForTimeout(800)] },
   // Terre hors champ : au bord, avec sa flèche
   { nom: 'lune-visite-terre-bord', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 40], zoom: 5, pitch: 70, bearing: 0 }), (p) => p.waitForTimeout(8000)] },
-  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(8000)] },
   {
     nom: 'lune-visite-recherche',
     actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tran'); }, (p) => p.waitForTimeout(1500)],

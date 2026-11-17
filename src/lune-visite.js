@@ -40,11 +40,16 @@ const ICONE_TERRE = `<svg class="icone-terre" viewBox="0 0 24 24" aria-hidden="t
   <circle cx="12" cy="12" r="9.6" class="contour"/>
 </svg>`;
 const ICONE_FUSEE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8c2.6 2 4 5 4 8.4v4.3H8v-4.3c0-3.4 1.4-6.4 4-8.4Z"/><circle cx="12" cy="9.6" r="1.6"/><path d="M8 12.6 5.2 15.4v2.4H8M16 12.6l2.8 2.8v2.4H16M10.2 18.4c.3 1.2 1 2.1 1.8 2.8.8-.7 1.5-1.6 1.8-2.8"/></svg>';
-const ICONE_VUE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="16.5" cy="7.5" r="4.5"/><path d="M14.6 4.4a4.5 4.5 0 0 0 0 6.2"/><circle cx="6.5" cy="17" r="3"/><path d="m8.9 15.2 4.6-4.4"/></svg>';
+// La Lune vue de la Terre : un croissant ; la Terre vue de la Lune : la Terre au-dessus de l'horizon lunaire
+const ICONE_VUE_LUNE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16a5.2 8 0 0 0 0-16Z" class="plein"/></svg>';
+const ICONE_VUE_TERRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M8.6 6.6c1.4.6 2.2.1 3.2.9.7.6.4 1.6 1.4 2"/><path d="M2.5 21c2.6-4 6.1-6 9.5-6s6.9 2 9.5 6"/></svg>';
 const CHEVRON = '<svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const CHEVRON_HAUT = '<svg class="bf-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
 
 let visite = null; // une seule visite à la fois
+// Recul de la Terre au départ vers la Lune : au-dessus du zoom 6, on reste au-dessus (sous ce zoom, le mode espace
+// éteint toutes les couches allumées)
+const zoomRecul = (zoom) => (zoom >= 6 ? Math.max(Math.min(zoom, 6.1), zoom - 2.5) : Math.max(0, zoom - 0.6));
 const VUE_TERRE_AU_NORD = [180, 12];
 const telephone = () => window.matchMedia('(max-width: 640px)').matches;
 
@@ -58,6 +63,10 @@ const etiquette = (police) => ['format',
 export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   if (visite) return visite;
   ajouterProtocoleLune();
+  // Caméra de la Terre au départ, rétablie au retour (la Terre recule pendant la transition)
+  const cameraTerre = {
+    center: mapTerre.getCenter(), zoom: mapTerre.getZoom(), bearing: mapTerre.getBearing(), pitch: mapTerre.getPitch(),
+  };
   const eclairage = () => lire('lune-visite-eclairage', 'eclairee');
   let moment = instant;
 
@@ -84,11 +93,14 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
         <div class="bf-titres"><h3 class="bf-nom" data-i18n="lune-visite.titre"></h3><p class="bf-meta" data-i18n="lune-visite.sous-titre"></p></div>
         <div class="bf-actions"><button type="button" class="bf-reduire" ${ta('aria-label', 'panneau.reduire', { nom: t('lune-visite.titre') })}>${CHEVRON}</button></div>
       </header>
+      <div class="lune-visite-vues" role="group" ${ta('aria-label', 'lune-visite.vues')}>
+        <button type="button" data-vue="lune">${ICONE_VUE_LUNE}<span data-i18n="lune-visite.vue-lune"></span></button>
+        <button type="button" data-vue="terre">${ICONE_VUE_TERRE}<span data-i18n="lune-visite.vue-terre-lune"></span></button>
+      </div>
       <div class="relief-bascule segments lune-visite-eclairage" role="group">
         <button type="button" data-eclairage="eclairee" data-i18n="lune-visite.eclairee"></button>
         <button type="button" data-eclairage="reel" data-i18n="lune-visite.temps-reel"></button>
       </div>
-      <button type="button" class="lune-visite-vue-terre">${ICONE_VUE}<span data-i18n="lune-visite.vue-terre"></span></button>
       <p class="note lune-visite-note-eclairee" data-i18n="lune-visite.note-eclairee"></p>
       <div class="lune-visite-reel">
         <div class="lunaison-entete">
@@ -183,10 +195,10 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
         },
       ],
     },
-    // Arrivée de l'autre côté : la Terre se lève au-dessus de la Lune, dans le fond étoilé (de la face visible, elle
-    // est derrière la caméra) ; « Vue depuis la Terre » ramène à la face visible
-    center: VUE_TERRE_AU_NORD,
-    zoom: telephone() ? 0.3 : 1,
+    // Arrivée sur la face visible, comme dans notre ciel (retour du propriétaire du 17 novembre 2026) : la Lune
+    // part de loin et grandit pendant le fondu (arriver())
+    center: [POINT_SOUS_TERRE.lng, POINT_SOUS_TERRE.lat],
+    zoom: 0,
     minZoom: 0,
     maxPitch: 85,
     renderWorldCopies: false,
@@ -221,8 +233,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   map.touchZoomRotate.disable();
   map.touchZoomRotate.enable({ around: 'center' });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-  // Vue depuis la Terre : dans le panneau, sous le choix de l'éclairage (demande du propriétaire du 16 novembre 2026)
-  const boutonVueTerre = $('.lune-visite-vue-terre');
 
   // ---------- Ciel lunaire, comme le ciel de la Terre (ciel.js et soleil-ciel.js) ----------
   // Demande du propriétaire du 16 novembre 2026 : voir la Terre depuis la Lune comme on voit la Lune depuis la Terre.
@@ -369,16 +379,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   // Tourner la Lune pour voir la Terre dépasser de son bord, en haut de l'écran
   // Nord en haut (demande du propriétaire du 16 novembre 2026 : tournée vers la Terre, la vue avait l'est en haut) :
   // la face cachée à 12° N, d'où la Terre se voit au-dessus de la Lune, par-delà le pôle Nord (comme à l'arrivée)
-  function montrerTerreDansEspace() {
-    map.flyTo({
-      center: VUE_TERRE_AU_NORD,
-      bearing: 0,
-      pitch: 0,
-      zoom: Math.min(map.getZoom(), telephone() ? 0.9 : 1.7),
-      padding: { top: 0, right: 0, left: 0, bottom: margeBas() },
-      duration: 2200,
-    });
-  }
+  const montrerTerreDansEspace = () => choisirVue('terre');
 
   function placerTerre() {
     nommerTerre();
@@ -400,20 +401,113 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
   map.on('resize', placerTerre);
   map.on('load', placerTerre);
 
-  // Vue depuis la Terre : la face visible, nord en haut (demande du propriétaire du 16 novembre 2026 : tournée
-  // comme dans le ciel du lieu, elle avait souvent l'est en haut)
-  function vueDepuisTerre() {
-    fermerBulle();
-    map.flyTo({
-      center: [POINT_SOUS_TERRE.lng, POINT_SOUS_TERRE.lat],
-      zoom: telephone() ? 0.9 : 1.7,
-      pitch: 0,
-      bearing: 0,
-      padding: { top: 0, right: 0, left: 0, bottom: margeBas() },
-      duration: 1800,
+  // ---------- Deux vues (retour du propriétaire du 17 novembre 2026) ----------
+  // « La Lune vue de la Terre » : la face visible, nord en haut, avec la phase du moment.
+  // « La Terre vue de la Lune » : derrière la Lune, qui occupe le bas de l'écran ; la Terre se lève au-dessus de son
+  // bord, par-delà le pôle Nord, comme sur les photos d'Apollo 8 (de la face visible, elle est derrière la caméra).
+  // Diamètre du globe à l'écran : la taille du monde (512 × 2^zoom) divisée par π
+  const zoomPourDiametre = (diametre) => Math.max(0, Math.log2((diametre * Math.PI) / 512));
+  function cadrage(vue) {
+    const { clientWidth: largeur, clientHeight: hauteur } = map.getContainer();
+    const bas = margeBas();
+    const libre = Math.max(200, hauteur - bas);
+    if (vue === 'lune') {
+      return {
+        center: [POINT_SOUS_TERRE.lng, POINT_SOUS_TERRE.lat], bearing: 0, pitch: 0,
+        zoom: zoomPourDiametre(Math.min(largeur, libre) * 0.8),
+        padding: { top: 0, right: 0, left: 0, bottom: bas },
+      };
+    }
+    // Vue de [180°, 12° N], la Terre est dessinée à un écart fixe au-dessus du centre de la Lune, proportionnel à la
+    // hauteur de l'écran (champ de la caméra) : la Lune doit rester plus petite que cet écart pour la laisser voir
+    const ecart = 0.319 * hauteur;
+    const yTerre = Math.max(140, libre * 0.3);
+    const haut = Math.min(hauteur - bas - 40, Math.max(0, Math.round(2 * (yTerre + ecart) - hauteur + bas)));
+    return {
+      center: VUE_TERRE_AU_NORD, bearing: 0, pitch: 0,
+      zoom: zoomPourDiametre(2 * Math.max(80, ecart - 48)),
+      padding: { top: haut, right: 0, left: 0, bottom: bas },
+    };
+  }
+  let vueActive = 'lune';
+  function majVues() {
+    racine.querySelectorAll('[data-vue]').forEach((b) => {
+      const actif = b.dataset.vue === vueActive;
+      b.classList.toggle('actif', actif);
+      b.setAttribute('aria-pressed', String(actif));
     });
   }
-  boutonVueTerre.addEventListener('click', vueDepuisTerre);
+  // Les deux vues montrent la phase réelle (Lune éclairée par le soleil du moment, Terre aussi)
+  let vueChoisie = false; // une vue choisie avant la fin du chargement remplace l'arrivée
+  function choisirVue(vue) {
+    vueChoisie = true;
+    vueActive = vue;
+    majVues();
+    fermerBulle();
+    fermerRetour();
+    if (eclairage() !== 'reel') {
+      ecrire('lune-visite-eclairage', 'reel');
+      majEclairage();
+    }
+    enchainer(cadrage(vue));
+  }
+  racine.querySelectorAll('[data-vue]').forEach((b) => b.addEventListener('click', () => choisirVue(b.dataset.vue)));
+
+  // ---------- Transitions : zoom arrière, fondu enchaîné, zoom avant sur la destination ----------
+  // Un appui sur l'écran l'interrompt : la carte reste où elle est et rend la main.
+  const voile = document.createElement('div');
+  voile.className = 'lune-visite-voile';
+  $('.lune-visite-carte').append(voile);
+  const mouvementReduit = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let enCours = null; // { annulee }
+  // Attente annulable : interrompre() la termine tout de suite (la suite vérifie jeton.annulee)
+  const attendre = (ms, jeton) => new Promise((fin) => {
+    jeton.minuteurs.push({ minuteur: setTimeout(fin, ms), fin });
+  });
+  function interrompre() {
+    if (!enCours) return;
+    const jeton = enCours;
+    enCours = null;
+    jeton.annulee = true;
+    jeton.minuteurs.forEach(({ minuteur, fin }) => {
+      clearTimeout(minuteur);
+      fin();
+    });
+    voile.classList.remove('plein');
+    map.stop();
+  }
+  async function enchainer(destination) {
+    interrompre();
+    if (mouvementReduit()) {
+      map.jumpTo(destination);
+      return;
+    }
+    const jeton = { annulee: false, minuteurs: [] };
+    enCours = jeton;
+    const centre = map.getCenter();
+    const distance = Math.hypot(centre.lng - destination.center[0], centre.lat - destination.center[1]);
+    // Près de la destination : un simple glissement, sans fondu
+    if (distance < 25) {
+      map.easeTo({ ...destination, duration: 1200 });
+      await attendre(1200, jeton);
+      if (enCours === jeton) enCours = null;
+      return;
+    }
+    map.easeTo({ zoom: Math.max(0, Math.min(map.getZoom(), destination.zoom) - 1), pitch: 0, duration: 550, easing: (x) => x * x });
+    await attendre(380, jeton);
+    if (jeton.annulee) return;
+    voile.classList.add('plein');
+    await attendre(260, jeton);
+    if (jeton.annulee) return;
+    map.jumpTo({ ...destination, zoom: Math.max(0, destination.zoom - 1) });
+    voile.classList.remove('plein');
+    map.easeTo({ ...destination, duration: 1300, easing: (x) => 1 - (1 - x) ** 3 });
+    await attendre(1300, jeton);
+    if (enCours === jeton) enCours = null;
+  }
+  // Pointeur posé sur la carte pendant une transition : on rend la main
+  $('.lune-visite-carte').addEventListener('pointerdown', interrompre, { capture: true });
+  map.on('wheel', interrompre);
 
   // Aller la voir : la caméra ne peut pas regarder au zénith, on va donc près du bord de la face visible, tourné
   // vers elle ; elle s'y lève au-dessus de l'horizon (un appui sur la Terre ou sur sa flèche)
@@ -756,31 +850,66 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
 
   // ---------- Arrivée et départ ----------
   majPanneau();
-  map.once('load', () => {
+  majVues();
+  // Arrivée : la Terre recule (sans passer en mode espace, qui éteindrait les couches), fondu enchaîné, puis la
+  // Lune grandit jusqu'à la vue « La Lune vue de la Terre », avec la phase du moment
+  if (eclairage() !== 'reel') ecrire('lune-visite-eclairage', 'reel');
+  const debut = Date.now();
+  const DUREE_RECUL = mouvementReduit() ? 0 : 650;
+  if (DUREE_RECUL) mapTerre.easeTo({ zoom: zoomRecul(cameraTerre.zoom), duration: DUREE_RECUL, easing: (x) => x * (2 - x) });
+  map.once('load', async () => {
     // Crédits repliés, comme sur la carte de la Terre
     const credits = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
     if (credits instanceof HTMLDetailsElement) credits.open = false;
+    const destination = cadrage('lune');
+    if (vueChoisie) {
+      racine.classList.add('prete');
+      return;
+    }
+    if (mouvementReduit()) {
+      map.jumpTo(destination);
+      racine.classList.add('prete');
+      return;
+    }
+    const jeton = { annulee: false, minuteurs: [] };
+    enCours = jeton;
+    map.jumpTo({ ...destination, zoom: Math.max(0, destination.zoom - 1.6) });
+    await attendre(Math.max(0, debut + DUREE_RECUL - 250 - Date.now()), jeton);
     racine.classList.add('prete');
-    map.easeTo({ zoom: telephone() ? 0.9 : 1.7, padding: { top: 0, right: 0, left: 0, bottom: margeBas() }, duration: 1600 });
+    if (jeton.annulee) return;
+    map.easeTo({ ...destination, duration: 1700, easing: (x) => 1 - (1 - x) ** 3 });
+    await attendre(1700, jeton);
+    if (enCours === jeton) enCours = null;
   });
   map.on('error', (event) => {
     // Une tuile de la NASA qui manque ne doit pas tout arrêter
     if (!event.tile && !event.sourceId) console.warn('Lune :', event.error);
   });
 
-  function quitter() {
+  // Départ : la Lune recule, fondu, et la Terre revient exactement où l'on était
+  let partie = false;
+  async function quitter() {
+    if (partie) return;
+    partie = true;
+    interrompre();
     fermerBulle();
     fermerRetour();
     desabonnerLangue?.();
     document.removeEventListener('keydown', surTouche);
+    if (!mouvementReduit()) {
+      map.easeTo({ zoom: Math.max(0, map.getZoom() - 1.4), duration: 450, easing: (x) => x * x });
+      await new Promise((fin) => setTimeout(fin, 280));
+    }
     racine.classList.remove('prete');
     document.body.classList.remove('sur-la-lune');
+    visite = null;
+    mapTerre.resize();
+    if (mouvementReduit()) mapTerre.jumpTo(cameraTerre);
+    else mapTerre.easeTo({ ...cameraTerre, duration: 1300, easing: (x) => 1 - (1 - x) ** 3 });
     setTimeout(() => {
       map.remove();
       racine.remove();
-    }, 250);
-    visite = null;
-    mapTerre.resize();
+    }, 650);
   }
   const surTouche = (event) => {
     if (event.key === 'Escape' && liste.hidden) quitter();

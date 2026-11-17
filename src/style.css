@@ -4063,8 +4063,23 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .ciel-etoiles[hidden], .globe-atmosphere[hidden] { display: none; }
 
 /* ---------- Visiter la Lune (lot 4.10) ---------- */
-.lune-visite { position: fixed; inset: 0; z-index: 40; background: #020306; opacity: 0; transition: opacity .35s ease; }
+.lune-visite { position: fixed; inset: 0; z-index: 40; background: #020306; opacity: 0; transition: opacity .5s ease; }
 .lune-visite.prete { opacity: 1; }
+/* Fondu enchaîné d'une vue à l'autre (transitions de lune-visite.js) */
+.lune-visite-voile { position: absolute; inset: 0; z-index: 2; background: #020306; opacity: 0; pointer-events: none; transition: opacity .26s ease; }
+.lune-visite-voile.plein { opacity: 1; }
+/* Deux vues, en tête du panneau (retour du propriétaire du 17 novembre 2026) */
+.lune-visite-vues { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lune-visite-vues button {
+  display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 72px; padding: 10px 8px; border: 1px solid var(--bord); border-radius: 12px;
+  background: var(--surface-2); color: var(--texte); font: 600 12.5px/1.25 var(--police); text-align: center; cursor: pointer;
+}
+.lune-visite-vues button:hover { background: var(--survol); }
+.lune-visite-vues button.actif { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); box-shadow: inset 0 0 0 1px var(--accent); }
+.lune-visite-vues svg { width: 26px; height: 26px; fill: none; stroke: #6fb6ff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.lune-visite-vues svg .plein { fill: #6fb6ff; stroke: none; }
+.lune-visite-vues button.actif svg { stroke: var(--accent); }
+.lune-visite-vues button.actif svg .plein { fill: var(--accent); }
 .lune-visite-carte { position: absolute; inset: 0; }
 .lune-visite .maplibregl-canvas-container { z-index: 1; }
 .lune-visite-quitter {
@@ -4076,6 +4091,9 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .lune-visite-quitter svg { width: 22px; height: 22px; fill: none; stroke: #6fb6ff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 /* Plus fort que les règles qui cachent les panneaux .bf quand le menu ou un outil est ouvert sur la Terre */
 body .lune-visite .lune-visite-panneau.bf { position: absolute; top: 74px; left: 14px; z-index: 3; display: grid; width: 340px; }
+/* Sur téléphone, les panneaux .bf sont cachés tant que le tiroir du menu est ouvert (règle avec #menu-tiroir, plus
+   forte) : le panneau de la Lune, ouvert depuis le menu, restait invisible (retour du propriétaire du 17 novembre 2026) */
+body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important; }
 .lune-visite-panneau .note { margin: 0; font-size: 12px; color: var(--texte-2); }
 .lune-visite-eclairage { margin: 0; }
 .lune-visite-reel { display: grid; gap: 12px; }
