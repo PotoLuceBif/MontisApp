@@ -109,3 +109,41 @@ export function tempsRestants({ duree, reste, allure = null, ecoule = 0 }) {
   const personnel = mesure ? standard * (ecoule / standardFait) : standard * coefficient;
   return { standard, personnel, mesure, ecart: mesure ? ecoule - standardFait * coefficient : null };
 }
+
+// ---------- Orientation ----------
+const normaliser = (angle) => ((angle % 360) + 360) % 360;
+
+// Cap du haut de l'écran (degrés, 0 = nord, sens horaire) depuis un événement d'orientation.
+// iOS donne webkitCompassHeading (cap du haut de l'appareil) ; Android, avec
+// deviceorientationabsolute, alpha compté dans le sens inverse. L'angle de l'écran
+// (paysage) s'ajoute : le cône suit ce que l'on regarde.
+export function capBoussole({ webkitCompassHeading, alpha, absolute }, angleEcran = 0) {
+  let cap = null;
+  if (Number.isFinite(webkitCompassHeading)) cap = webkitCompassHeading;
+  else if (absolute && Number.isFinite(alpha)) cap = 360 - alpha;
+  return cap === null ? null : normaliser(cap + (angleEcran || 0));
+}
+
+// Lissage d'un angle par le plus court chemin (359° puis 1° ne fait pas un tour)
+export function lisserAngle(precedent, nouveau, facteur = 0.2) {
+  if (nouveau === null || !Number.isFinite(nouveau)) return precedent;
+  if (precedent === null || !Number.isFinite(precedent)) return normaliser(nouveau);
+  const ecart = ((nouveau - precedent + 540) % 360) - 180;
+  return normaliser(precedent + ecart * facteur);
+}
+
+export const VITESSE_ARRET = 0.6; // m/s : en dessous, le cap du GPS n'a plus de sens
+
+// Cap de déplacement du GPS, ou null à l'arrêt ou sans valeur
+export function capDeplacement({ heading, speed }) {
+  if (heading === null || heading === undefined || !Number.isFinite(heading)) return null;
+  if (!Number.isFinite(speed) || speed < VITESSE_ARRET) return null;
+  return normaliser(heading);
+}
+
+// Heure d'arrivée estimée (Date), d'après le temps restant en heures
+export function heureArrivee(maintenant, heures) {
+  if (!Number.isFinite(heures) || heures < 0) return null;
+  const pas = 5 * 60000; // arrondie à 5 min : c'est une estimation
+  return new Date(Math.round((maintenant + heures * 3600000) / pas) * pas);
+}
