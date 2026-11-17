@@ -4568,11 +4568,8 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
     bottom: var(--clavier, 0px); max-height: calc(var(--hauteur-visible, 100dvh) - 72px); gap: 8px;
     padding: 8px 12px 10px; border-radius: 16px 16px 0 0;
   }
-  .bf-jeu.jeux-clavier :is(.bf-poignee, .bf-entete, .jeux-consigne, .jeux-passer, .jeux-liste-tiroir, .jeux-ou-aide) { display: none; }
+  .bf-jeu.jeux-clavier :is(.bf-poignee, .bf-entete, .jeux-consigne, .jeux-liste-tiroir, .jeux-ou-aide) { display: none; }
   .bf-jeu.jeux-clavier .bf-corps { gap: 8px; }
-  .bf-jeu.jeux-clavier .jeux-barre { min-height: 34px; }
-  .bf-jeu.jeux-clavier .jeux-drapeau { width: auto; height: 60px; }
-  .bf-jeu.jeux-clavier .jeux-capitale { margin: 0; font-size: 19px; }
   .bf-jeu.jeux-clavier .jeux-suggestions { order: 8; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bf-jeu.jeux-clavier .jeux-retour { order: 9; }
   .bf-jeu.jeux-clavier .jeux-saisie { order: 10; }
@@ -4588,4 +4585,64 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
   .bf-jeu.jeux-compact.jeux-deplie:not(.jeux-clavier) .jeux-liste-tiroir { display: grid; gap: 8px; max-height: 45dvh; overflow-y: auto; overscroll-behavior: contain; }
   .bf-jeu.jeux-compact .jeux-trouves { max-height: none; }
   .bf-jeu.jeux-compact .jeux-retour { min-height: 0; font-size: 12.5px; }
+}
+
+/* Barre fine (retour du 17 novembre 2026, deuxième passe) : une ligne pour le chrono, l'avancement, la question
+   (consigne courte, drapeau, pays) ou le champ de la liste chrono, puis ↻ et ⌄ ; dessous, la saisie avec ✓ et 🤷 */
+.jeux-barre { gap: 6px; min-height: 36px; }
+.jeux-barre-chrono { flex: none; font-size: 17px; }
+.jeux-barre-compte { flex: none; padding: 3px 7px; font-size: 12px; }
+.jeux-barre-milieu { display: flex; align-items: center; flex: 1; min-width: 0; }
+.jeux-recommencer { margin-left: 0; }
+.jeux-icone {
+  display: grid; place-items: center; flex: none; width: 36px; height: 36px; min-height: 0; padding: 0; border: 1px solid var(--bord); border-radius: 10px;
+  background: var(--surface-2); color: var(--texte); cursor: pointer;
+}
+.jeux-icone:hover { border-color: var(--accent); }
+.jeux-icone:disabled { cursor: default; opacity: 0.45; }
+.jeux-icone svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.jeux-barre .jeux-icone { width: 34px; height: 34px; }
+.jeux-recommencer.jeux-icone { color: var(--texte); }
+.jeux-passer.jeux-icone svg { width: 22px; height: 22px; stroke-width: 1.8; }
+.jeux-valider.jeux-icone { color: var(--accent); }
+.jeux-valider.jeux-icone svg { stroke-width: 2.6; }
+.jeux-reduire { display: none; }
+.jeux-question { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; }
+.jeux-question small { flex: 0 3 auto; min-width: 0; overflow: hidden; color: var(--texte-2); font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.jeux-question b { flex: 0 1 auto; min-width: 0; overflow: hidden; font: 800 15px/1.2 var(--police); text-overflow: ellipsis; white-space: nowrap; }
+.jeux-question b img { width: 24px; height: 18px; margin-right: 6px; vertical-align: -3px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
+/* Le drapeau à reconnaître reste assez grand pour se lire */
+.bf-jeu .jeux-question .jeux-drapeau { flex: none; width: auto; height: 42px; margin: 0; border-radius: 5px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22); }
+.jeux-saisie { align-items: center; }
+.jeux-saisie input { height: 38px; min-height: 38px; }
+.jeux-saisie .jeux-icone { width: 38px; height: 38px; }
+.jeux-barre .jeux-saisie { flex: 1; min-width: 0; }
+.jeux-barre .jeux-saisie input { height: 34px; min-height: 34px; padding: 0 10px; }
+/* Le panneau est une grille : sans min-width à zéro, la largeur naturelle du champ élargissait la barre hors de l'écran */
+.bf-jeu > *, .bf-jeu .bf-corps > * { min-width: 0; }
+.bf-jeu :is(.jeux-choix, .jeux-suggestions) button { min-height: 40px; }
+.bf-jeu .jeux-suggestions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.jeux-ou-ligne { display: flex; align-items: center; gap: 8px; }
+.jeux-ou-ligne:not(:has(*)) { display: none; }
+.jeux-ou-ligne .jeux-ou-aide { flex: 1; margin: 0; }
+.bf-jeu .jeux-retour:has(.jeux-suivant) { display: flex; align-items: center; gap: 8px; text-align: left; }
+.bf-jeu .jeux-retour:has(.jeux-suivant) p { flex: 1; min-width: 0; font-size: 13px; }
+.bf-jeu .jeux-retour .jeux-suivant { flex: none; min-height: 38px; padding: 0 14px; font-size: 14px; }
+@media (max-width: 640px) {
+  .bf-jeu.jeux-compact { gap: 8px; padding-top: 12px; }
+  .bf-jeu.jeux-compact .jeux-reduire { display: grid; }
+  .bf-jeu.jeux-compact .jeux-barre { min-height: 34px; }
+  .bf-jeu.jeux-compact .jeux-barre::before { top: -9px; }
+  /* Clavier ouvert : plus serré encore, la consigne courte laisse la place (le champ dit quoi taper) */
+  .bf-jeu.jeux-clavier { gap: 6px; padding: 10px 10px 8px; }
+  .bf-jeu.jeux-clavier .jeux-barre { gap: 5px; min-height: 30px; }
+  .bf-jeu.jeux-clavier .jeux-barre-chrono { font-size: 15px; }
+  .bf-jeu.jeux-clavier .jeux-barre-compte { padding: 2px 6px; font-size: 11.5px; }
+  .bf-jeu.jeux-clavier .jeux-barre .jeux-icone { width: 30px; height: 30px; }
+  .bf-jeu.jeux-clavier .jeux-question small { display: none; }
+  .bf-jeu.jeux-clavier .jeux-question .jeux-drapeau { height: 36px; }
+  .bf-jeu.jeux-clavier .jeux-saisie input, .bf-jeu.jeux-clavier .jeux-saisie .jeux-icone { height: 36px; min-height: 36px; }
+  .bf-jeu.jeux-clavier .jeux-saisie .jeux-icone { width: 36px; }
+  .bf-jeu.jeux-clavier .jeux-barre .jeux-saisie input { height: 30px; min-height: 30px; }
+  .bf-jeu.jeux-clavier .jeux-suggestions button, .bf-jeu.jeux-clavier .jeux-retour .jeux-suivant { min-height: 36px; }
 }
