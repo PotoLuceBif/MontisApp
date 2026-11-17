@@ -3033,6 +3033,33 @@ body:has(#menu-tiroir.ouvert) .visite-retour { display: none; }
 .guidage-actions { display: flex; gap: 6px; }
 .guidage-actions > * { flex: 1 1 0; }
 .guidage-actions > [hidden] { display: none; }
+.guidage-temps .guidage-standard { color: var(--texte-2); font-weight: 500; }
+.guidage-temps .guidage-standard:empty { display: none; }
+/* Enregistrement : interrupteur sous « Démarrer la sortie », pastille rouge pendant la sortie */
+.parcours-sortie > .guidage-option-trace { flex-basis: 100%; }
+.guidage-option-trace { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 6px 10px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer; }
+.guidage-option-trace.actif { border-color: color-mix(in srgb, var(--accent) 55%, var(--bord)); }
+.guidage-option-trace.actif .interrupteur { background: var(--accent); box-shadow: none; }
+.guidage-option-trace.actif .interrupteur::after { transform: translateX(18px); background: var(--accent-texte); }
+.guidage-enregistre, .guidage-poche-rec { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--texte-2); font-size: 12px; }
+.guidage-enregistre[hidden], .guidage-poche-rec[hidden] { display: none; }
+.guidage-enregistre i, .guidage-poche-rec i { width: 8px; height: 8px; border-radius: 50%; background: #ff4d5e; animation: guidage-rec 1.6s ease-in-out infinite; }
+@keyframes guidage-rec { 50% { opacity: .35; } }
+/* Position : point, cône de la boussole et flèche du déplacement (MapLibre place l'élément) */
+.guidage-position { width: 120px; height: 120px; pointer-events: none; }
+.guidage-position-corps { position: absolute; inset: 0; }
+.guidage-cone, .guidage-fleche { position: absolute; inset: 0; transition: transform .12s linear; }
+.guidage-cone[hidden], .guidage-fleche[hidden] { display: none; }
+.guidage-cone svg, .guidage-fleche svg { display: block; width: 100%; height: 100%; }
+.guidage-point { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2.5px solid #fff; border-radius: 50%; background: #4aa8ff; box-shadow: 0 0 0 1px rgb(0 0 0 / .25), 0 1px 4px rgb(0 0 0 / .35); }
+/* Mode poche : noir pur (pixels éteints sur OLED), textes discrets */
+.guidage-poche { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px 16px; background: #000; color: #8a8f98; text-align: center; cursor: pointer; user-select: none; }
+.guidage-poche[hidden] { display: none; }
+.guidage-poche p { display: grid; gap: 2px; margin: 0; font-size: 12px; }
+.guidage-poche strong { color: #b9bec7; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.guidage-poche .guidage-poche-heure { color: #b9bec7; font-size: 34px; font-weight: 300; font-variant-numeric: tabular-nums; }
+.guidage-poche .guidage-poche-rec { display: flex; }
+.guidage-poche small { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); color: #4d525a; font-size: 11.5px; }
 .parcours-trajet { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 0 10px; text-decoration: none; }
 .parcours-trajet[hidden], .bf-parcours:not(.bf-parcours-lecture) .parcours-trajet { display: none; }
 .parcours-trajet svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
