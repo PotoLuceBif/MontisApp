@@ -1337,27 +1337,28 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.corps.querySelectorAll('.jeux-passer').forEach((el) => el.remove());
       jeu.corps.querySelectorAll('.jeux-ou-aide').forEach((el) => el.remove());
       const derniere = p.indice === p.questions.length - 1;
-      const retour = $('.jeux-retour', jeu.corps);
-      retour.innerHTML = `
-        <p class="${juste ? 'jeux-bravo' : 'jeux-rate'}">${texte}</p>
-        <button type="button" class="jeux-suivant">${t(derniere ? 'jeux.voir-resultat' : 'jeux.suivant')}</button>
-      `;
+      const message = `<p class="${juste ? 'jeux-bravo' : 'jeux-rate'}">${texte}</p>`;
+      $('.jeux-retour', jeu.corps).innerHTML = message;
       jeu.meta.textContent = t('jeux.meta-question', { n: p.indice + 1, total: p.questions.length, bonnes: p.bonnes, serie: p.serie });
       this.resume();
-      const suivant = $('.jeux-suivant', retour);
-      suivant.addEventListener('click', () => {
-        const garderClavier = clavierOuvert;
+      // Pas de bouton Suivant (demande du propriétaire du 17 novembre 2026) : la question suivante vient
+      // tout de suite, avec le message de celle-ci ; « Où est-ce ? » laisse voir l'écart sur le globe
+      const suite = () => {
+        if (this.en !== p) return;
         if (derniere) {
           this.terminer();
           return;
         }
+        const garderClavier = clavierOuvert;
         // La question suivante repart d'un globe propre, sauf les pays déjà joués, gardés en couleur
         if (globe.etats.get(q.code) === 'question') globe.marquer(q.code, null);
         p.indice += 1;
         this.question({ garderClavier });
-      });
-      // Clavier ouvert, le champ garde le focus (Entrée = Suivant)
-      if (!clavierOuvert) suivant.focus({ preventScroll: true });
+        const retour = $('.jeux-retour', jeu.corps);
+        if (retour) retour.innerHTML = message;
+      };
+      if (q.type?.startsWith('ou')) setTimeout(suite, 1800);
+      else suite();
     },
 
     // ----- Fiches des pays ; ‹ › pour passer au pays suivant -----
