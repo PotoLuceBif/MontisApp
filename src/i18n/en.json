@@ -548,7 +548,7 @@
   "guidage.interrompue-texte": "“{nom}” ({distance}) was not finished. Resume it?",
   "guidage.reprendre": "Resume the track",
   "guidage.terminer-ancienne": "Finish it",
-  "guidage.resume-titre": "Outing finished",
+  "guidage.resume-titre": "Recorded track",
   "guidage.trou": "One gap (screen off or app closed): two pieces",
   "guidage.trous": "{n} gaps (screen off or app closed)",
   "guidage.exporter-gpx": "Export as GPX",

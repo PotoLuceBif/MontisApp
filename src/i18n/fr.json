@@ -548,7 +548,7 @@
   "guidage.interrompue-texte": "« {nom} » ({distance}) n’a pas été terminée. Tu la reprends ?",
   "guidage.reprendre": "Reprendre la trace",
   "guidage.terminer-ancienne": "La terminer",
-  "guidage.resume-titre": "Sortie terminée",
+  "guidage.resume-titre": "Trace enregistrée",
   "guidage.trou": "Une coupure (écran éteint ou appli quittée) : deux morceaux",
   "guidage.trous": "{n} coupures (écran éteint ou appli quittée)",
   "guidage.exporter-gpx": "Exporter en GPX",

@@ -180,7 +180,6 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
     <div class="parcours-sortie">
     <button type="button" class="para-bouton para-bouton-principal parcours-demarrer" hidden ${ti('guidage.demarrer')}>${t('guidage.demarrer')}</button>
-    <button type="button" class="guidage-option-trace" role="switch" aria-checked="false" hidden><span ${ti('guidage.enregistrer-trace')}>${t('guidage.enregistrer-trace')}</span><i class="interrupteur" aria-hidden="true"></i></button>
     <a class="para-bouton parcours-trajet" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_TRAJET}</svg><span ${ti('editeur.s-y-rendre')}>${t('editeur.s-y-rendre')}</span></a>
     <button type="button" class="para-bouton parcours-trajet parcours-exposition" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${ICONE_EXPOSITION}</svg><span ${ti('exposition.evaluer')}>${t('exposition.evaluer')}</span></button>
     </div>
@@ -228,18 +227,6 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   });
   const plateforme = plateformeDe(navigator.userAgent, navigator.maxTouchPoints);
   const boutonDemarrer = $('.parcours-demarrer');
-  // « Enregistrer la trace » : choix gardé, lu au démarrage
-  const optionTrace = $('.guidage-option-trace');
-  const majOptionTrace = () => {
-    const actif = lire('guidage-enregistrer', false);
-    optionTrace.classList.toggle('actif', actif);
-    optionTrace.setAttribute('aria-checked', String(actif));
-  };
-  majOptionTrace();
-  optionTrace.addEventListener('click', () => {
-    ecrire('guidage-enregistrer', !lire('guidage-enregistrer', false));
-    majOptionTrace();
-  });
   const source = $('.parcours-source');
   const valeur = (id) => $(`[data-v="${id}"]`);
   selecteurCouleur.value = modeCouleur;
@@ -634,10 +621,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     const jeton = jetonAnalyse;
     const chaine = etapes.slice(1).flatMap(({ troncon }) => troncon?.geom ?? []);
     boutonGpx.disabled = true;
-    if (!guidage.actif) {
-      boutonDemarrer.hidden = true;
-      optionTrace.hidden = true;
-    }
+    if (!guidage.actif) boutonDemarrer.hidden = true;
     if (chaine.length < 2) {
       analyse = null;
       profil.definir(null);
@@ -659,7 +643,6 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
         dessinerTrace();
         boutonGpx.disabled = false;
         boutonDemarrer.hidden = false;
-        optionTrace.hidden = false;
         onAnalyse?.(analyse);
       } catch (erreur) {
         if (jeton !== jetonAnalyse) return;
@@ -1024,7 +1007,7 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   boutonTerminer.addEventListener('click', () => definirEdition(!edition));
   boutonDemarrer.addEventListener('click', () => {
     fermerPopup();
-    guidage.demarrer({ enregistrer: lire('guidage-enregistrer', false) });
+    guidage.demarrer();
     panneau.element.scrollTop = 0;
   });
   boutonGpx.addEventListener('click', exporterGpx);

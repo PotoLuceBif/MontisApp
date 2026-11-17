@@ -73,7 +73,7 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
       <div><span ${ti('guidage.temps-restant')}>${t('guidage.temps-restant')}</span><strong data-g="personnel">—</strong><small data-g="ecart"></small><small class="guidage-standard" data-g="standard"></small></div>
       <div><span ${ti('guidage.arrivee')}>${t('guidage.arrivee')}</span><strong data-g="arrivee">—</strong></div>
     </div>
-    <p class="guidage-enregistre" hidden><i aria-hidden="true"></i><span ${ti('guidage.enregistrement')}>${t('guidage.enregistrement')}</span></p>
+    <button type="button" class="guidage-option-trace" role="switch" aria-checked="false"><span><i aria-hidden="true"></i><span ${ti('guidage.enregistrer-trace')}>${t('guidage.enregistrer-trace')}</span></span><i class="interrupteur" aria-hidden="true"></i></button>
     <div class="guidage-reperes" hidden><h4 ${ti('guidage.reperes')}>${t('guidage.reperes')}</h4><ul></ul></div>
     <div class="guidage-actions">
       <button type="button" class="para-bouton guidage-recentrer" hidden ${ti('guidage.recentrer')}>${t('guidage.recentrer')}</button>
@@ -86,7 +86,7 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
   const etat = $('.guidage-etat');
   const blocRejoindre = $('.guidage-rejoindre');
   const boutonRecentrer = $('.guidage-recentrer');
-  const ligneEnregistre = $('.guidage-enregistre');
+  const optionTrace = $('.guidage-option-trace');
 
   // Mode poche : écran noir (presque éteint sur un écran OLED), temps, distance et heure en petit
   const poche = document.createElement('div');
@@ -387,10 +387,37 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
 
   function commencerEnregistrement(reprise = null) {
     enregistrement = creerEnregistrement({ nom: nomTrace(), parcours: idParcours(), reprise });
-    ligneEnregistre.hidden = false;
+    majOptionTrace();
     if (position) enregistrement.ajouter({ t: Date.now(), lng: position.lng, lat: position.lat, precision: position.precision });
     majPoche();
   }
+
+  function majOptionTrace() {
+    optionTrace.classList.toggle('actif', Boolean(enregistrement));
+    optionTrace.setAttribute('aria-checked', String(Boolean(enregistrement)));
+  }
+
+  // Éteindre l'interrupteur arrête l'enregistrement et montre le résumé ; le guidage continue
+  function finirEnregistrement() {
+    if (!enregistrement) return;
+    const { trace } = enregistrement;
+    enregistrement.sauver();
+    enregistrement = null;
+    majOptionTrace();
+    majPoche();
+    montrerResume(trace);
+  }
+  let preparation = false;
+  optionTrace.addEventListener('click', async () => {
+    if (enregistrement) {
+      finirEnregistrement();
+      return;
+    }
+    if (preparation) return;
+    preparation = true;
+    await preparerEnregistrement(true);
+    preparation = false;
+  });
 
   // Une trace commencée avant un rechargement : la reprendre, ou la terminer avant d'en commencer une autre
   async function preparerEnregistrement(demande) {
@@ -456,12 +483,12 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
     get actif() {
       return actif;
     },
-    demarrer({ enregistrer = false } = {}) {
+    demarrer() {
       if (actif || !analyse()) return;
       actif = true;
       demanderBoussole();
       dernier = null;
-      ligneEnregistre.hidden = true;
+      majOptionTrace();
       suivre = true;
       precedent = null;
       place = null;
@@ -475,7 +502,7 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
       ['distance', 'plus', 'moins', 'personnel', 'arrivee'].forEach((cle) => (g(cle).textContent = '—'));
       g('ecart').textContent = '';
       g('standard').textContent = '';
-      preparerEnregistrement(enregistrer);
+      preparerEnregistrement(false);
       if (!navigator.geolocation) {
         poser(etat, 'guidage.sans-position');
         return;
@@ -497,12 +524,7 @@ export function creerGuidage(map, { id, panneau, bloc, profil, pratique, analyse
       arreterBoussole();
       retirerMarqueur();
       ouvrirPoche(false);
-      if (enregistrement) {
-        const { trace } = enregistrement;
-        enregistrement.sauver();
-        enregistrement = null;
-        montrerResume(trace);
-      }
+      finirEnregistrement();
       vider(SOURCE_POSITION);
       vider(SOURCE_REJOINDRE);
       profil.placerDepuisCarte(null);
