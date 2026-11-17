@@ -19,8 +19,12 @@ import { directionEtoile, tempsSideral } from '../src/ciel-calcul.js';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-const DOSSIER = 'captures';
-const FORMATS = {
+// CAPTURES_ETROIT=1 : seulement un petit téléphone (360 px de large), dans captures-360/
+const ETROIT = Boolean(process.env.CAPTURES_ETROIT);
+const DOSSIER = ETROIT ? 'captures-360' : 'captures';
+const FORMATS = ETROIT ? {
+  telephone: { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+} : {
   telephone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   ordinateur: { viewport: { width: 1280, height: 860 } },
 };
@@ -255,6 +259,17 @@ const { fragment: LIEN_PARCOURS } = await fragmentParcours({
     { lng: tracePartage[59][0], lat: tracePartage[59][1], mode: 'fixe', troncon: { geom: tracePartage, troncons: [{ longueur: 3600, voie: 'chemin', difficulte: 2, marches: false }], source: 'trace' } },
   ],
 });
+
+// Répond la même chose aux dix questions d'une partie « à taper », puis voit le résultat
+const repondreTout = (texte, n = 10) => async (page) => {
+  for (let i = 0; i < n; i += 1) {
+    await page.fill('.bf-jeu .jeux-saisie input', texte);
+    await page.press('.bf-jeu .jeux-saisie input', 'Enter');
+    await page.waitForTimeout(250);
+    await page.evaluate(() => document.querySelector('.bf-jeu .jeux-suivant')?.click());
+    await page.waitForTimeout(350);
+  }
+};
 
 // Visite de la Lune, ouverte depuis Soleil et Lune ; sa carte est accessible par window.mapLune
 const ALLER_LUNE = [vue(MATIN), module('lune'), attendre('.lune-visiter'), clic('.lune-visiter'), attendre('.lune-visite.prete')];
@@ -613,6 +628,8 @@ const ECRANS = [
   // Visiter la Lune (lot 4.10) : bouton en bas de la ligne Lune, globe lunaire, temps réel, gros plan 3D, fiche
   { nom: 'ciel-lune-visiter', actions: [vue(MATIN), module('lune'), attendre('.lune-visiter'), (p) => p.waitForTimeout(800), defiler('.lune-visiter')] },
   { nom: 'lune-visite', actions: [...ALLER_LUNE, (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-terre-vue', actions: [...ALLER_LUNE, clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-terre-vue-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
   // Copernic en 3D, incliné, panneau réduit
@@ -631,13 +648,13 @@ const ECRANS = [
   { nom: 'lune-visite-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 62], zoom: 5, pitch: 78, bearing: 180 }), (p) => p.waitForTimeout(9000)] },
   // Appui sur la Terre (ou sa flèche) : près du bord de la face visible, tourné vers elle, elle se lève sur l'horizon
   // Vue depuis la Terre (nord en haut) : la Terre est derrière, sa flèche le dit ; un appui la fait apparaître
-  { nom: 'lune-visite-fleche-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
-  { nom: 'lune-visite-fleche-terre-appui', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(3000), clic('.terre-ciel-image'), (p) => p.waitForTimeout(9000)] },
+  { nom: 'lune-visite-fleche-terre', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-fleche-terre-appui', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(3000), clic('.terre-ciel-image'), (p) => p.waitForTimeout(9000)] },
   // Terre visible dans le ciel, touchée : bulle « Retourner sur la Terre »
   { nom: 'lune-visite-retour-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(3000), toucherTerre, (p) => p.waitForTimeout(800)] },
   // Terre hors champ : au bord, avec sa flèche
   { nom: 'lune-visite-terre-bord', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), vueLune({ center: [0, 40], zoom: 5, pitch: 70, bearing: 0 }), (p) => p.waitForTimeout(8000)] },
-  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('.lune-visite-vue-terre'), (p) => p.waitForTimeout(8000)] },
+  { nom: 'lune-visite-vue-terre', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), vueLune({ center: [120, -30], zoom: 3, pitch: 40, bearing: 70 }), (p) => p.waitForTimeout(1500), clic('[data-vue="lune"]'), (p) => p.waitForTimeout(8000)] },
   {
     nom: 'lune-visite-recherche',
     actions: [...ALLER_LUNE, async (page) => { await page.fill('.lune-recherche-champ', 'tran'); }, (p) => p.waitForTimeout(1500)],
@@ -868,6 +885,18 @@ const ECRANS = [
   { nom: 'jeux-fiche-suivante', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="fiches"]'), attendre('.jeux-fiche-ligne'), clic('[data-choix="zoneFiches"] [data-valeur="europe"]'), clic('.jeux-fiche-ligne[data-code="MC"]'), attendre('.bf-jeu .jeux-fiche'), clic('.bf-jeu .jeux-fiche-suivante'), (p) => p.waitForTimeout(3500)] },
   { nom: 'jeux-liste', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), ...['France', 'Suisse', 'Italie', 'Norvège'].map((nom) => (p) => p.fill('.bf-jeu .jeux-saisie input', nom)), (p) => p.waitForTimeout(3000)] },
   { nom: 'jeux-resultat', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), ...['France', 'Suisse', 'Italie', 'Espagne'].map((nom) => (p) => p.fill('.bf-jeu .jeux-saisie input', nom)), clic('.bf-jeu .jeux-abandon'), (p) => p.waitForTimeout(3000)] },
+  // Retouches du 17 novembre 2026 : liste compacte, fin de partie, revue des erreurs, clavier, fiches enrichies
+  { nom: 'jeux-liste-deplie', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), ...['France', 'Suisse', 'Italie', 'Norvège'].map((nom) => (p) => p.fill('.bf-jeu .jeux-saisie input', nom)), clic('.bf-jeu .jeux-deplier'), (p) => p.waitForTimeout(2500)] },
+  { nom: 'jeux-liste-iles', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="monde"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), ...['Fidji', 'Tonga', 'Samoa', 'Tuvalu', 'Nauru', 'Vanuatu', 'Kiribati'].map((nom) => (p) => p.fill('.bf-jeu .jeux-saisie input', nom)), (p) => p.waitForTimeout(2500), (p) => p.evaluate(() => window.map.jumpTo({ center: [178, -12], zoom: 3.6 })), (p) => p.waitForTimeout(3000)] },
+  { nom: 'jeux-revue-liste', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), ...['France', 'Suisse', 'Italie', 'Espagne'].map((nom) => (p) => p.fill('.bf-jeu .jeux-saisie input', nom)), clic('.bf-jeu .jeux-abandon'), attendre('.bf-jeu .jeux-revoir'), clic('.bf-jeu .jeux-revoir'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'jeux-expert-clavier', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="drapeaux"]'), clic('[data-choix="sens"] [data-valeur="drapeau"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.focus('.bf-jeu .jeux-saisie input'), (p) => p.fill('.bf-jeu .jeux-saisie input', 'ma'), (p) => p.waitForTimeout(2500)] },
+  { nom: 'jeux-capitales-fin', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('[data-choix="longueur"] [data-valeur="courte"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), repondreTout('Vatican'), attendre('.bf-jeu .jeux-score'), (p) => p.waitForTimeout(2500)] },
+  { nom: 'jeux-capitales-revue', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('[data-choix="longueur"] [data-valeur="courte"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), repondreTout('Vatican'), attendre('.bf-jeu .jeux-revoir'), clic('.bf-jeu .jeux-revoir'), (p) => p.waitForTimeout(3500)] },
+  { nom: 'jeux-ou-revue', actions: [module('quiz-pays'), attendre('.jeux-pays-villes option'), clic('.jeux-carte[data-mode="ou"]'), clic('[data-choix="cible"] [data-valeur="pays"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('[data-choix="longueur"] [data-valeur="courte"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-ou-aide'), ...Array.from({ length: 10 }, () => [(p) => p.waitForTimeout(1800), (p) => p.mouse.click(Math.round(p.viewportSize().width * 0.5), Math.round(p.viewportSize().height * 0.3)), (p) => p.waitForTimeout(600), clic('.bf-jeu .jeux-suivant')]).flat(), attendre('.bf-jeu .jeux-score'), clic('.bf-jeu .jeux-revoir'), (p) => p.waitForTimeout(3500)] },
+  { nom: 'jeux-drapeaux-revue', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="drapeaux"]'), clic('[data-choix="sens"] [data-valeur="drapeau"]'), clic('[data-choix="niveau"] [data-valeur="choix"]'), clic('[data-choix="longueur"] [data-valeur="courte"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-choix'), ...Array.from({ length: 10 }, () => [(p) => p.waitForTimeout(300), clic('.bf-jeu .jeux-choix button:last-child'), (p) => p.waitForTimeout(300), clic('.bf-jeu .jeux-suivant')]).flat(), attendre('.bf-jeu .jeux-score'), clic('.bf-jeu .jeux-revoir'), (p) => p.waitForTimeout(3500)] },
+  { nom: 'jeux-reviser-avant', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="asie"]'), clic('.jeux-reviser-avant'), attendre('.jeux-fiche-ligne'), (p) => p.waitForTimeout(800)] },
+  { nom: 'jeux-fiche-bas', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="fiches"]'), attendre('.jeux-fiche-ligne'), clic('[data-choix="zoneFiches"] [data-valeur="europe"]'), clic('.jeux-fiche-ligne[data-code="CH"]'), attendre('.bf-jeu .jeux-savais-tu'), defiler('.bf-jeu .jeux-voisins'), (p) => p.waitForTimeout(3000)] },
+  { nom: 'jeux-fiche-voisin', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="fiches"]'), attendre('.jeux-fiche-ligne'), clic('[data-choix="zoneFiches"] [data-valeur="europe"]'), clic('.jeux-fiche-ligne[data-code="CH"]'), attendre('.bf-jeu .jeux-voisin'), clic('.bf-jeu .jeux-voisin[data-code="LI"]'), (p) => p.waitForTimeout(3000)] },
   {
     nom: 'combine-parcours-carte-fermee',
     actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
