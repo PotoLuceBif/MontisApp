@@ -251,3 +251,27 @@ export function lireErreur(cle) {
   const [type, id] = String(cle).split(':');
   return { type, id: type === 'ville' ? Number(id) : id };
 }
+
+// ---------- Fiches des pays ----------
+
+// Régions de chaque continent, dans l'ordre de la carte (du nord au sud, d'ouest en est)
+export const ORDRE_REGIONS = [
+  'northern-europe', 'western-europe', 'southern-europe', 'eastern-europe',
+  'northern-africa', 'western-africa', 'middle-africa', 'eastern-africa', 'southern-africa',
+  'western-asia', 'central-asia', 'southern-asia', 'eastern-asia', 'south-eastern-asia',
+  'northern-america', 'central-america', 'caribbean', 'south-america',
+  'australia-and-new-zealand', 'melanesia', 'micronesia', 'polynesia',
+];
+
+// Les pays d'une zone groupés par région, triés par endroit : régions dans l'ordre de la carte, pays d'ouest en est
+export function trierFiches(pays, zone) {
+  const groupes = new Map();
+  for (const p of pays.filter((x) => zone === 'monde' || x.zones.includes(zone))) {
+    if (!groupes.has(p.region)) groupes.set(p.region, []);
+    groupes.get(p.region).push(p);
+  }
+  const rang = (region) => (ORDRE_REGIONS.includes(region) ? ORDRE_REGIONS.indexOf(region) : ORDRE_REGIONS.length);
+  return [...groupes.entries()]
+    .sort(([a], [b]) => rang(a) - rang(b))
+    .map(([region, liste]) => ({ region, codes: liste.sort((a, b) => a.centre[0] - b.centre[0]).map((p) => p.code) }));
+}

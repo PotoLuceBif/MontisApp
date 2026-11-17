@@ -46,6 +46,7 @@ const ICONES_ACTIVITES = {
   rando: 'randonnee',
   velo: 'velo',
   ski: 'ski',
+  'culture-geo': 'culture-geo',
 };
 
 const CHEVRON_BAS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
@@ -263,7 +264,7 @@ export function initMenu(map) {
       aide: 'menu.aide-jeux',
       exclusif: false,
       modules: [
-        differer({ id: 'quiz-pays', labelCle: 'jeux.quiz', icone: 'globe' }, () =>
+        differer({ id: 'quiz-pays', labelCle: 'jeux.quiz', icone: 'culture-geo' }, () =>
           import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu }))
         ),
       ],

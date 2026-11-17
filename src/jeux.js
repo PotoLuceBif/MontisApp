@@ -8,9 +8,9 @@ import { langue } from './preferences.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
 import {
   DUREES_LISTE, LONGUEUR_COURTE, ZONES, cleRecord, formatChrono, index, indexCapitales, jumeau, meilleur, melanger, nomPays, paysDeZone,
-  proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur,
+  proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur, trierFiches,
 } from './jeu-calcul.js';
-import { formatDistance } from './unites.js';
+import { formatDistance, formatSurface, nombre } from './unites.js';
 
 const SOURCE = 'jeu-pays';
 const SOURCE_POINTS = 'jeu-pays-points';
@@ -23,6 +23,7 @@ const ICONES_MODES = {
   drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
   capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/>',
   liste: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
+  fiches: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/>',
   ou: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
   revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/>',
 };
@@ -44,6 +45,8 @@ const VUES = {
   ameriques: { center: [-78, 8], zoom: 1.7 },
   oceanie: { center: [155, -12], zoom: 2.4 },
 };
+// Superficie : arrondie au-delà de 1 000 km² (calculée sur les contours), exacte en dessous (chiffre officiel)
+const formatSuperficie = (km2) => (km2 >= 1000 ? `≈ ${formatSurface(km2)}` : `${nombre(km2, km2 < 10 ? 2 : 0)} km²`);
 const drapeau = (code) => `/data/jeux/drapeaux/${code}.svg`;
 const estTelephone = () => window.matchMedia('(max-width: 640px)').matches;
 
@@ -83,6 +86,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     sensCapitales: 'pays',
     cible: 'pays',
     paysVilles: 'FR',
+    zoneFiches: 'europe',
     niveau: 'choix',
     longueur: 'courte',
     zone: 'europe',
@@ -108,6 +112,14 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
             </span>
             <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
           </button>`).join('')}
+        <button type="button" class="jeux-carte" data-mode="fiches">
+          <span class="jeux-carte-icone jeux-carte-fiches" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES_MODES.fiches}</svg></span>
+          <span class="jeux-carte-textes">
+            <strong ${ti('jeux.carte-fiches')}>${t('jeux.carte-fiches')}</strong>
+            <span ${ti('jeux.carte-fiches-aide')}>${t('jeux.carte-fiches-aide')}</span>
+          </span>
+          <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
         <button type="button" class="jeux-carte jeux-carte-revision-ligne" data-mode="revision">
           <span class="jeux-carte-icone jeux-carte-revision" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES_MODES.revision}</svg></span>
           <span class="jeux-carte-textes">
@@ -119,6 +131,16 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       </div>
       <p class="note jeux-message-accueil" role="status" hidden></p>
       <p class="note jeux-credits" ${ti('jeux.credits')}>${t('jeux.credits')}</p>
+    </div>
+    <div class="jeux-fiches" hidden>
+      <button type="button" class="jeux-retour-cartes" ${ta('aria-label', 'jeux.retour-cartes')}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg><strong ${ti('jeux.carte-fiches')}>${t('jeux.carte-fiches')}</strong>
+      </button>
+      <p class="note" ${ti('jeux.fiches-aide')}>${t('jeux.fiches-aide')}</p>
+      <div class="jeux-zones" data-choix="zoneFiches" role="group" ${ta('aria-label', 'jeux.zone')}>
+        ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
+      </div>
+      <div class="jeux-fiches-liste"></div>
     </div>
     <div class="jeux-options" hidden>
       <button type="button" class="jeux-retour-cartes" ${ta('aria-label', 'jeux.retour-cartes')}>
@@ -225,7 +247,26 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     ecran = nouveau;
     $('.jeux-accueil').hidden = ecran !== 'accueil';
     $('.jeux-options').hidden = ecran !== 'options';
+    $('.jeux-fiches').hidden = ecran !== 'fiches';
     rendreReglage();
+    if (ecran === 'fiches') rendreFiches();
+  }
+
+  // Liste des fiches de la zone, groupées par région et triées par endroit
+  let ordreFiches = [];
+  function rendreFiches() {
+    const liste = $('.jeux-fiches-liste');
+    if (!donnees) return;
+    const { nom, capitale } = lesNoms();
+    const groupes = trierFiches(donnees.pays, choix.zoneFiches);
+    ordreFiches = groupes.flatMap((g) => g.codes);
+    liste.innerHTML = groupes.map((g) => `
+      <h4 class="jeux-fiches-region">${t(`jeux.region-${g.region}`)}</h4>
+      ${g.codes.map((code) => `
+        <button type="button" class="jeux-fiche-ligne" data-code="${code}">
+          <img src="${drapeau(code)}" alt="" loading="lazy">
+          <span><strong>${nom(code)}</strong><small>${capitale(code)} · ${formatSuperficie(donnees.parCode.get(code).superficie)}</small></span>
+        </button>`).join('')}`).join('');
   }
 
   function rendreReglage() {
@@ -237,7 +278,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       });
     });
     // Cartes : le record de chaque jeu avec ses derniers réglages
-    panneau.querySelectorAll('.jeux-carte:not([data-mode="revision"])').forEach((carte) => {
+    panneau.querySelectorAll('.jeux-carte').forEach((carte) => {
+      if (!$('.jeux-carte-record', carte)) return; // Fiches et Révision n'ont pas de record
       const record = records()[cleRecord(reglageEffectif(carte.dataset.mode))];
       const petit = $('.jeux-carte-record', carte);
       petit.textContent = record ? `${t(`jeux.zone-${choix.zone}`)} · ${texteRecord(record)}` : '';
@@ -266,7 +308,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       return nombres[zone];
     };
     panneau.querySelectorAll('.jeux-zones small').forEach((petit) => {
-      const valeur = compte(petit.parentElement.dataset.valeur);
+      // Les fiches comptent toujours des pays
+      const fiches = petit.closest('[data-choix]').dataset.choix === 'zoneFiches';
+      const valeur = fiches ? nombres?.[petit.parentElement.dataset.valeur] ?? null : compte(petit.parentElement.dataset.valeur);
       petit.textContent = valeur === null ? '' : String(valeur);
     });
     rendreChoixPays();
@@ -279,6 +323,16 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
 
   panneau.addEventListener('click', (event) => {
     const carte = event.target.closest('.jeux-carte');
+    if (carte?.dataset.mode === 'fiches') {
+      preparer().then(() => montrerEcran('fiches'), () => message(t(navigator.onLine ? 'jeux.erreur-chargement' : 'jeux.erreur-hors-ligne'), $('.jeux-message-accueil')));
+      return;
+    }
+    const ligneFiche = event.target.closest('.jeux-fiche-ligne');
+    if (ligneFiche) {
+      fermerMenu();
+      partie.fiches(ordreFiches, ordreFiches.indexOf(ligneFiche.dataset.code), choix.zoneFiches);
+      return;
+    }
     if (carte?.dataset.mode === 'revision') {
       lancer({ mode: 'revision', zone: 'monde', sens: '', niveau: 'choix', longueur: 'courte' }, $('.jeux-message-accueil'));
       return;
@@ -299,6 +353,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     choix[bouton.closest('[data-choix]').dataset.choix] = bouton.dataset.valeur;
     ecrire('jeux-choix', choix);
     rendreReglage();
+    if (ecran === 'fiches') rendreFiches();
   });
 
   $('.jeux-pays-villes').addEventListener('change', (event) => {
@@ -933,6 +988,59 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         this.question();
       });
       suivant.focus({ preventScroll: true });
+    },
+
+    // ----- Fiches des pays : drapeau, capitale, région, superficie ; ‹ › pour passer au pays suivant -----
+    fiches(liste, indice, zone) {
+      if (this.en) this.arreterSansRetour();
+      this.en = { reglage: { mode: 'fiches', zone }, fiches: liste, indice: Math.max(0, indice), questions: [], fin: null };
+      bloquerFiches(true);
+      jeu.titre.textContent = `${t('jeux.carte-fiches')} · ${t(`jeux.zone-${zone}`)}`;
+      jeu.afficher();
+      globe.poser(liste);
+      this.ficheCourante();
+    },
+
+    ficheCourante() {
+      const p = this.en;
+      const code = p.fiches[p.indice];
+      const pays = donnees.parCode.get(code);
+      const { nom, capitale } = lesNoms();
+      globe.toutEffacer();
+      globe.marquer(code, 'question');
+      globe.lieux([], { position: pays.capitale.position, nom: capitale(code) });
+      const position = `${p.indice + 1} / ${p.fiches.length}`;
+      jeu.meta.textContent = position;
+      jeu.definirResume({ nom: nom(code), detail: t('jeux.carte-fiches'), valeur: position, unite: '' });
+      jeu.corps.innerHTML = `
+        <div class="jeux-fiche">
+          <img class="jeux-drapeau" src="${drapeau(code)}" alt="${t('jeux.drapeau-de', { nom: nom(code) })}" draggable="false">
+          <p class="jeux-capitale">${nom(code)}</p>
+          <p class="note jeux-fiche-region">${t(`jeux.region-${pays.region}`)}</p>
+          <dl class="jeux-fiche-infos">
+            <div><dt>${t('jeux.fiche-capitale')}</dt><dd>${capitale(code)}</dd></div>
+            <div><dt>${t('jeux.fiche-superficie')}</dt><dd>${formatSuperficie(pays.superficie)}</dd></div>
+          </dl>
+          <div class="jeux-fiche-nav">
+            <button type="button" class="jeux-fiche-precedente" aria-label="${t('jeux.fiche-precedente')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+            <span>${position}</span>
+            <button type="button" class="jeux-fiche-suivante" aria-label="${t('jeux.fiche-suivante')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+          </div>
+          <button type="button" class="jeux-autre">${t('jeux.fiches-toutes')}</button>
+        </div>
+      `;
+      const aller = (pas) => {
+        p.indice = (p.indice + pas + p.fiches.length) % p.fiches.length;
+        this.ficheCourante();
+      };
+      $('.jeux-fiche-precedente', jeu.corps).addEventListener('click', () => aller(-1));
+      $('.jeux-fiche-suivante', jeu.corps).addEventListener('click', () => aller(1));
+      $('.jeux-autre', jeu.corps).addEventListener('click', () => {
+        this.quitter();
+        montrerEcran('fiches');
+        ouvrirMenu();
+      });
+      requestAnimationFrame(() => globe.allerA(code));
     },
 
     // ----- Liste : nommer tous les pays de la zone contre la montre -----

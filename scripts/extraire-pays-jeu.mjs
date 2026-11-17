@@ -46,6 +46,8 @@ const ZONES_FORCEES = {
 // (nom anglais de Natural Earth, ou ville donnée en entier) ; `autres` : noms aussi acceptés à la saisie
 const ADRESSE_VILLES = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_populated_places.geojson';
 const CACHE_VILLES = 'scripts/cache-pays-villes50m.geojson';
+const ADRESSE_10M = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_0_countries.geojson';
+const CACHE_10M = 'scripts/cache-pays-ne10m.geojson';
 const CAPITALES = {
   BJ: { ville: 'Porto-Novo', autres: ['Cotonou'] },
   BO: { ville: 'Sucre', autres: ['La Paz'] },
@@ -99,6 +101,13 @@ function aireSphere(anneau) {
   return Math.abs((s * 6371.0088 ** 2) / 2);
 }
 
+// Pays de moins de 1 000 km² : trop mal dessinés pour un calcul (Monaco à 18 km²), superficie du CIA World Factbook
+// (domaine public), en km²
+const SUPERFICIES_OFFICIELLES = {
+  VA: 0.44, MC: 2, NR: 21, TV: 26, SM: 61, LI: 160, MH: 181, KN: 261, MV: 298, MT: 316, GD: 344, VC: 389, BB: 430,
+  AG: 443, SC: 455, PW: 459, AD: 468, LC: 616, FM: 702, SG: 728, TO: 747, DM: 751, BH: 760, KI: 811, ST: 964,
+};
+
 // Sous-régions de Natural Earth corrigées : celles des « mers » rattachées à leur continent
 const REGIONS_FORCEES = { SC: 'eastern-africa', MU: 'eastern-africa', MV: 'southern-asia' };
 
@@ -144,6 +153,8 @@ if (!existsSync(CACHE)) await writeFile(CACHE, await (await fetch(ADRESSE)).text
 const entites = JSON.parse(await readFile(CACHE, 'utf8')).features;
 if (!existsSync(CACHE_VILLES)) await writeFile(CACHE_VILLES, await (await fetch(ADRESSE_VILLES)).text());
 const villes = JSON.parse(await readFile(CACHE_VILLES, 'utf8')).features.map((f) => f.properties);
+if (!existsSync(CACHE_10M)) await writeFile(CACHE_10M, await (await fetch(ADRESSE_10M)).text());
+const entites10 = JSON.parse(await readFile(CACHE_10M, 'utf8')).features;
 const codes = [...ONU, ...EN_PLUS];
 if (ONU.length !== 193 || new Set(codes).size !== 197) throw new Error(`Liste des pays : ${ONU.length} membres de l'ONU`);
 
@@ -178,9 +189,14 @@ for (const code of codes) {
   const ys = plusGrand[0].map((c) => c[1]);
   const emprise = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map((v) => Math.round(v * 100) / 100);
   const centre = arrondir(centroide(plusGrand[0]));
-  // Superficie sur les contours d'origine (avant simplification), territoires d'outre-mer compris, comme les chiffres officiels
-  const km2 = polygones.reduce((s, [exterieur, ...trous]) => s + aireSphere(exterieur) - trous.reduce((t, trou) => t + aireSphere(trou), 0), 0);
-  const superficie = Number(km2.toPrecision(km2 < 1 ? 1 : 3));
+  // Superficie sur les contours au 1/10 000 000 (le 1/50 000 000 donnait 12 km² à Monaco), territoires d'outre-mer
+  // compris, comme les chiffres officiels
+  const fins = ENTITES[code]
+    ? entites10.filter((f) => ENTITES[code].includes(f.properties.ADM0_A3))
+    : entites10.filter((f) => f.properties.ISO_A2_EH === code);
+  const polygonesFins = (fins.length ? fins : choisies).flatMap(({ geometry: { type, coordinates } }) => (type === 'Polygon' ? [coordinates] : coordinates));
+  const km2 = polygonesFins.reduce((s, [exterieur, ...trous]) => s + aireSphere(exterieur) - trous.reduce((t, trou) => t + aireSphere(trou), 0), 0);
+  const superficie = SUPERFICIES_OFFICIELLES[code] ?? Number(km2.toPrecision(3));
   const region = REGIONS_FORCEES[code] || principale.SUBREGION.toLowerCase().replace(/[^a-z]+/g, '-');
   const zones = ZONES_FORCEES[code] || [CONTINENTS[principale.CONTINENT]];
   if (!zones[0]) throw new Error(`Continent inconnu pour ${code} : ${principale.CONTINENT}`);

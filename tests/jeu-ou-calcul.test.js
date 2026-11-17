@@ -73,3 +73,29 @@ describe('révise tes erreurs', () => {
     expect(lireErreur('capitale:CH')).toEqual({ type: 'capitale', id: 'CH' });
   });
 });
+
+describe('fiches des pays', async () => {
+  const { trierFiches, ORDRE_REGIONS } = await import('../src/jeu-calcul.js');
+  const proprietes = pays.map((f) => f.properties);
+
+  it('chaque pays a une région connue et une superficie', () => {
+    for (const p of proprietes) {
+      expect(ORDRE_REGIONS, p.code).toContain(p.region);
+      expect(p.superficie, p.code).toBeGreaterThan(0);
+    }
+    const sup = (c) => proprietes.find((p) => p.code === c).superficie;
+    expect(sup('MC')).toBe(2);
+    expect(sup('CH')).toBeGreaterThan(40000);
+    expect(sup('CH')).toBeLessThan(42500);
+    expect(sup('RU')).toBeGreaterThan(16e6);
+  });
+
+  it('groupées par région dans l’ordre de la carte, d’ouest en est', () => {
+    const europe = trierFiches(proprietes, 'europe');
+    expect(europe[0].region).toBe('northern-europe');
+    const ouest = europe.find((g) => g.region === 'western-europe').codes;
+    expect(ouest.indexOf('FR')).toBeLessThan(ouest.indexOf('DE'));
+    expect(europe.flatMap((g) => g.codes)).toHaveLength(47);
+    expect(trierFiches(proprietes, 'monde').flatMap((g) => g.codes)).toHaveLength(197);
+  });
+});
