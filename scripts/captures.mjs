@@ -400,6 +400,9 @@ const ECRANS = [
   { nom: 'carte-fond-pays', actions: [vue(ZERMATT), module('fond'), ongletFond('pays')] },
   { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
   { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
+  // Bâtiments, eaux et voies ferrées : sans pastille sur le fond Montis, avec sur les autres, rallumés en revenant au fond Montis
+  { nom: 'carte-fond-elements-autre', actions: [module('fond'), choisirFond('osm'), fermerCarte, (p) => p.waitForTimeout(2500)] },
+  { nom: 'carte-fond-elements-retour', actions: [module('elements'), (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
   // Une carte nationale s'arrête à la frontière : le fond Montis complète (France à gauche, Suisse à droite)
   { nom: 'carte-fond-frontiere', actions: [vue({ center: [6.98, 46.03], zoom: 11.3, bearing: 0, pitch: 0 }), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(5000)] },
