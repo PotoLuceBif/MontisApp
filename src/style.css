@@ -1669,6 +1669,13 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
     border-radius: 13px;
   }
   #recherche.ouverte { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; z-index: 20; } /* liste au-dessus des boutons de la carte */
+  /* Lieu choisi : la barre repliée montre son nom et la croix pour le retirer */
+  #recherche.avec-repere:not(.ouverte) { flex: 1 1 auto; width: auto; min-width: 0; }
+  #recherche.avec-repere:not(.ouverte) .rech-champ { width: auto; padding: 0 2px 0 0; justify-content: flex-start; }
+  #recherche.avec-repere:not(.ouverte) input { display: block; font-size: 15px; text-overflow: ellipsis; }
+  #recherche.avec-repere:not(.ouverte) .rech-effacer { display: flex; width: 32px; }
+  #recherche.avec-repere:not(.ouverte) .rech-loupe { display: none; }
+  #recherche.avec-repere:not(.ouverte) input { padding-left: 10px; }
   #recherche.ouverte .rech-champ { height: 48px; }
   #menu-tiroir {
     position: fixed;

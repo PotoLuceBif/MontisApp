@@ -121,16 +121,16 @@ export function initRecherche(map) {
       marque.className = 'rech-marque-recent';
       marque.innerHTML = ICONE_HORLOGE;
       icone.appendChild(marque);
-      const oublier = document.createElement('button');
-      oublier.type = 'button';
-      oublier.className = 'rech-oublier';
-      oublier.setAttribute('aria-label', t('rech.oublier', { nom: r.nom }));
-      oublier.innerHTML = ICONE_CROIX;
-      oublier.addEventListener('click', (e) => {
+      const boutonOublier = document.createElement('button');
+      boutonOublier.type = 'button';
+      boutonOublier.className = 'rech-oublier';
+      boutonOublier.setAttribute('aria-label', t('rech.oublier', { nom: r.nom }));
+      boutonOublier.innerHTML = ICONE_CROIX;
+      boutonOublier.addEventListener('click', (e) => {
         e.stopPropagation();
         oublier(r);
       });
-      ligne.appendChild(oublier);
+      ligne.appendChild(boutonOublier);
     }
     ligne.addEventListener('click', () => choisir(r));
     ligne.addEventListener('mousemove', () => {
@@ -353,7 +353,14 @@ export function initRecherche(map) {
   // ---------- Actions ----------
   function majEffacer() {
     effacer.hidden = !(saisie.value || repere);
+    // Sur téléphone, la barre repliée garde le nom du lieu et sa croix tant que le repère est là
+    racine.classList.toggle('avec-repere', !!repere);
   }
+
+  // Sur téléphone, la barre se replie dès qu'on la quitte, sauf saisie en cours sans lieu choisi
+  const replier = () => {
+    if (mobile() && (!saisie.value || repere)) racine.classList.remove('ouverte');
+  };
 
   function choisir(r) {
     clearTimeout(minuteur);
@@ -409,6 +416,7 @@ export function initRecherche(map) {
   });
 
   saisie.addEventListener('focus', () => {
+    if (mobile()) racine.classList.add('ouverte');
     if (!saisie.value.trim()) afficherRecents();
     else if (resultats.length) ouvrirListe();
   });
@@ -440,9 +448,7 @@ export function initRecherche(map) {
 
   saisie.addEventListener('blur', () => {
     setTimeout(() => {
-      if (mobile() && !saisie.value && !racine.contains(document.activeElement)) {
-        racine.classList.remove('ouverte');
-      }
+      if (!racine.contains(document.activeElement)) replier();
     }, 150);
   });
 
@@ -452,8 +458,11 @@ export function initRecherche(map) {
   });
 
   effacer.addEventListener('click', () => {
+    // Barre repliée sur téléphone : la croix retire le lieu sans ouvrir le clavier
+    const replie = mobile() && !racine.classList.contains('ouverte');
     effacerTout();
-    saisie.focus();
+    if (replie) saisie.blur();
+    else saisie.focus();
   });
 
   // Le clic dans la liste ne doit pas retirer le focus de la saisie
@@ -463,7 +472,7 @@ export function initRecherche(map) {
   document.addEventListener('pointerdown', (e) => {
     if (!racine.contains(e.target)) {
       fermerListe();
-      if (mobile() && !saisie.value) racine.classList.remove('ouverte');
+      replier();
     }
   });
 
