@@ -151,6 +151,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           </span>
           <svg class="jeux-carte-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
         </button>
+        <div class="jeux-revision-categories" hidden></div>
       </div>
       <p class="note jeux-message-accueil" role="status" hidden></p>
       <p class="note jeux-credits" ${ti('jeux.credits')}>${t('jeux.credits')}</p>
@@ -376,7 +377,19 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       return;
     }
     if (carte?.dataset.mode === 'revision') {
-      lancer({ mode: 'revision', zone: 'monde', sens: '', niveau: 'choix', longueur: 'courte' }, $('.jeux-message-accueil'));
+      const bloc = $('.jeux-revision-categories');
+      bloc.hidden = !bloc.hidden;
+      if (!bloc.hidden) rendreCategories();
+      if (!bloc.hidden && !erreurs().length) message(t('jeux.carte-revision-vide'), $('.jeux-message-accueil'));
+      return;
+    }
+    const boutonCategorie = event.target.closest('[data-categorie]');
+    if (boutonCategorie) {
+      const categorie = boutonCategorie.dataset.categorie;
+      if (categorie === 'liste') {
+        const codes = erreurs().map(lireErreur).filter(({ type }) => type === 'liste').map(({ id }) => id);
+        lancer({ mode: 'liste', zone: 'monde', sens: '', niveau: 'choix', longueur: 'complete', revision: true }, $('.jeux-message-accueil'), { codes });
+      } else lancer({ mode: 'revision', categorie, zone: 'monde', sens: '', niveau: 'choix', longueur: 'courte' }, $('.jeux-message-accueil'));
       return;
     }
     if (carte) {
@@ -427,7 +440,20 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     return donnees;
   }
 
-  async function lancer(reglage, zoneMessage = $('.jeux-message')) {
+  // Révise tes erreurs par catégorie (demande du propriétaire du 17 novembre 2026) : seules celles qui en ont
+  function rendreCategories() {
+    const nombres = { drapeaux: 0, capitales: 0, ou: 0, liste: 0 };
+    for (const { type } of erreurs().map(lireErreur)) {
+      const categorie = CATEGORIE_ERREUR[type];
+      if (categorie) nombres[categorie] += 1;
+    }
+    $('.jeux-revision-categories').innerHTML = Object.entries(nombres)
+      .filter(([, n]) => n)
+      .map(([categorie, n]) => `<button type="button" class="para-bouton" data-categorie="${categorie}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONES_MODES[categorie]}</svg><span>${t(`jeux.carte-${categorie}`)}</span><small>${n}</small></button>`)
+      .join('');
+  }
+
+  async function lancer(reglage, zoneMessage = $('.jeux-message'), options = {}) {
     message('', zoneMessage);
     $('.jeux-jouer').disabled = true;
     try {
@@ -437,7 +463,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         return;
       }
       fermerMenu();
-      partie.demarrer(reglage);
+      partie.demarrer(reglage, options);
     } catch (erreur) {
       console.warn('Jeux :', erreur);
       message(t(navigator.onLine ? 'jeux.erreur-chargement' : 'jeux.erreur-hors-ligne'), zoneMessage);
@@ -905,6 +931,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   // Une question : { type, code (pays), ville (indice), seuil (km), cle (erreur) }
   // Types : drapeau (drapeau → pays), drapeau-pays (pays allumé → drapeau), capitale (pays → capitale),
   // capitale-pays (capitale → pays), ou-pays et ou-ville (toucher le globe)
+  const CATEGORIE_ERREUR = { drapeau: 'drapeaux', capitale: 'capitales', pays: 'ou', ville: 'ou', liste: 'liste' };
   const TYPE_ERREUR = { drapeau: 'drapeau', 'drapeau-pays': 'drapeau', capitale: 'capitale', 'capitale-pays': 'capitale', 'ou-pays': 'pays', 'ou-ville': 'ville' };
   const typeDe = ({ mode, sens }) => ({
     drapeaux: sens === 'pays' ? 'drapeau-pays' : 'drapeau',
@@ -922,7 +949,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     const { mode, zone, sens, longueur } = reglage;
     const couper = (liste) => (longueur === 'complete' ? liste : liste.slice(0, LONGUEUR_COURTE));
     if (mode === 'revision') {
-      return melanger(erreurs().slice(0, MAX_REVISION).map(lireErreur).map(({ type, id }) => {
+      const categorie = reglage.categorie;
+      const dansCategorie = ({ type }) => CATEGORIE_ERREUR[type] !== 'liste' && (!categorie || CATEGORIE_ERREUR[type] === categorie);
+      return melanger(erreurs().map(lireErreur).filter(dansCategorie).slice(0, MAX_REVISION).map(({ type, id }) => {
         if (type === 'ville') return ville(id) ? { type: 'ou-ville', ville: id, code: ville(id).pays, seuil: seuilDe(id), parPays: !donnees.villes.monde.includes(id) } : null;
         if (!donnees.parCode.has(id)) return null;
         return { type: { drapeau: 'drapeau', capitale: 'capitale', pays: 'ou-pays' }[type], code: id };
@@ -940,7 +969,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   // Titre de la partie : le jeu et sa zone (ou le pays des villes), « · erreurs » quand on rejoue ses erreurs
   function titrePartie(reglage, erreursSeules = false) {
     const suffixe = erreursSeules ? ` · ${t('jeux.titre-erreurs')}` : '';
-    if (reglage.mode === 'revision') return t('jeux.carte-revision') + suffixe;
+    if (reglage.mode === 'revision') return t('jeux.carte-revision') + (reglage.categorie ? ` · ${t(`jeux.carte-${reglage.categorie}`)}` : '') + suffixe;
+    if (reglage.revision) return `${t('jeux.carte-revision')} · ${t(`jeux.carte-${reglage.mode}`)}` + suffixe;
     const jeuNom = t(`jeux.carte-${reglage.mode}`);
     const lieu = reglage.mode === 'ou' && reglage.sens === 'ville-pays' ? lesNoms().nom(reglage.zone) : t(`jeux.zone-${reglage.zone}`);
     return `${jeuNom} · ${lieu}${suffixe}`;
@@ -1539,6 +1569,12 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       const total = liste ? p.codesZone.length : p.questions.length;
       const bonnes = liste ? p.trouves.length : p.bonnes;
       const duree = (p.fin - p.debut) / 1000;
+      if (liste) {
+        const oublies = new Set(p.ratees.map((q) => q.code));
+        let liste_ = erreurs();
+        for (const code of p.codesZone) liste_ = noterErreur(liste_, `liste:${code}`, !oublies.has(code));
+        ecrire('jeux-erreurs', liste_);
+      }
       // Les oubliés de la liste s'affichent en rouge sur le globe
       if (liste) {
         p.ratees = p.codesZone.filter((c) => !p.trouves.includes(c)).map((code) => ({ type: 'liste', code }));
