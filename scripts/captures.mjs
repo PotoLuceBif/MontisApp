@@ -997,6 +997,11 @@ const ECRANS = [
     actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
   },
 ];
+// Informations d'un astre du ciel : Soleil et Lune ouvert, la frise ne montre que cet astre
+for (const astre of ['soleil', 'lune']) {
+  const bulle = ECRANS.find((e) => e.nom === `globe-${astre}-bulle`);
+  ECRANS.push({ ...bulle, nom: `globe-${astre}-infos`, actions: [...bulle.actions, clic('.lune-bulle [data-action="infos"]'), (p) => p.waitForTimeout(2500)] });
+}
 
 // Textes visibles à l'écran
 const textesVisibles = (page) =>

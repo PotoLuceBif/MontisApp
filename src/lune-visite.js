@@ -627,6 +627,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       if (frisePrete) majEclairage();
     },
   });
+  frise.montrerSeul('lune'); // sur la Lune, seule la Lune sur la frise (demande du propriétaire du 24 novembre 2026)
   $('.lune-visite-frise').append(frise.element);
   if (Math.abs(instant - Date.now()) > 60 * 1000) frise.placer(instant);
   else {

@@ -67,7 +67,7 @@ export function initBulleLune(map, ciel) {
     const action = event.target.closest('[data-action]')?.dataset.action;
     if (!action) return;
     fermer();
-    if (action === 'infos') ouvrirSoleilLune(astre === 'soleil' ? 'ombres' : 'lune');
+    if (action === 'infos') ouvrirSoleilLune(astre === 'soleil' ? 'ombres' : 'lune', astre === 'soleil' ? 'soleil' : 'lune');
     else visiterLaLune(map);
   });
 
