@@ -21,7 +21,7 @@ const RUBRIQUES = {
   relief: { cle: 'relief.titre', ordre: 0 },
   ciel: { cle: 'menu.ciel', ordre: 2, categorie: 'ciel', module: 'ombres' }, // rubrique à part : Soleil et Lune
   nature: { cle: 'nature.titre', ordre: 5 },
-  elements: { cle: 'elements.titre', ordre: 10 },
+  elements: { cle: 'elements.titre', ordre: 10, categorie: 'carte', module: 'fond', section: 'elements' }, // dans « Avancé » du fond
   fond: { cle: 'fond.titre', ordre: 40 },
 };
 const rubriques = new Map(); // id → pastille de rubrique
@@ -61,8 +61,8 @@ function pastilleRubrique(id) {
   const retirer = element.querySelector('.couche-pastille-retirer');
   const membres = () => [...pastilles].filter((p) => p.rubrique === id && p.visible);
   corps.addEventListener('click', () => {
-    const { categorie, module } = RUBRIQUES[id];
-    if (categorie) window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module } }));
+    const { categorie, module, section } = RUBRIQUES[id];
+    if (categorie) window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module, section } }));
     else ouvrirReglage(id);
   });
   // Éteint toutes les couches de la rubrique ; chacune se retire de la liste en s'éteignant
@@ -101,8 +101,8 @@ export function eteindreFiltres() {
 }
 
 // Ouvre le panneau Carte sur un module (relief, elements), même réduit
-export const ouvrirReglage = (module) =>
-  window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'carte', module } }));
+export const ouvrirReglage = (module, section) =>
+  window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'carte', module, section } }));
 
 // `ordre` : place dans la rangée. `nom()` : texte de la pastille. `legende()` : HTML facultatif devant le nom.
 // `rubrique` : rubrique de Carte (relief, nature, elements, fond) où la pastille se regroupe.

@@ -1,5 +1,6 @@
-// Fond de carte : choix parmi les fonds du catalogue (fonds-catalogue.js), rangés en quatre onglets
-// (Ici, Monde, Pays, Anciennes), et calques officiels à superposer (calques-officiels.js).
+// Fond de carte : en tête, le fond Montis (Auto, Jour, Nuit), puis quelques fonds de base ; « Avancé » range
+// les éléments de la carte (elements-carte.js) et tous les fonds du catalogue (fonds-catalogue.js) en quatre
+// onglets (Ici, Monde, Pays, Anciennes), avec les calques officiels à superposer (calques-officiels.js).
 // Une carte nationale ne couvre que son pays : au-delà, le fond Montis complète la carte.
 import { lire, ecrire } from './reglages.js';
 import { etat, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
@@ -8,7 +9,7 @@ import { COUCHES_RAILS, afficherRails } from './transports.js';
 import { POINTS_UTILES, COUCHES_POINTS_UTILES, afficherPointUtile } from './points-utiles.js';
 import { CALQUES_MONTIS, REPERE_CALQUES, VOILE_GLACIERS, nomsAuDessusDesBatiments } from './style-montis.js';
 import { surLangue, t, ta, ti } from './i18n.js';
-import { CALQUES, FONDS, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
+import { CALQUES, FONDS, FONDS_DE_BASE, PAYS, REGIONS, empriseDe, nomDe, zoneDe } from './fonds-catalogue.js';
 import { rangerParPays, zoneCouvre } from './fonds-calcul.js';
 import { initCalquesOfficiels } from './calques-officiels.js';
 import { PROTOCOLE_FOND, ajouterProtocoleFonds, chargerZones, zonesChargees } from './fonds-protocole.js';
@@ -104,7 +105,7 @@ export function basculerFondHorsLigne(map, horsLigne) {
 
 const echapper = (texte) => String(texte).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-export function creerFondDeCarte(map) {
+export function creerFondDeCarte(map, { elements } = {}) {
   // Un fond = une source + une couche masquée au départ ; une carte nationale passe par le découpage à sa frontière
   ajouterProtocoleFonds();
   for (const f of FONDS) {
@@ -126,25 +127,64 @@ export function creerFondDeCarte(map) {
   const paysOuverts = new Set(); // pays dépliés dans l'onglet Pays (le temps de la session)
   let signatureIci = '';
 
+  let avanceOuvert = lire('fond-avance', false);
+  const chevron = '<svg class="fond-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
   const panneau = document.createElement('div');
   panneau.className = 'fond-panneau';
   panneau.innerHTML = `
     <section class="fond-montis-bloc">
-      <div class="fond-montis-entete">
-        <strong ${ti('fond.montis-titre')}>${t('fond.montis-titre')}</strong>
-        <small class="fond-montis-etat" aria-live="polite"></small>
-      </div>
+      <label class="fond-item fond-montis-choix">
+        <input type="radio" name="fond" value="montis">
+        <span class="fond-textes">
+          <span class="fond-nom" ${ti('fond.montis-titre')}>${t('fond.montis-titre')}</span>
+          <small class="fond-desc" ${ti('fond.desc-montis')}>${t('fond.desc-montis')}</small>
+        </span>
+      </label>
       <div class="segments fond-montis-modes" role="group" ${ta('aria-label', 'fond.montis-titre')}>
         ${MODES_FOND.map((m) => `<button type="button" data-mode="${m}" ${ti(`fond.mode-${m}`)}>${t(`fond.mode-${m}`)}</button>`).join('')}
       </div>
+      <small class="fond-montis-etat" aria-live="polite"></small>
     </section>
-    <div class="fond-onglets" role="tablist">
-      ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
-    </div>
-    <div class="fond-contenu"></div>
+    <h4 class="fond-groupe" ${ti('fond.groupe-base')}>${t('fond.groupe-base')}</h4>
+    <div class="fond-base"></div>
+    <section class="fond-avance">
+      <button type="button" class="fond-avance-entete" aria-expanded="false">
+        <span class="fond-avance-titre" ${ti('fond.avance')}>${t('fond.avance')}</span>
+        <small class="fond-avance-resume"></small>
+        ${chevron}
+      </button>
+      <div class="fond-avance-corps" hidden>
+        <h4 class="fond-groupe" data-section="elements" ${ti('elements.titre')}>${t('elements.titre')}</h4>
+        <div class="fond-elements"></div>
+        <h4 class="fond-groupe" data-section="fonds" ${ti('fond.tous')}>${t('fond.tous')}</h4>
+        <div class="fond-onglets" role="tablist">
+          ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
+        </div>
+        <div class="fond-contenu"></div>
+      </div>
+    </section>
     <p class="note fond-actuel"></p>
     <p class="note fond-alerte" role="status" hidden></p>
   `;
+  if (elements) panneau.querySelector('.fond-elements').append(elements.panneau);
+  const base = panneau.querySelector('.fond-base');
+  const choixMontis = panneau.querySelector('.fond-montis-choix input');
+  const avance = panneau.querySelector('.fond-avance');
+  const enteteAvance = avance.querySelector('.fond-avance-entete');
+  const corpsAvance = avance.querySelector('.fond-avance-corps');
+  const resumeAvance = avance.querySelector('.fond-avance-resume');
+
+  function ouvrirAvance(oui) {
+    avanceOuvert = oui;
+    ecrire('fond-avance', oui);
+    avance.classList.toggle('ouvert', oui);
+    corpsAvance.hidden = !oui;
+    enteteAvance.setAttribute('aria-expanded', String(oui));
+  }
+  enteteAvance.addEventListener('click', () => ouvrirAvance(!avanceOuvert));
+  ouvrirAvance(avanceOuvert);
+
   const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button');
   const boutonsModes = panneau.querySelectorAll('.fond-montis-modes button');
   const etatMontis = panneau.querySelector('.fond-montis-etat');
@@ -153,6 +193,7 @@ export function creerFondDeCarte(map) {
   function majModes() {
     const mode = modeFond();
     const montis = idActif === 'montis';
+    choixMontis.checked = montis;
     boutonsModes.forEach((b) => {
       b.classList.toggle('actif', montis && b.dataset.mode === mode);
       b.setAttribute('aria-pressed', String(montis && b.dataset.mode === mode));
@@ -299,6 +340,10 @@ export function creerFondDeCarte(map) {
       b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
     });
     contenu.innerHTML = RENDUS[onglet]();
+    base.innerHTML = liste(FONDS_DE_BASE.map(fondDe).filter(Boolean).map((f) => ligneFond(f)));
+    // Fond choisi dans « Avancé » : son nom reste visible, panneau replié
+    const ailleurs = idActif !== 'montis' && !FONDS_DE_BASE.includes(idActif);
+    resumeAvance.textContent = ailleurs ? nomDe(fondDe(idActif)) : '';
     majAlerte();
     majModes();
     signatureIci = signature();
@@ -315,7 +360,7 @@ export function creerFondDeCarte(map) {
     afficher();
   }));
 
-  contenu.addEventListener('change', (e) => {
+  panneau.addEventListener('change', (e) => {
     const cible = e.target;
     if (cible.name === 'fond') {
       idActif = cible.value;
@@ -376,5 +421,10 @@ export function creerFondDeCarte(map) {
       if (!zonesChargees()) quandZones();
     },
     desactiver() {},
+    // Appui sur une pastille d'élément de la carte : « Avancé » s'ouvre sur sa partie
+    ouvrirSection(section) {
+      ouvrirAvance(true);
+      return corpsAvance.querySelector(`[data-section="${section}"]`);
+    },
   };
 }

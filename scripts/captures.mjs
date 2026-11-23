@@ -79,7 +79,7 @@ const clicCarte = (lngLat) => async (page) => {
   const boite = await page.locator('#map').boundingBox();
   await page.mouse.click(boite.x + x, boite.y + y);
 };
-const allumerElements = (motif) => [module('elements'), (p) => p.evaluate((m) => { for (const l of document.querySelectorAll('.option-case')) if (new RegExp(m).test(l.textContent)) { const c = l.querySelector('input'); if (!c.checked) c.click(); } }, motif), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')];
+const allumerElements = (motif) => [...elementsCarte, (p) => p.evaluate((m) => { for (const l of document.querySelectorAll('.option-case')) if (new RegExp(m).test(l.textContent)) { const c = l.querySelector('input'); if (!c.checked) c.click(); } }, motif), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')];
 // Touche le premier élément affiché d'une couche (un parking du fond…), le plus près du centre
 const clicCouche = (couche) => async (page) => {
   const point = await page.evaluate((id) => {
@@ -147,11 +147,23 @@ const attendreCouche = (couche) => (page) => attendreSur(
 const ANNECY = { center: [6.25, 45.83], zoom: 10.5, bearing: 0, pitch: 0 };
 const ZERMATT = { center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 };
 // Panneau Fond de carte : un onglet, un fond, un calque officiel (la liste se redessine : on cherche à chaque fois)
-const ongletFond = (o) => clic(`.fond-onglets [data-onglet="${o}"]`);
+// « Avancé » du fond de carte : éléments de la carte et tous les fonds
+const ouvrirAvance = (section) => (page) => page.evaluate((section) => {
+  const entete = document.querySelector('.fond-avance-entete');
+  if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
+  document.querySelector(`.fond-avance [data-section="${section}"]`)?.scrollIntoView({ block: 'start' });
+}, section);
+const elementsCarte = [module('fond'), ouvrirAvance('elements')];
+const ongletFond = (o) => async (page) => {
+  await ouvrirAvance('fonds')(page);
+  await clic(`.fond-onglets [data-onglet="${o}"]`)(page);
+};
 const choisirFond = (id) => async (page) => {
   await page.evaluate((i) => {
-    let radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
+    let radio = document.querySelector(`.fond-panneau input[name="fond"][value="${i}"]`);
     if (!radio) {
+      const entete = document.querySelector('.fond-avance-entete');
+      if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
       document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
       for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
       radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
@@ -403,13 +415,15 @@ const ECRANS = [
     actions: [module('vent'), (p) => p.waitForTimeout(1500), module('relief'), clic('.couche-pastille:not([hidden]) .couche-pastille-corps')],
   },
   { nom: 'carte-fond', actions: [module('fond')] },
+  { nom: 'carte-fond-avance', actions: [module('fond'), ouvrirAvance('elements')] },
+  { nom: 'carte-fond-avance-fonds', actions: [module('fond'), ongletFond('ici')] },
   // Fonds topo (lot 3.10) : onglets Pays et Anciennes, cartes nationales, calques officiels
   { nom: 'carte-fond-pays', actions: [vue(ZERMATT), module('fond'), ongletFond('pays')] },
   { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
   { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
   // Bâtiments, eaux et voies ferrées : sans pastille sur le fond Montis, avec sur les autres, rallumés en revenant au fond Montis
   { nom: 'carte-fond-elements-autre', actions: [module('fond'), choisirFond('osm'), fermerCarte, (p) => p.waitForTimeout(2500)] },
-  { nom: 'carte-fond-elements-retour', actions: [module('elements'), (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
+  { nom: 'carte-fond-elements-retour', actions: [...elementsCarte, (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
   // Une carte nationale s'arrête à la frontière : le fond Montis complète (France à gauche, Suisse à droite)
   { nom: 'carte-fond-frontiere', actions: [vue({ center: [6.98, 46.03], zoom: 11.3, bearing: 0, pitch: 0 }), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(5000)] },
@@ -510,7 +524,7 @@ const ECRANS = [
   {
     nom: 'carte-pastilles',
     actions: [
-      vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), module('elements'),
+      vue(AIGUILLES), module('relief'), clic('.pentes-choix [data-genre="orientation"]'), ...elementsCarte,
       (p) => p.evaluate(() => [...document.querySelectorAll('#outil-rapide-panneau-carte .option-case input')].filter((c) => c.offsetParent !== null).forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
       clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
     ],
@@ -519,7 +533,7 @@ const ECRANS = [
   {
     nom: 'carte-pastilles-rubrique',
     actions: [
-      vue(AIGUILLES), module('elements'),
+      vue(AIGUILLES), ...elementsCarte,
       (p) => p.evaluate(() => [...document.querySelectorAll('#outil-rapide-panneau-carte .option-case input')].filter((c) => c.offsetParent !== null).forEach((c, i) => { if (i < 3 && !c.checked) c.click(); })),
       clic('#outil-rapide-panneau-carte .outil-rapide-fermer'),
       clic('.couche-pastille-rubrique:not([hidden]) .couche-pastille-corps'),
@@ -546,7 +560,7 @@ const ECRANS = [
   // Frontières des pays (Carte › Éléments de la carte › Lieux), sur la géologie près de Genève
   {
     nom: 'carte-frontieres',
-    actions: [vue({ center: [6.1, 46.2], zoom: 9.5, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), module('elements'),
+    actions: [vue({ center: [6.1, 46.2], zoom: 9.5, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), ...elementsCarte,
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Frontières|borders/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -555,7 +569,7 @@ const ECRANS = [
   // Voies ferrées et gares (Carte › Éléments de la carte › Construit), en gare de Chamonix ; puis sur le satellite
   {
     nom: 'carte-gares',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), module('elements'), clicVisible('.fond-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -563,7 +577,7 @@ const ECRANS = [
   },
   {
     nom: 'carte-gares-satellite',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), module('elements'), clicVisible('.fond-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -583,7 +597,7 @@ const ECRANS = [
   },
   { nom: 'carte-geologie-suisse', actions: [vue({ center: [7.75, 46.02], zoom: 11, bearing: 0, pitch: 0 }), module('nature'), clic('.geologie-choix button'), (p) => p.waitForTimeout(5000)] },
   // Activité en cours, menu fermé : sa pastille avec les couches
-  { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), module('elements'), (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
+  { nom: 'pastille-activite', actions: [vue(ANNECY), module('parapente'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), ...elementsCarte, (p) => p.evaluate(() => { const c = [...document.querySelectorAll('.option-case')].find((l) => /Sommets|Peaks/i.test(l.textContent))?.querySelector('input'); if (c && !c.checked) c.click(); }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), (p) => p.waitForTimeout(2000)] },
   // Ombre du soleil à une heure choisie (curseur), ombre portée comprise
   { nom: 'ciel-ombres', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(9 * 60), (p) => p.waitForTimeout(5000), defiler('.relief-ombres')] },
   {
@@ -731,7 +745,7 @@ const ECRANS = [
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
-  { nom: 'carte-elements', actions: [module('elements')] },
+  { nom: 'carte-elements', actions: elementsCarte },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
   // Fiche d'un point quelconque, ouverte par appui long
   { nom: 'point', simuler: true, actions: [appuiLong(0.5, 0.42)] },
