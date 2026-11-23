@@ -4157,6 +4157,18 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .lune-bulle button { min-height: 40px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer; white-space: nowrap; }
 .lune-bulle button:hover { background: var(--survol); }
 .lune-bulle button.principal { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+/* Fiche courte d'une galaxie touchée dans le ciel (lune-bulle.js) */
+.lune-bulle.galaxie { width: min(290px, calc(100vw - 16px)); padding: 12px 14px; }
+.lune-bulle-galaxie { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: var(--texte); font-size: 13px; line-height: 1.4; }
+.lune-bulle-galaxie[hidden] { display: none; }
+.lune-bulle-galaxie strong { font-size: 15px; }
+.lune-bulle-type { color: var(--texte-2); font-size: 12px; }
+.lune-bulle-galaxie dl { display: grid; gap: 4px; margin: 4px 0 0; }
+.lune-bulle-galaxie dl div { display: flex; gap: 8px; }
+.lune-bulle-galaxie dt { flex: none; width: 64px; color: var(--texte-2); }
+.lune-bulle-galaxie dd { margin: 0; font-weight: 600; }
+.lune-bulle-galaxie p { margin: 2px 0 0; }
+.lune-bulle-galaxie small { color: var(--texte-2); font-size: 11px; }
 .lune-visiter {
   display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 4px; padding: 10px 12px; border: 1px solid var(--bord); border-radius: 12px;
   background: var(--surface-2); color: var(--texte); text-align: left; cursor: pointer; font-family: var(--police);

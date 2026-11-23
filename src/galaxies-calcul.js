@@ -123,3 +123,24 @@ export function poseGalaxie({ grand, angle, taille }, centre, nord, est, delta) 
   const d = -s * dy;
   return [a, b, c, d, centre.x - ((a + c) * taille) / 2, centre.y - ((b + d) * taille) / 2];
 }
+
+// Galaxies qui ont leur bulle d'informations (lune-bulle.js) ; M32 et M110, collées à Andromède, en font partie
+export const GALAXIES_INFOS = ['m31', 'm33', 'lmc', 'smc'];
+
+// Galaxie touchée : `points`, [{ id, x, y, rayon }] à l'écran (rayon : demi-grand axe en px). La plus proche de
+// son centre, rapportée à sa taille, parmi celles dont le disque élargi de `marge` contient le doigt ; sinon null
+export function galaxieSous(points, x, y, marge = 0) {
+  let choix = null;
+  let meilleur = Infinity;
+  for (const point of points) {
+    if (!GALAXIES_INFOS.includes(point.id)) continue;
+    const distance = Math.hypot(x - point.x, y - point.y);
+    if (distance > point.rayon + marge) continue;
+    const relative = distance / Math.max(1, point.rayon);
+    if (relative < meilleur) {
+      meilleur = relative;
+      choix = point.id;
+    }
+  }
+  return choix;
+}

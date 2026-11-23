@@ -6,7 +6,7 @@
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral } from './ciel-calcul.js';
 import { matriceCiel, peindreVoieLactee, projeterGalactique } from './voie-lactee-calcul.js';
-import { GALAXIES, poseGalaxie } from './galaxies-calcul.js';
+import { GALAXIES, galaxieSous, poseGalaxie } from './galaxies-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
@@ -179,6 +179,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
       // Presque à angle droit de la visée, la perspective l'agrandit sans limite : elle couvrait tout le ciel
       if (Math.max(rayon, etirement) > Math.max(l, h)) continue;
       if (point.x < -rayon || point.y < -rayon || point.x > l + rayon || point.y > h + rayon) continue;
+      pointsGalaxies.push({ id: modele.id, x: point.x, y: point.y, rayon: Math.max(rayon, etirement) / 2 });
       const [a, b, c, d, e, f] = poseGalaxie(modele, point, nord, est, DELTA);
       contexte.setTransform(ratio * a, ratio * b, ratio * c, ratio * d, ratio * e, ratio * f);
       contexte.globalAlpha = alpha * modele.eclat;
@@ -189,6 +190,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
   }
 
   let pointSoleil = null;
+  let pointsGalaxies = []; // pour les toucher (lune-bulle.js)
   function dessinerSoleil(cam, { lng, lat }, maintenant) {
     const soleil = getPosition(maintenant, lat, lng);
     const point = projeterDirection({ azimut: AZIMUT(soleil.azimuth), hauteur: soleil.altitude }, cam);
@@ -304,6 +306,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     toile.hidden = opacite <= 0;
     pointLune = null;
     pointSoleil = null;
+    pointsGalaxies = [];
     if (opacite <= 0) return;
     if (!etoiles.length) {
       chargerEtoiles().then((liste) => {
@@ -387,6 +390,8 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     // Lune visible à l'écran : { x, y, rayon } en px CSS, sinon null
     pointLune: () => (toile.hidden ? null : pointLune),
     pointSoleil: () => (toile.hidden ? null : pointSoleil),
+    // Galaxie sous le doigt (identifiant de GALAXIES), sinon null
+    galaxieEn: (x, y, marge) => (toile.hidden ? null : galaxieSous(pointsGalaxies, x, y, marge)),
     redessiner: planifier,
   };
 }

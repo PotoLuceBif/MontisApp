@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GALAXIES, imageGalaxie, poseGalaxie } from '../src/galaxies-calcul.js';
+import { GALAXIES, GALAXIES_INFOS, galaxieSous, imageGalaxie, poseGalaxie } from '../src/galaxies-calcul.js';
 
 const alpha = (pixels, n, x, y) => pixels[(Math.round(y) * n + Math.round(x)) * 4 + 3];
 const galaxie = (id) => GALAXIES.find((g) => g.id === id);
@@ -62,5 +62,29 @@ describe('pose à l’écran', () => {
     const [, , c, d] = poseGalaxie({ grand: 4, angle: 0, taille: 100 }, centre, nord, est, 0.5);
     // Toute la hauteur de l'image couvre le grand axe et sa marge (1,35) : 4° × 1,35 × 10 px
     expect(Math.hypot(c, d) * 100).toBeCloseTo(4 * 1.35 * 10, 6);
+  });
+});
+
+describe('galaxie touchée', () => {
+  const points = [
+    { id: 'm31', x: 100, y: 100, rayon: 40 },
+    { id: 'm32', x: 110, y: 105, rayon: 4 },
+    { id: 'lmc', x: 300, y: 300, rayon: 80 },
+    { id: 'smc', x: 360, y: 300, rayon: 20 },
+  ];
+  it('chaque galaxie touchable a ses textes de bulle', () => {
+    for (const id of GALAXIES_INFOS) expect(GALAXIES.some((g) => g.id === id)).toBe(true);
+  });
+  it('trouve la galaxie sous le doigt, compagnes rattachées à Andromède', () => {
+    expect(galaxieSous(points, 110, 105)).toBe('m31');
+    expect(galaxieSous(points, 300, 310)).toBe('lmc');
+  });
+  it('préfère la galaxie dont on touche le cœur quand deux se chevauchent', () => {
+    expect(galaxieSous(points, 358, 300)).toBe('smc');
+  });
+  it('rien hors des disques, sauf dans la marge', () => {
+    expect(galaxieSous(points, 150, 100)).toBe(null);
+    expect(galaxieSous(points, 150, 100, 14)).toBe('m31');
+    expect(galaxieSous([], 0, 0)).toBe(null);
   });
 });
