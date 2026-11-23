@@ -1540,6 +1540,10 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 }
 #fiche { top: 88px; right: 70px; } /* à gauche des boutons de la carte */
 #rando-fiche, :is(#ski-fiche, #bikepark-fiche) { bottom: 22px; }
+/* Fiche de station ou de bike park (visite comprise) : un long bulletin d'avalanche défile dans la fiche au lieu de couvrir l'écran et ses boutons */
+:is(#ski-fiche, #bikepark-fiche) { max-height: calc(100dvh - 130px); overflow-y: auto; overscroll-behavior: contain; }
+/* Son en-tête (nom, réduire, fermer) reste visible pendant le défilement */
+:is(#ski-fiche, #bikepark-fiche) > .rando-entete { position: sticky; top: 0; z-index: 2; background: var(--surface); border-radius: inherit; }
 .rando-fiche-profil { padding-bottom: 4px; }
 .rando-fiche-profil .rando-stats { padding: 8px 14px 10px; }
 .rando-fiche-profil .rando-profil { padding-right: 0; padding-left: 0; }

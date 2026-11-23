@@ -74,6 +74,10 @@ export default defineConfig({
   plugins: [serviceWorker(), relais()],
   // Version affichée dans les Paramètres
   define: { __VERSION_MONTIS__: JSON.stringify(version) },
+  // Les sessions parallèles travaillent dans .claude/worktrees/ : sans cela, chacune de leurs
+  // constructions rechargeait la page du serveur principal (captures bloquées au chargement)
+  server: { watch: { ignored: ['**/.claude/**', '**/captures/**'] } },
+  optimizeDeps: { entries: ['index.html'] },
   build: {
     // MapLibre (1,1 Mo) dans son propre fichier : il change rarement, le navigateur et le
     // service worker le gardent d'un déploiement à l'autre, seul le code de Montis se recharge
