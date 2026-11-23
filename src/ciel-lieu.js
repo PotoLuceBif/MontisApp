@@ -40,6 +40,7 @@ export function creerLieuCiel(map, { reglage, visible }) {
   let controleur = null;
   let dernierFuseau = null; // { lng, lat } de la dernière demande de fuseau
   let minuteur = null;
+  let fige = false; // mode frise de l'espace : la carte tourne sous le lieu, qui ne change pas
 
   function majTextes() {
     if (nomLieu) nom.textContent = nomLieu;
@@ -177,7 +178,7 @@ export function creerLieuCiel(map, { reglage, visible }) {
   map.on('movestart', (event) => { if (event.originalEvent) choisi = false; });
   map.on('moveend', () => {
     clearTimeout(minuteur);
-    if (!visible()) return;
+    if (!visible() || fige) return;
     minuteur = setTimeout(() => void identifier(), 700);
   });
   // L'heure sur place avance
@@ -189,5 +190,9 @@ export function creerLieuCiel(map, { reglage, visible }) {
     majTextes,
     // Le panneau s'ouvre : le lieu a pu changer depuis
     surOuverture: () => void identifier(),
+    figer: (oui) => {
+      fige = oui;
+      if (oui) clearTimeout(minuteur);
+    },
   };
 }

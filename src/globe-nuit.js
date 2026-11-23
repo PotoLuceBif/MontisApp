@@ -5,6 +5,7 @@
 import { addProtocol } from 'maplibre-gl';
 import { REPERE_CALQUES } from './style-montis.js';
 import { couleurCalotte, melangerTuile, pointSubsolaire } from './globe-nuit-calcul.js';
+import { enModeFrise, instantEspace } from './heure-espace.js';
 
 const PROTOCOLE = 'montis-globe';
 const SOURCE = 'globe-jour-nuit';
@@ -64,7 +65,12 @@ function pixelsDe(adresse) {
 }
 
 const adresse = (modele, z, x, y) => modele.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-const instantArrondi = () => Math.floor(Date.now() / PAS_HEURE) * PAS_HEURE;
+// Mode frise de Soleil et Lune (heure-espace.js) : au pas du curseur, pour que la Terre tourne sans à-coups
+const PAS_FRISE = 5 * 60 * 1000;
+const instantArrondi = () => {
+  const pas = enModeFrise() ? PAS_FRISE : PAS_HEURE;
+  return Math.floor(instantEspace() / pas) * pas;
+};
 
 export function initGlobeNuit(map) {
   addProtocol(PROTOCOLE, async ({ url }) => {
@@ -135,4 +141,24 @@ export function initGlobeNuit(map) {
       map.getSource(CALOTTES)?.setData(calottes(instant));
     }
   });
+
+  // Heure de la frise : pendant un glissement, au plus une nouvelle série de tuiles toutes les 120 ms (chacune
+  // est remélangée sur l'appareil), la dernière toujours appliquée
+  let attente = null;
+  let dernier = 0;
+  function suivreHeure() {
+    clearTimeout(attente);
+    const reste = 120 - (performance.now() - dernier);
+    if (reste > 0) {
+      attente = setTimeout(suivreHeure, reste);
+      return;
+    }
+    dernier = performance.now();
+    const nouvel = instantArrondi();
+    if (nouvel === instant) return;
+    instant = nouvel;
+    map.getSource(SOURCE)?.setTiles(tuiles());
+    map.getSource(CALOTTES)?.setData(calottes(instant));
+  }
+  window.addEventListener('montis:heure-espace', suivreHeure);
 }

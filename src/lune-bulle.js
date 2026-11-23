@@ -8,6 +8,7 @@ import { svgLune } from './lune-dessin.js';
 import { getMoonPosition } from 'suncalc';
 import { opaciteCiel } from './ciel-calcul.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
+import { instantEspace } from './heure-espace.js';
 
 const MARGE = 14; // px autour du disque : les astres sont petits, le doigt ne l'est pas
 
@@ -134,7 +135,7 @@ export function initBulleLune(map, ciel) {
     // Direction de la Lune par la vraie projection de la caméra, inclinaison comprise (avec la seule boussole, une vue
     // inclinée montrait le haut pour une Lune qui était en bas), ramenée au bord libre de l'écran
     const { lng, lat } = map.getCenter();
-    const lune2 = getMoonPosition(new Date(), lat, lng);
+    const lune2 = getMoonPosition(new Date(instantEspace()), lat, lng);
     const cam = {
       bearing: map.getBearing(), pitch: map.getPitch(), fov: map.getVerticalFieldOfView(), largeur: l, hauteurEcran: h, padding: map.getPadding(),
     };
@@ -146,12 +147,12 @@ export function initBulleLune(map, ciel) {
   // La Lune du ciel est redessinée à l'image suivante : la flèche suit après elle
   map.on('move', () => requestAnimationFrame(placerIndice));
   map.on('resize', placerIndice);
+  window.addEventListener('montis:heure-espace', () => requestAnimationFrame(placerIndice));
   map.on('idle', placerIndice);
   indice.addEventListener('click', (event) => {
     event.stopPropagation();
     import('./terre-vue-calcul.js').then(({ pointSousLune, vueLuneAuNord }) => {
-      const instant = new Date();
-      const vue = vueLuneAuNord(pointSousLune(instant));
+      const vue = vueLuneAuNord(pointSousLune(new Date(instantEspace())));
       map.flyTo({ center: [vue.lng, vue.lat], zoom: Math.min(map.getZoom(), 1.4), bearing: 0, pitch: 0, duration: 2200 });
     });
   });
