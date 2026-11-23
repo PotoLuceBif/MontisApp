@@ -4735,3 +4735,6 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .jeux-saisie input.jeux-champ-refus::placeholder { color: #ff8da1; opacity: 1; }
 @keyframes jeux-secousse { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
 @media (prefers-reduced-motion: reduce) { .jeux-saisie input.jeux-champ-refus { animation: none; } }
+/* Frise d'un seul astre (Informations du soleil ou de la Lune, visite de la Lune) */
+.soleil-reglage[data-astre="soleil"] :is(.ciel-course-lune, .ciel-course-lune-trace, .ciel-course-lune-jour) { display: none; }
+.soleil-reglage[data-astre="lune"] :is(.ciel-course-soleil, .ciel-course-soleil-jour, .ciel-course-soleil-nuit, .ciel-course-aire, .ciel-course-repere, .ciel-course-heure, .ombres-piste) { display: none; }

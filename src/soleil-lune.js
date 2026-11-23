@@ -17,8 +17,9 @@ import { fixerInstantEspace } from './heure-espace.js';
 const ICONE_CIEL = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="9" cy="9" r="3.2"/><path d="M9 2.5v1.3M2.5 9h1.3M14.2 9h1.3M9 14.2v1.3M4.4 4.4l.9.9M12.7 5.3l.9-.9M4.4 13.6l.9-.9"/><path d="M21.5 17.2a4.6 4.6 0 1 1-5-5 3.7 3.7 0 0 0 5 5Z"/></svg>`;
 
-export const ouvrirSoleilLune = (module = 'ombres') =>
-  window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'ciel', module } }));
+// `astre` ('soleil' ou 'lune') : ouvert depuis « Informations » d'un astre du ciel, la frise ne montre que lui
+export const ouvrirSoleilLune = (module = 'ombres', astre = null) =>
+  window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'ciel', module, astre } }));
 
 export function creerSoleilLune(map) {
   const abonnes = new Set();
@@ -46,6 +47,17 @@ export function creerSoleilLune(map) {
   heuresSoleil.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
 
   const visible = () => entete.offsetParent !== null;
+  // Astre seul sur la frise (demande du propriétaire du 24 novembre 2026) : le temps de cette ouverture seulement
+  let astreSeul = null;
+  const montrerSeul = (astre) => {
+    astreSeul = astre;
+    reglage?.montrerSeul(astre);
+  };
+  window.addEventListener('montis:ouvrir-module', (e) => {
+    if (e.detail?.categorie === 'ciel') montrerSeul(e.detail.astre ?? null);
+  });
+  // Panneau fermé (tête de rubrique cachée) : la frise montre de nouveau les deux astres
+  new ResizeObserver(() => { if (astreSeul && !visible()) montrerSeul(null); }).observe(entete);
   let ombres = null;
   let cielActif = lire('ciel-astres', false);
   let reglage = null;
@@ -71,6 +83,7 @@ export function creerSoleilLune(map) {
         },
         actif: () => visible() || Boolean(ombres?.actif()) || cielActif,
       });
+      reglage.montrerSeul(astreSeul);
       entete.prepend(reglage.element);
       // Le lieu, en petit sous le jour
       lieu = lieuModule.creerLieuCiel(map, { reglage, visible });

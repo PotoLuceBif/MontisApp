@@ -279,6 +279,11 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     placer,
     // `point` ({ lng, lat }) : calculs à ce lieu tant que la carte tourne sous la frise ; null : le centre de la carte
     figerLieu: (point) => { lieuFige = point; },
+    // 'soleil' ou 'lune' : la frise ne montre que cet astre ; null : les deux
+    montrerSeul: (astre) => {
+      if (astre) element.dataset.astre = astre;
+      else delete element.dataset.astre;
+    },
     // L'heure suit l'horloge (« Maintenant »)
     maintenant: () => heure === 'maintenant' && jour === jourLocal(Date.now(), decalage),
   };
