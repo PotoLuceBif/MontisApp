@@ -1,6 +1,7 @@
 // État du réseau : service worker, indicateur « hors ligne » et date des données enregistrées.
 import { basculerFondHorsLigne } from './fond-de-carte.js';
 import { dateEtHeure, poser, t } from './i18n.js';
+import { suivreMisesAJour } from './mise-a-jour.js';
 
 const EN_TETE_DATE = 'x-montis-date';
 
@@ -100,7 +101,8 @@ export function initHorsLigne(map) {
     });
     // Le développement n'en a pas : il masquerait les modifications
     if (import.meta.env.PROD) {
-      navigator.serviceWorker.register('/sw.js').catch((erreur) => {
+      // updateViaCache : /sw.js toujours relu sur le serveur, jamais dans le cache HTTP
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(suivreMisesAJour, (erreur) => {
         console.warn('Mode hors ligne indisponible :', erreur);
       });
     }

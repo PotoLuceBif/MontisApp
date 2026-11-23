@@ -3,11 +3,11 @@ import { creerOptionRelief } from './relief.js';
 import { creerElementsCarte } from './elements-carte.js';
 import { creerNatureSousSol } from './nature-sous-sol.js';
 import { creerSoleilLune } from './soleil-lune.js';
-import { creerPageParametres } from './parametres.js';
 import { lire, ecrire } from './reglages.js';
 import { BANDEAU_MENU } from './bandeau-menu.js';
 import { creerCartesHorsLigne } from './zones-hors-ligne.js';
 import { differer, facade, immediat } from './module-differe.js';
+import { fichierDisparu, rechargerSurNouvelleVersion } from './mise-a-jour.js';
 import { OUTIL_ACTIVITE } from './outil-activite.js';
 import { creerPastilleCouche } from './couches-actives.js';
 import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
@@ -327,7 +327,13 @@ export function initMenu(map) {
   bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
   boutonParametres.addEventListener('click', () => {
     ouvrir(true, true);
-    pageParametres.surOuverture?.();
+    obtenirParametres().then(
+      (page) => page.surOuverture?.(),
+      (erreur) => {
+        console.error('Paramètres indisponibles :', erreur);
+        if (fichierDisparu(erreur)) rechargerSurNouvelleVersion();
+      }
+    );
   });
   boutonFermer.addEventListener('click', () => ouvrir(false));
 
@@ -343,14 +349,24 @@ export function initMenu(map) {
     }
   });
 
-  // ---------- Page Paramètres ----------
-  const pageParametres = creerPageParametres({
-    retour: () => {
-      montrerParametres(false);
-      boutonParametres.setAttribute('aria-expanded', 'false');
-    },
-  });
-  tiroir.querySelector('.menu-parametres').appendChild(pageParametres);
+  // ---------- Page Paramètres : chargée à sa première ouverture (avec la sauvegarde) ----------
+  let pageParametres = null;
+  function obtenirParametres() {
+    pageParametres ??= import('./parametres.js').then(({ creerPageParametres }) => {
+      const page = creerPageParametres({
+        retour: () => {
+          montrerParametres(false);
+          boutonParametres.setAttribute('aria-expanded', 'false');
+        },
+      });
+      tiroir.querySelector('.menu-parametres').appendChild(page);
+      return page;
+    });
+    pageParametres.catch(() => {
+      pageParametres = null;
+    });
+    return pageParametres;
+  }
 
   // ---------- Rubriques et modules ----------
   function finChargement(e) {
@@ -415,6 +431,8 @@ export function initMenu(map) {
       },
       (erreur) => {
         console.error(`Chargement de « ${e.def.id} » impossible :`, erreur);
+        // Fichier d'une ancienne version, effacé par la nouvelle : la page passe à la nouvelle
+        if (fichierDisparu(erreur) && rechargerSurNouvelleVersion()) return;
         if (demande !== e.demande) return;
         finChargement(e);
         arreter(e);
