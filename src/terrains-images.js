@@ -45,22 +45,30 @@ export function chargerImagesTerrains() {
   return chargement;
 }
 
+// L'anneau est une image debout, ancrée comme le pin (en bas, même décalage) : il en suit la taille et la place
+// quelle que soit l'inclinaison. Son centre est celui de la tête : 17 px au-dessus de la pointe, elle-même à
+// 4,25 px du bas. Il ne tourne donc pas avec la carte : on le redessine tourné du cap (`orienterAnneaux`).
+const LARGEUR_ANNEAU = Math.ceil(RAYON_EXTERIEUR * 2 + 2);
+const HAUTEUR_ANNEAU = 40;
+const CENTRE_ANNEAU_Y = HAUTEUR_ANNEAU - 4.25 - 17;
+let capAnneaux = 0; // cap de la carte, en degrés, pour lequel les anneaux sont dessinés
+const anneauxPoses = new Set();
+
 // Huit secteurs depuis le nord, séparés d'un fin jour, cernés de sombre pour se lire sur un fond clair
 function dessinerAnneau(code) {
-  const taille = Math.ceil(RAYON_EXTERIEUR * 2 + 2);
   const toile = document.createElement('canvas');
-  toile.width = taille * ECHELLE;
-  toile.height = taille * ECHELLE;
+  toile.width = LARGEUR_ANNEAU * ECHELLE;
+  toile.height = HAUTEUR_ANNEAU * ECHELLE;
   const ctx = toile.getContext('2d');
   ctx.scale(ECHELLE, ECHELLE);
-  const centre = taille / 2;
+  const cx = LARGEUR_ANNEAU / 2;
   const ecart = (3 * Math.PI) / 180;
   [...code].forEach((etat, index) => {
-    const debut = ((index * 45 - 22.5 - 90) * Math.PI) / 180 + ecart;
-    const fin = ((index * 45 + 22.5 - 90) * Math.PI) / 180 - ecart;
+    const debut = ((index * 45 - 22.5 - 90 - capAnneaux) * Math.PI) / 180 + ecart;
+    const fin = ((index * 45 + 22.5 - 90 - capAnneaux) * Math.PI) / 180 - ecart;
     ctx.beginPath();
-    ctx.arc(centre, centre, RAYON_EXTERIEUR, debut, fin);
-    ctx.arc(centre, centre, RAYON_INTERIEUR, fin, debut, true);
+    ctx.arc(cx, CENTRE_ANNEAU_Y, RAYON_EXTERIEUR, debut, fin);
+    ctx.arc(cx, CENTRE_ANNEAU_Y, RAYON_INTERIEUR, fin, debut, true);
     ctx.closePath();
     ctx.fillStyle = COULEURS[etat] ?? COULEURS['-'];
     ctx.fill();
@@ -107,8 +115,21 @@ export function fournirImageTerrain(map, nom, images) {
   if (nom === IMAGE_AUTORISATION) {
     map.addImage(nom, dessinerAutorisation(), { pixelRatio: ECHELLE });
   } else if (nom.startsWith(PREFIXE_ANNEAU)) {
+    orienterAnneaux(map); // les anneaux déjà posés et le nouveau, au même cap
     map.addImage(nom, dessinerAnneau(nom.slice(PREFIXE_ANNEAU.length)), { pixelRatio: ECHELLE });
+    anneauxPoses.add(nom);
   } else if (images?.has(nom)) {
     map.addImage(nom, images.get(nom), { pixelRatio: ECHELLE });
+  }
+}
+
+// La carte a tourné : anneaux redessinés au nouveau cap, par pas de 2° (`updateImage` ne refait pas la mise en page)
+export function orienterAnneaux(map) {
+  const cap = Math.round(map.getBearing() / 2) * 2;
+  if (cap === capAnneaux) return;
+  capAnneaux = cap;
+  for (const nom of anneauxPoses) {
+    if (map.hasImage(nom)) map.updateImage(nom, dessinerAnneau(nom.slice(PREFIXE_ANNEAU.length)));
+    else anneauxPoses.delete(nom);
   }
 }

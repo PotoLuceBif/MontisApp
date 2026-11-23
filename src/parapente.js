@@ -3,7 +3,7 @@ import { BALISES, URL_TERRAINS_FFVL, lireJson } from './balises-sources.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
 import { lireTerrains, terrainsEnGeoJSON } from './terrains-calcul.js';
-import { IMAGE_AUTORISATION, IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, poserImagesTerrains } from './terrains-images.js';
+import { IMAGE_AUTORISATION, IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, orienterAnneaux, poserImagesTerrains } from './terrains-images.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { heureCourte, surLangue, t } from './i18n.js';
 
@@ -21,10 +21,9 @@ const COUCHES_TERRAINS = [COUCHE_GROUPES, COUCHE_ANNEAUX, COUCHE_ANNEAU_CHOISI, 
 const TOLERANCE_CLIC = 6;
 // Au-delà (à partir du zoom 11), chaque terrain a son pin ; jusque-là, les voisins se regroupent comme les stations
 const ZOOM_MAX_GROUPES = 10;
-// Pointe du pin (48 px) à 4,25 px du bas ; centre de la tête 17 px au-dessus de la pointe, 19,5 choisi (×1,15)
+// Pointe du pin (48 px) à 4,25 px du bas ; centre de la tête 17 px au-dessus de la pointe
 const DECALAGE_POINTE = [0, 4.25];
 const HAUT_TETE = 17;
-const HAUT_TETE_CHOISIE = 19.5;
 const SANS_GROUPE = ['!', ['has', 'point_count']];
 // Pastille « ! » en haut à droite de la tête du pin, à 45°
 const PLACE_AUTORISATION = [9, -26];
@@ -69,6 +68,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', sitesVisibles ? 'visible' : 'none');
     });
     if (!sitesVisibles) ficheTerrain.fermer();
+    else orienterAnneaux(map); // la carte a pu tourner pendant qu'ils étaient cachés
     couche.definirVisible(balisesVisibles);
   }
 
@@ -96,8 +96,10 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     if (id.startsWith('terrain-')) fournirImageTerrain(map, id, await chargerImagesTerrains().catch(() => null));
   });
 
-  // Les secteurs suivent la carte quand elle tourne ; le pin, lui, reste droit
-  const coucheAnneau = (id, hauteur, taille) => ({
+  // Anneau debout et ancré comme le pin : il garde sa tête au centre quelle que soit l'inclinaison (avant, posé à
+  // plat et remonté par une translation, il glissait vers la pointe en 3D). Les secteurs suivent le cap : redessinés
+  // quand la carte tourne (`orienterAnneaux`). Choisi, il grandit avec le pin (×1,15).
+  const coucheAnneau = (id, taille) => ({
     id,
     type: 'symbol',
     source: SOURCE_TERRAINS,
@@ -105,21 +107,18 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     layout: {
       'icon-image': ['concat', nomAnneau(''), ['get', 'anneau']],
       'icon-size': taille,
-      'icon-rotation-alignment': 'map',
-      'icon-pitch-alignment': 'viewport',
+      'icon-anchor': 'bottom',
+      'icon-offset': DECALAGE_POINTE,
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
-    paint: { 'icon-translate': translationAnneau(hauteur), 'icon-translate-anchor': 'viewport' },
   });
-  // MapLibre écrase la translation d'une image tournée avec la carte par l'inclinaison (× cos) : en 3D, l'anneau
-  // descendait sous la tête du pin, qui reste droit. On la rallonge d'autant.
-  function translationAnneau(hauteur) {
-    return [0, -hauteur / Math.max(0.2, Math.cos((map.getPitch() * Math.PI) / 180))];
-  }
-  map.on('pitch', () => {
-    if (map.getLayer(COUCHE_ANNEAUX)) map.setPaintProperty(COUCHE_ANNEAUX, 'icon-translate', translationAnneau(HAUT_TETE));
-    if (map.getLayer(COUCHE_ANNEAU_CHOISI)) map.setPaintProperty(COUCHE_ANNEAU_CHOISI, 'icon-translate', translationAnneau(HAUT_TETE_CHOISIE));
+  let orientation = null;
+  map.on('rotate', () => {
+    orientation ??= requestAnimationFrame(() => {
+      orientation = null;
+      if (sitesVisibles) orienterAnneaux(map);
+    });
   });
 
   // Sous les balises : un relevé se lit par-dessus son décollage
@@ -159,8 +158,8 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         paint: { 'text-color': '#ffffff' },
       }, dessous);
     }
-    if (!map.getLayer(COUCHE_ANNEAUX)) map.addLayer(coucheAnneau(COUCHE_ANNEAUX, HAUT_TETE, 1), dessous);
-    if (!map.getLayer(COUCHE_ANNEAU_CHOISI)) map.addLayer(coucheAnneau(COUCHE_ANNEAU_CHOISI, HAUT_TETE_CHOISIE, 1.15), dessous);
+    if (!map.getLayer(COUCHE_ANNEAUX)) map.addLayer(coucheAnneau(COUCHE_ANNEAUX, 1), dessous);
+    if (!map.getLayer(COUCHE_ANNEAU_CHOISI)) map.addLayer(coucheAnneau(COUCHE_ANNEAU_CHOISI, 1.15), dessous);
     if (!map.getLayer(COUCHE_TERRAINS)) {
       map.addLayer({
         id: COUCHE_TERRAINS,
