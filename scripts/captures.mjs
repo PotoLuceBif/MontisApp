@@ -427,6 +427,7 @@ const ECRANS = [
   { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
   { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
   // Bâtiments, eaux et voies ferrées : sans pastille sur le fond Montis, avec sur les autres, rallumés en revenant au fond Montis
+  { nom: 'carte-fond-elements-onglet', actions: [...elementsCarte, clic('.elements-onglets button:nth-child(3)')] },
   { nom: 'carte-fond-elements-autre', actions: [module('fond'), choisirFond('osm'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-elements-retour', actions: [...elementsCarte, (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },

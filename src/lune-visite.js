@@ -21,11 +21,11 @@ import { dessinerSoleilEspace, initCiel } from './ciel.js';
 import { opaciteCiel } from './ciel-calcul.js';
 import { codeCardinal } from './vent-calcul.js';
 import { lire, ecrire } from './reglages.js';
-import { formatDate, heureCourte, poser, surLangue, t, ta } from './i18n.js';
+import { formatDate, poser, surLangue, t, ta } from './i18n.js';
+import { creerReglageSoleil } from './soleil-reglage.js';
 import { langue } from './preferences.js';
 import { formatAltitude, formatDistance, nombre, pourcent } from './unites.js';
 
-const JOUR = 24 * 3600 * 1000;
 const NOMS = '/data/lune/noms.json';
 const RELIEF = `${location.origin}/data/lune/relief/{z}/{x}/{y}.png`;
 const APPUI_LONG = 550; // ms
@@ -103,17 +103,12 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       </div>
       <p class="note lune-visite-note-eclairee" data-i18n="lune-visite.note-eclairee"></p>
       <div class="lune-visite-reel">
-        <div class="lunaison-entete">
-          <button type="button" class="lunaison-pas" data-pas="-1" ${ta('aria-label', 'ombres.jour-precedent')}>‹</button>
-          <div class="lunaison-textes"><strong class="lune-visite-date"></strong><span class="lune-visite-heure"></span></div>
-          <button type="button" class="lunaison-pas" data-pas="1" ${ta('aria-label', 'ombres.jour-suivant')}>›</button>
-        </div>
+        <div class="lune-visite-frise"></div>
         <div class="lune-phase">
           <span class="lune-icone-boite"></span>
           <div class="lune-phase-textes"><strong class="lune-nom"></strong><span class="lune-fraction"></span></div>
         </div>
         <p class="note lune-visite-position"></p>
-        <button type="button" class="ombres-maintenant lune-visite-maintenant" data-i18n="soleil.maintenant"></button>
       </div>
     </aside>
   `;
@@ -619,14 +614,27 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     ecrire('lune-visite-eclairage', b.dataset.eclairage);
     majEclairage();
   }));
-  racine.querySelectorAll('.lunaison-pas').forEach((b) => b.addEventListener('click', () => {
-    moment += Number(b.dataset.pas) * JOUR;
-    majEclairage();
-  }));
-  $('.lune-visite-maintenant').addEventListener('click', () => {
-    moment = Date.now();
-    majEclairage();
+  // Frise de Soleil et Lune (jour, calendrier, heure, course des astres au lieu de la carte de la Terre) à la place
+  // de la date et des flèches jour par jour (demande du propriétaire du 24 novembre 2026)
+  let frisePrete = false;
+  const frise = creerReglageSoleil(mapTerre, {
+    course: true,
+    actif: () => racine.isConnected && eclairage() === 'reel',
+    surChangement: () => {
+      frise.calculer();
+      frise.majTextes();
+      moment = frise.instant();
+      if (frisePrete) majEclairage();
+    },
   });
+  $('.lune-visite-frise').append(frise.element);
+  if (Math.abs(instant - Date.now()) > 60 * 1000) frise.placer(instant);
+  else {
+    frise.calculer();
+    frise.majTextes();
+    moment = frise.instant();
+  }
+  frisePrete = true;
 
   function majPanneau() {
     const reel = eclairage() === 'reel';
@@ -645,8 +653,6 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     $('.lune-visite-resume').textContent = reel ? t(`lune.phase-${eclat.code}`) : t('lune-visite.eclairee');
     if (!reel) return;
     $('.lune-icone-boite').innerHTML = icone();
-    $('.lune-visite-date').textContent = formatDate(moment, { weekday: 'long', day: 'numeric', month: 'long' });
-    $('.lune-visite-heure').textContent = heureCourte(new Date(moment));
     $('.lune-nom').textContent = t(`lune.phase-${eclat.code}`);
     $('.lune-fraction').textContent = t('lune.eclairee', { pourcent: pourcent(eclat.fraction * 100) });
     // Où la chercher dans son ciel, depuis le lieu affiché sur la carte de la Terre
