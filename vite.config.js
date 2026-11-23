@@ -111,7 +111,13 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         codeSplitting: {
-          groups: [{ name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/ }],
+          groups: [
+            { name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 2 },
+            // Tout le reste du code de démarrage en un fichier : les modules chargés à la demande
+            // en partagent beaucoup, et sans ce groupe il s'éparpillait en une trentaine de petits
+            // fichiers, chacun payant la latence du réseau (lot 0.8 : +1,6 s en 4G lente)
+            { name: 'demarrage', tags: ['$initial'], priority: 1 },
+          ],
         },
       },
     },
