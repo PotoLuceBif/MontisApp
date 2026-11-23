@@ -88,12 +88,12 @@ export function couchesPointsUtiles() {
     type: 'symbol',
     source: SOURCE_VECTEUR,
     'source-layer': 'poi',
-    minzoom: 14.5,
+    minzoom: 14, // les tuiles n'ont les points utiles qu'à partir du zoom 14
     filter: ['==', ['get', 'class'], classe],
     layout: {
       visibility: defaut ? 'visible' : 'none',
       'icon-image': imageDe(classe),
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 14.5, 0.8, 17, 1],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.75, 17, 1],
       'icon-padding': 2,
       // L'eau et les abris passent avant les parkings quand la place manque
       'symbol-sort-key': rang,
