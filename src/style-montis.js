@@ -42,9 +42,10 @@ export const CALQUES_MONTIS = [
 // Les bâtiments en volume se posent tout en haut et cachaient le nom des villes : les noms du fond repassent
 // juste au-dessus d'eux. Pas sous une carte nationale, où ils restent dessous (fond-de-carte.js).
 const NOMS_MONTIS = [...COUCHES_POINTS_UTILES, 'montis-eau-noms-ligne', 'montis-eau-noms-point', 'montis-rivieres-noms', 'montis-place', 'montis-summit'];
+export const COUCHES_BATIMENTS = ['batiments-3d', 'batiments-3d-arete', 'batiments-3d-toit']; // murs, arête, toit (batiments.js)
 export function nomsAuDessusDesBatiments(map) {
   const ids = map.getStyle().layers.map(({ id }) => id);
-  const batiments = ids.indexOf('batiments-3d');
+  const batiments = Math.max(...COUCHES_BATIMENTS.map((id) => ids.indexOf(id)));
   if (batiments < 0) return;
   const suivante = ids.slice(batiments + 1).find((id) => !NOMS_MONTIS.includes(id));
   for (const id of NOMS_MONTIS) if (map.getLayer(id)) map.moveLayer(id, suivante);

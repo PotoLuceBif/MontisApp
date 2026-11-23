@@ -83,9 +83,12 @@ const NUIT = {
   'montis-rivieres-noms': EAU_NUIT,
   courbes: { 'line-color': ['case', ['>=', ['get', 'level'], 1], '#6f6194', '#4c4568'], 'line-opacity': ['case', ['>=', ['get', 'level'], 1], 0.85, 0.6] },
   'courbes-altitude': { 'text-color': '#a898d0', 'text-halo-color': '#0b111b' },
+  // Bâtiments : murs sombres, arête néon au bord du toit (batiments.js)
   'batiments-3d': {
-    'fill-extrusion-color': ['interpolate', ['linear'], ['to-number', ['get', 'render_height'], 6], 0, '#3a404c', 30, '#4a5160', 100, '#5d6575'],
+    'fill-extrusion-color': ['interpolate', ['linear'], ['to-number', ['get', 'render_height'], 6], 0, '#262b38', 40, '#2d3343', 120, '#363d50'],
   },
+  'batiments-3d-arete': { 'fill-extrusion-color': '#5ff0ff' },
+  'batiments-3d-toit': { 'fill-extrusion-color': '#2a3142' },
 };
 // Noms des éléments de la carte (lacs, rivières, parcs, villes, refuges, sommets, gares) : texte clair, halo sombre
 const NOMS_ELEMENTS = /^(nature-.*noms|lieux|villes|refuges|sommets|gares)/;
