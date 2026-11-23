@@ -3,6 +3,7 @@ const URLS_OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter', // VK Maps : a répondu quand les autres étaient saturés (23 novembre 2026)
 ];
 
 // `delaiParServeur` (ms) : un serveur qui ne répond pas laisse sa place au suivant
@@ -35,4 +36,15 @@ export async function interroger(requete, signal, { delaiParServeur = 0 } = {}) 
     }
   }
   throw derniereErreur;
+}
+
+// Objet OpenStreetMap d'un élément des tuiles OpenFreeMap (Planetiler) : identifiant OSM × 10 + genre
+// (1 nœud, 2 chemin, 3 relation). Permet de lire l'objet dans l'API d'OpenStreetMap, rapide et fiable,
+// là où Overpass est souvent saturé.
+const GENRES_OSM = { 1: 'node', 2: 'way', 3: 'relation' };
+export function objetOsm(idTuile) {
+  const n = Number(idTuile);
+  if (!Number.isSafeInteger(n) || n < 10) return null;
+  const type = GENRES_OSM[n % 10];
+  return type ? { type, id: Math.floor(n / 10) } : null;
 }

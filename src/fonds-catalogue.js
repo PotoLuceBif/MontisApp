@@ -40,6 +40,9 @@ const IGN = '© IGN';
 const TUILE_SWISSTOPO = 128;
 const SWISSTOPO = '© swisstopo';
 
+// Fonds proposés sous le fond Montis, en tête du panneau ; les autres sont dans « Avancé »
+export const FONDS_DE_BASE = ['esri-sat', 'topo', 'osm'];
+
 export const FONDS = [
   // ---------- Monde entier ----------
   { id: 'montis', cle: 'fond.montis', desc: 'fond.desc-montis', pays: null, integre: true },

@@ -2,7 +2,8 @@ import * as maplibregl from 'maplibre-gl';
 import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
-import { interroger } from './overpass.js';
+import { interroger, objetOsm } from './overpass.js';
+import { requete } from './requete.js';
 import { DECALAGE_PIN, creerPinSeul, imagePin } from './pins.js';
 import { dessinerPicto } from './points-utiles.js';
 
@@ -143,6 +144,7 @@ export function initFiches(map) {
   let anneau = null;
   let curseurMain = false;
   const cache = new Map();
+  const cacheOsm = new Map();
 
   // ---------- Affichage de la fiche ----------
   function ligne(etiquette, contenu) {
@@ -255,9 +257,11 @@ export function initFiches(map) {
       const resa = { required: 'fiche.resa-obligatoire', recommended: 'fiche.resa-recommandee', yes: 'fiche.resa-possible', no: 'fiche.resa-non', members_only: 'fiche.resa-membres' };
       if (t.reservation) corps.appendChild(ligne(tr('fiche.reservation'), resa[t.reservation] ? tr(resa[t.reservation]) : t.reservation));
     }
+    const principal = f.objetOsm || (d && d.principal);
     if (f.genre === 'parking') {
-      const t = (d && d.principal && d.principal.tags) || {};
-      const tarif = t.fee === 'no' ? tr('fiche.gratuit') : t.fee && t.fee !== 'unknown' ? tr('fiche.payant') : d ? tr('fiche.tarif-inconnu') : null;
+      const t = (principal && principal.tags) || {};
+      const connu = !!(d || f.objetOsm);
+      const tarif = t.fee === 'no' ? tr('fiche.gratuit') : t.fee && t.fee !== 'unknown' ? tr('fiche.payant') : connu ? tr('fiche.tarif-inconnu') : null;
       if (tarif) corps.appendChild(ligne(tr('fiche.tarif'), t.charge ? `${tarif} · ${t.charge}` : tarif));
       if (t.capacity) corps.appendChild(ligne(tr('fiche.places'), t.capacity));
       const genres = { surface: 'fiche.parking-surface', underground: 'fiche.parking-souterrain', 'multi-storey': 'fiche.parking-etages' };
@@ -265,7 +269,7 @@ export function initFiches(map) {
       const acces = { private: 'fiche.acces-prive', customers: 'fiche.acces-clients', yes: 'fiche.acces-public', permissive: 'fiche.acces-public' };
       if (acces[t.access]) corps.appendChild(ligne(tr('fiche.acces'), tr(acces[t.access])));
       if (t.opening_hours) corps.appendChild(ligne(tr('fiche.ouverture'), t.opening_hours));
-      if (d) {
+      if (connu) {
         const avis = document.createElement('div');
         avis.className = 'fiche-attente-ligne';
         avis.textContent = tr('fiche.parking-verifie');
@@ -292,23 +296,44 @@ export function initFiches(map) {
       corps.appendChild(err);
     }
 
-    if (d && d.principal) {
-      const t = d.principal.tags;
+    if (principal) {
+      const t = principal.tags;
       const liens = document.createElement('div');
       liens.className = 'fiche-liens';
       const wiki = lienWikipedia(t.wikipedia);
       if (wiki) liens.appendChild(lien(tr('fiche.wikipedia'), wiki));
       const site = t.website || t['contact:website'];
       if (site && /^https?:\/\//i.test(site)) liens.appendChild(lien(tr('fiche.site'), site));
-      liens.appendChild(lien('OpenStreetMap', `https://www.openstreetmap.org/${d.principal.type}/${d.principal.id}`));
+      liens.appendChild(lien('OpenStreetMap', `https://www.openstreetmap.org/${principal.type}/${principal.id}`));
       corps.appendChild(ligne(tr('fiche.liens'), liens));
     }
 
     panneau.appendChild(corps);
   }
 
-  // ---------- Chargement des détails (Overpass) ----------
+  // ---------- Chargement des détails ----------
+  // Un parking se lit dans l'API d'OpenStreetMap, grâce à l'identifiant des tuiles : réponse en moins
+  // d'une seconde, quand Overpass, souvent saturé, laissait la fiche vide (17 novembre 2026).
+  async function chargerObjetOsm(fiche) {
+    const objet = objetOsm(fiche.source?.id);
+    if (!objet) return;
+    const cle = `${objet.type}/${objet.id}`;
+    try {
+      if (!cacheOsm.has(cle)) {
+        const reponse = await requete(`https://api.openstreetmap.org/api/0.6/${cle}.json`, {}, 10000);
+        if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+        const json = await reponse.json();
+        cacheOsm.set(cle, (json.elements || []).find((e) => e.type === objet.type && e.id === objet.id) || null);
+      }
+      fiche.objetOsm = cacheOsm.get(cle);
+      if (courant === fiche && fiche.objetOsm) rendre();
+    } catch (e) {
+      console.warn('Objet OpenStreetMap :', e);
+    }
+  }
+
   async function chargerDetails(fiche) {
+    if (fiche.genre === 'parking') chargerObjetOsm(fiche);
     const cle = `${fiche.genre === 'parking' ? 'p' : ''}${fiche.lat.toFixed(4)},${fiche.lng.toFixed(4)}`;
     if (cache.has(cle)) {
       fiche.details = analyser(cache.get(cle), fiche.genre, fiche.nom, fiche);
@@ -321,28 +346,30 @@ export function initFiches(map) {
 
     if (controleur) controleur.abort();
     controleur = new AbortController();
-    const delai = setTimeout(() => controleur.abort(), 25000);
+    const delai = setTimeout(() => controleur.abort(), 40000);
 
     const lat = fiche.lat.toFixed(6);
     const lng = fiche.lng.toFixed(6);
-    const requete =
+    const demande =
       `[out:json][timeout:15];is_in(${lat},${lng})->.a;(wr(pivot.a);` +
       `node(around:80,${lat},${lng})["name"]["natural"~"^(peak|volcano|saddle)$"];` +
       `nwr(around:80,${lat},${lng})["name"]["tourism"~"^(alpine_hut|wilderness_hut)$"];` +
       `node(around:150,${lat},${lng})["name"]["place"];` +
+      // Repli pour un parking dont l'objet n'a pas pu être lu dans l'API d'OpenStreetMap
       (fiche.genre === 'parking' ? `nwr(around:60,${lat},${lng})["amenity"="parking"];` : '') +
       ');out tags center;';
 
     try {
-        
-      const json = await interroger(requete, controleur.signal);
+      // Un serveur qui traîne laisse sa place au suivant
+      const json = await interroger(demande, controleur.signal, { delaiParServeur: 10000 });
       const elements = json.elements || [];
       cache.set(cle, elements);
       if (courant !== fiche) return;
       fiche.details = analyser(elements, fiche.genre, fiche.nom, fiche);
     } catch (e) {
       if (courant !== fiche) return;
-      fiche.details = 'erreur';
+      // Le parking déjà lu reste : seuls la commune et les zones protégées manquent
+      fiche.details = fiche.objetOsm ? { principal: null, parcs: [], localisation: [] } : 'erreur';
       console.warn('Détails de la fiche :', e);
     } finally {
       clearTimeout(delai);

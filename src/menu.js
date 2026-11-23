@@ -295,9 +295,9 @@ export function initMenu(map) {
       exclusif: false,
       // Nécessaires dès le démarrage : ils rétablissent le fond et les éléments choisis
       modules: [
-        immediat(creerFondDeCarte(map)),
+        // Les éléments de la carte sont rangés dans « Avancé » du fond de carte
+        immediat(creerFondDeCarte(map, { elements: creerElementsCarte(map) })),
         immediat(creerOptionRelief(map)), // inclut les courbes de niveau
-        immediat(creerElementsCarte(map)),
         immediat(creerNatureSousSol(map)),
         immediat(creerCartesHorsLigne(map, { fermerMenu, ouvrirMenu: () => ouvrirFlottant('carte') })),
       ],
@@ -457,7 +457,7 @@ export function initMenu(map) {
 
   // Raccourci depuis une fiche : ouvre une activité, ou un panneau flottant sur l'un de ses modules (Météo › Conditions locales)
   window.addEventListener('montis:ouvrir-module', (event) => {
-    const { categorie, retour } = event.detail || {};
+    const { categorie, retour, section } = event.detail || {};
     // Une pratique qui a ses propres parcours s'ouvre par son activité (le ski de rando par le Ski)
     const module = event.detail?.module === 'skirando' ? 'ski' : event.detail?.module;
     const panneau = panneauxFlottants.get(categorie);
@@ -472,7 +472,9 @@ export function initMenu(map) {
     reduirePanneau(panneau, false);
     if (!etat.actif) demarrer(etat);
     // Le réglage demandé en haut du panneau (appui sur une pastille de couche)
-    requestAnimationFrame(() => etat.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+    // (ou sa partie, quand le module en a : éléments de la carte dans « Avancé » du fond)
+    const cible = (section && etat.def.instance?.ouvrirSection?.(section)) || etat.ligne;
+    requestAnimationFrame(() => cible.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     retourFlottant = typeof retour === 'function' ? { categorie, etat, retour } : null;
   });
 

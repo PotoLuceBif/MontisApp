@@ -228,6 +228,24 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(320px, 88vw) + 12px);
   font-size: 11px; font-weight: 700; line-height: 1.4;
 }
 .fond-badge-choisi { background: var(--accent); color: var(--accent-texte); }
+/* Fond de carte : fond Montis en tête, fonds de base, puis « Avancé » (éléments de la carte et tous les fonds) */
+.fond-panneau .fond-montis-bloc { gap: 8px; margin-bottom: 4px; padding: 0 0 10px; border: 1px solid var(--bord); border-radius: 11px; overflow: hidden; }
+.fond-montis-choix { border-bottom: 0; }
+.fond-montis-bloc .fond-montis-modes, .fond-montis-bloc .fond-montis-etat { margin-inline: 10px; }
+.fond-panneau > .fond-groupe { margin-top: 16px; }
+.fond-avance { margin-top: 14px; border: 1px solid var(--bord); border-radius: 11px; overflow: hidden; }
+.fond-avance-entete {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 8px 12px;
+  border: 0; background: none; color: var(--texte); font: inherit; text-align: left; cursor: pointer;
+}
+.fond-avance-entete:hover { background: var(--survol); }
+.fond-avance-titre { font-weight: 700; }
+.fond-avance-resume { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; color: var(--texte-2); font-size: 12px; }
+.fond-avance-entete[aria-expanded="true"] .fond-chevron { rotate: 180deg; }
+.fond-avance-corps { padding: 0 10px 10px; }
+.fond-avance-corps[hidden] { display: none; }
+.fond-avance-corps > .fond-groupe:first-child { margin-top: 4px; }
+.fond-avance [data-section] { scroll-margin-top: 8px; }
 
 /* Relief */
 .relief-entete { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }

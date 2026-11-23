@@ -56,7 +56,7 @@ export function creerElementsCarte(map) {
   if (!GROUPES.some((g) => g.id === groupeCourant)) groupeCourant = GROUPES[0].id;
 
   const onglets = document.createElement('div');
-  onglets.className = 'fond-onglets';
+  onglets.className = 'fond-onglets elements-onglets';
   onglets.setAttribute('role', 'tablist');
   panneau.appendChild(onglets);
 
@@ -115,7 +115,7 @@ export function creerElementsCarte(map) {
           groupeCourant = g.id;
           ecrire('elements-onglet', g.id);
           majOnglets();
-          ouvrirReglage('elements');
+          ouvrirReglage('fond', 'elements');
         },
         onRetirer: () => {
           input.checked = false;
