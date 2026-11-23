@@ -1,5 +1,6 @@
 import { POLICE } from './polices.js';
 import { BALISES, URL_TERRAINS_FFVL, lireJson } from './balises-sources.js';
+import { gardee } from './reponses-gardees.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
 import { lireTerrains, terrainsEnGeoJSON } from './terrains-calcul.js';
@@ -201,8 +202,8 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
 
   async function chargerSites(signal) {
     if (terrains.size && Date.now() - terrainsRecus < DUREE_TERRAINS) return;
-    // Mis à jour une fois par jour : le cache du navigateur suffit
-    const { donnees, dateEnregistree } = await lireJson(URL_TERRAINS_FFVL, signal, { cache: 'default' });
+    // Publiés une fois par jour (3,6 Mo) : gardés d'une ouverture à l'autre
+    const { donnees, dateEnregistree } = await gardee('terrains-ffvl', DUREE_TERRAINS, () => lireJson(URL_TERRAINS_FFVL, signal, { cache: 'default' }));
     if (signal.aborted) return;
     terrains = new Map(lireTerrains(donnees).map((terrain) => [terrain.id, terrain]));
     terrainsRecus = Date.now();

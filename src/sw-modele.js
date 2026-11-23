@@ -7,11 +7,12 @@ const CACHE_APP = `montis-app-${VERSION}`;
 const CACHE_ZONES = 'montis-zones'; // zones téléchargées : jamais élaguées
 const CACHE_TUILES = 'montis-tuiles'; // tuiles vues récemment
 const CACHE_DONNEES = 'montis-donnees'; // dernières réponses des services
+const CACHE_REPONSES = 'montis-reponses'; // réponses lentes gardées par l'appli (reponses-gardees.js)
 const MAX_TUILES = 1500;
 const MAX_DONNEES = 80;
 const DELAI_PAGE = 4000; // ms avant d'ouvrir la version enregistrée de l'application
 const DELAI_DONNEES = 8000; // ms avant de préférer les données enregistrées, s'il y en a
-const PRESERVES = [CACHE_APP, CACHE_ZONES, CACHE_TUILES, CACHE_DONNEES];
+const PRESERVES = [CACHE_APP, CACHE_ZONES, CACHE_TUILES, CACHE_DONNEES, CACHE_REPONSES];
 const EN_TETE_DATE = 'x-montis-date';
 
 const TUILES = /tiles\.openfreemap\.org\/planet\/.+\.pbf|tiles\.openfreemap\.org\/fonts\/|s3\.amazonaws\.com\/elevation-tiles-prod\/|tile\.openstreetmap\.org\/|tile\.opentopomap\.org\/|data\.geopf\.fr\/wmts|geoservices\.brgm\.fr\/geologie\?.*REQUEST=GetMap|server\.arcgisonline\.com\/|tile\.waymarkedtrails\.org\/|sgx\.geodatenzentrum\.de\/wmts_topplus_open\/|tile-cyclosm\.openstreetmap\.fr\/|wmts\.geo\.admin\.ch\/|mapsneu\.wien\.gv\.at\/basemap\/|www\.ign\.es\/wmts\/|geoserveis\.icgc\.cat\/|cache\.kartverket\.no\/|cartoweb\.wmts\.ngi\.be\/|basemap\.nationalmap\.gov\/|maps\.geogratis\.gc\.ca\/wms\/|cyberjapandata\.gsi\.go\.jp\/|gibs\.earthdata\.nasa\.gov\/wmts\//;

@@ -2,6 +2,7 @@ import { dateEtHeure, t } from './i18n.js';
 import { dateHorsLigne } from './hors-ligne.js';
 import { fusionnerReseaux, lireBalisesFFVL, nombre } from './balises-calcul.js';
 import { requete as requeteReseau } from './requete.js';
+import { gardee } from './reponses-gardees.js';
 
 // Sources de relevés de vent, réunies sur la carte. Chaque source renvoie les mêmes stations :
 // { id, reseau, nom, description, lat, lon, altitude, eteinte, moyenne, rafale, minimum, direction, date, lien }
@@ -48,6 +49,10 @@ function stationValide(station) {
 }
 
 const PAUSE_NOUVEL_ESSAI = 1500;
+// Relevés toutes les 5 minutes : rouvrir Vol libre juste après ne les redemande pas
+const DUREE_RELEVES = 2 * 60 * 1000;
+// La liste des balises FFVL et ses terrains changent une fois par jour
+const DUREE_LISTE_FFVL = 6 * 60 * 60 * 1000;
 
 // Une coupure réseau a droit à une seconde tentative : en montagne, la liaison va et vient
 async function recuperer(url, signal, cache) {
@@ -74,7 +79,7 @@ const OPENWINDMAP = {
   lien: 'https://www.openwindmap.org',
   attribution: 'Vent © <a href="https://www.openwindmap.org" target="_blank" rel="noopener noreferrer">contributeurs OpenWindMap</a>',
   async charger(signal) {
-    const { donnees: { data } = {}, dateEnregistree } = await lireJson(URL_OPENWINDMAP, signal);
+    const { donnees: { data } = {}, dateEnregistree } = await gardee('balises:openwindmap', DUREE_RELEVES, () => lireJson(URL_OPENWINDMAP, signal));
     if (!Array.isArray(data)) throw new Error('Format de données OpenWindMap inattendu.');
     const stations = data
       .filter((brut) => brut?.location?.success !== false && brut?.location?.latitude != null)
@@ -115,8 +120,6 @@ const OPENWINDMAP = {
   },
 };
 
-const DUREE_LISTE_FFVL = 6 * 60 * 60 * 1000;
-let listeFFVL = null;
 
 const FFVL = {
   id: 'ffvl',
@@ -127,12 +130,10 @@ const FFVL = {
   historique: null,
   async charger(signal) {
     // La liste des balises change une fois par jour, les relevés toutes les 5 minutes
-    const listeAJour = listeFFVL && Date.now() - listeFFVL.recue < DUREE_LISTE_FFVL;
     const [balises, releves] = await Promise.all([
-      listeAJour ? listeFFVL.reponse : lireJson(URL_BALISES_FFVL, signal),
-      lireJson(URL_RELEVES_FFVL, signal),
+      gardee('balises:ffvl-liste', DUREE_LISTE_FFVL, () => lireJson(URL_BALISES_FFVL, signal)),
+      gardee('balises:ffvl-releves', DUREE_RELEVES, () => lireJson(URL_RELEVES_FFVL, signal)),
     ]);
-    if (!listeAJour) listeFFVL = { reponse: balises, recue: Date.now() };
     const stations = lireBalisesFFVL(balises.donnees, releves.donnees, {
       nomDefaut: (id) => t('balises.nom-defaut', { id }),
     });
