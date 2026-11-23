@@ -4653,3 +4653,25 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .jeux-revision-categories svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .jeux-revision-categories span { flex: 1; min-width: 0; }
 .jeux-revision-categories small { padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, #ff4d6d 22%, transparent); color: var(--texte); font-weight: 700; }
+/* Quitter la partie (retour du 23 novembre 2026) : « Quitter » sur ordinateur, ✕ sur téléphone */
+.jeux-quitter {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 6px; height: 34px; min-height: 0; padding: 0 12px;
+  border: 1px solid var(--bord); border-radius: 10px; background: var(--surface-2); color: var(--texte-2); font: 700 13px/1 var(--police); cursor: pointer;
+}
+.jeux-quitter:hover { border-color: #ff8da1; color: var(--texte); }
+/* Sur ordinateur, le panneau s'élargit d'autant : la question garde sa place dans la barre */
+@media (min-width: 641px) { .bf-outil.bf-jeu { width: 400px; } }
+.jeux-quitter svg { display: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+/* La consigne courte cède sa place avant le pays ou la capitale de la question */
+.jeux-question small { flex-shrink: 40; }
+@media (max-width: 640px) {
+  .jeux-quitter { width: 34px; padding: 0; }
+  .jeux-quitter svg { display: block; }
+  .jeux-quitter span { display: none; }
+  .bf-jeu.jeux-clavier .jeux-quitter { width: 30px; height: 30px; }
+}
+/* Saisie refusée (nom inconnu, champ vide) : le champ le dit en rouge, avec une secousse */
+.jeux-saisie input.jeux-champ-refus { border-color: #ff5c7a; outline-color: #ff5c7a; text-overflow: ellipsis; animation: jeux-secousse 0.32s ease; }
+.jeux-saisie input.jeux-champ-refus::placeholder { color: #ff8da1; opacity: 1; }
+@keyframes jeux-secousse { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { .jeux-saisie input.jeux-champ-refus { animation: none; } }

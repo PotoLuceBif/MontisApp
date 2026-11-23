@@ -240,6 +240,79 @@ export function seuilVille(emprisePays = null) {
 // Un petit pays se touche mal : un appui à moins de 40 km de lui compte
 export const SEUIL_PETIT_PAYS = 40;
 
+// Archipels et pays éclatés (retour du propriétaire du 23 novembre 2026) : un appui au milieu de leurs îles compte,
+// dans l'enveloppe convexe de chaque groupe d'îles, marge comprise (l'appli écarte d'abord un appui sur un autre pays).
+export const ARCHIPELS = new Set([
+  'ID', 'PH', 'JP', 'MV', 'FJ', 'BS', 'KI', 'TV', 'FM', 'MH', 'SC', 'CV', 'TO', 'VU', 'SB', 'GR', 'DK',
+  'PW', 'WS', 'KM', 'ST', 'AG', 'KN', 'VC', 'MT',
+]);
+export const MARGE_ARCHIPEL = 60; // km
+// Des îles trop petites pour les contours du jeu, mais qui font l'étendue de l'archipel (coins approchés)
+const ILES_ABSENTES = {
+  MV: [[72.9, 7.1], [73.6, 7.1], [73.5, -0.7], [73.0, -0.7]],
+  SC: [[53.0, -3.7], [56.3, -3.7], [56.3, -5.4], [53.0, -5.4]],
+  TV: [[176.1, -5.7], [176.3, -6.3], [179.9, -10.8], [179.0, -10.6]],
+  MH: [[162.3, 11.5], [165.4, 11.6], [170.0, 12.2], [168.7, 4.6]],
+  FJ: [[-178.4, -16.5], [-178.9, -19.2]],
+};
+// Deux îles plus éloignées que ça forment deux groupes (Kiribati : îles Gilbert, Phoenix et de la Ligne)
+const ECART_GROUPES = 700; // km
+
+// Longitudes d'un seul tenant : un pays à cheval sur l'antiméridien (Fidji, Kiribati) passe de 0 à 360
+const recoller = (points, decale) => (decale ? points.map(([x, y]) => [x < 0 ? x + 360 : x, y]) : points);
+
+// Enveloppe convexe (chaîne monotone), sur les longitudes et latitudes : assez juste à l'échelle d'un archipel
+export function enveloppe(points) {
+  const tries = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (tries.length < 3) return tries;
+  const tour = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const bas = [];
+  const haut = [];
+  for (const p of tries) {
+    while (bas.length >= 2 && tour(bas[bas.length - 2], bas[bas.length - 1], p) <= 0) bas.pop();
+    bas.push(p);
+  }
+  for (const p of [...tries].reverse()) {
+    while (haut.length >= 2 && tour(haut[haut.length - 2], haut[haut.length - 1], p) <= 0) haut.pop();
+    haut.push(p);
+  }
+  return [...bas.slice(0, -1), ...haut.slice(0, -1)];
+}
+
+// Zones d'un archipel : une enveloppe fermée par groupe d'îles proches ; aucune pour un autre pays
+export function zonesArchipel(code, multipolygone) {
+  if (!ARCHIPELS.has(code)) return [];
+  const iles = [...multipolygone.map(([exterieur]) => exterieur), ...(ILES_ABSENTES[code] || []).map((p) => [p])];
+  const xs = iles.flat().map(([x]) => x);
+  const decale = Math.max(...xs) - Math.min(...xs) > 180;
+  const groupes = iles.map((ile) => [recoller(ile, decale)]);
+  // Regroupement de proche en proche : deux groupes dont deux points sont à moins d'ECART_GROUPES fusionnent
+  const proches = (a, b) => a.flat().some((p) => b.flat().some((q) => distanceKm(p, q) < ECART_GROUPES));
+  for (let fusion = true; fusion;) {
+    fusion = false;
+    for (let i = 0; i < groupes.length && !fusion; i += 1) {
+      for (let j = i + 1; j < groupes.length && !fusion; j += 1) {
+        if (!proches(groupes[i], groupes[j])) continue;
+        groupes[i] = [...groupes[i], ...groupes[j]];
+        groupes.splice(j, 1);
+        fusion = true;
+      }
+    }
+  }
+  return groupes.map((groupe) => {
+    const contour = enveloppe(groupe.flat());
+    return { decale, anneau: [...contour, contour[0]] };
+  });
+}
+
+// Un appui dans l'une des zones, ou à moins de `marge` km de son bord
+export function dansArchipel(point, zones, marge = MARGE_ARCHIPEL) {
+  return zones.some(({ decale, anneau }) => {
+    const p = decale && point[0] < 0 ? [point[0] + 360, point[1]] : point;
+    return distancePays(p, [[anneau]]) <= marge;
+  });
+}
+
 // ---------- Révise tes erreurs ----------
 // Une erreur : « drapeau:FR », « capitale:FR », « pays:FR » (où est ce pays), « ville:123 »
 export function noterErreur(erreurs, cle, juste) {
