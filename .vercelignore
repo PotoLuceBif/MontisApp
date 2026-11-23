@@ -9,3 +9,4 @@ node_modules
 dist
 exemples/
 scripts/cache-lune-*
+mesures/
