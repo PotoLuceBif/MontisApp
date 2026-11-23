@@ -1,5 +1,6 @@
-// Traduction de l'interface. Les textes vivent dans i18n/fr.json et i18n/en.json ;
-// le français sert de secours pour une clé absente.
+// Traduction de l'interface. Les textes vivent dans i18n/fr.json et i18n/en.json ; seuls ceux de la
+// langue choisie se chargent au démarrage (index.html les précharge, voir langueChoisie de
+// vite.config.js), l'autre fichier à un changement de langue. Une clé absente reste affichée telle quelle.
 //
 // - t('cle', { n, nom }) : texte traduit ; « {nom} » est remplacé, et une entrée
 //   { "un": …, "autre": … } choisit sa forme selon n.
@@ -7,11 +8,19 @@
 //   (ou data-i18n-aria-label, -title, -placeholder) ; il se retraduit tout seul au
 //   changement de langue. tt(), ta() et poser() écrivent ces marques.
 // - Texte recalculé (prévisions, listes) : la fonction de rendu écoute surLangue().
-import fr from './i18n/fr.json';
-import en from './i18n/en.json';
-import { langue, locale, surPreferences } from './preferences.js';
+import { langue, locale, surPreferences, surPreparationLangue } from './preferences.js';
 
-const TEXTES = { fr, en };
+const FICHIERS = { fr: () => import('./i18n/fr.json'), en: () => import('./i18n/en.json') };
+const TEXTES = {};
+let chargee = null;
+
+async function chargerTextes(code) {
+  if (!TEXTES[code]) TEXTES[code] = (await FICHIERS[code]()).default;
+  chargee ??= code;
+}
+surPreparationLangue(chargerTextes);
+// Tout module qui traduit attend ces textes : l'interface ne se pose jamais sans eux
+await chargerTextes(langue());
 const ATTRIBUTS = ['aria-label', 'title', 'placeholder', 'alt'];
 const racines = new Set();
 // Texte écrit par poser() : s'il a changé depuis, c'est qu'un autre texte a pris sa place
@@ -21,7 +30,8 @@ const echapper = (texte) =>
   String(texte).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function t(cle, variables = {}) {
-  let texte = TEXTES[langue()]?.[cle] ?? fr[cle];
+  // Langue changée sans passer par definirLangue (sauvegarde restaurée) : la langue chargée en attendant
+  let texte = (TEXTES[langue()] ?? TEXTES[chargee])?.[cle];
   if (texte === undefined) {
     if (import.meta.env.DEV) console.warn('Traduction absente :', cle);
     return cle;

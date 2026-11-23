@@ -51,7 +51,22 @@ function definir(cle, valeur) {
 
 export const definirSysteme = (systeme) => definir('unites', SYSTEMES.includes(systeme) ? systeme : 'metrique');
 export const definirUniteVent = (unite) => definir('unite-vent', UNITES_VENT.includes(unite) ? unite : 'auto');
-export const definirLangue = (code) => definir('langue', LANGUES.includes(code) ? code : 'fr');
+// Les textes d'une langue se chargent à la demande (i18n.js) : la langue ne change qu'une fois
+// les siens arrivés, pour que tout se retraduise d'un coup
+let preparerLangue = async () => {};
+export const surPreparationLangue = (action) => {
+  preparerLangue = action;
+};
+export async function definirLangue(code) {
+  const choisie = LANGUES.includes(code) ? code : 'fr';
+  try {
+    await preparerLangue(choisie);
+  } catch (erreur) {
+    console.warn('Langue indisponible :', erreur);
+    return;
+  }
+  definir('langue', choisie);
+}
 
 // `cles` : ne réagir qu'à certaines préférences (par défaut : toutes)
 export function surPreferences(action, cles = null) {

@@ -109,11 +109,11 @@ describe('fuseaux et affichage', () => {
     expect(ecart(jour.coucher, '20:08', -420)).toBeLessThanOrEqual(2);
   });
 
-  it('écrit les heures et les durées dans la langue choisie', () => {
+  it('écrit les heures et les durées dans la langue choisie', async () => {
     const date = new Date('2026-06-21T05:07:00Z');
     expect(heureDuLieu(date, 120)).toBe('7h07');
     expect(formatDuree(16 * 60 + 5)).toBe('16 h 05');
-    definirLangue('en');
+    await definirLangue('en');
     expect(heureDuLieu(date, 120)).toBe('07:07');
     expect(formatDuree(16 * 60 + 5)).toBe('16h 05m');
     expect(heureDuLieu(null, 0)).toBe('—');
