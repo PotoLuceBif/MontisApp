@@ -4,108 +4,28 @@ import { obtenirBarre } from './barre-haut.js';
 import { DECALAGE_PIN, creerPinSeul } from './pins.js';
 import { t, ta, poser } from './i18n.js';
 import { langue } from './preferences.js';
-import { requete as requeteReseau } from './requete.js';
+import { requete as requeteReseau, messageErreur } from './requete.js';
+import {
+  normaliser, trierResultats, ajouterRecent, retirerRecent, recentsCorrespondants,
+  fusionnerAvecRecents, lireCoordonnees,
+} from './recherche-calcul.js';
 
 const URL_PHOTON = 'https://photon.komoot.io/api/';
 const DELAI_FRAPPE = 300; // attend la fin de la frappe avant d'interroger le service
 const NB_RESULTATS_AFFICHES = 12;
 const NB_RESULTATS_RECHERCHE = 30;
-const NB_RECENTS = 6;
 const CLE_RECENTS = 'recherches-recentes';
 
 const ICONE_LOUPE =
   '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
-
-// ---------- Types de lieux (nom, icône, zoom d'arrivée) ----------
-const CATEGORIES = [
-  { test: (k, v) => k === 'natural' && (v === 'peak' || v === 'volcano'), type: 'sommet', icone: '⛰️', zoom: 13 },
-  { test: (k, v) => (k === 'leisure' && v === 'ski_resort') || (k === 'landuse' && v === 'winter_sports') || (k === 'site' && v === 'piste'), type: 'station', icone: '🎿', zoom: 12 },
-  { test: (k, v) => k === 'place' && v === 'locality', type: 'lieu-dit', icone: '📍', zoom: 14 },
-  { test: (k, v) => k === 'mountain_pass' || (k === 'natural' && v === 'saddle'), type: 'col', icone: '⛰️', zoom: 13 },
-  { test: (k, v) => k === 'natural' && v === 'glacier', type: 'glacier', icone: '🧊', zoom: 12 },
-  { test: (k, v) => k === 'natural' && (v === 'water' || v === 'lake'), type: 'lac', icone: '💧', zoom: 13 },
-  { test: (k) => k === 'waterway', type: 'cours-eau', icone: '🌊', zoom: 12 },
-  { test: (k, v) => k === 'natural' && v === 'valley', type: 'vallee', icone: '🏞️', zoom: 12 },
-  { test: (k, v) => k === 'tourism' && (v === 'alpine_hut' || v === 'wilderness_hut'), type: 'refuge', icone: '🛖', zoom: 15 },
-  { test: (k, v) => k === 'place' && (v === 'city' || v === 'town'), type: 'ville', icone: '🏙️', zoom: 12 },
-  { test: (k, v) => k === 'place' && (v === 'village' || v === 'hamlet' || v === 'isolated_dwelling'), type: 'village', icone: '🏘️', zoom: 14 },
-];
-
-// Repli selon le type renvoyé par le service
-const TYPES = {
-  city: { type: 'ville', icone: '🏙️', zoom: 12 },
-  state: { type: 'region', icone: '🗺️', zoom: 8 },
-  county: { type: 'departement', icone: '🗺️', zoom: 9 },
-  country: { type: 'pays', icone: '🌍', zoom: 5 },
-  district: { type: 'quartier', icone: '🏘️', zoom: 14 },
-  locality: { type: 'lieu-dit', icone: '📍', zoom: 14 },
-  street: { type: 'rue', icone: '🛣️', zoom: 16 },
-  house: { type: 'adresse', icone: '🏠', zoom: 17 },
-  other: { type: 'lieu', icone: '📍', zoom: 13 },
-};
-
-function categorie(p) {
-  return CATEGORIES.find((c) => c.test(p.osm_key, p.osm_value)) || TYPES[p.type] || TYPES.other;
-}
-
-function groupeRecherche(p, cat) {
-  if (cat.type === 'station') return 'station';
-  if (p.type === 'locality' || (p.osm_key === 'place' && p.osm_value === 'locality')) return 'lieu-dit';
-  if (
-    (p.osm_key === 'place' && ['village', 'hamlet'].includes(p.osm_value)) ||
-    ['village', 'hamlet'].includes(p.type)
-  ) return 'village';
-  return null;
-}
-
-// Transforme un résultat du service en objet simple, réutilisable (et mémorisable)
-function normaliser(f) {
-  const p = f.properties || {};
-  const [lng, lat] = f.geometry.coordinates;
-  const cat = categorie(p);
-  const nom = p.name || [p.housenumber, p.street].filter(Boolean).join(' ') || t('rech.sans-nom');
-  const lieux = [p.district, p.city, p.county, p.state, p.country].filter(
-    (x, i, t) => x && x !== nom && t.indexOf(x) === i
-  );
-  const e = p.extent; // [ouest, nord, est, sud]
-  const grandeZone = e && ['city', 'state', 'county', 'country', 'district'].includes(p.type);
-  return {
-    nom,
-    // Le type se traduit à l'affichage ; les noms de lieux restent ceux du service
-    type: cat.type,
-    lieux: lieux.slice(0, 3).join(', '),
-    icone: cat.icone,
-    lng,
-    lat,
-    zoom: cat.zoom,
-    bounds: grandeZone ? [[e[0], e[3]], [e[2], e[1]]] : null,
-    cle: `${p.osm_type || ''}${p.osm_id || ''}`,
-    groupe: groupeRecherche(p, cat),
-  };
-}
+const ICONE_CROIX =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+const ICONE_HORLOGE =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 
 // Les recherches récentes d'avant cette version n'ont qu'un sous-titre déjà écrit
 const sousTitre = (r) =>
   r.type ? [t(`rech.type.${r.type}`), r.lieux].filter(Boolean).join(' · ') : r.sous ?? '';
-
-function equilibrerResultats(items) {
-  const groupes = ['village', 'station', 'lieu-dit'];
-  const prioritaires = groupes
-    .map((groupe) => items.find((item) => item.groupe === groupe))
-    .filter(Boolean);
-  const selectionnes = new Set(prioritaires);
-  return [...prioritaires, ...items.filter((item) => !selectionnes.has(item))];
-}
-
-// Reconnaît des coordonnées tapées à la main : « 45.88, 6.87 »
-function lireCoordonnees(texte) {
-  const m = texte.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
-  if (!m) return null;
-  const lat = parseFloat(m[1]);
-  const lng = parseFloat(m[2]);
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { lat, lng };
-}
 
 const resultatGps = ({ lat, lng }) => ({
   nom: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
@@ -129,7 +49,7 @@ export function initRecherche(map) {
         autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search"
         role="combobox" aria-expanded="false" aria-controls="rech-liste" aria-autocomplete="list">
       <span class="rech-attente" hidden></span>
-      <button type="button" class="rech-effacer" ${ta('aria-label', 'rech.effacer')} hidden>✕</button>
+      <button type="button" class="rech-effacer" ${ta('aria-label', 'rech.effacer')} hidden>${ICONE_CROIX}</button>
     </div>
     <div class="rech-liste" id="rech-liste" role="listbox" hidden></div>
   `;
@@ -144,6 +64,7 @@ export function initRecherche(map) {
   const mobile = () => window.matchMedia('(max-width: 640px)').matches;
 
   let resultats = [];
+  let listeService = false; // la liste montre des résultats du service
   let actif = -1;
   let requeteAffichee = '';
   let repere = null;
@@ -194,6 +115,23 @@ export function initRecherche(map) {
     textes.append(nom, sous);
 
     ligne.append(icone, textes);
+    if (r.recent) {
+      ligne.classList.add('rech-recent');
+      const marque = document.createElement('span');
+      marque.className = 'rech-marque-recent';
+      marque.innerHTML = ICONE_HORLOGE;
+      icone.appendChild(marque);
+      const oublier = document.createElement('button');
+      oublier.type = 'button';
+      oublier.className = 'rech-oublier';
+      oublier.setAttribute('aria-label', t('rech.oublier', { nom: r.nom }));
+      oublier.innerHTML = ICONE_CROIX;
+      oublier.addEventListener('click', (e) => {
+        e.stopPropagation();
+        oublier(r);
+      });
+      ligne.appendChild(oublier);
+    }
     ligne.addEventListener('click', () => choisir(r));
     ligne.addEventListener('mousemove', () => {
       if (actif !== i) surligner(i);
@@ -210,6 +148,7 @@ export function initRecherche(map) {
 
   function dessiner(items, { titre, action, credit } = {}) {
     resultats = items;
+    listeService = !!credit;
     actif = -1;
     liste.replaceChildren();
 
@@ -217,12 +156,12 @@ export function initRecherche(map) {
       const entete = document.createElement('div');
       entete.className = 'rech-titre';
       const libelle = document.createElement('span');
-      libelle.textContent = titre;
+      poser(libelle, titre);
       entete.appendChild(libelle);
       if (action) {
         const bouton = document.createElement('button');
         bouton.type = 'button';
-        bouton.textContent = action.libelle;
+        poser(bouton, action.libelle);
         bouton.addEventListener('click', action.fn);
         entete.appendChild(bouton);
       }
@@ -236,6 +175,7 @@ export function initRecherche(map) {
 
   function afficherMessage(texte) {
     resultats = [];
+    listeService = false;
     actif = -1;
     liste.replaceChildren();
     const m = document.createElement('div');
@@ -252,21 +192,43 @@ export function initRecherche(map) {
   };
 
   function memoriser(r) {
-    const anciens = lireRecents().filter((x) => !(x.cle === r.cle && x.nom === r.nom));
-    anciens.unshift(r);
-    ecrire(CLE_RECENTS, anciens.slice(0, NB_RECENTS));
+    ecrire(CLE_RECENTS, ajouterRecent(lireRecents(), r));
+  }
+
+  // Oublie une recherche récente : elle quitte la liste, ou y reste comme simple résultat du service
+  function oublier(r) {
+    ecrire(CLE_RECENTS, retirerRecent(lireRecents(), r));
+    if (!saisie.value.trim()) {
+      afficherRecents();
+      return;
+    }
+    const memeLieu = (x) => x.cle === r.cle && x.nom === r.nom;
+    const items = listeService
+      ? resultats.map((x) => (memeLieu(x) ? { ...x, recent: false } : x))
+      : resultats.filter((x) => !memeLieu(x));
+    if (items.length) dessiner(items, { credit: listeService });
+    else fermerListe();
+  }
+
+  // Pendant la frappe, les dernières recherches qui correspondent s'affichent tout de suite ;
+  // des résultats du service déjà affichés restent jusqu'aux suivants
+  function afficherRecentsCorrespondants(q) {
+    if (listeService && !liste.hidden) return;
+    const items = recentsCorrespondants(lireRecents(), q).map((r) => ({ ...r, recent: true }));
+    if (items.length) dessiner(items);
+    else fermerListe();
   }
 
   function afficherRecents() {
-    const recents = lireRecents();
+    const recents = lireRecents().map((r) => ({ ...r, recent: true }));
     if (!recents.length) {
       fermerListe();
       return;
     }
     dessiner(recents, {
-      titre: t('rech.recentes'),
+      titre: 'rech.recentes',
       action: {
-        libelle: t('rech.effacer'),
+        libelle: 'rech.tout-effacer',
         fn: () => {
           ecrire(CLE_RECENTS, []);
           fermerListe();
@@ -291,27 +253,25 @@ export function initRecherche(map) {
       if (!rep.ok) throw new Error(`HTTP ${rep.status}`);
       const donnees = await rep.json();
 
-      const vus = new Set();
-      const items = (donnees.features || [])
-        .filter((f) => f.geometry && f.geometry.coordinates)
-        .map(normaliser)
-        .filter((r) => {
-          const cle = `${r.cle}|${r.nom}`;
-          if (vus.has(cle)) return false;
-          vus.add(cle);
-          return true;
-        });
+      const items = trierResultats(
+        (donnees.features || [])
+          .filter((f) => f.geometry && f.geometry.coordinates)
+          .map((f) => normaliser(f, t('rech.sans-nom'))),
+        { q, centre: { lng: c.lng, lat: c.lat } }
+      );
+      const liste = fusionnerAvecRecents(items, lireRecents(), q);
 
       attente.hidden = true;
       requeteAffichee = q;
-      if (items.length) {
-        dessiner(equilibrerResultats(items).slice(0, NB_RESULTATS_AFFICHES), { credit: true });
-      }
+      if (liste.length) dessiner(liste.slice(0, NB_RESULTATS_AFFICHES), { credit: true });
       else afficherMessage(t('rech.aucun', { q }));
     } catch (e) {
       if (e.name === 'AbortError') return;
       attente.hidden = true;
-      afficherMessage(t('lieu.recherche-erreur'));
+      // Les récentes qui correspondent restent proposées sans réseau
+      const recents = recentsCorrespondants(lireRecents(), q).map((r) => ({ ...r, recent: true }));
+      if (recents.length) dessiner(recents);
+      else afficherMessage(t('meteo.recherche-erreur', { message: messageErreur(e) }));
       console.warn('Recherche :', e);
     }
   }
@@ -443,10 +403,8 @@ export function initRecherche(map) {
       return;
     }
 
-    if (q.length < 2) {
-      fermerListe();
-      return;
-    }
+    afficherRecentsCorrespondants(q);
+    if (q.length < 2) return;
     minuteur = setTimeout(() => chercher(q), DELAI_FRAPPE);
   });
 
@@ -464,12 +422,12 @@ export function initRecherche(map) {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const q = saisie.value.trim();
-      if (!q) {
-        if (actif >= 0 && resultats[actif]) choisir(resultats[actif]);
+      if (actif >= 0 && resultats[actif] && !liste.hidden) {
+        choisir(resultats[actif]);
+      } else if (!q) {
         return;
-      }
-      if (resultats.length && requeteAffichee === q) {
-        choisir(resultats[actif >= 0 ? actif : 0]);
+      } else if (resultats.length && requeteAffichee === q) {
+        choisir(resultats[0]);
       } else if (q.length >= 2) {
         clearTimeout(minuteur);
         chercher(q);
