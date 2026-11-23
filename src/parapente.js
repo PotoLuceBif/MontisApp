@@ -48,7 +48,12 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let terrainsRecus = 0;
   let terrainsEnregistres = null;
   const source = BALISES;
-  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche, analyserVent });
+  // Balise et terrain voisins : le doigt va au plus proche, pastille de la balise ou tête du pin (avant, la grande
+  // manche à air de la balise prenait tous les appuis et le décollage ne s'ouvrait plus)
+  const couche = creerCoucheBalises(map, {
+    peutOuvrir: peutOuvrirBalise, onRetourFiche, analyserVent,
+    cede: (point, ecart) => (terrainVise(point)?.ecart ?? Infinity) < ecart,
+  });
   const ficheTerrain = creerFicheTerrain(map, {
     onOuvrir: (terrain) => marquerTerrain(terrain.id),
     onFermer: () => marquerTerrain(null),
@@ -105,7 +110,16 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
-    paint: { 'icon-translate': [0, -hauteur], 'icon-translate-anchor': 'viewport' },
+    paint: { 'icon-translate': translationAnneau(hauteur), 'icon-translate-anchor': 'viewport' },
+  });
+  // MapLibre écrase la translation d'une image tournée avec la carte par l'inclinaison (× cos) : en 3D, l'anneau
+  // descendait sous la tête du pin, qui reste droit. On la rallonge d'autant.
+  function translationAnneau(hauteur) {
+    return [0, -hauteur / Math.max(0.2, Math.cos((map.getPitch() * Math.PI) / 180))];
+  }
+  map.on('pitch', () => {
+    if (map.getLayer(COUCHE_ANNEAUX)) map.setPaintProperty(COUCHE_ANNEAUX, 'icon-translate', translationAnneau(HAUT_TETE));
+    if (map.getLayer(COUCHE_ANNEAU_CHOISI)) map.setPaintProperty(COUCHE_ANNEAU_CHOISI, 'icon-translate', translationAnneau(HAUT_TETE_CHOISIE));
   });
 
   // Sous les balises : un relevé se lit par-dessus son décollage
@@ -213,13 +227,25 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     onDonnees();
   }
 
-  // Un clic sur un terrain ouvre sa fiche, sauf si une balise est dessus (elle passe d'abord)
+  // Le pin le plus proche du doigt : on vise sa tête, au-dessus de la coordonnée. { feature, ecart } ou null
+  function terrainVise({ x, y }) {
+    if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS)) return null;
+    const boite = [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]];
+    return map.queryRenderedFeatures(boite, { layers: [COUCHE_TERRAINS] })
+      .map((feature) => {
+        const ecran = map.project(feature.geometry.coordinates);
+        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - HAUT_TETE - y) };
+      })
+      .sort((a, b) => a.ecart - b.ecart)[0] ?? null;
+  }
+
+  // Un clic sur un terrain ouvre sa fiche, sauf si une balise est plus près du doigt (elle s'ouvre alors)
   map.on('click', (event) => {
     if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS) || !peutOuvrirBalise()) return;
     const { x, y } = event.point;
     const boite = [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]];
-    const balises = ['balises-vent-pastilles', 'balises-vent-manches'].filter((id) => map.getLayer(id));
-    if (balisesVisibles && balises.length && map.queryRenderedFeatures(boite, { layers: balises }).length) {
+    const vise = terrainVise(event.point);
+    if (balisesVisibles && couche.ecartPlusProche(event.point) <= (vise?.ecart ?? Infinity)) {
       ficheTerrain.fermer();
       return;
     }
@@ -232,15 +258,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         .catch(() => {});
       return;
     }
-    // Le pin le plus proche du doigt : on vise sa tête, au-dessus de la coordonnée
-    const touches = map.queryRenderedFeatures(boite, { layers: [COUCHE_TERRAINS] });
-    const plusPres = touches
-      .map((feature) => {
-        const ecran = map.project(feature.geometry.coordinates);
-        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - HAUT_TETE - y) };
-      })
-      .sort((a, b) => a.ecart - b.ecart)[0]?.feature;
-    const terrain = plusPres && terrains.get(String(plusPres.properties.id));
+    const terrain = vise && terrains.get(String(vise.feature.properties.id));
     if (!terrain) {
       ficheTerrain.fermer();
       return;

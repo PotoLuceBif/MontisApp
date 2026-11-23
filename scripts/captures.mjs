@@ -344,6 +344,8 @@ const ECRANS = [
   { nom: 'parapente-sites-carte', actions: [...SITES, clic('#menu-bouton')] },
   // Pins des terrains et leur anneau d'orientations, carte tournée : l'anneau suit la carte
   { nom: 'parapente-terrains-pins', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
+  { nom: 'parapente-terrains-pins-nord', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 0, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
+  { nom: 'parapente-terrains-pins-3d', actions: [...SITES, clic('#menu-bouton'), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 60 }), (p) => p.waitForTimeout(5000), attendreCouche('terrains-ffvl-anneaux')] },
   { nom: 'parapente-terrain', actions: TERRAIN },
   // « Évaluer l'exposition » (lot 4.7) : Soleil et Lune › Ombre du soleil, cadrée sur le décollage
   { nom: 'parapente-terrain-exposition', actions: [...TERRAIN, attendre('.lien-exposition'), clicVisible('.lien-exposition'), (p) => p.waitForTimeout(4000)] },

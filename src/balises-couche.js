@@ -89,7 +89,8 @@ function dessinerPastille(palier, moyenne) {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche, analyserVent = null } = {}) {
+// `cede(point, ecart)` : vrai si autre chose (la tête d'un pin de terrain) est plus près du doigt que la balise
+export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche, analyserVent = null, cede = () => false } = {}) {
   let stations = [];
   let source = null;
   let visible = false;
@@ -274,15 +275,22 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
     marquerSelection(id);
   }
 
+  // Distance du doigt à la pastille (au point de la balise), en pixels d'écran
+  function ecartBalise(feature, { x, y }) {
+    const ecran = map.project(feature.geometry.coordinates);
+    return Math.hypot(ecran.x - x, ecran.y - y);
+  }
+
   // Un clic général et une tolérance : au doigt, viser une petite balise est difficile
   map.on('click', (event) => {
     if (!visible || !map.getLayer(COUCHE_PASTILLE) || !peutOuvrir()) return;
     const { x, y } = event.point;
+    // La balise la plus proche du doigt, pas la première trouvée
     const [trouve] = map.queryRenderedFeatures(
       [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]],
       { layers: COUCHES_CLIC }
-    );
-    if (trouve) ouvrir(trouve.properties.id);
+    ).map((feature) => ({ feature, ecart: ecartBalise(feature, event.point) })).sort((a, b) => a.ecart - b.ecart);
+    if (trouve && !cede(event.point, trouve.ecart)) ouvrir(trouve.feature.properties.id);
     else fiche.fermer();
   });
   map.on('mousemove', (event) => {
@@ -299,6 +307,14 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
   window.addEventListener('fiche-ouverte', () => fiche.fermer());
 
   return {
+    // Écart du doigt à la balise la plus proche (même tolérance que son clic), ou Infinity
+    ecartPlusProche(point) {
+      if (!visible || !map.getLayer(COUCHE_PASTILLE)) return Infinity;
+      return Math.min(Infinity, ...map.queryRenderedFeatures(
+        [[point.x - TOLERANCE_CLIC, point.y - TOLERANCE_CLIC], [point.x + TOLERANCE_CLIC, point.y + TOLERANCE_CLIC]],
+        { layers: COUCHES_CLIC }
+      ).map((f) => ecartBalise(f, point)));
+    },
     // `nouvelleSource` : l'attribution de la carte suit la source affichée
     definir(nouvellesStations, nouvelleSource) {
       stations = nouvellesStations;
