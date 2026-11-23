@@ -4646,3 +4646,10 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
   .bf-jeu.jeux-clavier .jeux-barre .jeux-saisie input { height: 30px; min-height: 30px; }
   .bf-jeu.jeux-clavier .jeux-suggestions button, .bf-jeu.jeux-clavier .jeux-retour .jeux-suivant { min-height: 36px; }
 }
+/* Révise tes erreurs : catégories dépliées sous la carte */
+.jeux-revision-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.jeux-revision-categories[hidden] { display: none; }
+.jeux-revision-categories .para-bouton { display: flex; align-items: center; gap: 8px; min-height: 44px; text-align: left; }
+.jeux-revision-categories svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.jeux-revision-categories span { flex: 1; min-width: 0; }
+.jeux-revision-categories small { padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, #ff4d6d 22%, transparent); color: var(--texte); font-weight: 700; }
