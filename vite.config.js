@@ -68,10 +68,37 @@ function relais() {
   };
 }
 
+// Seuls les textes de la langue choisie se chargent (i18n.js). Ils ne sont connus qu'en lisant les
+// réglages : un petit script de index.html les demande tout de suite, en même temps que le reste du
+// code, plutôt qu'une fois i18n.js lancé (un aller-retour réseau de plus, une demi-seconde en 4G lente).
+// Même choix que langue() de preferences.js : réglage gardé, sinon langue du téléphone, sinon français.
+function langueChoisie() {
+  return {
+    name: 'montis-langue-choisie',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, { bundle }) {
+        const fichiers = {};
+        for (const morceau of Object.values(bundle ?? {})) {
+          const langue = /[\\/]i18n[\\/](fr|en)\.json$/.exec(morceau.facadeModuleId ?? '')?.[1];
+          if (langue) fichiers[langue] = `/${morceau.fileName}`;
+        }
+        if (!fichiers.fr || !fichiers.en) throw new Error('Fichiers de langue introuvables dans le build');
+        const script = `(function(){var f=${JSON.stringify(fichiers)},l;try{l=JSON.parse(localStorage.getItem('montis.reglages')||'{}').langue}catch(e){}`
+          + `if(!f[l]){l='fr';var n=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||'fr'];`
+          + `for(var i=0;i<n.length;i++){var c=String(n[i]).slice(0,2).toLowerCase();if(f[c]){l=c;break}}}`
+          + `var k=document.createElement('link');k.rel='modulepreload';k.crossOrigin='anonymous';k.href=f[l];document.head.appendChild(k)})()`;
+        return { html, tags: [{ tag: 'script', children: script, injectTo: 'head-prepend' }] };
+      },
+    },
+  };
+}
+
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 
 export default defineConfig({
-  plugins: [serviceWorker(), relais()],
+  plugins: [serviceWorker(), relais(), langueChoisie()],
   // Version affichée dans les Paramètres
   define: { __VERSION_MONTIS__: JSON.stringify(version) },
   // Les sessions parallèles travaillent dans .claude/worktrees/ : sans cela, chacune de leurs
@@ -84,7 +111,13 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         codeSplitting: {
-          groups: [{ name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/ }],
+          groups: [
+            { name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 2 },
+            // Tout le reste du code de démarrage en un fichier : les modules chargés à la demande
+            // en partagent beaucoup, et sans ce groupe il s'éparpillait en une trentaine de petits
+            // fichiers, chacun payant la latence du réseau (lot 0.8 : +1,6 s en 4G lente)
+            { name: 'demarrage', tags: ['$initial'], priority: 1 },
+          ],
         },
       },
     },

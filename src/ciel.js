@@ -5,8 +5,6 @@
 // générée dans un travailleur à la première ouverture du ciel (`voie-lactee-calcul.js`).
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc';
 import { couleurEtoile, directionEtoile, eclatEtoile, lireCatalogue, opaciteCiel, projeterDirection, tempsSideral } from './ciel-calcul.js';
-import { matriceCiel, peindreVoieLactee, projeterGalactique } from './voie-lactee-calcul.js';
-import { GALAXIES, galaxieSous, poseGalaxie } from './galaxies-calcul.js';
 
 const CATALOGUE = '/data/ciel/etoiles.json';
 const ZOOM_MAX = 6;
@@ -88,9 +86,28 @@ const chargerEtoiles = () => {
   return chargement;
 };
 
+// Leurs calculs ne servent qu'au dézoom : chargés avec la Voie lactée, pas au démarrage
 let voieLactee = null;
+let vl = null;
+let gx = null;
 const genererVoieLactee = () => {
-  voieLactee ??= new Promise((resolve) => {
+  voieLactee ??= Promise.all([
+    import('./voie-lactee-calcul.js'),
+    import('./galaxies-calcul.js'),
+    genererImageVoieLactee(),
+  ]).then(([calculVoieLactee, calculGalaxies, donnees]) => {
+    vl = calculVoieLactee;
+    gx = calculGalaxies;
+    return donnees;
+  }, (erreur) => {
+    console.warn('Ciel : Voie lactée indisponible', erreur);
+    voieLactee = null;
+    return null;
+  });
+  return voieLactee;
+};
+const genererImageVoieLactee = () =>
+  new Promise((resolve) => {
     try {
       const travailleur = new Worker(new URL('./voie-lactee-travail.js', import.meta.url), { type: 'module' });
       travailleur.onmessage = ({ data }) => {
@@ -108,8 +125,6 @@ const genererVoieLactee = () => {
       resolve(null);
     }
   });
-  return voieLactee;
-};
 
 // `astres` : dessin propre des astres à la place du soleil et de la Lune (la visite de la Lune y pose la Terre),
 // appelé avec { contexte, centre, maintenant, projeter(direction) }
@@ -129,7 +144,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
 
   // Voie lactée dessinée en basse définition, puis agrandie (lissée) sur toute la toile ; ensuite son grain d'étoiles
   function dessinerVoieLactee(cam, centre, ts, l, h) {
-    const ciel = matriceCiel(cam, centre.lat, centre.lng, ts);
+    const ciel = vl.matriceCiel(cam, centre.lat, centre.lng, ts);
     const pas = Math.max(2, Math.sqrt((l * h) / PIXELS_VOIE_LACTEE));
     const tl = Math.ceil(l / pas);
     const th = Math.ceil(h / pas);
@@ -138,7 +153,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
       tampon.height = th;
       image = contexteTampon.createImageData(tl, th);
     }
-    peindreVoieLactee(image.data, tl, th, pas, ciel, galaxie.texture, galaxie.largeur, galaxie.hauteur);
+    vl.peindreVoieLactee(image.data, tl, th, pas, ciel, galaxie.texture, galaxie.largeur, galaxie.hauteur);
     contexteTampon.putImageData(image, 0, 0);
     contexte.imageSmoothingEnabled = true;
     contexte.imageSmoothingQuality = 'high';
@@ -146,7 +161,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     const semis = galaxie.etoiles;
     let niveau = -1;
     for (let k = 0; k < semis.length; k += 4) {
-      const point = projeterGalactique(semis[k], semis[k + 1], semis[k + 2], ciel);
+      const point = vl.projeterGalactique(semis[k], semis[k + 1], semis[k + 2], ciel);
       if (!point || point.x < 0 || point.y < 0 || point.x > l || point.y > h) continue;
       const eclat = Math.round(semis[k + 3] * 8);
       if (eclat !== niveau) {
@@ -180,7 +195,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
       if (Math.max(rayon, etirement) > Math.max(l, h)) continue;
       if (point.x < -rayon || point.y < -rayon || point.x > l + rayon || point.y > h + rayon) continue;
       pointsGalaxies.push({ id: modele.id, x: point.x, y: point.y, rayon: Math.max(rayon, etirement) / 2 });
-      const [a, b, c, d, e, f] = poseGalaxie(modele, point, nord, est, DELTA);
+      const [a, b, c, d, e, f] = gx.poseGalaxie(modele, point, nord, est, DELTA);
       contexte.setTransform(ratio * a, ratio * b, ratio * c, ratio * d, ratio * e, ratio * f);
       contexte.globalAlpha = alpha * modele.eclat;
       contexte.drawImage(image, 0, 0);
@@ -323,7 +338,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
           galaxie.debut = performance.now();
           toile.dataset.voieLactee = 'prete'; // attendu par les captures
           galaxie.images = donnees.galaxies.map(({ id, pixels }) => {
-            const modele = GALAXIES.find((g) => g.id === id);
+            const modele = gx.GALAXIES.find((g) => g.id === id);
             const image = document.createElement('canvas');
             image.width = modele.taille;
             image.height = modele.taille;
@@ -391,7 +406,7 @@ export function initCiel(map, { astres = null, instant = null } = {}) {
     pointLune: () => (toile.hidden ? null : pointLune),
     pointSoleil: () => (toile.hidden ? null : pointSoleil),
     // Galaxie sous le doigt (identifiant de GALAXIES), sinon null
-    galaxieEn: (x, y, marge) => (toile.hidden ? null : galaxieSous(pointsGalaxies, x, y, marge)),
+    galaxieEn: (x, y, marge) => (toile.hidden || !gx ? null : gx.galaxieSous(pointsGalaxies, x, y, marge)),
     redessiner: planifier,
   };
 }

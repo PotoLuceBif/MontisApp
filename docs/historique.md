@@ -91,3 +91,35 @@ Le détail de chaque lot terminé, tel qu'il était noté dans la feuille de rou
 **Corrections du mode trajet** (17 novembre 2026, demande du propriétaire, branche `guidage-trajet`). Orientation : cône lumineux de la boussole autour de la position (`deviceorientationabsolute` sur Android, `webkitCompassHeading` sur iOS, autorisation demandée à l'appui sur « Démarrer la sortie »), flèche du sens de déplacement (`coords.heading`, masquée à l'arrêt sous 0,6 m/s ou sans valeur), angle de l'écran compté, valeurs lissées par le plus court chemin ; un marqueur MapLibre aligné sur la carte compense la rotation et l'inclinaison. Bandeau : « Distance restante », « D+ restant », « D− restant », « Temps restant » (à ton allure, avec avance ou retard, temps standard en petit, décision du propriétaire) et « Arrivée ≈ 15h40 ». Enregistrement facultatif (revient sur la décision du 9 novembre 2026, à la demande du propriétaire) : interrupteur « Enregistrer la trace » dans le bandeau du guidage, une fois la sortie démarrée (retour du propriétaire du même jour : à côté de « Démarrer la sortie », ce n'était pas logique), éteint à chaque sortie ; l'éteindre arrête l'enregistrement et montre le résumé, le guidage continue ; points sauvegardés dans le localStorage toutes les 10 s et en quittant la page ; après un rechargement, le démarrage suivant propose de reprendre la trace (nouveau segment) ou de la terminer ; trous de plus de 90 s en segments séparés ; à l'arrêt, résumé (distance, durée, D+ de l'altitude GPS, coupures), export GPX et ajout à Mes parcours ; la trace n'est effacée qu'avec « Terminer ». Mode poche : écran noir, heure, temps et distance restants en petit, un appui ramène la carte ; le GPS et l'enregistrement continuent. Écrans `guidage-cone`, `guidage-option`, `guidage-poche`, `guidage-resume`.
 
 **Éléments du fond Montis** (17 novembre 2026, demande du propriétaire). Bâtiments, lacs et rivières, voies ferrées font partie du fond Montis : sur ce fond, pas de pastille, et ils sont rallumés chaque fois qu'on revient au fond Montis ; on peut les éteindre dans Éléments de la carte. Sur les autres fonds (monde, pays, anciennes), allumés, ils ont leur pastille comme les autres éléments (regroupée en « Éléments de la carte · 3 »). Écrans `carte-fond-elements-autre`, `carte-fond-elements-retour`.
+
+## Lot 0.8 Performance et déploiement (24 novembre 2026)
+
+**Mesure.** `npm run build` puis `npm run mesures -- <étiquette>` (`scripts/mesures.mjs`) : build de production servi compressé comme sur Vercel, téléphone 390 × 844 simulé, processeur divisé par 4 et réseau « Slow 4G » des outils de Chrome (562 ms de latence, 1,44 Mbit/s), Chamonix au zoom 13, trois passages et la médiane. Repères posés par `main.js` : `montis:interface` (menu, recherche et boutons posés) et `montis:carte` (premier repos de la carte, tuiles reçues). Fluidité : six glissés au doigt, images par seconde comptées, processeur divisé par 4 (sur le processeur graphique du PC, plus fort que celui d'un téléphone moyen : les images par seconde sont un ordre de grandeur, pas une promesse). Mémoire : tas JavaScript après un ramasse-miettes (la mémoire du processeur graphique n'est pas mesurable ainsi).
+
+| | Avant | Après |
+|---|---|---|
+| Première visite : premier affichage | 6,1 s | 6,1 s |
+| Première visite : interface utilisable | 5,6 s | 5,6 s |
+| Première visite : carte complète | 15,6 s | 16,9 s (tuiles du vrai réseau : ± 2 s d'un passage à l'autre) |
+| Fichiers de Montis avant l'interface | 12 fichiers, 492 Ko | 6 fichiers, 455 Ko (−8 %) |
+| Seconde visite (service worker) : interface | 1,58 s | 1,43 s |
+| Seconde visite : carte complète | 5,5 s | 5,6 s |
+| Mémoire (tas JavaScript) au démarrage | 8,5 Mo | 8,0 Mo |
+| Glissé 2D, sans couche | 29 images/s | 32 images/s |
+| Glissé 2D, pentes, ombre du soleil et vent | 25 images/s | 26 images/s |
+| Glissé 3D incliné | 27 images/s | 25 images/s |
+| Mémoire avec pentes, ombre et vent | 12,5 Mo | 12,2 Mo |
+| Réouvrir Vol libre (balises et terrains) | 7 requêtes, dont les terrains (3,6 Mo) | aucune pendant 2 min ; terrains et liste FFVL gardés 12 h et 6 h |
+
+Fluidité et temps de la carte : différences dans le bruit de mesure. **Constat** : le démarrage est fait à 2/3 de MapLibre (295 Ko compressé, et son analyse par le processeur), et la carte complète attend surtout ses 20 tuiles de relief (2,8 Mo, PNG non compressibles) : 12 au zoom 13 pour les courbes, 8 au zoom 14 pour le relief ombré. Faire lire au relief ombré les tuiles des courbes gagnerait 0,9 Mo, environ 5 s en 4G lente, mais avec un ombrage deux fois moins fin de près : **écarté par le propriétaire** (24 novembre 2026, « garder la finesse »).
+
+**Allègements.** Seuls les textes de la langue choisie se chargent (`await` en tête de `i18n.js`, fichier préchargé par un petit script d'`index.html` qui lit le réglage, `langueChoisie` de `vite.config.js`) : 31 Ko compressés de moins ; changer de langue charge l'autre fichier avant de retraduire (`definirLangue` devient asynchrone). Page Paramètres (avec sauvegarde et données hors ligne) chargée à sa première ouverture ; calculs de la Voie lactée et des galaxies chargés avec elle, au dézoom. Ces découpages avaient éparpillé le code de démarrage en une trentaine de petits fichiers (+1,6 s mesurées en 4G lente, chacun payant la latence) : tout le code de démarrage est désormais regroupé en un fichier (`demarrage-*.js`, groupe `$initial` de Rolldown). Service worker inscrit une fois la carte au repos (au plus tard 20 s) : sa première installation précharge 7,8 Mo (stations de ski, refuges, MapLibre…) et passait avant les tuiles.
+
+**Réponses gardées** (`reponses-gardees.js`, Cache Storage `montis-reponses`, gardé par le service worker d'une version à l'autre) : Overpass et objets de l'API OpenStreetMap 7 jours, niveaux et bulletins d'avalanche 30 min, relevés des balises 2 min, liste des balises FFVL 6 h, terrains FFVL 12 h. Vérifié : réouvrir Vol libre ne refait aucune requête.
+
+**Mises à jour du service worker.** `/sw.js` toujours relu sur le serveur (`updateViaCache: 'none'`) et recherché au retour sur l'appli, au plus une fois par heure (une appli installée restait des jours en mémoire sans le voir). Une nouvelle version efface les fichiers de l'ancienne : une page restée ouverte qui chargeait ensuite une activité tombait sur « Chargement impossible » ; elle se recharge maintenant une fois sur la nouvelle version (`mise-a-jour.js`).
+
+**Déployer en une commande.** `npm run deployer` : `npm test`, `npm run build`, `vercel deploy --yes`, alias `montisapp-git-<branche>-luce-team.vercel.app`, lien affiché ; s'arrête au premier échec, refuse `main` ; `-- --alpha` pose aussi montis-alpha.vercel.app ; `-- --essai` s'arrête avant l'envoi. Dans un worktree, le projet Vercel est lu dans le dossier principal du dépôt. Pas encore lancé pour de vrai (preview sur demande du propriétaire).
+
+**Pistes laissées** : relief ombré partagé (écarté), styles (216 Ko, tous chargés au démarrage), `fiche.js` et `zones-hors-ligne.js` (25 et 21 Ko) qui pourraient se charger au premier appui.
+

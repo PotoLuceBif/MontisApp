@@ -45,3 +45,6 @@ captures/
 exemples/
 scripts/cache-fiches-*
 captures-360/
+
+# Mesures de performance de scripts/mesures.mjs
+mesures/

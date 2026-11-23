@@ -2,6 +2,7 @@
 import { formatAltitude, formatNeige, formatTemp, formatVent, nombre as formatNombre, uniteNeige, versNeige } from './unites.js';
 import { formatDate, t } from './i18n.js';
 import { requete as requeteReseau } from './requete.js';
+import { DUREE_AVALANCHES, gardee } from './reponses-gardees.js';
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
 const URL_RISQUES = 'https://static.avalanche.report/eaws_bulletins';
 const DUREE_CACHE_NEIGE_MS = 30 * 60 * 1000;
@@ -151,12 +152,12 @@ export const chargerNiveauxDuJour = () => chargerNiveaux(dateLocale());
 
 async function chargerNiveaux(date) {
   if (!cacheRisques.has(date)) {
-    const demande = requeteReseau(`${URL_RISQUES}/${date}/${date}.ratings.json`)
+    const demande = gardee(`avalanches:${date}`, DUREE_AVALANCHES, () => requeteReseau(`${URL_RISQUES}/${date}/${date}.ratings.json`)
       .then((reponse) => {
         if (reponse.status === 404) return {}; // aucun bulletin publié pour cette date
         if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
         return reponse.json().then((json) => json.maxDangerRatings || {});
-      })
+      }))
       .catch((erreur) => {
         cacheRisques.delete(date);
         throw erreur;

@@ -2,7 +2,8 @@ import * as maplibregl from 'maplibre-gl';
 import { formatAltitude } from './unites.js';
 import { surPreferences } from './preferences.js';
 import { poserAttribut, t as tr } from './i18n.js';
-import { interroger, objetOsm } from './overpass.js';
+import { DUREE_OSM, interroger, objetOsm } from './overpass.js';
+import { gardee } from './reponses-gardees.js';
 import { requete } from './requete.js';
 import { DECALAGE_PIN, creerPinSeul, imagePin } from './pins.js';
 import { dessinerPicto } from './points-utiles.js';
@@ -320,9 +321,11 @@ export function initFiches(map) {
     const cle = `${objet.type}/${objet.id}`;
     try {
       if (!cacheOsm.has(cle)) {
-        const reponse = await requete(`https://api.openstreetmap.org/api/0.6/${cle}.json`, {}, 10000);
-        if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
-        const json = await reponse.json();
+        const json = await gardee(`osm:${cle}`, DUREE_OSM, async () => {
+          const reponse = await requete(`https://api.openstreetmap.org/api/0.6/${cle}.json`, {}, 10000);
+          if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+          return reponse.json();
+        });
         cacheOsm.set(cle, (json.elements || []).find((e) => e.type === objet.type && e.id === objet.id) || null);
       }
       fiche.objetOsm = cacheOsm.get(cle);

@@ -3,6 +3,7 @@
 // Source : bulletins de l'EAWS au format CAAML (static.avalanche.report), gardés par le service worker.
 import { cumulsNeige, fichierDuMassif, fichiersDuJour, lireBulletin, ORIENTATIONS } from './bulletin-calcul.js';
 import { requete } from './requete.js';
+import { DUREE_AVALANCHES, gardee } from './reponses-gardees.js';
 import { formatAltitude, formatNeige } from './unites.js';
 import { formatDate, t } from './i18n.js';
 
@@ -35,14 +36,15 @@ function memoriser(cache, cle, charger) {
 // Bulletin du jour d'un massif, ou null si son service n'a rien publié
 export async function chargerBulletin(massif, langue) {
   const date = dateLocale();
-  const disponibles = await memoriser(listes, date, async () => {
+  const disponibles = await memoriser(listes, date, async () => new Set(await gardee(`bulletins:${date}`, DUREE_AVALANCHES, async () => {
     const reponse = await requete(`${URL_BULLETINS}/${date}/`);
     if (!reponse.ok) throw Object.assign(new Error(`HTTP ${reponse.status}`), { statut: reponse.status });
-    return fichiersDuJour(await reponse.text(), date);
-  });
+    return [...fichiersDuJour(await reponse.text(), date)];
+  })));
   const fichier = fichierDuMassif(massif, disponibles, langue);
   if (!fichier) return null;
-  const json = await memoriser(fichiers, `${date}/${fichier}`, () => lireJson(`${URL_BULLETINS}/${date}/${date}-${fichier}.json`));
+  const json = await memoriser(fichiers, `${date}/${fichier}`, () =>
+    gardee(`bulletin:${date}/${fichier}`, DUREE_AVALANCHES, () => lireJson(`${URL_BULLETINS}/${date}/${date}-${fichier}.json`)));
   return lireBulletin(json, massif);
 }
 

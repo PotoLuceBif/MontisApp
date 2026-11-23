@@ -1,4 +1,9 @@
 // Requêtes Overpass (OpenStreetMap) : chaque serveur à tour de rôle, le principal est souvent saturé
+import { gardee } from './reponses-gardees.js';
+
+// OpenStreetMap change peu : une même question reçoit la même réponse pendant une semaine,
+// d'une ouverture de l'appli à l'autre, sans rattendre des serveurs souvent saturés
+export const DUREE_OSM = 7 * 24 * 60 * 60 * 1000;
 const URLS_OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
@@ -7,7 +12,10 @@ const URLS_OVERPASS = [
 ];
 
 // `delaiParServeur` (ms) : un serveur qui ne répond pas laisse sa place au suivant
-export async function interroger(requete, signal, { delaiParServeur = 0 } = {}) {
+export const interroger = (requete, signal, options = {}) =>
+  gardee(`overpass:${requete}`, DUREE_OSM, () => interrogerServeurs(requete, signal, options));
+
+async function interrogerServeurs(requete, signal, { delaiParServeur = 0 } = {}) {
   let derniereErreur = null;
   for (const url of URLS_OVERPASS) {
     const local = new AbortController();

@@ -391,8 +391,13 @@ map.once('style.load', () => {
   initFiches(map);
   initHorsLigne(map);
   ouvrirLienRecu(map);
+  // Repères lus par scripts/mesures.mjs : interface posée, puis carte au repos avec ses premières tuiles
+  performance.mark('montis:interface');
 
-  map.once('idle', () => retablirFond(map)); // second passage une fois la carte au repos
+  map.once('idle', () => {
+    performance.mark('montis:carte');
+    retablirFond(map); // second passage une fois la carte au repos
+  });
 
   // ---------- Globe quand on dézoome ----------
   try {

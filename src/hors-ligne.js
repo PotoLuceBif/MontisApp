@@ -1,6 +1,7 @@
 // État du réseau : service worker, indicateur « hors ligne » et date des données enregistrées.
 import { basculerFondHorsLigne } from './fond-de-carte.js';
 import { dateEtHeure, poser, t } from './i18n.js';
+import { suivreMisesAJour } from './mise-a-jour.js';
 
 const EN_TETE_DATE = 'x-montis-date';
 
@@ -100,9 +101,19 @@ export function initHorsLigne(map) {
     });
     // Le développement n'en a pas : il masquerait les modifications
     if (import.meta.env.PROD) {
-      navigator.serviceWorker.register('/sw.js').catch((erreur) => {
-        console.warn('Mode hors ligne indisponible :', erreur);
-      });
+      // Une première installation précharge toute l'appli (près de 8 Mo) : une fois la carte au repos,
+      // pour laisser passer d'abord ses tuiles (lot 0.8). Au plus tard après 20 s.
+      let inscrit = false;
+      const inscrire = () => {
+        if (inscrit) return;
+        inscrit = true;
+        // updateViaCache : /sw.js toujours relu sur le serveur, jamais dans le cache HTTP
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(suivreMisesAJour, (erreur) => {
+          console.warn('Mode hors ligne indisponible :', erreur);
+        });
+      };
+      map.once('idle', inscrire);
+      setTimeout(inscrire, 20000);
     }
   }
 
