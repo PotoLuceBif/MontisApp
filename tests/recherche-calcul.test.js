@@ -112,6 +112,17 @@ describe('trierResultats', () => {
   it('retire les doublons', () => {
     expect(trierResultats([montreal[0], montreal[0], montreal[1]], { q: 'Montréal' })).toHaveLength(2);
   });
+
+  it('garde le point du village plutôt que le contour de sa commune', () => {
+    const items = [
+      photon('Chambéry', 'boundary', 'administrative', 'city', [5.92, 45.57], { state: 'Auvergne-Rhône-Alpes', country: 'France' }),
+      photon('Chambéry', 'place', 'city', 'city', [5.92, 45.56], { state: 'Auvergne-Rhône-Alpes', country: 'France' }),
+    ].map((f) => normaliser(f));
+    expect(items[0].type).toBe('commune');
+    const tries = trierResultats(items, { q: 'Chambéry' });
+    expect(tries).toHaveLength(1);
+    expect(tries[0].type).toBe('ville');
+  });
 });
 
 describe('dernières recherches', () => {

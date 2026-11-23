@@ -635,6 +635,7 @@ svg.nuit .lune-cadran-astre { fill: var(--texte-2); opacity: 0.6; }
 .rech-message { padding: 14px; color: var(--texte-2); }
 .rech-credit { padding: 6px 14px 8px; font-size: 11px; color: var(--texte-2); border-top: 1px solid var(--bord); }
 .rech-effacer { color: var(--texte); }
+#recherche .rech-champ input:focus-visible { outline: none; } /* le cadre du champ montre déjà le focus */
 .rech-effacer svg { width: 18px; height: 18px; }
 /* Dernières recherches : horloge sur l'icône, croix pour en oublier une */
 .rech-icone { position: relative; }
@@ -1645,7 +1646,7 @@ body:has(#rando-fiche.rando-fiche-creation:not([hidden])) .rando-creation-flotta
     justify-content: center;
     border-radius: 13px;
   }
-  #recherche.ouverte { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; }
+  #recherche.ouverte { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; width: auto; z-index: 20; } /* liste au-dessus des boutons de la carte */
   #recherche.ouverte .rech-champ { height: 48px; }
   #menu-tiroir {
     position: fixed;

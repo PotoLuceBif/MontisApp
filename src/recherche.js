@@ -156,12 +156,12 @@ export function initRecherche(map) {
       const entete = document.createElement('div');
       entete.className = 'rech-titre';
       const libelle = document.createElement('span');
-      libelle.textContent = titre;
+      poser(libelle, titre);
       entete.appendChild(libelle);
       if (action) {
         const bouton = document.createElement('button');
         bouton.type = 'button';
-        bouton.textContent = action.libelle;
+        poser(bouton, action.libelle);
         bouton.addEventListener('click', action.fn);
         entete.appendChild(bouton);
       }
@@ -226,9 +226,9 @@ export function initRecherche(map) {
       return;
     }
     dessiner(recents, {
-      titre: t('rech.recentes'),
+      titre: 'rech.recentes',
       action: {
-        libelle: t('rech.tout-effacer'),
+        libelle: 'rech.tout-effacer',
         fn: () => {
           ecrire(CLE_RECENTS, []);
           fermerListe();
