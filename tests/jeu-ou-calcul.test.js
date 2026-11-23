@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dansPays, distanceKm, distancePays, lireErreur, noterErreur, seuilVille, taillePays } from '../src/jeu-calcul.js';
+import {
+  dansArchipel, dansPays, distanceKm, distancePays, enveloppe, lireErreur, MARGE_ARCHIPEL, noterErreur, seuilVille, taillePays, zonesArchipel,
+} from '../src/jeu-calcul.js';
 
 const pays = JSON.parse(readFileSync('public/data/jeux/pays.json', 'utf8')).features;
 const geo = (code) => pays.find((f) => f.properties.code === code).geometry.coordinates;
@@ -97,5 +99,56 @@ describe('fiches des pays', async () => {
     expect(ouest.indexOf('FR')).toBeLessThan(ouest.indexOf('DE'));
     expect(europe.flatMap((g) => g.codes)).toHaveLength(47);
     expect(trierFiches(proprietes, 'monde').flatMap((g) => g.codes)).toHaveLength(197);
+  });
+});
+
+describe('où est-ce : archipels', () => {
+  const zones = (code) => zonesArchipel(code, geo(code));
+  const dedans = (code, point) => dansArchipel(point, zones(code));
+
+  it('un appui en mer au milieu des îles compte', () => {
+    expect(dansPays([110, -5], geo('ID'))).toBe(false); // mer de Java
+    expect(dedans('ID', [110, -5])).toBe(true);
+    expect(dedans('PH', [122.5, 12.5])).toBe(true); // mer de Sibuyan
+    expect(dedans('JP', [127, 27])).toBe(true); // entre Kyushu et Okinawa
+    expect(dedans('GR', [25, 38])).toBe(true); // mer Égée
+    expect(dedans('DK', [11, 55.8])).toBe(true); // Kattegat, entre Jutland et Seeland
+    expect(dedans('BS', [-77, 24.5])).toBe(true);
+    expect(dedans('VU', [168, -16.5])).toBe(true);
+  });
+
+  it('les îles trop petites pour les contours comptent dans l’étendue', () => {
+    expect(dedans('MV', [73.3, 2])).toBe(true);
+    expect(dedans('TV', [178, -8])).toBe(true);
+    expect(dedans('SC', [54.5, -4.5])).toBe(true);
+  });
+
+  it('un pays à cheval sur l’antiméridien', () => {
+    expect(dedans('FJ', [179.5, -17.5])).toBe(true);
+    expect(dedans('FJ', [-179.5, -17.8])).toBe(true);
+    expect(dedans('FJ', [170, -17.5])).toBe(false);
+  });
+
+  it('des groupes d’îles lointains restent séparés (Kiribati)', () => {
+    expect(zones('KI').length).toBeGreaterThanOrEqual(3);
+    expect(dedans('KI', [173.4, 0.9])).toBe(true); // îles Gilbert
+    expect(dedans('KI', [-165, -1])).toBe(false); // entre Phoenix et la Ligne
+  });
+
+  it('loin des îles, ou pour un pays d’un seul tenant, rien de plus', () => {
+    expect(dedans('ID', [100, 10])).toBe(false);
+    expect(dedans('GR', [15, 38])).toBe(false);
+    expect(zones('FR')).toEqual([]);
+    expect(dansArchipel([2.35, 48.86], [])).toBe(false);
+  });
+
+  it('enveloppe convexe', () => {
+    const contour = enveloppe([[0, 0], [2, 0], [1, 1], [2, 2], [0, 2], [1, 0.5]]);
+    expect(contour).toHaveLength(4);
+    expect(contour).not.toContainEqual([1, 1]);
+  });
+
+  it('marge par défaut', () => {
+    expect(MARGE_ARCHIPEL).toBeGreaterThan(0);
   });
 });

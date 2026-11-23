@@ -9,7 +9,7 @@ import { surLangue, t, ta, ti, tt } from './i18n.js';
 import {
   DUREES_LISTE, LONGUEUR_COURTE, ZONES, cleRecord, formatChrono, index, indexCapitales, jumeau, meilleur, melanger, nomPays, paysDeZone,
   proposerChoix, reconnaitre, suggerer, distanceKm, distancePays, dansPays, seuilVille, SEUIL_PETIT_PAYS, noterErreur, lireErreur, trierFiches, priseAuVol, normaliser,
-  densite, dureeListeErreurs, questionSeule, resumeFuseaux,
+  densite, dureeListeErreurs, questionSeule, resumeFuseaux, zonesArchipel, dansArchipel,
 } from './jeu-calcul.js';
 import { formatAltitude, formatDistance, formatSurface, imperial, nombre } from './unites.js';
 
@@ -32,6 +32,7 @@ const ICONE_RECOMMENCER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="
 const ICONE_LIVRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/></svg>';
 const CHEVRON_HAUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>';
 const CHEVRON_BAS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const ICONE_QUITTER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 const ICONE_VALIDER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
 // « Je ne sais pas » : un bonhomme qui lève les épaules et les mains, paumes en l'air (comme 🤷)
 const ICONE_PASSER = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="2.6"/><path d="M9.2 11.2h5.6M9.6 11.2l.4 9.3M14.4 11.2l-.4 9.3"/><path d="M9.2 11.2 6.2 14 3.6 10.2M14.8 11.2l3 2.8 2.6-3.8"/><path d="M2.2 10.2h2.8M19 10.2h2.8"/></svg>';
@@ -41,12 +42,17 @@ const ZOOM_MAX_VILLES_PAYS = 7; // « Villes d'un pays » : assez près pour pla
 const MAX_REVISION = 15;
 // Carte de montagne cachée pendant la partie, avec tous les textes : le globe seul, et le rose du pays à trouver
 // ne se perd plus parmi les routes roses de la nuit
-const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments|waterway)|nature-rivieres|courbes)/;
+// Frontières du fond et de l'élément Frontières aussi : précises, elles s'écartaient de près des contours simplifiés
+// du jeu et faisaient un double tracé (retour du propriétaire du 23 novembre 2026). Le jeu trace celles de tous les pays.
+const CARTE_CACHEE = /^(montis-(road|tunnels|chemins|sentiers|path|marches|rail|remontees|batiments|waterway|frontieres)|nature-rivieres|courbes|frontieres)/;
 // Pays de la question : le rose « laser » de la DA (autoroutes de nuit), avec un halo pour bien le voir
 const COULEURS = { question: '#ff4fd8', trouve: '#3ddc97', rate: '#ff5c7a' };
 // Assez près pour aller voir une petite île (retour du propriétaire du 17 novembre 2026 : à 5, ses pays et leur nom
 // restaient introuvables) ; au-delà, le globe laisse place à la carte de montagne
 const ZOOM_MAX_JEU = 7;
+// « Où est-ce ? » : vol de la caméra et attente avant la question suivante, deux fois plus courts (retour du 23 novembre 2026)
+const VOL_OU = 700;
+const ATTENTE_OU = 900;
 const VUES = {
   europe: { center: [15, 53], zoom: 3 },
   monde: { center: [12, 22], zoom: 1.3 },
@@ -536,7 +542,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           },
         });
         map.addLayer({
-          id: COUCHES[1], type: 'line', source: SOURCE, filter: dansZone,
+          id: COUCHES[1], type: 'line', source: SOURCE,
           paint: {
             'line-color': ['match', ['feature-state', 'etat'], 'question', COULEURS.question, '#ffffff'],
             'line-opacity': ['match', ['feature-state', 'etat'], 'question', 1, 0.35],
@@ -559,7 +565,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           },
         });
       } else {
-        COUCHES.forEach((id) => map.setFilter(id, dansZone));
+        COUCHES.filter((id) => id !== COUCHES[1]).forEach((id) => map.setFilter(id, dansZone));
       }
       map.setMaxZoom(zoomMax);
       if (!premiere) return;
@@ -619,17 +625,18 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       // À droite, la colonne des boutons de la carte
       return { top: 70, bottom: 20, left: Math.max(30, jeu.element.hidden ? 0 : cadre.right + 10), right: 80 };
     },
-    zone(zone) {
+    // `duree` : « Où est-ce ? » vole deux fois plus vite (retour du propriétaire du 23 novembre 2026)
+    zone(zone, duree = 1600) {
       const vue = VUES[zone];
-      map.flyTo({ ...vue, zoom: vue.zoom - (estTelephone() ? 0.5 : 0), bearing: 0, pitch: 0, padding: this.marge(), duration: 1600 });
+      map.flyTo({ ...vue, zoom: vue.zoom - (estTelephone() ? 0.5 : 0), bearing: 0, pitch: 0, padding: this.marge(), duration: duree });
     },
     // Assez loin pour voir où est le pays, même petit (la Belgique remplissait l'écran)
-    allerA(code, zoomMax = ZOOM_PAYS) {
+    allerA(code, zoomMax = ZOOM_PAYS, duree = 1400) {
       const p = donnees.parCode.get(code);
       const [ouest, sud, est, nord] = p.emprise;
       const camera = map.cameraForBounds([[ouest, sud], [est, nord]], { padding: this.marge(), maxZoom: zoomMax });
       if (!camera) return;
-      map.flyTo({ ...camera, zoom: Math.max(1.6, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: 1400 });
+      map.flyTo({ ...camera, zoom: Math.max(1.6, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: duree });
     },
     // Repères de la partie, gardés jusqu'à la fin : villes et capitales répondues (juste en vert, ratée en rouge,
     // demande du propriétaire du 17 novembre 2026), la dernière en grand, et le nom des pays répondus.
@@ -749,13 +756,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     },
     // Cadre l'appui et la réponse ensemble, sans s'approcher plus que zoomMax
     // `autres` : points à inclure aussi (les coins d'un pays)
-    cadrerPoints(a, b, zoomMax, autres = []) {
+    cadrerPoints(a, b, zoomMax, autres = [], duree = 1200) {
       const tous = [a, b, ...autres];
       const xs = tous.map((c) => c[0]);
       const ys = tous.map((c) => c[1]);
       const bornes = [[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]];
       const camera = map.cameraForBounds(bornes, { padding: this.marge(), maxZoom: zoomMax });
-      if (camera) map.flyTo({ ...camera, zoom: Math.max(1.3, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: 1200 });
+      if (camera) map.flyTo({ ...camera, zoom: Math.max(1.3, Math.min(camera.zoom, zoomMax)), bearing: 0, pitch: 0, duration: duree });
     },
     retirer() {
       this.toutEffacer();
@@ -799,12 +806,18 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     <button type="button" class="jeux-recommencer jeux-icone" ${ta('aria-label', 'jeux.recommencer-aide')} ${ta('title', 'jeux.recommencer-aide')}>${ICONE_RECOMMENCER}</button>
     <button type="button" class="jeux-deplier jeux-icone" ${ta('aria-label', 'jeux.trouves-voir')} hidden>${CHEVRON_HAUT}</button>
     <button type="button" class="jeux-reduire jeux-icone" ${ta('aria-label', 'jeux.reduire')} ${ta('title', 'jeux.reduire')}>${CHEVRON_BAS}</button>
+    <button type="button" class="jeux-quitter" ${ta('aria-label', 'jeux.quitter-aide')} ${ta('title', 'jeux.quitter-aide')}>${ICONE_QUITTER}<span ${ti('jeux.quitter')}>${t('jeux.quitter')}</span></button>
   `;
   jeu.corps.before(barre);
   const barreChrono = $('.jeux-barre-chrono', barre);
   const barreCompte = $('.jeux-barre-compte', barre);
   const barreMilieu = $('.jeux-barre-milieu', barre);
   $('.jeux-recommencer', barre).addEventListener('click', () => partie.recommencer());
+  // Quitter la partie, dans tous les modes : retour au menu des jeux (« Quitter » sur ordinateur, ✕ sur téléphone)
+  $('.jeux-quitter', barre).addEventListener('click', () => {
+    partie.quitter();
+    ouvrirMenu();
+  });
   const reduireJeu = () => {
     document.activeElement?.blur?.();
     deplier(false);
@@ -940,6 +953,31 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   })[mode];
   const ville = (id) => donnees.villes.villes[id];
   const nomVille = (id) => ville(id)[langue()] || ville(id).fr;
+  // Saisie refusée (nom inconnu, champ vide) : le champ le dit lui-même, en rouge, à la place de son texte d'aide
+  // (retour du propriétaire du 23 novembre 2026 : le message sous le champ passait inaperçu). Taper le rétablit.
+  function signalerChamp(champ, genre) {
+    const saisie = champ.value.trim();
+    const court = saisie.length > 18 ? `${saisie.slice(0, 17)}…` : saisie;
+    if (!champ.dataset.aide) champ.dataset.aide = champ.placeholder;
+    champ.value = '';
+    champ.placeholder = saisie ? t(`jeux.champ-inconnu-${genre}`, { saisie: court }) : t(`jeux.champ-vide-${genre}`);
+    champ.classList.remove('jeux-champ-refus');
+    void champ.offsetWidth; // relance la secousse
+    champ.classList.add('jeux-champ-refus');
+    champ.addEventListener('input', () => effacerSignal(champ), { once: true });
+  }
+  function effacerSignal(champ) {
+    if (champ.dataset.aide) champ.placeholder = champ.dataset.aide;
+    delete champ.dataset.aide;
+    champ.classList.remove('jeux-champ-refus');
+  }
+
+  // Zones des archipels, calculées à la première question sur le pays
+  const zonesArchipels = new Map();
+  const zonesDe = (code) => {
+    if (!zonesArchipels.has(code)) zonesArchipels.set(code, zonesArchipel(code, donnees.geometries.get(code)));
+    return zonesArchipels.get(code);
+  };
   const seuilDe = (id) => (donnees.villes.monde.includes(id) ? seuilVille() : seuilVille(donnees.parCode.get(ville(id).pays).emprise));
   const avecCle = (q) => ({ ...q, cle: `${TYPE_ERREUR[q.type]}:${q.type === 'ou-ville' ? q.ville : q.code}` });
   // Nom d'un pays avec son petit drapeau, là où le drapeau ne donne pas la réponse
@@ -1146,8 +1184,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     // Cadrage au début d'une question « Où est-ce ? » : la zone, ou le pays des villes
     cadrerQuestion(q) {
       const p = this.en;
-      if (q.parPays) globe.allerA(q.code, ZOOM_MAX_VILLES_PAYS);
-      else globe.zone(p.reglage.mode === 'revision' || p.erreursSeules ? donnees.parCode.get(q.code).zones[0] : p.reglage.zone);
+      if (q.parPays) globe.allerA(q.code, ZOOM_MAX_VILLES_PAYS, VOL_OU);
+      else globe.zone(p.reglage.mode === 'revision' || p.erreursSeules ? donnees.parCode.get(q.code).zones[0] : p.reglage.zone, VOL_OU);
     },
 
     // ----- Une question : quatre choix, le nom à taper, ou toucher le globe -----
@@ -1246,7 +1284,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           }
           const trouve = reconnaitre(champ.value, index(), { tolerant: true, langue: langue() });
           if (!trouve) {
-            $('.jeux-retour', jeu.corps).innerHTML = `<p class="jeux-inconnu">${t(chercheCapitale ? 'jeux.inconnue-capitale' : 'jeux.inconnu')}</p>`;
+            suggestions.innerHTML = '';
+            signalerChamp(champ, chercheCapitale ? 'capitale' : 'pays');
             return;
           }
           this.repondre(trouve);
@@ -1283,6 +1322,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       // Le champ reste au focus (clavier ouvert sur téléphone) : Entrée passe à la question suivante
       const champ = $('.jeux-saisie input', jeu.corps);
       if (champ) {
+        effacerSignal(champ);
         champ.readOnly = true;
         champ.value = '';
         champ.placeholder = t('jeux.entree-suivant');
@@ -1316,9 +1356,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         if (point) {
           p.distances.push(distance);
           globe.ecart(point, v.position, juste);
-          globe.cadrerPoints(point, v.position, zoomReponse);
+          globe.cadrerPoints(point, v.position, zoomReponse, [], VOL_OU);
         } else {
-          globe.cadrerPoints(v.position, v.position, zoomReponse);
+          globe.cadrerPoints(v.position, v.position, zoomReponse, [], VOL_OU);
         }
         p.reponseDonnee = { point, distance };
         this.conclure(juste, point
@@ -1326,20 +1366,22 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           : t('jeux.ou-passe', { nom: lieu.nom }));
         return;
       }
-      // Où est ce pays ? Juste dedans, ou tout près pour un petit pays
+      // Où est ce pays ? Juste dedans, tout près pour un petit pays, ou en mer au milieu des îles d'un archipel
       const pays = donnees.parCode.get(q.code);
       const distance = point ? distancePays(point, donnees.geometries.get(q.code)) : null;
-      const juste = distance !== null && distance <= (pays.petit ? SEUIL_PETIT_PAYS : 0);
+      const surAutre = point && distance > 0 ? donnees.pays.find((autre) => dansPays(point, donnees.geometries.get(autre.code))) : null;
+      const juste = distance !== null && (distance <= (pays.petit ? SEUIL_PETIT_PAYS : 0)
+        || (!surAutre && dansArchipel(point, zonesDe(q.code))));
       globe.marquer(q.code, juste ? 'trouve' : 'rate');
       if (point) {
-        p.distances.push(distance);
+        p.distances.push(juste ? 0 : distance);
         if (!juste) globe.ecart(point, pays.centre, false);
         const [ouest, sud, est, nord] = pays.emprise;
-        globe.cadrerPoints(point, pays.centre, ZOOM_PAYS, [[ouest, sud], [est, nord]]);
+        globe.cadrerPoints(point, pays.centre, ZOOM_PAYS, [[ouest, sud], [est, nord]], VOL_OU);
       } else {
-        globe.allerA(q.code);
+        globe.allerA(q.code, ZOOM_PAYS, VOL_OU);
       }
-      const touche = point && !juste ? donnees.pays.find((autre) => dansPays(point, donnees.geometries.get(autre.code))) : null;
+      const touche = juste ? null : surAutre;
       p.reponseDonnee = { point, distance, reponse: touche?.code ?? null };
       let texte;
       if (juste) texte = t('jeux.bravo', { nom: paysAvecDrapeau(q.code) });
@@ -1387,7 +1429,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         const retour = $('.jeux-retour', jeu.corps);
         if (retour) retour.innerHTML = message;
       };
-      if (q.type?.startsWith('ou')) setTimeout(suite, 1800);
+      if (q.type?.startsWith('ou')) setTimeout(suite, ATTENTE_OU);
       else suite();
     },
 
@@ -1519,7 +1561,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           : priseAuVol(champ.value, entrees, p.trouves, langue());
         if (!entree && (!code || !p.codesZone.includes(code))) return;
         if (!code) {
-          if (champ.value.trim()) dire(t('jeux.inconnu'), 'jeux-inconnu');
+          signalerChamp(champ, 'pays');
           return;
         }
         champ.value = '';
