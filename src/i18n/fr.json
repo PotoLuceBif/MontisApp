@@ -1220,6 +1220,8 @@
   "rech.effacer": "Effacer",
   "rech.credit": "Résultats © OpenStreetMap · Photon",
   "rech.recentes": "Recherches récentes",
+  "rech.tout-effacer": "Tout effacer",
+  "rech.oublier": "Oublier « {nom} »",
   "rech.aucun": "Aucun résultat pour « {q} »",
   "fiche.ville": "Ville",
   "fiche.village": "Village",

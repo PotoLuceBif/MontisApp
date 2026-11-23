@@ -634,6 +634,23 @@ svg.nuit .lune-cadran-astre { fill: var(--texte-2); opacity: 0.6; }
 .rech-sous { font-size: 12px; color: var(--texte-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rech-message { padding: 14px; color: var(--texte-2); }
 .rech-credit { padding: 6px 14px 8px; font-size: 11px; color: var(--texte-2); border-top: 1px solid var(--bord); }
+.rech-effacer { color: var(--texte); }
+.rech-effacer svg { width: 18px; height: 18px; }
+/* Dernières recherches : horloge sur l'icône, croix pour en oublier une */
+.rech-icone { position: relative; }
+.rech-marque-recent {
+  position: absolute; right: -4px; bottom: -4px; width: 16px; height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--surface); color: var(--accent); box-shadow: 0 0 0 1px var(--bord);
+}
+.rech-marque-recent svg { width: 11px; height: 11px; }
+.rech-oublier {
+  width: 36px; height: 36px; margin-right: -8px; padding: 0; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 8px; background: none; color: var(--texte-2); cursor: pointer;
+}
+.rech-oublier svg { width: 14px; height: 14px; }
+.rech-oublier:hover { background: var(--survol); color: var(--texte); }
 
 .repere-seul.rech-repere { z-index: 1; cursor: pointer; pointer-events: auto; } /* au-dessus de l'ombre de sa fiche */
 .rech-popup strong { display: block; font-size: 15px; margin-bottom: 2px; }
