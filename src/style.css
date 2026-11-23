@@ -4174,7 +4174,8 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .lune-visite-eclairage { margin: 0; }
 .lune-visite-reel { display: grid; gap: 12px; }
 .lune-visite-reel[hidden] { display: none; }
-.lune-visite-maintenant { justify-self: start; }
+/* Frise de Soleil et Lune dans la visite : sans la ligne du soleil sur la Terre */
+.lune-visite-frise .ombres-soleil { display: none; }
 .lune-visite-barre { display: none; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--texte); text-align: left; cursor: pointer; }
 .lune-visite-barre-icone .lune-icone { width: 26px; height: 26px; }
 .lune-visite-barre .bf-chevron { margin-left: auto; }

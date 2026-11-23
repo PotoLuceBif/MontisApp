@@ -185,7 +185,7 @@ export function creerFondDeCarte(map, { elements } = {}) {
   enteteAvance.addEventListener('click', () => ouvrirAvance(!avanceOuvert));
   ouvrirAvance(avanceOuvert);
 
-  const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button');
+  const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button[data-onglet]');
   const boutonsModes = panneau.querySelectorAll('.fond-montis-modes button');
   const etatMontis = panneau.querySelector('.fond-montis-etat');
 

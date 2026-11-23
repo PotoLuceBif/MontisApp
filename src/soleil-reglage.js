@@ -45,7 +45,9 @@ export function tournerCadrans(racine, soleil, bearing) {
 
 // `surChangement({ attendre })` : le soleil a changé (`attendre` pendant un glissement du curseur).
 // `actif()` : faut-il suivre l'horloge quand l'heure est « maintenant » ?
+let numeroFrise = 0;
 export function creerReglageSoleil(map, { surChangement, actif, course = false }) {
+  const decoupe = `ciel-course-jour-${++numeroFrise}`;
   const element = document.createElement('div');
   element.className = 'soleil-reglage';
   element.innerHTML = `
@@ -67,13 +69,13 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       ${course ? `<div class="ciel-course" aria-hidden="true">
         <div class="ciel-course-decor"><i class="ciel-course-ciel"></i><i class="ciel-course-mer"></i></div>
         <svg viewBox="0 0 ${LARGEUR_COURSE} ${HAUTEUR_COURSE}" preserveAspectRatio="none">
-          <defs><clipPath id="ciel-course-jour"><rect x="0" y="0" width="${LARGEUR_COURSE}" height="${HORIZON}"/></clipPath></defs>
-          <path class="ciel-course-aire" clip-path="url(#ciel-course-jour)"/>
+          <defs><clipPath id="${decoupe}"><rect x="0" y="0" width="${LARGEUR_COURSE}" height="${HORIZON}"/></clipPath></defs>
+          <path class="ciel-course-aire" clip-path="url(#${decoupe})"/>
           <line class="ciel-course-horizon" x1="0" x2="${LARGEUR_COURSE}" y1="${HORIZON}" y2="${HORIZON}"/>
           <path class="ciel-course-lune-trace"/>
-          <path class="ciel-course-lune-jour" clip-path="url(#ciel-course-jour)"/>
+          <path class="ciel-course-lune-jour" clip-path="url(#${decoupe})"/>
           <path class="ciel-course-soleil-nuit"/>
-          <path class="ciel-course-soleil-jour" clip-path="url(#ciel-course-jour)"/>
+          <path class="ciel-course-soleil-jour" clip-path="url(#${decoupe})"/>
         </svg>
         <i class="ciel-course-repere ciel-course-lever"></i><i class="ciel-course-repere ciel-course-coucher"></i>
         <span class="ciel-course-heure ciel-course-heure-lever"></span><span class="ciel-course-heure ciel-course-heure-coucher"></span>
