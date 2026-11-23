@@ -176,3 +176,11 @@ export function melangerTuile(jour, nuit, z, x, y, soleil) {
   }
   return pixels;
 }
+
+// Mode frise de la vue d'espace (demande du propriétaire du 23 novembre 2026) : la caméra suit le soleil, la Terre
+// tourne dessous. Centre de la vue à `instant`, parti de `centre` à `instantDepart` : sa longitude suit le point
+// subsolaire, pour que le soleil garde la même direction vue du centre (sa déclinaison, elle, change lentement)
+export function centreFrise(centre, instantDepart, instant) {
+  const decalage = pointSubsolaire(new Date(instant)).lng - pointSubsolaire(new Date(instantDepart)).lng;
+  return { lng: ((((centre.lng + decalage + 180) % 360) + 360) % 360) - 180, lat: centre.lat };
+}

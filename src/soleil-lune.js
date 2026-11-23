@@ -10,6 +10,9 @@ import { etat } from './options-carte.js';
 import { tuilesAstre } from './astre-icones.js';
 import { lire, ecrire } from './reglages.js';
 import { poser, surLangue, t } from './i18n.js';
+import { opaciteCiel } from './ciel-calcul.js';
+import { centreFrise } from './globe-nuit-calcul.js';
+import { fixerInstantEspace } from './heure-espace.js';
 
 const ICONE_CIEL = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
   <circle cx="9" cy="9" r="3.2"/><path d="M9 2.5v1.3M2.5 9h1.3M14.2 9h1.3M9 14.2v1.3M4.4 4.4l.9.9M12.7 5.3l.9-.9M4.4 13.6l.9-.9"/><path d="M21.5 17.2a4.6 4.6 0 1 1-5-5 3.7 3.7 0 0 0 5 5Z"/></svg>`;
@@ -62,7 +65,10 @@ export function creerSoleilLune(map) {
       m = { r, s, l, v };
       reglage = r.creerReglageSoleil(map, {
         course: true,
-        surChangement: (options) => maj(options),
+        surChangement: (options) => {
+          suivreFrise();
+          maj(options);
+        },
         actif: () => visible() || Boolean(ombres?.actif()) || cielActif,
       });
       entete.prepend(reglage.element);
@@ -156,8 +162,53 @@ export function creerSoleilLune(map) {
     abonnes.forEach((f) => f(options));
   }
 
+  // ---------- Mode frise de la vue d'espace (demande du propriétaire du 23 novembre 2026) ----------
+  // En vue d'espace, régler la frise fait bouger les astres pour de vrai : globe jour et nuit, atmosphère et ciel
+  // passent à l'heure de la frise (heure-espace.js), et la caméra suit le soleil : il reste fixe, la Terre tourne
+  // dessous et la Lune avance sur son orbite. Lieu et fuseau de la frise restent figés le temps du mode (sinon les
+  // heures sautaient d'un fuseau à l'autre). Retour à l'heure réelle : « Maintenant », panneau fermé, ou retour
+  // sur la carte (globe effacé).
+  const ZOOM_FIN_GLOBE = 8.5; // globe-nuit.js
+  let frise = null; // { centre, instant } : départ de la rotation
+  let rotation = false; // déplacement de la caméra par la frise, pas par l'utilisateur
+  let veille = null;
+  function tournerVers(instant) {
+    fixerInstantEspace(instant);
+    const centre = centreFrise(frise.centre, frise.instant, instant);
+    rotation = true;
+    map.jumpTo({ center: [centre.lng, centre.lat] });
+    rotation = false;
+  }
+  function quitterFrise(revenir) {
+    if (!frise) return;
+    if (revenir) tournerVers(Date.now()); // « Maintenant » : la Terre revient à l'heure réelle, le soleil reste fixe
+    frise = null;
+    clearInterval(veille);
+    fixerInstantEspace(null);
+    reglage.figerLieu(null);
+    lieu.figer(false);
+  }
+  function suivreFrise() {
+    if (!reglage) return;
+    if (!frise) {
+      if (opaciteCiel(map.getZoom()) <= 0 || !visible() || reglage.maintenant()) return;
+      frise = { centre: map.getCenter(), instant: Date.now() };
+      reglage.figerLieu(frise.centre);
+      lieu.figer(true);
+      veille = setInterval(() => {
+        if (!visible() || map.getZoom() >= ZOOM_FIN_GLOBE) quitterFrise(false);
+      }, 500);
+    }
+    if (reglage.maintenant()) quitterFrise(true);
+    else tournerVers(reglage.instant());
+  }
+
   // Le soleil et la Lune se calculent au centre de la carte : un grand déplacement les change un peu
-  map.on('moveend', () => { if (visible() || ombres?.actif() || cielActif) maj(); });
+  map.on('moveend', () => {
+    // En mode frise, l'utilisateur fait tourner la Terre lui-même : la rotation repart de là
+    if (frise && !rotation) frise = { centre: map.getCenter(), instant: reglage.instant() };
+    if (visible() || ombres?.actif() || cielActif) maj();
+  });
   map.on('rotate', () => { if (reglage?.soleil()) m.r.tournerCadrans(position, reglage.soleil(), map.getBearing()); });
   window.addEventListener('mode3d', () => {
     majChoix();

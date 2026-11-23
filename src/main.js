@@ -22,6 +22,7 @@ import { initHorsLigne } from './hors-ligne.js';
 import { initGlobeNuit } from './globe-nuit.js';
 import { initAtmosphere } from './globe-atmosphere.js';
 import { initCiel } from './ciel.js';
+import { instantEspace } from './heure-espace.js';
 import { opaciteCiel } from './ciel-calcul.js';
 import { eteindreFiltres } from './couches-actives.js';
 import { initBulleLune } from './lune-bulle.js';
@@ -374,7 +375,9 @@ map.once('style.load', () => {
   // Étoiles, soleil et Lune autour du globe, derrière la carte, à l'heure de Soleil et Lune ; Lune et soleil se touchent
   // À l'heure réelle, comme l'éclairage du globe (globe-nuit.js) : à l'heure de Soleil et Lune, locale au centre de
   // la carte, le ciel sautait d'un fuseau à l'autre en tournant la Terre et ne collait plus au globe
-  const ciel = initCiel(map);
+  // Sauf en mode frise (heure-espace.js) : tout le mode espace passe alors à l'heure de la frise
+  const ciel = initCiel(map, { instant: instantEspace });
+  window.addEventListener('montis:heure-espace', ciel.redessiner);
   // Mode espace : dès que les étoiles apparaissent au dézoom, toutes les couches s'éteignent (couches-actives.js)
   let enEspace = opaciteCiel(map.getZoom()) > 0;
   map.on('zoom', () => {

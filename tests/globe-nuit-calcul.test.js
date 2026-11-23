@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { couleurCalotte, eclairageJour, hauteurSoleil, limbeGlobe, melangerTuile, oceanClair, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
+import { centreFrise, couleurCalotte, eclairageJour, hauteurSoleil, limbeGlobe, melangerTuile, oceanClair, partJour, pointADistance, pointSubsolaire, teinteNuit } from '../src/globe-nuit-calcul.js';
 
 describe('point subsolaire', () => {
   it('suit la déclinaison au fil des saisons', () => {
@@ -158,5 +158,27 @@ describe('calottes des pôles', () => {
   it('est une mer bleue au nord en été', () => {
     const [r, , b] = couleurCalotte(true, 0, { lat: 23, lng: 0 });
     expect(b).toBeGreaterThan(r * 2);
+  });
+});
+
+describe('mode frise de la vue d’espace', () => {
+  const depart = Date.UTC(2026, 10, 23, 18, 0);
+  const heure = 3600000;
+  it('la Terre tourne de 15° par heure sous une vue qui suit le soleil', () => {
+    const centre = centreFrise({ lng: 60, lat: 20 }, depart, depart - 6 * heure);
+    expect(centre.lng).toBeCloseTo(150, 0);
+    expect(centre.lat).toBe(20);
+  });
+  it('garde le soleil à la même place vue du centre', () => {
+    const avant = hauteurSoleil(20, 60, pointSubsolaire(new Date(depart)));
+    const instant = depart + 5 * heure;
+    const centre = centreFrise({ lng: 60, lat: 20 }, depart, instant);
+    expect(hauteurSoleil(centre.lat, centre.lng, pointSubsolaire(new Date(instant)))).toBeCloseTo(avant, 0);
+  });
+  it('reste entre -180° et 180°', () => {
+    const centre = centreFrise({ lng: 170, lat: 0 }, depart, depart - 2 * heure);
+    expect(centre.lng).toBeGreaterThanOrEqual(-180);
+    expect(centre.lng).toBeLessThan(-150);
+    expect(centreFrise({ lng: 10, lat: 0 }, depart, depart + 24 * heure).lng).toBeCloseTo(10, 0);
   });
 });

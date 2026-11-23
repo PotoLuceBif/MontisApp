@@ -8,6 +8,7 @@ import { svgLune } from './lune-dessin.js';
 import { getMoonPosition } from 'suncalc';
 import { opaciteCiel } from './ciel-calcul.js';
 import { placerSoleil, projeterSoleil } from './soleil-ciel-calcul.js';
+import { instantEspace } from './heure-espace.js';
 
 const MARGE = 14; // px autour du disque : les astres sont petits, le doigt ne l'est pas
 
@@ -21,16 +22,36 @@ export function initBulleLune(map, ciel) {
   bulle.innerHTML = `
     <button type="button" data-action="infos"><span data-i18n="lune-visite.informations"></span></button>
     <button type="button" data-action="visiter" class="principal"><span data-i18n="lune-visite.visiter"></span></button>
+    <div class="lune-bulle-galaxie" hidden>
+      <strong data-cle="nom"></strong>
+      <span class="lune-bulle-type" data-cle="type"></span>
+      <dl>
+        <div><dt data-i18n="galaxie.distance"></dt><dd data-cle="distance"></dd></div>
+        <div><dt data-i18n="galaxie.taille"></dt><dd data-cle="taille"></dd></div>
+      </dl>
+      <p data-cle="culture"></p>
+      <small data-i18n="galaxie.agrandie"></small>
+    </div>
   `;
   bulle.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   document.body.append(bulle);
   let astre = 'lune';
 
   const fermer = () => { bulle.hidden = true; };
+  // Galaxies (demande du propriétaire du 23 novembre 2026) : une fiche courte à la place des boutons
+  const galaxie = bulle.querySelector('.lune-bulle-galaxie');
   function ouvrir(x, y, quoi) {
     astre = quoi;
+    const estGalaxie = quoi.startsWith('galaxie:');
     bulle.classList.toggle('soleil', quoi === 'soleil');
-    bulle.querySelector('[data-action="visiter"]').hidden = quoi === 'soleil';
+    bulle.classList.toggle('galaxie', estGalaxie);
+    bulle.querySelector('[data-action="infos"]').hidden = estGalaxie;
+    bulle.querySelector('[data-action="visiter"]').hidden = quoi !== 'lune';
+    galaxie.hidden = !estGalaxie;
+    if (estGalaxie) {
+      const id = quoi.slice('galaxie:'.length);
+      galaxie.querySelectorAll('[data-cle]').forEach((el) => poser(el, `galaxie.${id}.${el.dataset.cle}`));
+    }
     const cadre = map.getContainer().getBoundingClientRect();
     bulle.hidden = false;
     const largeur = bulle.offsetWidth;
@@ -56,7 +77,8 @@ export function initBulleLune(map, ciel) {
     const proche = (point) => point && Math.hypot(x - point.x, y - point.y) <= point.rayon + MARGE;
     const lune = ciel?.pointLune();
     const soleil = ciel?.pointSoleil();
-    const quoi = proche(lune) ? 'lune' : proche(soleil) ? 'soleil' : null;
+    const idGalaxie = ciel?.galaxieEn(x, y, MARGE);
+    const quoi = proche(lune) ? 'lune' : proche(soleil) ? 'soleil' : idGalaxie ? `galaxie:${idGalaxie}` : null;
     if (!quoi) {
       fermer();
       return;
@@ -67,7 +89,8 @@ export function initBulleLune(map, ciel) {
       fermer();
       return;
     }
-    const point = quoi === 'lune' ? lune : soleil;
+    // Une galaxie peut couvrir une partie du ciel : la bulle s'ouvre sous le doigt
+    const point = quoi === 'lune' ? lune : quoi === 'soleil' ? soleil : { x, y };
     // Après le clic : le menu ferme ses panneaux au même clic (menu.js)
     setTimeout(() => ouvrir(point.x, point.y, quoi));
   });
@@ -112,7 +135,7 @@ export function initBulleLune(map, ciel) {
     // Direction de la Lune par la vraie projection de la caméra, inclinaison comprise (avec la seule boussole, une vue
     // inclinée montrait le haut pour une Lune qui était en bas), ramenée au bord libre de l'écran
     const { lng, lat } = map.getCenter();
-    const lune2 = getMoonPosition(new Date(), lat, lng);
+    const lune2 = getMoonPosition(new Date(instantEspace()), lat, lng);
     const cam = {
       bearing: map.getBearing(), pitch: map.getPitch(), fov: map.getVerticalFieldOfView(), largeur: l, hauteurEcran: h, padding: map.getPadding(),
     };
@@ -124,12 +147,12 @@ export function initBulleLune(map, ciel) {
   // La Lune du ciel est redessinée à l'image suivante : la flèche suit après elle
   map.on('move', () => requestAnimationFrame(placerIndice));
   map.on('resize', placerIndice);
+  window.addEventListener('montis:heure-espace', () => requestAnimationFrame(placerIndice));
   map.on('idle', placerIndice);
   indice.addEventListener('click', (event) => {
     event.stopPropagation();
     import('./terre-vue-calcul.js').then(({ pointSousLune, vueLuneAuNord }) => {
-      const instant = new Date();
-      const vue = vueLuneAuNord(pointSousLune(instant));
+      const vue = vueLuneAuNord(pointSousLune(new Date(instantEspace())));
       map.flyTo({ center: [vue.lng, vue.lat], zoom: Math.min(map.getZoom(), 1.4), bearing: 0, pitch: 0, duration: 2200 });
     });
   });

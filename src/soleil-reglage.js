@@ -109,6 +109,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
   let soleil = null; // { azimut, hauteur } au centre de la carte
   let journee = null;
   let lieu = null; // { lng, lat } du dernier calcul
+  let lieuFige = null; // { lng, lat } : calculs à ce lieu, et non au centre de la carte (mode frise de l'espace)
   let courseCle = null; // jour et lieu de la course dessinée
 
   const minutesMaintenant = () => {
@@ -120,7 +121,7 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
   const nuit = () => !!soleil && soleil.hauteur <= 0;
 
   function calculer() {
-    const { lng, lat } = map.getCenter();
+    const { lng, lat } = lieuFige ?? map.getCenter();
     lieu = { lng, lat };
     const position = positionSoleil(instant(), lat, lng);
     soleil = { azimut: position.azimut, hauteur: position.hauteur };
@@ -274,5 +275,9 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     soleil: () => soleil,
     journee: () => journee,
     placer,
+    // `point` ({ lng, lat }) : calculs à ce lieu tant que la carte tourne sous la frise ; null : le centre de la carte
+    figerLieu: (point) => { lieuFige = point; },
+    // L'heure suit l'horloge (« Maintenant »)
+    maintenant: () => heure === 'maintenant' && jour === jourLocal(Date.now(), decalage),
   };
 }

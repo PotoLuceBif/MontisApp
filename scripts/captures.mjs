@@ -483,7 +483,8 @@ const ECRANS = [
   },
   // Galaxies voisines : vues d'un point d'où elles sont près du nadir (latitude du centre limitée à ±50° à ce zoom),
   // carte tournée et inclinée en 3D pour les mettre au-dessus de la Terre (écran étroit sur téléphone)
-  ...[['globe-andromede', 10.68, 41.27], ['globe-magellan', 80.89, -69.76]].map(([nom, ra, dec]) => ({
+  // globe-andromede-bulle : la galaxie touchée, avec sa bulle d'informations
+  ...[['globe-andromede', 10.68, 41.27], ['globe-magellan', 80.89, -69.76], ['globe-andromede-bulle', 10.68, 41.27, 'm31']].map(([nom, ra, dec, toucher]) => ({
     nom,
     actions: [
       clic('#bascule-mode [data-mode="3d"]'),
@@ -503,6 +504,19 @@ const ECRANS = [
       },
       (p) => p.waitForTimeout(3000),
       (p) => attendreSur(p, () => document.querySelector('.ciel-etoiles')?.dataset.voieLactee === 'prete', null, 60000).then(() => p.waitForTimeout(2500)),
+      async (page) => {
+        if (!toucher) return;
+        const point = await page.evaluate((id) => {
+          const l = window.innerWidth;
+          const h = window.innerHeight;
+          for (let y = 80; y < h - 40; y += 8) {
+            for (let x = 8; x < l - 8; x += 8) if (window.cielMontis?.galaxieEn(x, y, 0) === id) return { x, y };
+          }
+          return null;
+        }, toucher);
+        if (point) await page.mouse.click(point.x, point.y);
+        await page.waitForTimeout(1000);
+      },
     ],
   })),
   { nom: 'globe-nuit-fondu', actions: [vue({ center: [6.5, 45.5], zoom: 7.3, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6000)] },
@@ -696,6 +710,44 @@ const ECRANS = [
         if (point) await page.mouse.click(point.x, point.y);
       },
       (p) => p.waitForTimeout(1000),
+    ],
+  },
+  // Mode frise en vue d'espace : soleil touché, « Informations », puis frise ramenée six heures plus tôt ; la Terre
+  // a tourné sous le soleil, resté à sa place
+  {
+    nom: 'globe-soleil-frise',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            const soleil = getPosition(maintenant, lat, lng);
+            const ecart = Math.abs(soleil.altitude + 76) + Math.min(Math.abs(soleil.azimuth % 180), 180 - Math.abs(soleil.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointSoleil());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(800),
+      clic('.lune-bulle [data-action="infos"]'),
+      (p) => p.waitForSelector('.ombres-curseur', { state: 'attached', timeout: 15000 }),
+      (p) => p.waitForTimeout(1000),
+      (p) => p.evaluate(async () => {
+        const curseur = document.querySelector('.ombres-curseur');
+        const depart = Number(curseur.value);
+        for (let pas = 1; pas <= 24; pas += 1) {
+          curseur.value = String((depart - pas * 15 + 1440) % 1440);
+          curseur.dispatchEvent(new Event('input', { bubbles: true }));
+          await new Promise((r) => setTimeout(r, 50));
+        }
+      }),
+      (p) => p.waitForTimeout(5000),
     ],
   },
   // La Lune du ciel touchée au dézoom : bulle Informations ou Visiter la Lune

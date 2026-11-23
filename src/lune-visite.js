@@ -305,11 +305,13 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
       contexte.arc(PIXELS_TERRE / 2, PIXELS_TERRE / 2, PIXELS_TERRE / 2, 0, Math.PI * 2);
       contexte.fill();
     } else {
-      // Face tournée vers la Lune à cet instant, éclairée par le vrai soleil en temps réel (sa phase)
+      // Face tournée vers la Lune à cet instant, éclairée par le vrai soleil (sa phase), même quand la Lune est
+      // « Entièrement éclairée » : ce mode ne vaut que pour lire le relief lunaire (demande du propriétaire du
+      // 23 novembre 2026 : la Terre paraissait toujours pleine)
       const pixels = peindreTerre({
         ...texturesTerre,
         centre: pointSousLune(moment),
-        soleil: eclairage() === 'reel' ? soleilSurTerre(moment) : null,
+        soleil: soleilSurTerre(moment),
         taille: PIXELS_TERRE,
       });
       contexte.putImageData(new ImageData(pixels, PIXELS_TERRE, PIXELS_TERRE), 0, 0);
