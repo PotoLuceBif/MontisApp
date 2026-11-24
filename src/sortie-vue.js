@@ -50,7 +50,6 @@ const arrondiRond = (x) => {
 };
 const vitesseTexte = (ms) => (imperial() ? `${nombre(ms * 2.236936, 1)} mph` : `${nombre(ms * 3.6, 1)} km/h`);
 const varioTexte = (ms) => `${ms > 0 ? '+' : ''}${nombre(ms, 1)} m/s`;
-const pourcentTexte = (p) => `${Math.round(p)} %`;
 
 // Les chiffres de la sortie, selon l'activité : [clé du libellé, valeur affichée], seulement ceux qui existent
 export function lignesStats(type, s, { cadenceEnPas = false } = {}) {

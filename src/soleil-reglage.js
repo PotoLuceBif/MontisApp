@@ -260,10 +260,11 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     surChangement({});
   }
 
-  map.on('rotate', () => tournerCadrans(element, soleil, map.getBearing()));
+  const tourner = () => tournerCadrans(element, soleil, map.getBearing());
+  map.on('rotate', tourner);
   // L'heure « maintenant » avance toute seule
-  setInterval(() => { if (actif() && heure === 'maintenant') surChangement({}); }, MINUTE);
-  surLangue(() => { if (actif()) majTextes(); });
+  const minuteur = setInterval(() => { if (actif() && heure === 'maintenant') surChangement({}); }, MINUTE);
+  const desabonnerLangue = surLangue(() => { if (actif()) majTextes(); });
 
   return {
     element,
@@ -283,6 +284,12 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     montrerSeul: (astre) => {
       if (astre) element.dataset.astre = astre;
       else delete element.dataset.astre;
+    },
+    // Fin d'un réglage créé pour un temps (visite de la Lune) : plus de minuterie ni d'écouteurs
+    arreter() {
+      clearInterval(minuteur);
+      map.off('rotate', tourner);
+      desabonnerLangue?.();
     },
     // L'heure suit l'horloge (« Maintenant »)
     maintenant: () => heure === 'maintenant' && jour === jourLocal(Date.now(), decalage),

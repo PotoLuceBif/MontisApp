@@ -11,7 +11,6 @@ export const RAYON_TERRE = 6371.0088; // km, celui de MapLibre
 export const ECHELLE_LUNE = RAYON_TERRE / RAYON_LUNE;
 
 export const altitudeReelle = (altitudeCarte) => altitudeCarte / ECHELLE_LUNE;
-export const distanceReelle = (metresCarte) => metresCarte / ECHELLE_LUNE;
 
 // ---------- Éclairage ----------
 // Le soleil est au zénith en ce point de la Lune. Sa longitude suit l'élongation de la Lune (phase de suncalc,
