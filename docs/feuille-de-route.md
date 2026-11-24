@@ -125,7 +125,7 @@ Chaque lot ajoute des pratiques à une activité existante (voir « Structure de
 
 ### Phase 4 : les effets « waouh »
 
-- [ ] **4.1 Panorama des sommets.** Vue 3D orientée comme le téléphone (boussole), avec les sommets nommés ; recalage au doigt.
+- [x] **4.1 Panorama des sommets : Horizon** (nom choisi par le propriétaire ; fait le 24 novembre 2026, détail dans `docs/historique.md`). Vue 3D orientée comme le téléphone (boussole), avec les sommets nommés ; recalage au doigt. **Décidé avec le propriétaire le 24 novembre 2026 :** 3D d'abord, puis mode Caméra dans le même lot (noms posés sur l'image réelle) ; entrée par un bouton « Panorama » sur la carte, depuis la position GPS ; sommets seulement (visibles, avec altitude et distance). *Plus tard, peut-être :* cols et refuges, fiche d'un sommet touché, panorama depuis un point choisi (fiche du point, sommet).
 - [ ] **4.2 Où aller ce week-end ?** Suggestions selon l'activité, le niveau, la météo et la distance, à partir des données déjà présentes.
 - [ ] **4.3 Check-list de matériel.** Générée selon la sortie : altitude, saison, durée, activité, météo.
 - [ ] **4.4 Webcams.** Calque « Webcams » dans Carte › Éléments de la carte : pin, dernière image en aperçu, fiche (image, heure de la prise de vue, lien vers la source). Source : API Windy Webcams (clé via le relais, attribution Windy visible). Webcams proches dans la fiche du point ; dans la fiche d'une station, raccourci « Webcams », sinon lien vers Skaping, Roundshot ou Viewsurf. Une image trop ancienne est datée, jamais présentée comme actuelle.

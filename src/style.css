@@ -3368,6 +3368,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     right: 19px;
     gap: 8px;
   }
+  /* Panorama, quatrième bouton : caché derrière un panneau ouvert, qui commence à sa hauteur */
+  body:has(.outil-rapide-panneau:not([hidden]):not(.reduit)) #outil-rapide-bouton-panorama { visibility: hidden; }
   /* Sous les trois boutons : Météo, Carte, Soleil et Lune */
   .outil-rapide-panneau {
     top: 404px;
@@ -4249,3 +4251,193 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 /* Frise d'un seul astre (Informations du soleil ou de la Lune, visite de la Lune) */
 .soleil-reglage[data-astre="soleil"] :is(.ciel-course-lune, .ciel-course-lune-trace, .ciel-course-lune-jour) { display: none; }
 .soleil-reglage[data-astre="lune"] :is(.ciel-course-soleil, .ciel-course-soleil-jour, .ciel-course-soleil-nuit, .ciel-course-aire, .ciel-course-repere, .ciel-course-heure, .ombres-piste) { display: none; }
+
+/* ===== Panorama des sommets (lot 4.1) ===== */
+/* Par-dessus la carte ou l'image de la caméra : surfaces sombres et translucides, quel que soit le thème */
+body.panorama-actif > :not(#map):not(#panorama):not(script) { display: none !important; }
+body.panorama-actif #map :is(.maplibregl-control-container, .maplibregl-marker, .maplibregl-popup) { display: none !important; }
+body.panorama-camera #map { visibility: hidden; }
+#panorama {
+  --pano-fond: rgba(12, 16, 22, 0.72);
+  --pano-bord: rgba(255, 255, 255, 0.14);
+  --pano-texte: #f3f5f7;
+  --pano-texte-2: rgba(243, 245, 247, 0.72);
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: clip; /* pas hidden : un appui sur un nom qui déborde faisait défiler tout le panorama */
+  color: var(--pano-texte);
+  font-family: var(--police);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+body.panorama-camera #panorama { background: #000; }
+#panorama::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#2a3d52, #0e141b);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+  content: '';
+}
+#panorama.pano-attente::before { opacity: 1; transition: none; }
+.pano-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pano-traits, .pano-etiquettes { position: absolute; inset: 0; width: 100%; height: 100%; overflow: clip; pointer-events: none; }
+/* Lignes de crête : l'horizon appuyé, les crêtes plus pâles au loin */
+.pano-crete { fill: none; stroke: #fff; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 1.2px rgba(0, 0, 0, 0.7)); }
+.pano-crete.horizon { stroke-width: 2; opacity: 0.95; }
+.pano-crete.proche { stroke-width: 1.5; opacity: 0.8; }
+.pano-crete.moyenne { stroke-width: 1.2; opacity: 0.6; }
+.pano-crete.loin { stroke-width: 1; opacity: 0.42; }
+.pano-trait { stroke: rgba(255, 255, 255, 0.85); stroke-width: 1; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.8)); }
+.pano-point { fill: var(--accent-sombre); stroke: #fff; stroke-width: 1.5; }
+/* Noms inclinés à 45°, partant du haut de leur trait ; un appui ouvre la fiche du sommet */
+.pano-sommet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  height: 20px;
+  margin-top: -10px;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 6px 0 5px;
+  transform-origin: 0 50%;
+  white-space: nowrap;
+  pointer-events: auto;
+  will-change: transform;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.pano-sommet[hidden] { display: none; }
+.pano-nom { font-size: 13px; font-weight: 700; line-height: 20px; }
+.pano-alt { color: var(--accent-sombre); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pano-sommet.choisi .pano-nom { color: var(--accent-sombre); }
+.pano-fiche {
+  display: flex;
+  max-width: min(420px, calc(100% - 24px));
+  margin: 0 auto 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 14px;
+  border: 1px solid var(--pano-bord);
+  border-radius: 14px;
+  background: var(--pano-fond);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.pano-fiche[hidden] { display: none; }
+.pano-fiche > div { display: grid; min-width: 0; flex: 1; }
+.pano-fiche strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.pano-fiche span { color: var(--pano-texte-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+#panorama .pano-fiche-fermer { display: grid; width: 36px; height: 36px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 10px; background: transparent; }
+.pano-entete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+  background: linear-gradient(rgba(8, 11, 16, 0.82), rgba(8, 11, 16, 0.55));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--pano-bord);
+}
+#panorama button {
+  border: 1px solid var(--pano-bord);
+  background: var(--pano-fond);
+  color: var(--pano-texte);
+  font: 650 13px var(--police);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#panorama button svg { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pano-fermer { display: grid; width: 44px; height: 44px; flex: none; place-items: center; padding: 0; border-radius: 12px; }
+.pano-titre { display: grid; min-width: 0; flex: 1; }
+.pano-titre strong { font-size: 16px; line-height: 1.2; }
+.pano-lieu { overflow: hidden; color: var(--pano-texte-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.pano-modes[hidden] { display: none; }
+.pano-modes { display: flex; flex: none; padding: 3px; border: 1px solid var(--pano-bord); border-radius: 12px; background: var(--pano-fond); }
+#panorama .pano-modes button { min-width: 52px; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; }
+#panorama .pano-modes button[aria-pressed='true'] { background: var(--accent-sombre); color: #0b1410; }
+.pano-etat {
+  position: absolute;
+  bottom: calc(150px + env(safe-area-inset-bottom));
+  left: 50%;
+  max-width: min(440px, calc(100% - 32px));
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--pano-bord);
+  border-radius: 12px;
+  background: var(--pano-fond);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  transform: translateX(-50%);
+}
+.pano-etat[hidden] { display: none; }
+.pano-pied {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 0 0 calc(4px + env(safe-area-inset-bottom));
+}
+.pano-reglages { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; }
+#panorama :is(.pano-boussole, .pano-recalage) { display: flex; height: 40px; align-items: center; gap: 7px; padding: 0 13px; border-radius: 20px; }
+#panorama .pano-recalage[hidden] { display: none; }
+#panorama .pano-boussole[aria-pressed='true'] { border-color: var(--accent-sombre); color: var(--accent-sombre); }
+.pano-boussole .plein { fill: currentColor; }
+.pano-cap { display: flex; justify-content: center; }
+.pano-cap-valeur {
+  padding: 3px 10px;
+  border-radius: 8px 8px 0 0;
+  background: rgba(8, 11, 16, 0.78);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pano-regle {
+  position: relative;
+  height: 34px;
+  overflow: hidden;
+  background: rgba(8, 11, 16, 0.78);
+  border-top: 1px solid var(--pano-bord);
+}
+.pano-regle::after {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--accent-sombre);
+  content: '';
+}
+.pano-regle-bande {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4320px;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0 1px, transparent 1px 20px) 0 0 / 100% 7px no-repeat;
+  will-change: transform;
+}
+.pano-regle-bande span {
+  position: absolute;
+  top: 11px;
+  color: var(--pano-texte-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+}
+.pano-regle-bande span.cardinal { color: var(--pano-texte); font-size: 13px; font-weight: 700; }
+.pano-credit { position: absolute; right: 8px; bottom: calc(38px + env(safe-area-inset-bottom)); margin: 0; color: var(--pano-texte-2); font-size: 10px; }
+@media (max-width: 380px) {
+  .pano-titre strong { font-size: 15px; }
+  #panorama .pano-modes button { min-width: 44px; padding: 0 8px; }
+}
