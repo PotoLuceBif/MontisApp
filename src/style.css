@@ -3536,6 +3536,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 
 /* Soleil dans le ciel en 3D (soleil-ciel.js) : le point (0, 0) de l'élément est le centre du soleil */
 .soleil-ciel { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; transition: opacity .3s; }
+/* Trajectoires du soleil et de la Lune (« Voir dans le ciel »), sous les astres */
+.soleil-ciel-trajets { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
 .soleil-ciel[hidden] { display: none; }
 .soleil-ciel > i { position: absolute; border-radius: 50%; }
 .soleil-ciel-halo { left: -46px; top: -46px; width: 92px; height: 92px; background: radial-gradient(circle, rgb(255 226 150 / .55) 0%, rgb(255 200 90 / .18) 45%, transparent 70%); }

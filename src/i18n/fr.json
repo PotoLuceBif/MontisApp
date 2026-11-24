@@ -2032,5 +2032,6 @@
   "ciel.derriere-relief": "Derrière le relief : soleil {soleil} · Lune {lune}",
   "ciel.cache": "caché",
   "panorama.chargement-relief": "Chargement du relief…",
-  "panorama.erreur-relief": "Relief indisponible : {message}"
+  "panorama.erreur-relief": "Relief indisponible : {message}",
+  "ciel.au-sol-bouton": "Au sol"
 }

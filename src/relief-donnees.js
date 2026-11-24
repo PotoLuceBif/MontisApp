@@ -3,6 +3,9 @@ import { penteOrientation, pixelMonde, taillePixel } from './point-calcul.js';
 import { t } from './i18n.js';
 import { DELAI_RESEAU } from './requete.js';
 
+// Une image d'environ 80 Ko : sur une liaison lente (vu : 14 s pour une tuile), le double du délai des services
+const DELAI_TUILE = 2 * DELAI_RESEAU;
+
 const MODELE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const tuiles = new Map(); // « z/x/y » → promesse des pixels
 
@@ -37,7 +40,7 @@ function chargerTuile(z, x, y) {
       img.onerror = null;
       img.src = '';
       reject(Object.assign(new Error('délai dépassé'), { name: 'TimeoutError' }));
-    }, DELAI_RESEAU);
+    }, DELAI_TUILE);
     img.onload = () => {
       clearTimeout(minuteur);
       const canvas = document.createElement('canvas');
