@@ -19,6 +19,7 @@
   "hl.donnees-du": "Données du {date}",
   "hl.hors-ligne": "Hors ligne",
   "hl.hors-ligne-date": "Hors ligne · données du {date}",
+  "hl.lente": "Connexion lente",
   "age.instant": "à l’instant",
   "age.minutes": "il y a {n} min",
   "age.heures": "il y a {n} h",

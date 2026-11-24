@@ -179,6 +179,7 @@ src/                    Tout le code (détail ci-dessous)
 | `panneau-carte.js` | Panneau posé sur la carte, réductible sur téléphone |
 | `echelle-carte.js` | Échelle de la carte, qui évite les panneaux |
 | `pins.js` | Images de pins, décalage de la pointe, pin seul à états |
+| `groupe-pastille.js` | Pastille ronde des groupes de lieux (stations, bike parks, randos ; terrains FFVL dans `terrains-images.js`) : nombre court, trois tailles, fondu à l'apparition, appui long pour la liste ; un appui zoome (24 novembre 2026) |
 | `recherche.js` | Barre de recherche générale et son repère |
 | `fiche.js` | Fiche d'un objet de la carte touché (via Overpass) ; appui long et clic droit pour la fiche du point |
 | `fiche-point.js`, `point-calcul.js` | Fiche d'un point quelconque (chargée au premier appui long) ; ses calculs purs : pente, orientation, distances, plus proche (testés) |
@@ -226,6 +227,7 @@ src/                    Tout le code (détail ci-dessous)
 | `nature.js`, `lieux.js`, `sommets.js`, `batiments.js` | Forêts, eaux, glaciers, parcs ; villes, refuges, frontières ; sommets ; bâtiments |
 | `zones-hors-ligne.js` | Cartes hors ligne : cadrage, estimation, téléchargement |
 | `hors-ligne.js`, `sw-modele.js` | État du réseau et indicateur ; service worker |
+| `connexion-lente.js` | « Connexion lente » dans la pastille du réseau (24 novembre 2026) : une tuile qui attend plus de 4 s (`fetch` de la page enveloppé, tuiles seulement), le fond vectoriel incomplet 6 s à l'arrêt, ou la 2G déclarée ; « Hors ligne » passe avant (testé) |
 
 **Météo**
 | Fichier | Rôle |

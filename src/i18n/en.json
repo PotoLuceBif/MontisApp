@@ -19,6 +19,7 @@
   "hl.donnees-du": "Data from {date}",
   "hl.hors-ligne": "Offline",
   "hl.hors-ligne-date": "Offline · data from {date}",
+  "hl.lente": "Slow connection",
   "age.instant": "just now",
   "age.minutes": "{n} min ago",
   "age.heures": "{n} h ago",
