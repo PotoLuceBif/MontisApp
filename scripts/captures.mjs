@@ -888,6 +888,34 @@ const ECRANS = [
       (p) => p.waitForTimeout(1000),
     ],
   },
+  // Lune touchée au dézoom, puis « Informations » : frise de la Lune seule
+  {
+    nom: 'globe-lune-frise',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            // 14° du nadir, au nord ou au sud : sur l'écran étroit d'un téléphone, la Lune reste visible au-dessus ou au-dessous de la Terre
+            const lune = getMoonPosition(maintenant, lat, lng);
+            const ecart = Math.abs(lune.altitude + 76) + Math.min(Math.abs(lune.azimuth % 180), 180 - Math.abs(lune.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointLune());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(800),
+      clic('.lune-bulle [data-action="infos"]'),
+      (p) => p.waitForSelector('.ombres-curseur', { state: 'attached', timeout: 15000 }),
+      (p) => p.waitForTimeout(2500),
+    ],
+  },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: elementsCarte },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },

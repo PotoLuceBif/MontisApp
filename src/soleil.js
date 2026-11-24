@@ -11,8 +11,6 @@ export const HAUTEUR_LEVER = -0.833;
 const valide = (date) => (date instanceof Date && !Number.isNaN(date.getTime()) ? date : null);
 
 // Décalage du fuseau de l'appareil à cette date, en minutes à l'est de UTC
-// Plus grande hauteur du soleil sur l'année (au solstice d'été du lieu, inclinaison de la Terre : 23,44°), en degrés
-export const hauteurMaxAnnee = (latitude) => Math.min(90, 90 - Math.abs(latitude) + 23.44);
 
 export const decalageAppareil = (date = new Date()) => -new Date(date).getTimezoneOffset();
 

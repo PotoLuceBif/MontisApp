@@ -126,11 +126,3 @@ describe('fuseaux et affichage', () => {
   });
 });
 
-describe('échelle de la course du soleil', () => {
-  it('cale la frise sur le soleil le plus haut de l’année', async () => {
-    const { hauteurMaxAnnee } = await import('../src/soleil.js');
-    expect(hauteurMaxAnnee(45)).toBeCloseTo(68.44);
-    expect(hauteurMaxAnnee(-45)).toBeCloseTo(68.44);
-    expect(hauteurMaxAnnee(10)).toBe(90);
-  });
-});

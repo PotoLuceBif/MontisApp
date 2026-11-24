@@ -3707,6 +3707,20 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .lune-visite-reel[hidden] { display: none; }
 /* Frise de Soleil et Lune dans la visite : sans la ligne du soleil sur la Terre */
 .lune-visite-frise .ombres-soleil { display: none; }
+/* Sur téléphone, frise compacte : la Lune doit rester visible au-dessus du panneau (retour du propriétaire du
+   24 novembre 2026) ; jour en ligne basse, course aplatie, « Maintenant » plus petit */
+@media (max-width: 640px) {
+  .lune-visite-frise .ombres-jour { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+  .lune-visite-frise :is(.ombres-jour-nom, .ombres-jour-bouton) { height: 36px; }
+  .lune-visite-frise .ombres-jour-nom { font-size: 13px; }
+  .lune-visite-frise .ombres-jour-bouton { font-size: 20px; }
+  .lune-visite-frise .ombres-heure { margin-top: 6px; }
+  .lune-visite-frise .relief-entete { font-size: 13px; }
+  .lune-visite-frise .ciel-course { height: 40px; margin: 10px 8px 0; }
+  .lune-visite-frise .ombres-curseur { height: 26px; }
+  .lune-visite-frise .ombres-reperes { margin-top: 2px; }
+  .lune-visite-frise .ombres-maintenant { min-height: 30px; padding: 4px 12px; font-size: 12.5px; }
+}
 .lune-visite-barre { display: none; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--texte); text-align: left; cursor: pointer; }
 .lune-visite-barre-icone .lune-icone { width: 26px; height: 26px; }
 .lune-visite-barre .bf-chevron { margin-left: auto; }
