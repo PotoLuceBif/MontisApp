@@ -4,8 +4,10 @@ import { altitudesTerrarium, celluleMercator, exposee, grillePentes, pixelsTuile
 
 const MODELE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 // Relief au zoom 13 (environ 13 m par pixel dans les Alpes), le plus fin des zones hors ligne ;
-// le zoom 12, toujours téléchargé avec une zone, sert de repli.
-const ZOOMS_RELIEF = [13, 12];
+// le zoom 12, toujours téléchargé avec une zone, sert de repli. Une tuile au zoom 11 (vue d'une station entière)
+// se calcule sur le zoom 12 : au zoom 13, elle demanderait 36 tuiles de relief. Les pentes courtes y sont un peu
+// sous-estimées, le détail revient en zoomant.
+const zoomsRelief = (z) => (z >= 12 ? [13, 12] : [12]);
 const TAILLE_CACHE = 48; // tuiles de relief gardées en mémoire (256 Ko chacune)
 
 const cache = new Map(); // « z/x/y » → promesse des altitudes
@@ -92,7 +94,7 @@ async function calculerTuile(zr, z, x, y, genre, annulee, zones) {
 // `zones` : pour le genre « exposees », les zones du bulletin (pente-calcul.js)
 export async function tuile(z, x, y, genre, annulee, zones = []) {
   let erreur;
-  for (const zr of ZOOMS_RELIEF) {
+  for (const zr of zoomsRelief(z)) {
     try {
       return await calculerTuile(zr, z, x, y, genre, annulee, zones);
     } catch (e) {

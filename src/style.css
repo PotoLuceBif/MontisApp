@@ -3581,8 +3581,13 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .visite-soleil .ombres-curseur { height: 28px; }
 .visite-soleil .ombres-soleil { font-size: 12px; color: var(--texte-2); }
 .visite-soleil .ombres-cadran { width: 26px; height: 26px; }
-/* Fiche réduite : seulement l'heure, pour voir l'ombre bouger sans rouvrir la fiche */
-:is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure) { display: none; }
+/* Fiche réduite : le jour et l'heure, pour voir l'ombre bouger sans rouvrir la fiche ; le jour en une ligne basse
+   (‹ › et calendrier, demande du propriétaire du 24 novembre 2026) */
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure, .ombres-jour) { display: none; }
+.visite-soleil .ombres-jour { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+.visite-soleil :is(.ombres-jour-nom, .ombres-jour-bouton) { height: 36px; }
+.visite-soleil .ombres-jour-nom { font-size: 13px; }
+.visite-soleil .ombres-jour-bouton { font-size: 20px; }
 .ombres-details > .soleil-reglage { display: contents; }
 
 /* Partage par lien (lot 4.5) */

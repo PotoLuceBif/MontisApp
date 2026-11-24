@@ -7,7 +7,9 @@ import { etat } from './options-carte.js';
 import { zonesDepuisTexte, zonesVersTexte } from './pente-calcul.js';
 
 const PROTOCOLE = 'montis-pente';
-export const ZOOM_MIN_PENTES = 12; // plus loin, le relief est trop lissé : les pentes seraient sous-estimées
+// Dès le zoom 11, toute une station tient sur un téléphone (demande du propriétaire du 24 novembre 2026) ;
+// plus loin, le relief serait trop lissé : les pentes seraient sous-estimées (voir pentes-tuile.js)
+export const ZOOM_MIN_PENTES = 11;
 export const GENRES = ['pentes', 'orientation'];
 const AVANT = [REPERE_CALQUES, 'montis-road-casing', 'courbes']; // routes et sentiers restent lisibles au-dessus
 
