@@ -3368,6 +3368,8 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
     right: 19px;
     gap: 8px;
   }
+  /* Panorama, quatrième bouton : caché derrière un panneau ouvert, qui commence à sa hauteur */
+  body:has(.outil-rapide-panneau:not([hidden]):not(.reduit)) #outil-rapide-bouton-panorama { visibility: hidden; }
   /* Sous les trois boutons : Météo, Carte, Soleil et Lune */
   .outil-rapide-panneau {
     top: 404px;
