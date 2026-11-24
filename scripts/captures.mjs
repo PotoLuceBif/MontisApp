@@ -223,6 +223,52 @@ const lireFrise = (fraction) => async (page) => {
 };
 
 const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { state: 'attached', timeout: 15000 });
+
+// Panorama des sommets (lot 4.1) : près du sommet du Brévent, la carte tournée vers le Mont Blanc
+const BREVENT = [6.8381, 45.9375];
+const VUE_BREVENT = '#vue=13/45.9375/6.8381/150/0';
+const ouvrirPanorama = [
+  attendre('#outil-rapide-bouton-panorama'),
+  clic('#outil-rapide-bouton-panorama'),
+  // Sommets chargés et calculés : le message de chargement est parti (attendreSur : waitForSelector bloquait le rendu)
+  (p) => attendreSur(p, () => document.querySelector('.pano-sommet:not([hidden])') && !/Chargement|Recherche/.test(document.querySelector('.pano-etat')?.hidden ? '' : document.querySelector('.pano-etat').textContent), null, 60000),
+  (p) => p.waitForTimeout(8000),
+];
+// Téléphone debout (bêta 90°), arrière tourné vers `cap`, relevé de `inclinaison` degrés
+// (une mesure toutes les 50 ms, comme un vrai capteur)
+const boussoleSimulee = (cap, inclinaison = 0) => (p) => p.evaluate(([c, i]) => {
+  setInterval(() => {
+    window.dispatchEvent(Object.assign(new Event('deviceorientationabsolute'), { alpha: (360 - c) % 360, beta: 90 + i, gamma: 0, absolute: true }));
+  }, 50);
+}, [cap, inclinaison]);
+// Glissé au doigt au milieu de l'écran (recalage, ou regard libre)
+const glisserPanorama = (dx, dy) => async (p) => {
+  const { width, height } = p.viewportSize();
+  await p.mouse.move(width / 2, height / 2);
+  await p.mouse.down();
+  await p.mouse.move(width / 2 + dx, height / 2 + dy, { steps: 8 });
+  await p.mouse.up();
+};
+// Caméra remplacée par une image de synthèse : ciel, horizon flou, sol
+const cameraSimulee = (p) => p.evaluate(() => {
+  const toile = document.createElement('canvas');
+  toile.width = 720;
+  toile.height = 960;
+  const g = toile.getContext('2d');
+  const peindre = () => {
+    const d = g.createLinearGradient(0, 0, 0, 960);
+    d.addColorStop(0, '#5d86b0');
+    d.addColorStop(0.45, '#c9d6e0');
+    d.addColorStop(0.5, '#8b9098');
+    d.addColorStop(1, '#3a4033');
+    g.fillStyle = d;
+    g.fillRect(0, 0, 720, 960);
+  };
+  peindre();
+  setInterval(peindre, 200);
+  const flux = toile.captureStream(10);
+  navigator.mediaDevices.getUserMedia = async () => flux;
+});
 const FICHIERS_DEMO = {
   'rando.gpx': { mimeType: 'application/gpx+xml', contenu: gpxRando },
   'velo.tcx': { mimeType: 'application/xml', contenu: tcxVelo },
@@ -827,6 +873,10 @@ const ECRANS = [
   { nom: 'guidage-option', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), clic('.parcours-demarrer'), (p) => p.waitForTimeout(3000), clic('.guidage-option-trace'), (p) => p.waitForTimeout(1500)] },
   { nom: 'guidage-poche', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), clic('.parcours-demarrer'), (p) => p.waitForTimeout(3000), clic('.guidage-option-trace'), (p) => p.waitForTimeout(500), clic('.guidage-poche-bouton'), (p) => p.waitForTimeout(800)] },
   { nom: 'guidage-resume', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), (p) => p.evaluate(([lng, lat]) => { const t0 = Date.now() - 6000000; localStorage.setItem('montis.guidage-trace', JSON.stringify({ nom: 'Tour du lac · 17 nov.', debut: t0, segments: [[[t0, lng - 0.035, lat - 0.012, 1380], [t0 + 1800000, lng - 0.025, lat - 0.007, 1450], [t0 + 3600000, lng - 0.015, lat - 0.004, 1620]], [[t0 + 5400000, lng - 0.005, lat - 0.002, 1700], [t0 + 5900000, lng, lat, 1760]]] })); }, tracePartage[22]), clic('.parcours-demarrer'), attendre('.dialogue'), (p) => p.waitForTimeout(600), clic('.dialogue .para-bouton-principal'), (p) => p.waitForTimeout(2500), clic('.guidage-arreter'), attendre('.dialogue'), (p) => p.waitForTimeout(800)] },
+  // Panorama des sommets (lot 4.1) : depuis le Brévent, face au Mont Blanc ; boussole et caméra simulées
+  { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
+  { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
+  { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
   { nom: 'partage-lien-parcours', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])')] },
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },

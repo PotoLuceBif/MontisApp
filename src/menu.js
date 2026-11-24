@@ -36,6 +36,7 @@ const ICONES_MENU = {
   sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
   parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
   jeux: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>',
+  panorama: '<path d="M2 20h20"/><path d="m4 20 5-8 3 4 3-5 5 9"/><path d="M5 7.5a10 10 0 0 1 14 0"/><path d="M12 4.5v1.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
@@ -650,6 +651,30 @@ export function initMenu(map) {
       }
     }
   }
+
+  // ---------- Panorama des sommets (lot 4.1) : dernier bouton de la colonne, chargé au premier appui ----------
+  const boutonPanorama = document.createElement('button');
+  boutonPanorama.type = 'button';
+  boutonPanorama.className = 'outil-rapide-bouton';
+  boutonPanorama.id = 'outil-rapide-bouton-panorama';
+  poserAttribut(boutonPanorama, 'aria-label', 'panorama.ouvrir');
+  boutonPanorama.innerHTML = `${creerIconeMenu('panorama')}<span ${ti('panorama.titre')}>${t('panorama.titre')}</span>`;
+  ajouterAideMaintien(boutonPanorama, 'panorama.titre');
+  actionsFlottantes.appendChild(boutonPanorama);
+  boutonPanorama.addEventListener('click', () => {
+    // iOS n'accorde la boussole que pendant l'appui lui-même : la demande part avant tout chargement
+    const boussole = window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
+    fermerPanneauxFlottants();
+    ouvrir(false);
+    boutonPanorama.disabled = true;
+    import('./panorama.js')
+      .then((m) => m.ouvrirPanorama(map, { boussole }))
+      .catch((err) => {
+        console.warn('Panorama indisponible :', err);
+        if (fichierDisparu(err)) rechargerSurNouvelleVersion();
+      })
+      .finally(() => { boutonPanorama.disabled = false; });
+  });
 
   // ---------- Partager la vue (lot 4.5) : position, angle, 2D ou 3D et fond, dans un lien ----------
   const partage = document.createElement('section');

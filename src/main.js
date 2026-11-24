@@ -218,6 +218,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', noterVisite);
 
 map.on('moveend', () => {
+  if (etat.panorama) return; // vue à hauteur d'yeux, rétablie en quittant le panorama
   const c = map.getCenter();
   ecrire('vue', {
     lng: Math.round(c.lng * 1e5) / 1e5,
