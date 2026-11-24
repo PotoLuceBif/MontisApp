@@ -4507,3 +4507,10 @@ body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bott
 .jeux-sommet svg path { fill: #8a7a6a; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round; }
 .jeux-sommet svg path.neige { fill: #fff; stroke: none; }
 .jeux-sommet span { margin-bottom: 1px; color: #fff; font: 700 11.5px/1.2 var(--police); white-space: nowrap; text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9); }
+
+/* Géographie : drapeau agrandi d'un appui (25 novembre 2026), par-dessus tout ; un appui ou Échap le referme */
+.bf-jeu img.jeux-drapeau:not(button img) { cursor: zoom-in; }
+.jeux-drapeau-grand { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: rgba(5, 8, 14, 0.86); cursor: zoom-out; animation: jeux-drapeau-entree 0.16s ease-out; }
+.jeux-drapeau-grand img { width: min(92vw, 900px); max-height: 82dvh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 18px 60px rgba(0, 0, 0, 0.6); }
+@keyframes jeux-drapeau-entree { from { opacity: 0; transform: scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .jeux-drapeau-grand { animation: none; } }

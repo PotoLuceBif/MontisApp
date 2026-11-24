@@ -813,6 +813,36 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     },
   });
 
+  // Drapeau agrandi d'un appui (demande du propriétaire du 25 novembre 2026) : celui de la question et celui de la
+  // fiche ; pas ceux des choix de « Trouve le drapeau », qui sont des réponses. Un appui n'importe où ou Échap referme.
+  function agrandirDrapeau(image) {
+    const voile = document.createElement('div');
+    voile.className = 'jeux-drapeau-grand';
+    voile.setAttribute('role', 'dialog');
+    voile.setAttribute('aria-label', image.alt || t('jeux.drapeau-mystere'));
+    const grand = document.createElement('img');
+    grand.src = image.src;
+    grand.alt = image.alt;
+    grand.draggable = false;
+    voile.appendChild(grand);
+    const fermer = () => {
+      voile.remove();
+      document.removeEventListener('keydown', surTouche, true);
+    };
+    const surTouche = (event) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      fermer();
+    };
+    voile.addEventListener('click', fermer);
+    document.addEventListener('keydown', surTouche, true);
+    document.body.appendChild(voile);
+  }
+  jeu.element.addEventListener('click', (event) => {
+    const image = event.target.closest('img.jeux-drapeau');
+    if (image && !image.closest('button')) agrandirDrapeau(image);
+  });
+
   // Barre de la partie, au-dessus des questions : chrono, avancement, ↻ (retour du propriétaire du 17 novembre 2026).
   // En liste chrono sur téléphone, elle est tout le panneau avec le champ ; ⌃ ou un glissé vers le haut déplie les trouvés.
   const barre = document.createElement('div');
