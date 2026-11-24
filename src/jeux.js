@@ -932,15 +932,6 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     else armerRetour();
   });
 
-  // R relance la partie sur ordinateur (Alt+R depuis un champ de saisie)
-  document.addEventListener('keydown', (event) => {
-    if (event.code !== 'KeyR' || event.ctrlKey || event.metaKey || !partie.en || partie.en.reglage.mode === 'fiches' || jeu.element.hidden) return;
-    const champ = event.target.closest?.('input, textarea, select, [contenteditable="true"]');
-    if (champ && !event.altKey) return;
-    event.preventDefault();
-    partie.recommencer();
-  });
-
   // Une question : { type, code (pays), ville (indice), seuil (km), cle (erreur) }
   // Types : drapeau (drapeau → pays), drapeau-pays (pays allumé → drapeau), capitale (pays → capitale),
   // capitale-pays (capitale → pays), ou-pays et ou-ville (toucher le globe)

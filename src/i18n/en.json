@@ -191,7 +191,7 @@
   "jeux.parfait": "Perfect score!",
   "jeux.autre-partie": "Other game",
   "jeux.recommencer": "Restart",
-  "jeux.recommencer-aide": "Restart (R key)",
+  "jeux.recommencer-aide": "Restart",
   "jeux.trouves-voir": "Show countries found",
   "jeux.trouves-titre": {
     "un": "{n} country found",
