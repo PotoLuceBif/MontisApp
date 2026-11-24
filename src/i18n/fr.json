@@ -166,8 +166,8 @@
   "jeux.reduire": "Réduire la partie",
   "jeux.quitter": "Quitter",
   "jeux.quitter-aide": "Quitter la partie",
-  "jeux.champ-inconnu-pays": "Pays inconnu : « {saisie} »",
-  "jeux.champ-inconnu-capitale": "Capitale inconnue : « {saisie} »",
+  "jeux.champ-inconnu-pays": "« {saisie} » n’existe pas : tape un pays",
+  "jeux.champ-inconnu-capitale": "« {saisie} » n’existe pas : tape une capitale",
   "jeux.champ-vide-pays": "Tape d’abord un pays",
   "jeux.champ-vide-capitale": "Tape d’abord une capitale",
   "jeux.bravo": "Bravo, c’est {nom} !",
@@ -2033,5 +2033,6 @@
   "ciel.cache": "caché",
   "panorama.chargement-relief": "Chargement du relief…",
   "panorama.erreur-relief": "Relief indisponible : {message}",
-  "ciel.au-sol-bouton": "Au sol"
+  "ciel.au-sol-bouton": "Au sol",
+  "jeux.champ-verifie": "Vérifie l’orthographe"
 }

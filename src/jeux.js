@@ -944,22 +944,61 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   })[mode];
   const ville = (id) => donnees.villes.villes[id];
   const nomVille = (id) => ville(id)[langue()] || ville(id).fr;
-  // Saisie refusée (nom inconnu, champ vide) : le champ le dit lui-même, en rouge, à la place de son texte d'aide
-  // (retour du propriétaire du 23 novembre 2026 : le message sous le champ passait inaperçu). Taper le rétablit.
-  function signalerChamp(champ, genre) {
-    const saisie = champ.value.trim();
-    const court = saisie.length > 18 ? `${saisie.slice(0, 17)}…` : saisie;
-    if (!champ.dataset.aide) champ.dataset.aide = champ.placeholder;
-    champ.value = '';
-    champ.placeholder = saisie ? t(`jeux.champ-inconnu-${genre}`, { saisie: court }) : t(`jeux.champ-vide-${genre}`);
+  // Saisie refusée : le champ le dit lui-même, en rouge (retour du propriétaire du 23 novembre 2026 : le message sous
+  // le champ passait inaperçu). En deux temps (demande du 25 novembre 2026) : un nom inconnu reste écrit, avec
+  // « Vérifie l'orthographe » dans le champ ; le même nom validé encore s'efface, et le champ dit qu'il n'existe pas.
+  // Taper rétablit le champ.
+  function secouer(champ) {
     champ.classList.remove('jeux-champ-refus');
     void champ.offsetWidth; // relance la secousse
     champ.classList.add('jeux-champ-refus');
     champ.addEventListener('input', () => effacerSignal(champ), { once: true });
   }
+  function signalerChamp(champ, genre) {
+    const saisie = champ.value.trim();
+    if (saisie && champ.dataset.verifie !== saisie) {
+      champ.dataset.verifie = saisie;
+      bulleChamp(champ, t('jeux.champ-verifie'));
+      secouer(champ);
+      return;
+    }
+    const court = saisie.length > 18 ? `${saisie.slice(0, 17)}…` : saisie;
+    bulleChamp(champ, null);
+    delete champ.dataset.verifie;
+    if (!champ.dataset.aide) champ.dataset.aide = champ.placeholder;
+    champ.value = '';
+    champ.placeholder = saisie ? t(`jeux.champ-inconnu-${genre}`, { saisie: court }) : t(`jeux.champ-vide-${genre}`);
+    secouer(champ);
+  }
+  // Pastille rouge posée dans le champ, à droite du texte (le texte garde sa place à gauche)
+  function bulleChamp(champ, texte) {
+    const cadre = champ.parentElement;
+    let bulle = cadre.querySelector('.jeux-champ-bulle');
+    if (!texte) {
+      bulle?.remove();
+      champ.style.paddingRight = '';
+      return;
+    }
+    if (!bulle) {
+      bulle = document.createElement('span');
+      bulle.className = 'jeux-champ-bulle';
+      bulle.setAttribute('role', 'alert');
+      cadre.appendChild(bulle);
+    }
+    bulle.textContent = texte;
+    // Champ étroit (barre de la liste chrono sur ordinateur) : dessous, sinon elle cachait le texte tapé
+    const dessous = champ.offsetWidth < 220;
+    bulle.classList.toggle('dessous', dessous);
+    bulle.style.right = dessous ? 'auto' : `${cadre.clientWidth - (champ.offsetLeft + champ.offsetWidth) + 6}px`;
+    bulle.style.left = dessous ? `${champ.offsetLeft}px` : 'auto';
+    bulle.style.top = dessous ? `${champ.offsetTop + champ.offsetHeight + 4}px` : `${champ.offsetTop + champ.offsetHeight / 2}px`;
+    champ.style.paddingRight = dessous ? '' : `${bulle.offsetWidth + 12}px`;
+  }
   function effacerSignal(champ) {
     if (champ.dataset.aide) champ.placeholder = champ.dataset.aide;
     delete champ.dataset.aide;
+    delete champ.dataset.verifie;
+    bulleChamp(champ, null);
     champ.classList.remove('jeux-champ-refus');
   }
 

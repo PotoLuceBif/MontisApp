@@ -166,8 +166,8 @@
   "jeux.reduire": "Minimise the game",
   "jeux.quitter": "Quit",
   "jeux.quitter-aide": "Quit the game",
-  "jeux.champ-inconnu-pays": "Unknown country: “{saisie}”",
-  "jeux.champ-inconnu-capitale": "Unknown capital: “{saisie}”",
+  "jeux.champ-inconnu-pays": "“{saisie}” doesn’t exist: type a country",
+  "jeux.champ-inconnu-capitale": "“{saisie}” doesn’t exist: type a capital",
   "jeux.champ-vide-pays": "Type a country first",
   "jeux.champ-vide-capitale": "Type a capital first",
   "jeux.bravo": "Well done, it’s {nom}!",
@@ -2033,5 +2033,6 @@
   "ciel.cache": "hidden",
   "panorama.chargement-relief": "Loading terrain…",
   "panorama.erreur-relief": "Terrain unavailable: {message}",
-  "ciel.au-sol-bouton": "On the ground"
+  "ciel.au-sol-bouton": "On the ground",
+  "jeux.champ-verifie": "Check the spelling"
 }
