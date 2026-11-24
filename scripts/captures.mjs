@@ -227,13 +227,18 @@ const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { stat
 // Panorama des sommets (lot 4.1) : près du sommet du Brévent, la carte tournée vers le Mont Blanc
 const BREVENT = [6.8381, 45.9375];
 const VUE_BREVENT = '#vue=13/45.9375/6.8381/150/0';
+// Sommets chargés et calculés : le message de chargement est parti (attendreSur : waitForSelector bloquait le rendu)
+function attendreHorizon() {
+  return [
+    (p) => attendreSur(p, () => document.querySelector('.pano-sommet:not([hidden])') && !/Chargement|Recherche/.test(document.querySelector('.pano-etat')?.hidden ? '' : document.querySelector('.pano-etat').textContent), null, 60000),
+    (p) => p.waitForTimeout(8000),
+  ];
+}
 const ouvrirPanorama = [
   // Après plusieurs panoramas, les serveurs de tuiles ralentissent : le menu peut tarder
   (p) => p.waitForSelector('#outil-rapide-bouton-panorama', { state: 'attached', timeout: 60000 }),
   clic('#outil-rapide-bouton-panorama'),
-  // Sommets chargés et calculés : le message de chargement est parti (attendreSur : waitForSelector bloquait le rendu)
-  (p) => attendreSur(p, () => document.querySelector('.pano-sommet:not([hidden])') && !/Chargement|Recherche/.test(document.querySelector('.pano-etat')?.hidden ? '' : document.querySelector('.pano-etat').textContent), null, 60000),
-  (p) => p.waitForTimeout(8000),
+  ...attendreHorizon(),
 ];
 // Téléphone debout (bêta 90°), arrière tourné vers `cap`, relevé de `inclinaison` degrés
 // (une mesure toutes les 50 ms, comme un vrai capteur)
@@ -878,6 +883,8 @@ const ECRANS = [
   { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
   { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
   { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, boussoleSimulee(150, 3), (p) => p.waitForTimeout(1000), clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
+  // « Voir l'horizon d'ici » depuis la fiche d'un point (sans position : le point choisi)
+  { nom: 'panorama-point', lien: VUE_BREVENT, simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-horizon'), (p) => p.waitForTimeout(800), clicVisible('.point-horizon'), ...attendreHorizon()] },
   { nom: 'panorama-fiche', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, (p) => p.evaluate(() => { const nom = [...document.querySelectorAll('.pano-sommet:not([hidden])')].find((e) => e.textContent.includes('Midi')) ?? document.querySelector('.pano-sommet:not([hidden])'); const r = nom.getBoundingClientRect(); const o = { bubbles: true, pointerId: 1, clientX: r.left + 10, clientY: r.bottom - 10 }; nom.dispatchEvent(new PointerEvent('pointerdown', o)); nom.dispatchEvent(new PointerEvent('pointerup', o)); }), (p) => p.waitForTimeout(800)] },
   { nom: 'partage-lien-parcours', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])')] },
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },

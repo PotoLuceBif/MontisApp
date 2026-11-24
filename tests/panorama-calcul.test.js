@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   angleApparent, choisirEtiquettes, cretesCap, dedoublonner, directionCamera, directionVers, ecartCap, estVisible,
-  pointA, pointCardinal, projeter, relierCretes, champHorizontal,
+  pointA, pointCardinal, projeter, relierCretes, champHorizontal, choisirDepart, positionUtilisable,
 } from '../src/panorama-calcul.js';
 
 const chamonix = { lng: 6.8694, lat: 45.9237, altitude: 1035 };
@@ -214,5 +214,39 @@ describe('étiquettes', () => {
     ]);
     expect(s).toHaveLength(2);
     expect(s[0].altitude).toBe(4807);
+  });
+});
+
+describe('point de départ', () => {
+  const maintenant = 1_800_000_000_000;
+  const centre = { lng: 6.4954, lat: 44.5644 }; // Embrun
+  const proche = { lng: 6.50, lat: 44.57, precision: 15, instant: maintenant - 5000 };
+  const loin = { lng: 6.36, lat: 44.70, precision: 15, instant: maintenant - 5000 }; // ~18 km
+
+  it('part du point demandé par la fiche', () => {
+    expect(choisirDepart({ point: centre, gps: proche, centre }, maintenant)).toEqual({ source: 'point', lieu: centre, autre: null });
+  });
+
+  it('part de la position quand la carte montre ses alentours, et propose le centre', () => {
+    const d = choisirDepart({ gps: proche, centre }, maintenant);
+    expect(d.source).toBe('gps');
+    expect(d.autre).toBe('centre');
+  });
+
+  it('part du centre de la carte quand on regarde ailleurs, et propose la position', () => {
+    const d = choisirDepart({ gps: loin, centre }, maintenant);
+    expect(d.source).toBe('centre');
+    expect(d.lieu).toBe(centre);
+    expect(d.autre).toBe('gps');
+  });
+
+  it('écarte une position vieille ou approximative', () => {
+    expect(positionUtilisable({ ...proche, instant: maintenant - 20 * 3600000 }, maintenant)).toBe(false);
+    expect(positionUtilisable({ ...proche, precision: 3000 }, maintenant)).toBe(false);
+    expect(choisirDepart({ gps: { ...proche, precision: 3000 }, centre }, maintenant)).toEqual({ source: 'centre', lieu: centre, autre: null });
+  });
+
+  it('ne propose rien quand position et centre se confondent', () => {
+    expect(choisirDepart({ gps: { ...proche, lng: centre.lng, lat: centre.lat }, centre }, maintenant).autre).toBeNull();
   });
 });

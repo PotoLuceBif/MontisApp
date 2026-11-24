@@ -13,7 +13,7 @@ import { capBoussole, lisserAngle } from './guidage-calcul.js';
 import { altitudeRelief } from './relief-donnees.js';
 import { chargerSommets, chargerRelief, DISTANCE_MAX } from './panorama-donnees.js';
 import {
-  angleApparent, champHorizontal, choisirEtiquettes, cretesCap, directionCamera, ecartCap, estVisible,
+  angleApparent, champHorizontal, choisirDepart, choisirEtiquettes, cretesCap, directionCamera, ecartCap, estVisible,
   importanceSommet, pointA, pointCardinal, projeter, relierCretes,
 } from './panorama-calcul.js';
 
@@ -41,7 +41,9 @@ export async function ouvrirPanorama(map, options = {}) {
   await ouvert.demarrer();
 }
 
-function creerPanorama(map, { boussole: permissionBoussole }) {
+// options : boussole (promesse de la permission iOS), point ({ lng, lat } : « Horizon d'ici » de la fiche du point),
+// retour (appelé en quittant : la fiche revient)
+function creerPanorama(map, { boussole: permissionBoussole, point = null, retour = null }) {
   const avant = {
     camera: { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() },
     mode3D: !!etat.mode3D,
@@ -50,7 +52,6 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     centreAuSol: map.getCenterClampedToGround(),
   };
   const textesCaches = new Set();
-  const abandon = new AbortController();
 
   // ---------- Interface ----------
   const racine = document.createElement('div');
@@ -63,7 +64,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       <button type="button" class="pano-fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       <div class="pano-titre">
         <strong></strong>
-        <span class="pano-lieu"></span>
+        <button type="button" class="pano-lieu" disabled><span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8"/></svg></button>
       </div>
       <div class="pano-modes" role="group" hidden>
         <button type="button" data-mode="3d" aria-pressed="true">3D</button>
@@ -126,10 +127,13 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   poser($('[data-mode="camera"]'), 'panorama.camera');
   poser($('.pano-boussole span'), 'panorama.boussole');
   poserAttribut(boutonRecalage, 'aria-label', 'panorama.annuler-recalage');
+  poserAttribut(lieuTexte, 'title', 'panorama.changer-lieu');
   poserAttribut($('.pano-fiche-fermer'), 'aria-label', 'panorama.fermer-fiche');
 
   // ---------- État ----------
-  let observateur = null; // { lng, lat, altitude, source: 'gps' | 'centre' }
+  let observateur = null; // { lng, lat, sol, altitude, source: 'point' | 'gps' | 'centre' }
+  let depart = null; // choisirDepart, avec les lieux possibles
+  let chargement = null; // AbortController du chargement en cours (un changement de lieu l'interrompt)
   let sommets = []; // visibles, avec cap, distance, angle (avec et sans courbure)
   let cretes = []; // lignes de crête visibles : [{ points: [{ cap, d, h }], horizon, trace }]
   let relief = null;
@@ -160,11 +164,13 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     if (cle) etatTexte.textContent = t(cle, variables);
     if (cle && duree) effacement = setTimeout(() => afficherEtat(null), duree);
   };
+  // Le lieu, en tête : un appui passe de ta position au centre de la carte, et inversement
+  const CLES_LIEU = { gps: 'panorama.ta-position', centre: 'panorama.centre', point: 'panorama.point' };
   const majLieu = () => {
-    if (!observateur) return poser(lieuTexte, 'panorama.position');
-    poser(lieuTexte, observateur.source === 'gps' ? 'panorama.ta-position' : 'panorama.centre', {
-      altitude: formatAltitude(observateur.sol),
-    });
+    const texte = lieuTexte.querySelector('span');
+    lieuTexte.disabled = !depart?.autre;
+    if (!observateur) return poser(texte, 'panorama.position');
+    poser(texte, CLES_LIEU[observateur.source], { altitude: formatAltitude(observateur.sol) });
   };
   const arretLangue = surPreferences(() => {
     majLieu();
@@ -290,7 +296,29 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     } else {
       champ3d = borner(valeur, 15, CHAMP_3D_MAX);
       map.setVerticalFieldOfView(champ3d);
+      // Tout de suite, dans la même image : sinon la caméra reculait d'un coup (jusque dans la montagne derrière)
+      if (observateur) placerCamera(regard());
     }
+  }
+
+  // Caméra 3D sur les yeux. MapLibre la place d'après centre, zoom et champ : changer le champ (zoom au doigt)
+  // ou la taille de l'écran la déplace (de 60° à 30°, elle reculait de 3,5 km). Le champ et la taille font donc
+  // partie de la clé. On vise un point en l'air à VISEE m : viser le sol (regard vers le bas) mettait le centre
+  // à quelques mètres, au zoom maximal, et la caméra partait de travers.
+  function placerCamera(r) {
+    const canvas = map.getCanvas();
+    const cle = [
+      r.cap.toFixed(2), r.inclinaison.toFixed(2), yeuxVue().toFixed(1),
+      map.getVerticalFieldOfView().toFixed(2), canvas.clientWidth, canvas.clientHeight,
+    ].join('/');
+    if (cle === derniereCamera) return;
+    derniereCamera = cle;
+    const i = (r.inclinaison * Math.PI) / 180;
+    const cible = pointA(observateur, r.cap, VISEE * Math.cos(i));
+    map.jumpTo(map.calculateCameraOptionsFromTo(
+      [observateur.lng, observateur.lat], yeuxVue(),
+      [cible.lng, cible.lat], yeuxVue() + VISEE * Math.sin(i)
+    ));
   }
 
   // Champ vertical de ce qui est affiché
@@ -386,18 +414,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
           derniereCamera = '';
         }
       }
-      const cle = `${r.cap.toFixed(2)}/${r.inclinaison.toFixed(2)}/${yeuxVue().toFixed(1)}`;
-      if (cle !== derniereCamera) {
-        derniereCamera = cle;
-        // On vise un point en l'air à VISEE m : viser le sol (regard vers le bas) mettait le centre de la carte
-        // à quelques mètres, au zoom maximal, et la caméra partait de travers
-        const i = (r.inclinaison * Math.PI) / 180;
-        const cible = pointA(observateur, r.cap, VISEE * Math.cos(i));
-        map.jumpTo(map.calculateCameraOptionsFromTo(
-          [observateur.lng, observateur.lat], yeuxVue(),
-          [cible.lng, cible.lat], yeuxVue() + VISEE * Math.sin(i)
-        ));
-      }
+      placerCamera(r);
     }
     const vue = { cap: r.cap, inclinaison: r.inclinaison, champ: champActuel(), largeur, hauteur };
     const courbure = mode === 'camera'; // la 3D de MapLibre est plate
@@ -483,7 +500,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   // ---------- Calculs, par petits morceaux pour ne pas figer l'écran ----------
   const pause = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
-  async function calculerSommets(liste) {
+  async function calculerSommets(liste, signal) {
     const visibles = [];
     for (let i = 0; i < liste.length; i += 1) {
       const s = liste[i];
@@ -496,7 +513,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       }
       if (i % 20 === 19) {
         await pause();
-        if (abandon.signal.aborted) return;
+        if (signal.aborted) return;
         sommets = visibles.slice();
       }
     }
@@ -504,14 +521,14 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   }
 
   // Lignes de crête : un rayon tous les PAS_CRETES degrés, puis les crêtes voisines reliées
-  async function calculerCretes() {
+  async function calculerCretes(signal) {
     const colonnes = [];
     for (let cap = 0; cap < 360; cap += PAS_CRETES) {
       const trouvees = cretesCap(observateur, cap, relief, { distanceMax: DISTANCE_MAX }).filter((c) => c.d >= 300);
       colonnes.push({ cap, cretes: trouvees });
       if (colonnes.length % 12 === 0) {
         await pause();
-        if (abandon.signal.aborted) return;
+        if (signal.aborted) return;
       }
     }
     // Le nord fermé : la première colonne revient à la fin
@@ -527,15 +544,83 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   }
 
   // ---------- Position ----------
+  // Position du navigateur, avec sa précision et son âge (choisirDepart écarte les vieilles et les approximatives)
   function position() {
     return new Promise((resolve) => {
       if (!('geolocation' in navigator)) return resolve(null);
       navigator.geolocation.getCurrentPosition(
-        ({ coords }) => resolve({ lng: coords.longitude, lat: coords.latitude }),
+        ({ coords, timestamp }) => resolve({ lng: coords.longitude, lat: coords.latitude, precision: coords.accuracy, instant: timestamp }),
         () => resolve(null),
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
       );
     });
+  }
+
+  // Charge tout depuis un lieu : relief, sommets visibles, crêtes. Un nouveau lieu interrompt le précédent.
+  async function charger(source) {
+    chargement?.abort();
+    const controle = new AbortController();
+    chargement = controle;
+    const { signal } = controle;
+    const lieu = depart.lieux[source];
+    sommets = [];
+    cretes = [];
+    calqueCretes.replaceChildren();
+    choisir(null);
+    elements.forEach((e) => {
+      e.el.remove();
+      e.trait.remove();
+      e.point.remove();
+    });
+    elements.clear();
+    afficherEtat('panorama.chargement');
+    let altitude;
+    try {
+      altitude = await altitudeRelief(lieu.lng, lieu.lat, 13);
+    } catch (err) {
+      if (signal.aborted) return;
+      console.warn('Relief indisponible :', err);
+      afficherEtat('panorama.erreur', { message: messageErreur(err) });
+      return;
+    }
+    if (signal.aborted) return;
+    observateur = { lng: lieu.lng, lat: lieu.lat, sol: altitude, altitude: altitude + HAUTEUR_YEUX, source };
+    derniereCamera = '';
+    majLieu();
+    // Voile tant que le relief proche n'est pas chargé : avant, les bords des tuiles se voient comme des murs gris
+    racine.classList.add('pano-attente');
+    const leverVoile = () => racine.classList.remove('pano-attente');
+    requestAnimationFrame(() => requestAnimationFrame(() => map.once('idle', leverVoile)));
+    setTimeout(leverVoile, 10000);
+    try {
+      const modele = map.getSource('osm-vecteur')?.tiles?.[0];
+      const [donnees, lecteurRelief] = await Promise.all([
+        chargerSommets(observateur, modele, signal),
+        chargerRelief(observateur),
+      ]);
+      if (signal.aborted) return;
+      relief = lecteurRelief;
+      await calculerSommets(donnees.sommets, signal);
+      if (signal.aborted) return;
+      calculerCretes(signal);
+      if (!sommets.length) afficherEtat('panorama.aucun');
+      else if (donnees.incomplet) afficherEtat('panorama.incomplet', null, 6000);
+      else if (source === 'centre' && depart.autre === 'gps') afficherEtat('panorama.depuis-centre', null, 7000);
+      else if (source === 'centre') afficherEtat('panorama.sans-gps', null, 6000);
+      else if (!capteur) afficherEtat('panorama.sans-boussole', null, 6000);
+      else afficherEtat(null);
+    } catch (err) {
+      if (err?.name === 'AbortError' || signal.aborted) return;
+      console.warn('Sommets indisponibles :', err);
+      afficherEtat('panorama.erreur', { message: messageErreur(err) });
+    }
+  }
+
+  // Ta position ⇄ centre de la carte
+  function changerLieu() {
+    if (!depart?.autre) return;
+    const actuelle = observateur?.source ?? depart.source;
+    charger(actuelle === depart.autre ? depart.source : depart.autre);
   }
 
   // ---------- Entrée et sortie ----------
@@ -582,24 +667,10 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     Promise.resolve(permissionBoussole).then(() => {
       if (ouvert) window.addEventListener(evenementOrientation, surOrientation);
     });
-    afficherEtat('panorama.recherche-position');
-    const gps = await position();
-    if (!ouvert) return;
-    const centre = map.getCenter();
-    const lieu = gps ?? { lng: centre.lng, lat: centre.lat };
-    let altitude;
-    try {
-      altitude = await altitudeRelief(lieu.lng, lieu.lat, 13);
-    } catch (err) {
-      console.warn('Relief indisponible :', err);
-      afficherEtat('panorama.erreur', { message: messageErreur(err) });
-      return;
-    }
-    if (!ouvert) return;
-    observateur = { ...lieu, sol: altitude, altitude: altitude + HAUTEUR_YEUX, source: gps ? 'gps' : 'centre' };
-    majLieu();
+    lieuTexte.addEventListener('click', changerLieu);
 
     // Carte : 3D, relief à sa vraie hauteur, caméra libre au-dessus du sol, textes de la carte cachés
+    const centre = map.getCenter();
     if (!etat.mode3D) etat.basculerMode();
     etat.exageration = 1;
     etat.majTerrain?.();
@@ -610,35 +681,16 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     map.setVerticalFieldOfView(champ3d);
     cacherTextes();
     map.on('styledata', surStyle);
-    image = requestAnimationFrame(dessiner);
-    // Voile tant que le relief proche n'est pas chargé : avant, les bords des tuiles se voient comme des murs gris
     racine.classList.add('pano-attente');
-    const leverVoile = () => racine.classList.remove('pano-attente');
-    requestAnimationFrame(() => requestAnimationFrame(() => map.once('idle', leverVoile)));
-    setTimeout(leverVoile, 10000);
+    image = requestAnimationFrame(dessiner);
 
-    afficherEtat(gps ? 'panorama.chargement' : 'panorama.sans-gps');
-    try {
-      const modele = map.getSource('osm-vecteur')?.tiles?.[0];
-      const [donnees, lecteurRelief] = await Promise.all([
-        chargerSommets(observateur, modele, abandon.signal),
-        chargerRelief(observateur),
-      ]);
-      if (!ouvert) return;
-      relief = lecteurRelief;
-      await calculerSommets(donnees.sommets);
-      if (!ouvert) return;
-      calculerCretes();
-      if (!sommets.length) afficherEtat('panorama.aucun');
-      else if (donnees.incomplet) afficherEtat('panorama.incomplet', null, 6000);
-      else if (!gps) afficherEtat('panorama.sans-gps', null, 6000);
-      else if (!capteur) afficherEtat('panorama.sans-boussole', null, 6000);
-      else afficherEtat(null);
-    } catch (err) {
-      if (err?.name === 'AbortError') return;
-      console.warn('Sommets indisponibles :', err);
-      afficherEtat('panorama.erreur', { message: messageErreur(err) });
-    }
+    // D'où regarder : le point de la fiche, sinon la position si la carte montre ses alentours, sinon le centre
+    if (!point) afficherEtat('panorama.recherche-position');
+    const gps = point ? null : await position();
+    if (!ouvert) return;
+    const lieux = { centre: { lng: centre.lng, lat: centre.lat }, gps, point };
+    depart = { ...choisirDepart(lieux), lieux };
+    charger(depart.source);
   }
 
   function surTouche(e) {
@@ -648,7 +700,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   function fermer() {
     if (ouvert === null) return;
     ouvert = null;
-    abandon.abort();
+    chargement?.abort();
     cancelAnimationFrame(image);
     cancelAnimationFrame(attenteStyle);
     arretLangue?.();
@@ -673,6 +725,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     bloquerFiches(false);
     document.body.classList.remove('panorama-actif', 'panorama-camera');
     racine.remove();
+    retour?.();
   }
 
   return { demarrer, fermer };

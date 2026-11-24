@@ -200,3 +200,28 @@ export function dedoublonner(sommets) {
 // Cap lisible : « N 12° », « NE 47° »
 const POINTS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
 export const pointCardinal = (cap, points = POINTS) => points[Math.round(normaliser(cap) / 45) % 8];
+
+// ---------- Point de départ ----------
+// Une position du navigateur n'est gardée que précise (téléphone, pas l'adresse internet d'un ordinateur)
+// et récente : sur ordinateur, le navigateur rendait une position de la veille, à des dizaines de km.
+export const PRECISION_MAX = 200; // m
+export const AGE_MAX = 2 * 60000; // ms
+export const positionUtilisable = (p, maintenant = Date.now()) =>
+  !!p && Number.isFinite(p.lng) && Number.isFinite(p.lat) &&
+  Number.isFinite(p.precision) && p.precision <= PRECISION_MAX &&
+  Number.isFinite(p.instant) && maintenant - p.instant <= AGE_MAX;
+
+// D'où regarder : le point demandé (fiche d'un point) ; sinon la position, si elle est utilisable et que la carte
+// montre ses alentours ; sinon le centre de la carte (on regarde ailleurs : Embrun depuis Montfaucon).
+// → { source: 'point' | 'gps' | 'centre', lieu, autre } ; `autre` : la seconde source proposée, s'il y en a une
+export const ECART_CARTE = 10000; // m entre la position et le centre de la carte, au-delà on regarde ailleurs
+export function choisirDepart({ point = null, gps = null, centre }, maintenant = Date.now()) {
+  if (point) return { source: 'point', lieu: point, autre: null };
+  const gpsOk = positionUtilisable(gps, maintenant);
+  if (!gpsOk) return { source: 'centre', lieu: centre, autre: null };
+  const ecart = directionVers(gps, centre).distance;
+  // Les deux presque au même endroit : pas de choix à proposer
+  const autreUtile = ecart > 200;
+  if (ecart <= ECART_CARTE) return { source: 'gps', lieu: gps, autre: autreUtile ? 'centre' : null };
+  return { source: 'centre', lieu: centre, autre: 'gps' };
+}

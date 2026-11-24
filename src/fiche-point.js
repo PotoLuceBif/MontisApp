@@ -590,6 +590,20 @@ export function creerFichePoint({ map, lng, lat, maj, fermer = () => {}, cible =
         ligne(t('point.eau'), valeurEau()),
         ligne(t('point.geologie'), valeurGeologie())
       );
+      // Horizon depuis ce point : sa croix ramène à la fiche
+      const horizon = document.createElement('button');
+      horizon.type = 'button';
+      horizon.className = 'point-lien point-horizon';
+      horizon.innerHTML = `
+        <svg class="point-lien-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20h20"/><path d="m4 20 5-8 3 4 3-5 5 9"/><path d="M5 7.5a10 10 0 0 1 14 0"/><path d="M12 4.5v1.5"/></svg>
+        <span></span>
+        <svg class="point-lien-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`;
+      horizon.querySelector('span').textContent = t('point.horizon');
+      horizon.addEventListener('click', () => {
+        fermer();
+        window.dispatchEvent(new CustomEvent('montis:ouvrir-horizon', { detail: { lng, lat, retour: rouvrirIci } }));
+      });
+      corps.append(horizon);
       const partage = document.createElement('button');
       partage.type = 'button';
       partage.className = 'point-lien point-partager';

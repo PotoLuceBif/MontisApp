@@ -3363,19 +3363,20 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .ski :is(button):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (max-width: 700px) {
+  /* Sur téléphone, on zoome aux doigts : sans + et −, toute la colonne remonte et Horizon passe au-dessus
+     des panneaux posés sur la carte (décision du propriétaire du 24 novembre 2026) */
+  .maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out { display: none !important; }
   .outils-rapides {
-    top: 244px;
+    top: 168px;
     right: 19px;
     gap: 8px;
   }
-  /* Panorama, quatrième bouton : caché derrière un panneau ouvert, qui commence à sa hauteur */
-  body:has(.outil-rapide-panneau:not([hidden]):not(.reduit)) #outil-rapide-bouton-panorama { visibility: hidden; }
-  /* Sous les trois boutons : Météo, Carte, Soleil et Lune */
+  /* Sous les quatre boutons : Météo, Carte, Soleil et Lune, Horizon */
   .outil-rapide-panneau {
-    top: 404px;
+    top: 364px;
     right: 10px;
     width: min(360px, calc(100vw - 20px));
-    max-height: calc(100dvh - 424px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 384px - env(safe-area-inset-bottom));
     border-radius: 15px;
   }
   .outil-rapide-entete { min-height: 48px; }
@@ -4359,7 +4360,26 @@ body.panorama-camera #panorama { background: #000; }
 .pano-fermer { display: grid; width: 44px; height: 44px; flex: none; place-items: center; padding: 0; border-radius: 12px; }
 .pano-titre { display: grid; min-width: 0; flex: 1; }
 .pano-titre strong { font-size: 16px; line-height: 1.2; }
-.pano-lieu { overflow: hidden; color: var(--pano-texte-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+/* Le lieu, en tête : touchable quand on peut passer de ta position au centre de la carte */
+#panorama .pano-lieu {
+  display: flex;
+  max-width: 100%;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pano-texte-2);
+  font: 500 12px var(--police);
+  text-align: left;
+}
+.pano-lieu span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#panorama .pano-lieu svg { width: 15px; height: 15px; }
+#panorama .pano-lieu:disabled { cursor: default; }
+#panorama .pano-lieu:disabled svg { display: none; }
+#panorama .pano-lieu:not(:disabled) { color: var(--accent-sombre); }
 .pano-modes[hidden] { display: none; }
 .pano-modes { display: flex; flex: none; padding: 3px; border: 1px solid var(--pano-bord); border-radius: 12px; background: var(--pano-fond); }
 #panorama .pano-modes button { min-width: 52px; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; }

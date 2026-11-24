@@ -661,19 +661,26 @@ export function initMenu(map) {
   boutonPanorama.innerHTML = `${creerIconeMenu('panorama')}<span ${ti('panorama.titre')}>${t('panorama.titre')}</span>`;
   ajouterAideMaintien(boutonPanorama, 'panorama.titre');
   actionsFlottantes.appendChild(boutonPanorama);
-  boutonPanorama.addEventListener('click', () => {
+  // options : point ({ lng, lat }) et retour, quand Horizon s'ouvre depuis la fiche d'un point
+  const ouvrirHorizon = (options = {}) => {
     // iOS n'accorde la boussole que pendant l'appui lui-même : la demande part avant tout chargement
     const boussole = window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
     fermerPanneauxFlottants();
     ouvrir(false);
     boutonPanorama.disabled = true;
     import('./panorama.js')
-      .then((m) => m.ouvrirPanorama(map, { boussole }))
+      .then((m) => m.ouvrirPanorama(map, { ...options, boussole }))
       .catch((err) => {
         console.warn('Panorama indisponible :', err);
         if (fichierDisparu(err)) rechargerSurNouvelleVersion();
       })
       .finally(() => { boutonPanorama.disabled = false; });
+  };
+  boutonPanorama.addEventListener('click', () => ouvrirHorizon());
+  // « Horizon d'ici » de la fiche du point (fiche-point.js, chargé à la demande : par un événement)
+  window.addEventListener('montis:ouvrir-horizon', (event) => {
+    const { lng, lat, retour } = event.detail || {};
+    if (Number.isFinite(lng) && Number.isFinite(lat)) ouvrirHorizon({ point: { lng, lat }, retour });
   });
 
   // ---------- Partager la vue (lot 4.5) : position, angle, 2D ou 3D et fond, dans un lien ----------

@@ -2022,5 +2022,9 @@
   "panorama.camera-refusee": "Caméra indisponible : tu as refusé l’accès.",
   "panorama.camera-absente": "Caméra indisponible : elle ne répond pas.",
   "panorama.fiche": "{altitude} · {distance} · {cap}",
-  "panorama.fermer-fiche": "Fermer la fiche du sommet"
+  "panorama.fermer-fiche": "Fermer la fiche du sommet",
+  "panorama.point": "Point choisi · {altitude}",
+  "panorama.changer-lieu": "Changer de point de vue : ta position ou le centre de la carte",
+  "panorama.depuis-centre": "Vue depuis le centre de la carte, loin de ta position. Touche le lieu en haut pour partir de ta position.",
+  "point.horizon": "Voir l’horizon d’ici"
 }
