@@ -42,9 +42,9 @@ Dans **Météo > Conditions locales**, la **frise** montre d’un coup d’œil 
 
 Dans **Météo > Conditions locales**, la section **Soleil** donne pour le lieu des prévisions : lever et coucher avec leur direction, durée du jour, midi solaire et hauteur maximale, heures dorées, aube et crépuscule, et la position actuelle du soleil sur sa course du jour. Elle suit le jour choisi dans les prévisions à 5 jours. Tout est calculé sur le téléphone, donc disponible hors ligne. Le calcul suppose un horizon dégagé : en montagne, le relief cache le soleil plus tard le matin et plus tôt le soir.
 
-## Panorama des sommets
+## Horizon : les sommets autour de toi
 
-Le bouton « Panorama », sous Météo, Carte et Soleil et Lune, montre la vue depuis ta position à hauteur d’yeux, en 3D, avec le nom, l’altitude et la distance des sommets que tu vois vraiment (ceux cachés par le relief ou la courbure de la Terre ne sont pas nommés). La vue suit la boussole et l’inclinaison du téléphone ; si les noms ne tombent pas pile sur les sommets, glisse du doigt pour recaler. Sans boussole (ordinateur), glisse pour regarder autour. « Caméra » pose les mêmes noms sur l’image de l’appareil photo, avec la ligne d’horizon calculée pour aider au recalage. Sommets : OpenStreetMap, jusqu’à 100 km.
+Le bouton « Horizon », sous Météo, Carte et Soleil et Lune, montre la vue depuis ta position à hauteur d’yeux, en 3D, avec le nom, l’altitude et la distance des sommets que tu vois vraiment (ceux cachés par le relief ou la courbure de la Terre ne sont pas nommés). La vue suit la boussole et l’inclinaison du téléphone ; si les noms ne tombent pas pile sur les sommets, glisse du doigt pour recaler. Sans boussole (ordinateur), glisse pour regarder autour. « Caméra » pose les mêmes noms sur l’image de l’appareil photo, avec la ligne d’horizon calculée pour aider au recalage. Sommets : OpenStreetMap, jusqu’à 100 km.
 
 ## Création d’un parcours de randonnée
 
