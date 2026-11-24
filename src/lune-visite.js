@@ -904,6 +904,7 @@ export function visiterLune(mapTerre, { instant = Date.now() } = {}) {
     fermerBulle();
     fermerRetour();
     desabonnerLangue?.();
+    frise.arreter();
     document.removeEventListener('keydown', surTouche);
     if (!mouvementReduit()) {
       map.easeTo({ zoom: Math.max(0, map.getZoom() - 1.4), duration: 450, easing: (x) => x * x });
