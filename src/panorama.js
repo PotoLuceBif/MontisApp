@@ -434,7 +434,9 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     bande.style.transform = `translateX(${-(r.cap * pas) - 360 * pas + largeur / 2}px)`;
     capTexte.textContent = `${t(`cardinal.${pointCardinal(r.cap)}`)} ${Math.round(r.cap) % 360}°`;
 
-    if (observateur && cretes.length) dessinerCretes(vue, courbure);
+    // Vue au sol de Soleil et Lune : crêtes calculées (vrai lever) mais pas dessinées (demande du propriétaire du
+    // 24 novembre 2026)
+    if (observateur && cretes.length && !ciel) dessinerCretes(vue, courbure);
     if (ciel && observateur) dessinerAstres(vue);
 
     // Sommets à l'écran : les plus importants gardent leur place, les voisins trop proches s'effacent
