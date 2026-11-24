@@ -222,6 +222,16 @@ const lireFrise = (fraction) => async (page) => {
   await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
 };
 
+// Liste chrono : la carte au milieu de la transition (le cliché final, lui, montre le retour), et le zoom au fil du temps
+const milieuTransition = (nom) => async (page) => {
+  const zooms = [];
+  for (let i = 0; i < 8; i += 1) {
+    zooms.push((await page.evaluate(() => window.map.getZoom())).toFixed(2));
+    if (i === 3) await page.screenshot({ path: `captures/${page.viewportSize().width < 700 ? 'telephone' : 'ordinateur'}-${nom}-milieu.png` });
+    await page.waitForTimeout(200);
+  }
+  console.log('ZOOMS', nom, zooms.join(' '));
+};
 const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { state: 'attached', timeout: 15000 });
 
 // Panorama des sommets (lot 4.1) : près du sommet du Brévent, la carte tournée vers le Mont Blanc
@@ -1077,6 +1087,9 @@ const ECRANS = [
   { nom: 'jeux-capitales-expert', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(3000)] },
   { nom: 'jeux-capitales-inconnue', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Zorglub'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
   { nom: 'jeux-capitales-vide', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
+  // Transition après une réponse (24 novembre 2026) : la carte au pays trouvé, en vert, ou hors de la zone, en rouge
+  { nom: 'jeux-liste-transition', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(2500), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Portugal'), milieuTransition('jeux-liste-transition')] },
+  { nom: 'jeux-liste-hors-zone', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(2500), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Japon'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), milieuTransition('jeux-liste-hors-zone')] },
   { nom: 'jeux-liste-inconnu', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Fraaance'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
   { nom: 'jeux-frontieres-proche', actions: [module('quiz-pays'), attendre('.jeux-pays-villes option'), clic('.jeux-carte[data-mode="ou"]'), clic('[data-choix="cible"] [data-valeur="pays"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-ou-aide'), (p) => p.waitForTimeout(2000), (p) => p.evaluate(() => window.map.jumpTo({ center: [7.6, 46.6], zoom: 6.8 })), (p) => p.waitForTimeout(4000)] },
   { nom: 'jeux-capitales-expert-reponse', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), clic('.bf-jeu .jeux-passer'), (p) => p.waitForTimeout(3000)] },
