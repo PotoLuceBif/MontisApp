@@ -6,9 +6,9 @@ import { DELAI_RESEAU } from './requete.js';
 const MODELE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const tuiles = new Map(); // « z/x/y » → promesse des pixels
 
-// Quatre téléchargements à la fois : le navigateur n'en mène que six par serveur, et le délai d'une tuile restée
+// Six téléchargements à la fois, ce que le navigateur mène par serveur : le délai d'une tuile restée
 // en file (Horizon en demande environ 25) courait avant même qu'elle parte
-const SIMULTANES = 4;
+const SIMULTANES = 6;
 let enCours = 0;
 const enAttente = [];
 function aTonTour(tache) {

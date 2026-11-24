@@ -508,7 +508,15 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
   }
 
   // ---------- Calculs, par petits morceaux pour ne pas figer l'écran ----------
-  const pause = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  // Par tranches de 12 ms, puis la main au navigateur : pas d'image par tranche (requestAnimationFrame), sinon un
+  // affichage lent (téléphone modeste, double résolution) ralentissait d'autant le calcul (crêtes en plus d'une minute)
+  const TRANCHE = 12;
+  let debutTranche = performance.now();
+  const pause = async () => {
+    if (performance.now() - debutTranche < TRANCHE) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    debutTranche = performance.now();
+  };
 
   async function calculerSommets(liste, signal) {
     const visibles = [];
@@ -521,11 +529,9 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
         r.importance = importanceSommet(r);
         visibles.push(r);
       }
-      if (i % 20 === 19) {
-        await pause();
-        if (signal.aborted) return;
-        sommets = visibles.slice();
-      }
+      await pause();
+      if (signal.aborted) return;
+      if (i % 20 === 19) sommets = visibles.slice();
     }
     sommets = visibles;
   }
@@ -537,10 +543,8 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
       const trouvees = cretesCap(observateur, cap, relief, { distanceMax: DISTANCE_MAX })
         .filter((c) => c.horizon || c.d >= 300); // l'horizon toujours : il donne le vrai lever des astres
       colonnes.push({ cap, cretes: trouvees });
-      if (colonnes.length % 12 === 0) {
-        await pause();
-        if (signal.aborted) return;
-      }
+      await pause();
+      if (signal.aborted) return;
     }
     // Le nord fermé : la première colonne revient à la fin
     colonnes.push({ ...colonnes[0], cap: 360 });

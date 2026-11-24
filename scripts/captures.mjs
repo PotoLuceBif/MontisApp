@@ -249,7 +249,8 @@ const ouvrirCielSol = (minutes) => [
   heureOmbres(minutes),
   (p) => p.waitForTimeout(600),
   clic('.ciel-choix button'),
-  (p) => attendreSur(p, () => document.querySelector('.ciel-relief') && !document.querySelector('.ciel-relief').hidden, null, 90000),
+  // Relief (25 tuiles) et crêtes : long avec le rendu logiciel des captures et un réseau lent
+  (p) => attendreSur(p, () => document.querySelector('.ciel-relief') && !document.querySelector('.ciel-relief').hidden, null, 150000),
   (p) => p.waitForTimeout(6000),
 ];
 // Téléphone debout (bêta 90°), arrière tourné vers `cap`, relevé de `inclinaison` degrés
