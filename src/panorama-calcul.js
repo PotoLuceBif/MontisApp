@@ -225,3 +225,64 @@ export function choisirDepart({ point = null, gps = null, centre }, maintenant =
   if (ecart <= ECART_CARTE) return { source: 'gps', lieu: gps, autre: autreUtile ? 'centre' : null };
   return { source: 'centre', lieu: centre, autre: 'gps' };
 }
+
+// ---------- Soleil et Lune au-dessus du relief (« Voir dans le ciel », vue au sol) ----------
+// Réfraction de l'atmosphère (Sæmundsson, en degrés) : près de l'horizon, un astre paraît un demi-degré plus haut
+export function refraction(hauteur) {
+  if (hauteur < -2) return 0;
+  return 1.02 / Math.tan(((hauteur + 10.3 / (hauteur + 5.11)) * Math.PI) / 180) / 60;
+}
+export const hauteurApparente = (hauteur) => hauteur + refraction(hauteur);
+
+// Trajectoire d'un astre de `debut` à `fin` (ms), un point tous les `pas` ms : [{ t, azimut, hauteur }]
+// `position(t)` → { azimut, hauteur } (vraie hauteur) ; la hauteur rendue est apparente
+export function trajetAstre(position, debut, fin, pas = 5 * 60000) {
+  const points = [];
+  for (let t = debut; t <= fin; t += pas) {
+    const p = position(t);
+    points.push({ t, azimut: p.azimut, hauteur: hauteurApparente(p.hauteur) });
+  }
+  return points;
+}
+
+// Angle de l'horizon (relief) dans chaque direction, d'après la ligne d'horizon des crêtes ({ points: [{ cap, d, h }] })
+// → fonction cap → angle (degrés), interpolée entre deux directions voisines
+export function profilHorizon(points, depuis) {
+  const tries = [...points].sort((a, b) => a.cap - b.cap);
+  const caps = tries.map((p) => ((p.cap % 360) + 360) % 360);
+  const angles = tries.map((p) => angleApparent(p.h - depuis.altitude, p.d));
+  return (cap) => {
+    if (!caps.length) return 0;
+    const c = ((cap % 360) + 360) % 360;
+    let i = caps.findIndex((x) => x > c);
+    if (i < 0) i = caps.length; // au-delà du dernier : entre lui et le premier (+360)
+    const i0 = (i - 1 + caps.length) % caps.length;
+    const i1 = i % caps.length;
+    const c0 = caps[i0];
+    let c1 = caps[i1];
+    let x = c;
+    if (c1 <= c0) c1 += 360;
+    if (x < c0) x += 360;
+    const f = c1 === c0 ? 0 : (x - c0) / (c1 - c0);
+    return angles[i0] * (1 - f) + angles[i1] * f;
+  };
+}
+
+// Vrai lever et vrai coucher derrière le relief : le premier instant où l'astre passe au-dessus de la crête, et le
+// dernier où il y est encore. Instants interpolés entre deux points. → { lever, coucher } (ms ou null)
+export function leverCoucherReels(trajet, horizonDe) {
+  const marge = trajet.map((p) => p.hauteur - horizonDe(p.azimut));
+  const croisement = (i) => {
+    const a = marge[i - 1];
+    const b = marge[i];
+    const f = a === b ? 0 : a / (a - b);
+    return Math.round(trajet[i - 1].t + f * (trajet[i].t - trajet[i - 1].t));
+  };
+  let lever = null;
+  let coucher = null;
+  for (let i = 1; i < trajet.length; i += 1) {
+    if (lever === null && marge[i - 1] <= 0 && marge[i] > 0) lever = croisement(i);
+    if (marge[i - 1] > 0 && marge[i] <= 0) coucher = croisement(i);
+  }
+  return { lever, coucher };
+}
