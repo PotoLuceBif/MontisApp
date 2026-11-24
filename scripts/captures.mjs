@@ -768,6 +768,13 @@ const ECRANS = [
   { nom: 'lune-visite-terre-vue', actions: [...ALLER_LUNE, clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-terre-vue-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
+  // La Terre vue de la Lune à demi éclairée (frise avancée d'une semaine) : l'océan éclairé se distingue de la nuit
+  { nom: 'lune-visite-terre-phase', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(5000),
+    ...Array.from({ length: 7 }, () => clic('.lune-visite-frise .ombres-jour-bouton[data-pas="1"]')), (p) => p.waitForTimeout(4000),
+    async (page) => {
+      const point = await page.evaluate(() => window.mapLune?.project?.([0, 0]));
+      if (point) console.log('TERRE', JSON.stringify(point));
+    }] },
   { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
   // Copernic en 3D, incliné, panneau réduit
   {
