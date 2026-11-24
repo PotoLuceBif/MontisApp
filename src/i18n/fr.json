@@ -2021,5 +2021,6 @@
   "panorama.annuler-recalage": "Annuler le recalage",
   "panorama.camera-refusee": "Caméra indisponible : tu as refusé l’accès.",
   "panorama.camera-absente": "Caméra indisponible : elle ne répond pas.",
-  "panorama.info": "{altitude} · {distance}"
+  "panorama.fiche": "{altitude} · {distance} · {cap}",
+  "panorama.fermer-fiche": "Fermer la fiche du sommet"
 }

@@ -2021,5 +2021,6 @@
   "panorama.annuler-recalage": "Undo the adjustment",
   "panorama.camera-refusee": "Camera unavailable: you denied access.",
   "panorama.camera-absente": "Camera unavailable: it is not responding.",
-  "panorama.info": "{altitude} · {distance}"
+  "panorama.fiche": "{altitude} · {distance} · {cap}",
+  "panorama.fermer-fiche": "Close the peak card"
 }

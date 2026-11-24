@@ -67,20 +67,65 @@ export function estVisible(depuis, sommet, altitudeA, options) {
   return { visible: relief <= angle + MARGE_VISIBILITE, cap, distance, angle };
 }
 
-// Ligne d'horizon : le plus grand angle du relief dans chaque direction, tous les `pas` degrés
-export function ligneHorizon(depuis, altitudeA, { pas = 1, distanceMax = 100000, ...options } = {}) {
-  const angles = [];
-  for (let cap = 0; cap < 360; cap += pas) angles.push(angleMaxRelief(depuis, cap, distanceMax, altitudeA, options));
-  return { pas, angles };
+// ---------- Lignes de crête ----------
+// Le long d'un rayon, un point du relief est visible s'il monte au-dessus de tout ce qui le précède. Une crête est le
+// dernier point visible avant un creux caché (le versant de derrière) ; la dernière de toutes est l'horizon.
+// Une crête n'est gardée que si elle cache assez : `profondeur` degrés, sur au moins 3 % de sa distance (et 150 m).
+export const PROFONDEUR_CRETE = 0.3; // degrés
+export function cretesCap(depuis, cap, altitudeA, { distanceMax = 100000, ...options } = {}) {
+  const cretes = [];
+  let max = -90;
+  let crete = null;
+  let creux = Infinity;
+  for (let d = pasRayon(0); d < distanceMax; d += pasRayon(d)) {
+    const p = pointA(depuis, cap, d);
+    const h = altitudeA(p.lng, p.lat, d);
+    const a = angleApparent(h - depuis.altitude, d, options);
+    if (a >= max) {
+      if (crete && creux < Infinity && crete.a - creux >= PROFONDEUR_CRETE && d - crete.d >= Math.max(150, crete.d * 0.03)) {
+        cretes.push({ d: crete.d, h: crete.h });
+      }
+      max = a;
+      crete = { d, h, a };
+      creux = Infinity;
+    } else if (a < creux) creux = a;
+  }
+  if (crete) cretes.push({ d: crete.d, h: crete.h, horizon: true });
+  return cretes;
 }
 
-// Angle de l'horizon dans un cap quelconque, interpolé entre deux directions calculées
-export function horizonA({ pas, angles }, cap) {
-  const i = normaliser(cap) / pas;
-  const i0 = Math.floor(i) % angles.length;
-  const i1 = (i0 + 1) % angles.length;
-  const f = i - Math.floor(i);
-  return angles[i0] * (1 - f) + angles[i1] * f;
+// Relie les crêtes de caps voisins en lignes : même crête si la distance change de moins de 12 % (et 300 m).
+// L'horizon, lui, forme une seule ligne continue : sa distance saute d'un cap à l'autre, pas son angle.
+// colonnes : [{ cap, cretes: [{ d, h, horizon? }] }] dans l'ordre des caps → [{ points: [{ cap, d, h }], horizon }]
+export function relierCretes(colonnes, { longueurMin = 4 } = {}) {
+  const finies = [];
+  let actives = [];
+  const horizon = { points: [], horizon: true };
+  for (const { cap, cretes } of colonnes) {
+    const suivantes = [];
+    const prises = new Set();
+    for (const c of cretes) {
+      if (c.horizon) {
+        horizon.points.push({ cap, d: c.d, h: c.h });
+        continue;
+      }
+      let meilleure = null;
+      for (const ligne of actives) {
+        if (prises.has(ligne)) continue;
+        const der = ligne.points[ligne.points.length - 1];
+        const ecart = Math.abs(der.d - c.d);
+        if (ecart <= Math.max(300, 0.12 * Math.max(der.d, c.d)) && (!meilleure || ecart < meilleure.ecart)) meilleure = { ligne, ecart };
+      }
+      const ligne = meilleure ? meilleure.ligne : { points: [], horizon: false };
+      prises.add(ligne);
+      ligne.points.push({ cap, d: c.d, h: c.h });
+      suivantes.push(ligne);
+    }
+    actives.forEach((l) => !prises.has(l) && finies.push(l));
+    actives = suivantes;
+  }
+  finies.push(...actives);
+  return [...(horizon.points.length ? [horizon] : []), ...finies.filter((l) => l.points.length >= longueurMin)];
 }
 
 // Position à l'écran d'une direction (cap, angle au-dessus de l'horizontale), pour une caméra qui regarde
@@ -124,21 +169,15 @@ export function directionCamera({ alpha, beta, gamma }) {
   return { cap: normaliser(Math.atan2(est, nord) / RAD), inclinaison, aPlat: false };
 }
 
-// Étiquettes sans chevauchement : les plus importantes d'abord, chacune sur la première rangée libre
-// au-dessus de son sommet ; au-delà de `rangees`, l'étiquette n'est pas affichée.
-// etiquettes : [{ x, largeur, importance, … }] → les mêmes avec `rangee`, sans celles qui ne tiennent pas
-export function placerEtiquettes(etiquettes, { rangees = 4, espace = 6 } = {}) {
-  const occupees = Array.from({ length: rangees }, () => []);
-  const placees = [];
+// Noms inclinés à 45° : deux noms parallèles ne se gênent pas s'ils sont écartés de `ecart` px à l'horizontale.
+// Les plus importants d'abord ; un nom trop près d'un nom déjà gardé n'est pas affiché.
+// etiquettes : [{ x, importance, … }] → celles gardées, dans l'ordre de l'écran
+export function choisirEtiquettes(etiquettes, { ecart = 16 } = {}) {
+  const gardees = [];
   for (const e of [...etiquettes].sort((a, b) => b.importance - a.importance)) {
-    const g = e.x - e.largeur / 2 - espace / 2;
-    const d = e.x + e.largeur / 2 + espace / 2;
-    const rangee = occupees.findIndex((segments) => segments.every(([sg, sd]) => d <= sg || g >= sd));
-    if (rangee < 0) continue;
-    occupees[rangee].push([g, d]);
-    placees.push({ ...e, rangee });
+    if (gardees.every((g) => Math.abs(g.x - e.x) >= ecart)) gardees.push(e);
   }
-  return placees;
+  return gardees.sort((a, b) => a.x - b.x);
 }
 
 // Importance d'un sommet : sa hauteur au-dessus de nous compte, sa proximité aussi

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  angleApparent, dedoublonner, directionCamera, directionVers, ecartCap, estVisible, horizonA, ligneHorizon,
-  placerEtiquettes, pointA, pointCardinal, projeter, champHorizontal,
+  angleApparent, choisirEtiquettes, cretesCap, dedoublonner, directionCamera, directionVers, ecartCap, estVisible,
+  pointA, pointCardinal, projeter, relierCretes, champHorizontal,
 } from '../src/panorama-calcul.js';
 
 const chamonix = { lng: 6.8694, lat: 45.9237, altitude: 1035 };
@@ -85,16 +85,54 @@ describe('visibilité derrière le relief', () => {
   });
 });
 
-describe('ligne d\'horizon', () => {
-  it('monte vers une montagne et reste basse ailleurs', () => {
-    const depuis = { lng: 7, lat: 46, altitude: 1000 };
-    const montagne = pointA(depuis, 90, 5000);
-    const relief = (lng, lat) => (directionVers(montagne, { lng, lat }).distance < 1500 ? 3000 : 1000);
-    const horizon = ligneHorizon(depuis, relief, { pas: 10, distanceMax: 20000 });
-    expect(horizon.angles).toHaveLength(36);
-    expect(horizonA(horizon, 90)).toBeGreaterThan(20);
-    expect(horizonA(horizon, 270)).toBeLessThan(0.1);
-    expect(horizonA(horizon, 95)).toBeCloseTo((horizon.angles[9] + horizon.angles[10]) / 2, 6);
+describe('lignes de crête', () => {
+  const depuis = { lng: 7, lat: 46, altitude: 1000 };
+  // Une crête à 3 km (2 000 m, 20° au-dessus des yeux) devant une montagne qui dépasse à 10 km (5 000 m, 22°)
+  const relief = (lng, lat, d) => {
+    if (Math.abs(d - 3000) < 300) return 2000;
+    if (Math.abs(d - 10000) < 800) return 5000;
+    return 1000;
+  };
+
+  it('trouve la crête proche et l’horizon', () => {
+    const cretes = cretesCap(depuis, 90, relief, { distanceMax: 20000 });
+    expect(cretes).toHaveLength(2);
+    expect(cretes[0].d).toBeGreaterThan(2600);
+    expect(cretes[0].d).toBeLessThan(3400);
+    expect(cretes[0].horizon).toBeUndefined();
+    expect(cretes[1].h).toBe(5000);
+    expect(cretes[1].horizon).toBe(true);
+  });
+
+  it('ne garde que l’horizon sur une pente régulière', () => {
+    const pente = (lng, lat, d) => 1000 + d * 0.1;
+    const cretes = cretesCap(depuis, 0, pente, { distanceMax: 5000 });
+    expect(cretes).toHaveLength(1);
+    expect(cretes[0].horizon).toBe(true);
+  });
+
+  it('relie les crêtes de caps voisins à même distance, et sépare les autres', () => {
+    const colonnes = [10, 11, 12, 13, 14].map((cap) => ({
+      cap,
+      cretes: [{ d: 3000 + cap * 10, h: 2000 }, { d: 10000, h: 3500, horizon: true }],
+    }));
+    const lignes = relierCretes(colonnes);
+    expect(lignes).toHaveLength(2);
+    expect(lignes.map((l) => l.points.length)).toEqual([5, 5]);
+    expect(lignes.find((l) => l.horizon).points[0].d).toBe(10000);
+  });
+
+  it('écarte les bouts de crête trop courts', () => {
+    const colonnes = [1, 2].map((cap) => ({ cap, cretes: [{ d: 500, h: 1200 }] }));
+    expect(relierCretes(colonnes)).toHaveLength(0);
+  });
+
+  it('garde l’horizon en une seule ligne même quand sa distance saute', () => {
+    const colonnes = [1, 2, 3].map((cap) => ({ cap, cretes: [{ d: cap === 2 ? 60000 : 8000, h: 3000, horizon: true }] }));
+    const lignes = relierCretes(colonnes);
+    expect(lignes).toHaveLength(1);
+    expect(lignes[0].horizon).toBe(true);
+    expect(lignes[0].points.map((p) => p.d)).toEqual([8000, 60000, 8000]);
   });
 });
 
@@ -158,23 +196,14 @@ describe('orientation du téléphone', () => {
 });
 
 describe('étiquettes', () => {
-  it('place les plus importantes d\'abord et empile celles qui se chevauchent', () => {
-    const placees = placerEtiquettes([
-      { id: 'a', x: 100, largeur: 80, importance: 1 },
-      { id: 'b', x: 120, largeur: 80, importance: 5 },
-      { id: 'c', x: 400, largeur: 80, importance: 2 },
-    ], { rangees: 2 });
-    const rangee = Object.fromEntries(placees.map((e) => [e.id, e.rangee]));
-    expect(rangee).toEqual({ b: 0, c: 0, a: 1 });
-  });
-
-  it('écarte ce qui ne tient plus', () => {
-    const placees = placerEtiquettes([
-      { id: 'a', x: 100, largeur: 80, importance: 3 },
-      { id: 'b', x: 100, largeur: 80, importance: 2 },
-      { id: 'c', x: 100, largeur: 80, importance: 1 },
-    ], { rangees: 2 });
-    expect(placees.map((e) => e.id)).toEqual(['a', 'b']);
+  it('garde les plus importantes et écarte les voisines trop proches', () => {
+    const gardees = choisirEtiquettes([
+      { id: 'a', x: 100, importance: 1 },
+      { id: 'b', x: 110, importance: 5 },
+      { id: 'c', x: 130, importance: 2 },
+      { id: 'd', x: 60, importance: 0 },
+    ], { ecart: 16 });
+    expect(gardees.map((e) => e.id)).toEqual(['d', 'b', 'c']);
   });
 
   it('garde une seule fois un sommet lu dans deux tuiles', () => {

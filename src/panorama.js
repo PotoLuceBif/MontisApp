@@ -13,19 +13,23 @@ import { capBoussole, lisserAngle } from './guidage-calcul.js';
 import { altitudeRelief } from './relief-donnees.js';
 import { chargerSommets, chargerRelief, DISTANCE_MAX } from './panorama-donnees.js';
 import {
-  angleMaxRelief, champHorizontal, directionCamera, ecartCap, estVisible, horizonA, importanceSommet,
-  placerEtiquettes, pointA, pointCardinal, projeter,
+  angleApparent, champHorizontal, choisirEtiquettes, cretesCap, directionCamera, ecartCap, estVisible,
+  importanceSommet, pointA, pointCardinal, projeter, relierCretes,
 } from './panorama-calcul.js';
 
 const HAUTEUR_YEUX = 2; // m au-dessus du relief
 const VISEE = 3000; // m : point visé par la caméra 3D, dans la direction du regard
+// En 3D, l'œil passe 20 m au-dessus des yeux : sur une pente, le versant tout proche, dessiné en tuiles grossières,
+// remplissait le bas de l'écran. La visibilité des sommets reste calculée à hauteur d'homme ; la caméra, elle, à 2 m
+const SURELEVATION_3D = 20;
 const INCLINAISON_MIN = -40;
 const INCLINAISON_MAX = 35;
 const CHAMP_3D_HORIZONTAL = 60; // degrés : champ visé en 3D, borné en hauteur
 const CHAMP_3D_MAX = 75;
 const CHAMP_CAMERA_DEFAUT = 67; // degrés sur le grand côté de l'image (objectif principal d'un téléphone)
-const HAUTEUR_RANGEE = 40;
-const RANGEES = 5;
+const ECART_NOMS = 13; // px entre deux noms inclinés voisins : ils peuvent se frôler
+const HAUTEUR_NOMS = 150; // px gardés au-dessus de la ligne des noms, sous l'en-tête
+const PAS_CRETES = 0.5; // degrés entre deux rayons des lignes de crête
 const ABSENCE_BOUSSOLE = 1500; // ms sans mesure : pas de boussole
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -53,7 +57,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   racine.id = 'panorama';
   racine.innerHTML = `
     <video class="pano-video" playsinline muted autoplay hidden></video>
-    <svg class="pano-traits" aria-hidden="true"><polyline class="pano-horizon" /></svg>
+    <svg class="pano-traits" aria-hidden="true"><g class="pano-cretes"></g><g class="pano-reperes"></g></svg>
     <div class="pano-etiquettes"></div>
     <header class="pano-entete">
       <button type="button" class="pano-fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
@@ -61,13 +65,17 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
         <strong></strong>
         <span class="pano-lieu"></span>
       </div>
-      <div class="pano-modes" role="group">
+      <div class="pano-modes" role="group" hidden>
         <button type="button" data-mode="3d" aria-pressed="true">3D</button>
         <button type="button" data-mode="camera" aria-pressed="false"></button>
       </div>
     </header>
     <p class="pano-etat" role="status"></p>
     <footer class="pano-pied">
+      <div class="pano-fiche" hidden>
+        <div><strong></strong><span></span></div>
+        <button type="button" class="pano-fiche-fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
       <div class="pano-reglages">
         <button type="button" class="pano-boussole" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m12 6 2.5 6h-5L12 6Z" class="plein"/><path d="m12 18-2.5-6h5L12 18Z"/></svg>
@@ -86,8 +94,11 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   const $ = (s) => racine.querySelector(s);
   const video = $('.pano-video');
   const traits = $('.pano-traits');
-  const horizonTrace = $('.pano-horizon');
+  const calqueCretes = $('.pano-cretes');
+  const calqueReperes = $('.pano-reperes');
   const calqueEtiquettes = $('.pano-etiquettes');
+  const fiche = $('.pano-fiche');
+  const modes = $('.pano-modes');
   const etatTexte = $('.pano-etat');
   const lieuTexte = $('.pano-lieu');
   const boutonBoussole = $('.pano-boussole');
@@ -115,12 +126,14 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   poser($('[data-mode="camera"]'), 'panorama.camera');
   poser($('.pano-boussole span'), 'panorama.boussole');
   poserAttribut(boutonRecalage, 'aria-label', 'panorama.annuler-recalage');
+  poserAttribut($('.pano-fiche-fermer'), 'aria-label', 'panorama.fermer-fiche');
 
   // ---------- État ----------
   let observateur = null; // { lng, lat, altitude, source: 'gps' | 'centre' }
   let sommets = []; // visibles, avec cap, distance, angle (avec et sans courbure)
-  let horizon = null;
+  let cretes = []; // lignes de crête visibles : [{ points: [{ cap, d, h }], horizon, trace }]
   let relief = null;
+  let choisi = null; // sommet touché : sa fiche en bas
   let mode = '3d';
   let flux = null;
   let champCamera = lire('panorama-champ', CHAMP_CAMERA_DEFAUT);
@@ -160,6 +173,9 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     elements.forEach((e) => remplirEtiquette(e));
   }, ['langue', 'unites', '*']);
 
+  // Hauteur d'où l'on regarde : les yeux, un peu plus haut en 3D (SURELEVATION_3D)
+  const yeuxVue = () => observateur.altitude + (mode === '3d' ? SURELEVATION_3D : 0);
+
   // ---------- Regard ----------
   function regard() {
     if (suivreBoussole && capteur) {
@@ -188,6 +204,8 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       inclinaison: capteur ? capteur.inclinaison + (d.inclinaison - capteur.inclinaison) * 0.25 : d.inclinaison,
     };
     if (!derniereMesure && !suivreBoussole) basculerBoussole(true);
+    // La caméra n'a de sens qu'avec la boussole : sans elle (ordinateur), seul le regard au doigt reste
+    modes.hidden = false;
     derniereMesure = performance.now();
   }
   const evenementOrientation = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
@@ -215,11 +233,13 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
   // ---------- Gestes : glisser pour regarder (ou recaler), pincer pour le champ ----------
   const pointeurs = new Map();
   let pincement = null;
+  let appui = null; // un appui sans glissé : touche un nom (sa fiche) ou ailleurs (la ferme)
   function surPointeur(e) {
-    if (e.target.closest('button, header, footer')) return;
+    if (e.type === 'pointerdown' && e.target.closest('button, header, footer')) return;
     if (e.type === 'pointerdown') {
-      racine.setPointerCapture?.(e.pointerId);
+      try { racine.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
       pointeurs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      appui = pointeurs.size === 1 ? { x: e.clientX, y: e.clientY, cible: e.target.closest('.pano-sommet') } : null;
       if (pointeurs.size === 2) {
         const [a, b] = [...pointeurs.values()];
         pincement = { distance: Math.hypot(a.x - b.x, a.y - b.y), champ: champActuel() };
@@ -231,10 +251,16 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     if (e.type !== 'pointermove') {
       pointeurs.delete(e.pointerId);
       if (pointeurs.size < 2) pincement = null;
+      if (e.type === 'pointerup' && appui) {
+        const cle = appui.cible?.dataset.cle;
+        choisir(cle ? sommets.find((s) => s.cle === cle) ?? null : null);
+      }
+      appui = null;
       return;
     }
     const courant = { x: e.clientX, y: e.clientY };
     pointeurs.set(e.pointerId, courant);
+    if (appui && Math.hypot(courant.x - appui.x, courant.y - appui.y) > 8) appui = null;
     if (pincement && pointeurs.size === 2) {
       const [a, b] = [...pointeurs.values()];
       changerChamp(pincement.champ * (pincement.distance / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y))));
@@ -281,32 +307,63 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     return (2 * Math.atan((tanVertical * H) / (echelle * vh)) * 180) / Math.PI;
   }
 
-  // ---------- Étiquettes ----------
+  // ---------- Étiquettes : noms inclinés à 45°, au-dessus d'une ligne commune, trait jusqu'au sommet ----------
   function remplirEtiquette(e) {
     e.el.querySelector('.pano-nom').textContent = e.sommet.nom;
-    e.el.querySelector('.pano-info').textContent = t('panorama.info', {
-      altitude: formatAltitude(e.sommet.altitude),
-      distance: formatDistance(e.sommet.distance),
-    });
-    e.largeur = 0;
+    e.el.querySelector('.pano-alt').textContent = formatAltitude(e.sommet.altitude);
   }
   function etiquette(sommet) {
     let e = elements.get(sommet.cle);
     if (e) return e;
     const el = document.createElement('div');
     el.className = 'pano-sommet';
-    el.innerHTML = '<span class="pano-nom"></span><span class="pano-info"></span>';
+    el.dataset.cle = sommet.cle;
+    el.innerHTML = '<span class="pano-nom"></span><span class="pano-alt"></span>';
     calqueEtiquettes.appendChild(el);
     const trait = document.createElementNS(SVG, 'line');
     trait.setAttribute('class', 'pano-trait');
     const point = document.createElementNS(SVG, 'circle');
     point.setAttribute('class', 'pano-point');
-    point.setAttribute('r', '3');
-    traits.append(trait, point);
-    e = { el, trait, point, sommet, largeur: 0 };
+    point.setAttribute('r', '2.5');
+    calqueReperes.append(trait, point);
+    e = { el, trait, point, sommet };
     remplirEtiquette(e);
     elements.set(sommet.cle, e);
     return e;
+  }
+
+  function choisir(sommet) {
+    choisi = sommet;
+    fiche.hidden = !sommet;
+    elements.forEach((e) => e.el.classList.toggle('choisi', e.sommet === sommet));
+    if (!sommet) return;
+    fiche.querySelector('strong').textContent = sommet.nom;
+    fiche.querySelector('span').textContent = t('panorama.fiche', {
+      altitude: formatAltitude(sommet.altitude),
+      distance: formatDistance(sommet.distance),
+      cap: `${t(`cardinal.${pointCardinal(sommet.cap)}`)} ${Math.round(sommet.cap) % 360}°`,
+    });
+  }
+
+  // Les lignes de crête, en chemins SVG coupés hors du champ ; plus pâles au loin
+  function dessinerCretes(vue, courbure) {
+    const demi = champHorizontal(vue.champ, vue.largeur, vue.hauteur) / 2 + 2;
+    for (const ligne of cretes) {
+      let d = '';
+      let ouvert = false;
+      for (const p of ligne.points) {
+        const q = Math.abs(ecartCap(p.cap, vue.cap)) <= demi
+          ? projeter(p.cap, angleApparent(p.h - yeuxVue(), p.d, { courbure }), vue)
+          : null;
+        if (!q) {
+          ouvert = false;
+          continue;
+        }
+        d += `${ouvert ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+        ouvert = true;
+      }
+      ligne.trace.setAttribute('d', d);
+    }
   }
 
   function dessiner() {
@@ -318,16 +375,18 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
 
     if (mode === '3d' && observateur) {
       // Les yeux restent au-dessus du relief affiché : tant que les tuiles proches arrivent, il peut être plus haut que
-      // celui lu au départ, et la caméra, dessous, voyait les bords des tuiles comme des murs gris
-      if (++imagesDessinees % 10 === 0) {
+      // celui lu au départ, et la caméra, dessous, voyait les bords des tuiles comme des murs gris.
+      // Rapprochés en douceur : un saut de hauteur ferait sauter toute la vue
+      if (++imagesDessinees % 5 === 0) {
         const sol = map.queryTerrainElevation([observateur.lng, observateur.lat]);
         const yeux = Math.max(observateur.sol, Number.isFinite(sol) ? sol : -Infinity) + HAUTEUR_YEUX;
-        if (Math.abs(yeux - observateur.altitude) > 0.5) {
-          observateur.altitude = yeux;
+        const ecart = yeux - observateur.altitude;
+        if (Math.abs(ecart) > 0.2) {
+          observateur.altitude += Math.abs(ecart) < 1 ? ecart : ecart * 0.3;
           derniereCamera = '';
         }
       }
-      const cle = `${r.cap.toFixed(2)}/${r.inclinaison.toFixed(2)}`;
+      const cle = `${r.cap.toFixed(2)}/${r.inclinaison.toFixed(2)}/${yeuxVue().toFixed(1)}`;
       if (cle !== derniereCamera) {
         derniereCamera = cle;
         // On vise un point en l'air à VISEE m : viser le sol (regard vers le bas) mettait le centre de la carte
@@ -335,8 +394,8 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
         const i = (r.inclinaison * Math.PI) / 180;
         const cible = pointA(observateur, r.cap, VISEE * Math.cos(i));
         map.jumpTo(map.calculateCameraOptionsFromTo(
-          [observateur.lng, observateur.lat], observateur.altitude,
-          [cible.lng, cible.lat], observateur.altitude + VISEE * Math.sin(i)
+          [observateur.lng, observateur.lat], yeuxVue(),
+          [cible.lng, cible.lat], yeuxVue() + VISEE * Math.sin(i)
         ));
       }
     }
@@ -349,50 +408,34 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     bande.style.transform = `translateX(${-(r.cap * pas) - 360 * pas + largeur / 2}px)`;
     capTexte.textContent = `${t(`cardinal.${pointCardinal(r.cap)}`)} ${Math.round(r.cap) % 360}°`;
 
-    // Ligne d'horizon calculée, sur l'image de la caméra : aide à recaler
-    if (mode === 'camera' && horizon) {
-      const demi = champHorizontal(vue.champ, largeur, hauteur) / 2 + 2;
-      const points = [];
-      for (let a = -demi; a <= demi; a += 0.5) {
-        const c = (r.cap + a + 360) % 360;
-        const p = projeter(c, horizonA(horizon, c), vue);
-        if (p) points.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`);
-      }
-      horizonTrace.setAttribute('points', points.join(' '));
-    } else horizonTrace.setAttribute('points', '');
+    if (observateur && cretes.length) dessinerCretes(vue, courbure);
 
-    // Sommets à l'écran, puis rangées sans chevauchement
+    // Sommets à l'écran : les plus importants gardent leur place, les voisins trop proches s'effacent
     const candidats = [];
     for (const s of sommets) {
-      const p = projeter(s.cap, courbure ? s.angle : s.anglePlat, vue);
-      const e = elements.get(s.cle);
-      if (!p || p.x < -40 || p.x > largeur + 40 || p.y < 0 || p.y > hauteur) {
-        if (e) e.visible = false;
-        continue;
-      }
-      const el = etiquette(s);
-      if (!el.largeur) el.largeur = el.el.offsetWidth || 120;
-      // x : centre de l'étiquette, gardée dans l'écran ; xSommet : là où descend son trait
-      const x = Math.min(largeur - el.largeur / 2 - 6, Math.max(el.largeur / 2 + 6, p.x));
-      candidats.push({ e: el, x, xSommet: p.x, y: p.y, largeur: el.largeur, importance: s.importance });
+      const p = projeter(s.cap, courbure ? s.angle : (Math.atan2(s.altitude - yeuxVue(), s.distance) * 180) / Math.PI, vue);
+      if (!p || p.x < 4 || p.x > largeur - 4 || p.y < 0 || p.y > hauteur) continue;
+      candidats.push({ s, x: p.x, y: p.y, importance: s === choisi ? Infinity : s.importance });
     }
-    const placees = placerEtiquettes(candidats, { rangees: RANGEES });
+    const gardes = choisirEtiquettes(candidats, { ecart: ECART_NOMS });
+    // Ligne commune des noms : au-dessus du plus haut sommet, avec la place d'écrire en biais au-dessus
+    const haut = $('.pano-entete').getBoundingClientRect().bottom;
+    const base = Math.min(hauteur * 0.6, Math.max(haut + HAUTEUR_NOMS, Math.min(...gardes.map((c) => c.y)) - 26));
     const montrees = new Set();
-    const haut = $('.pano-entete').getBoundingClientRect().bottom + 12;
-    for (const c of placees) {
-      const y = haut + c.rangee * HAUTEUR_RANGEE;
-      const { el, trait, point } = c.e;
-      montrees.add(c.e);
-      el.style.transform = `translate(${(c.x - c.largeur / 2).toFixed(1)}px, ${y.toFixed(1)}px)`;
-      el.hidden = false;
-      trait.setAttribute('x1', c.x.toFixed(1));
-      trait.setAttribute('x2', c.xSommet.toFixed(1));
-      trait.setAttribute('y1', (y + 34).toFixed(1));
-      trait.setAttribute('y2', Math.max(y + 34, c.y - 4).toFixed(1));
-      point.setAttribute('cx', c.xSommet.toFixed(1));
-      point.setAttribute('cy', c.y.toFixed(1));
-      trait.style.display = c.y - 4 > y + 34 ? '' : 'none';
-      point.style.display = '';
+    for (const c of gardes) {
+      const e = etiquette(c.s);
+      const y = Math.min(base, c.y - 14);
+      montrees.add(e);
+      e.el.style.transform = `translate(${c.x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(-45deg)`;
+      e.el.hidden = false;
+      e.trait.setAttribute('x1', c.x.toFixed(1));
+      e.trait.setAttribute('x2', c.x.toFixed(1));
+      e.trait.setAttribute('y1', y.toFixed(1));
+      e.trait.setAttribute('y2', (c.y - 3).toFixed(1));
+      e.point.setAttribute('cx', c.x.toFixed(1));
+      e.point.setAttribute('cy', c.y.toFixed(1));
+      e.trait.style.display = c.y - 3 > y ? '' : 'none';
+      e.point.style.display = '';
     }
     elements.forEach((e) => {
       if (montrees.has(e)) return;
@@ -422,7 +465,6 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       video.hidden = false;
       await video.play().catch(() => {});
       document.body.classList.add('panorama-camera');
-      if (!horizon && relief && observateur) calculerHorizon();
     } else {
       arreterFlux();
       video.hidden = true;
@@ -448,8 +490,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       if (!Number.isFinite(s.altitude)) continue;
       const v = estVisible(observateur, s, relief);
       if (v.visible && v.distance > 50) {
-        const anglePlat = Math.atan2(s.altitude - observateur.altitude, v.distance) * 180 / Math.PI;
-        const r = { ...s, ...v, anglePlat, cle: `${s.nom}/${s.lng.toFixed(4)}/${s.lat.toFixed(4)}` };
+        const r = { ...s, ...v, cle: `${s.nom}/${s.lng.toFixed(4)}/${s.lat.toFixed(4)}` };
         r.importance = importanceSommet(r);
         visibles.push(r);
       }
@@ -462,17 +503,27 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     sommets = visibles;
   }
 
-  async function calculerHorizon() {
-    const pas = 0.5;
-    const angles = [];
-    for (let cap = 0; cap < 360; cap += pas) {
-      angles.push(angleMaxRelief(observateur, cap, DISTANCE_MAX, relief));
-      if (angles.length % 30 === 0) {
+  // Lignes de crête : un rayon tous les PAS_CRETES degrés, puis les crêtes voisines reliées
+  async function calculerCretes() {
+    const colonnes = [];
+    for (let cap = 0; cap < 360; cap += PAS_CRETES) {
+      const trouvees = cretesCap(observateur, cap, relief, { distanceMax: DISTANCE_MAX }).filter((c) => c.d >= 300);
+      colonnes.push({ cap, cretes: trouvees });
+      if (colonnes.length % 12 === 0) {
         await pause();
         if (abandon.signal.aborted) return;
       }
     }
-    horizon = { pas, angles };
+    // Le nord fermé : la première colonne revient à la fin
+    colonnes.push({ ...colonnes[0], cap: 360 });
+    calqueCretes.replaceChildren();
+    cretes = relierCretes(colonnes).map((ligne) => {
+      const trace = document.createElementNS(SVG, 'path');
+      const moyenne = ligne.points.reduce((t, p) => t + p.d, 0) / ligne.points.length;
+      trace.setAttribute('class', `pano-crete ${ligne.horizon ? 'horizon' : moyenne < 5000 ? 'proche' : moyenne < 25000 ? 'moyenne' : 'loin'}`);
+      calqueCretes.appendChild(trace);
+      return { ...ligne, trace };
+    });
   }
 
   // ---------- Position ----------
@@ -519,6 +570,7 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
     $('.pano-fermer').addEventListener('click', fermer);
     racine.querySelectorAll('.pano-modes button').forEach((b) => b.addEventListener('click', () => changerMode(b.dataset.mode)));
     boutonBoussole.addEventListener('click', () => basculerBoussole(!suivreBoussole));
+    $('.pano-fiche-fermer').addEventListener('click', () => choisir(null));
     boutonRecalage.addEventListener('click', () => {
       recalage = { cap: 0, inclinaison: 0 };
       majRecalage();
@@ -576,12 +628,12 @@ function creerPanorama(map, { boussole: permissionBoussole }) {
       relief = lecteurRelief;
       await calculerSommets(donnees.sommets);
       if (!ouvert) return;
+      calculerCretes();
       if (!sommets.length) afficherEtat('panorama.aucun');
       else if (donnees.incomplet) afficherEtat('panorama.incomplet', null, 6000);
       else if (!gps) afficherEtat('panorama.sans-gps', null, 6000);
       else if (!capteur) afficherEtat('panorama.sans-boussole', null, 6000);
       else afficherEtat(null);
-      if (mode === 'camera' && !horizon) calculerHorizon();
     } catch (err) {
       if (err?.name === 'AbortError') return;
       console.warn('Sommets indisponibles :', err);

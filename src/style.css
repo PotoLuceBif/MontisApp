@@ -4265,7 +4265,7 @@ body.panorama-camera #map { visibility: hidden; }
   position: fixed;
   inset: 0;
   z-index: 80;
-  overflow: hidden;
+  overflow: clip; /* pas hidden : un appui sur un nom qui déborde faisait défiler tout le panorama */
   color: var(--pano-texte);
   font-family: var(--police);
   touch-action: none;
@@ -4285,31 +4285,54 @@ body.panorama-camera #panorama { background: #000; }
 }
 #panorama.pano-attente::before { opacity: 1; transition: none; }
 .pano-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.pano-traits, .pano-etiquettes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.pano-horizon { fill: none; stroke: var(--accent-sombre); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.85; }
+.pano-traits, .pano-etiquettes { position: absolute; inset: 0; width: 100%; height: 100%; overflow: clip; pointer-events: none; }
+/* Lignes de crête : l'horizon appuyé, les crêtes plus pâles au loin */
+.pano-crete { fill: none; stroke: #fff; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 0 1.2px rgba(0, 0, 0, 0.7)); }
+.pano-crete.horizon { stroke-width: 2; opacity: 0.95; }
+.pano-crete.proche { stroke-width: 1.5; opacity: 0.8; }
+.pano-crete.moyenne { stroke-width: 1.2; opacity: 0.6; }
+.pano-crete.loin { stroke-width: 1; opacity: 0.42; }
 .pano-trait { stroke: rgba(255, 255, 255, 0.85); stroke-width: 1; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.8)); }
 .pano-point { fill: var(--accent-sombre); stroke: #fff; stroke-width: 1.5; }
+/* Noms inclinés à 45°, partant du haut de leur trait ; un appui ouvre la fiche du sommet */
 .pano-sommet {
   position: absolute;
   top: 0;
   left: 0;
-  display: grid;
-  min-width: 64px;
-  max-width: 180px;
-  padding: 4px 9px 5px;
+  display: flex;
+  height: 20px;
+  margin-top: -10px;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 6px 0 5px;
+  transform-origin: 0 50%;
+  white-space: nowrap;
+  pointer-events: auto;
+  will-change: transform;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.pano-sommet[hidden] { display: none; }
+.pano-nom { font-size: 13px; font-weight: 700; line-height: 20px; }
+.pano-alt { color: var(--accent-sombre); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pano-sommet.choisi .pano-nom { color: var(--accent-sombre); }
+.pano-fiche {
+  display: flex;
+  max-width: min(420px, calc(100% - 24px));
+  margin: 0 auto 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 14px;
   border: 1px solid var(--pano-bord);
-  border-radius: 9px;
+  border-radius: 14px;
   background: var(--pano-fond);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-  text-align: center;
-  white-space: nowrap;
-  will-change: transform;
 }
-.pano-sommet[hidden] { display: none; }
-.pano-nom { overflow: hidden; font-size: 13px; font-weight: 700; line-height: 1.2; text-overflow: ellipsis; }
-.pano-info { color: var(--accent-sombre); font-size: 11px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.pano-fiche[hidden] { display: none; }
+.pano-fiche > div { display: grid; min-width: 0; flex: 1; }
+.pano-fiche strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.pano-fiche span { color: var(--pano-texte-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+#panorama .pano-fiche-fermer { display: grid; width: 36px; height: 36px; flex: none; place-items: center; padding: 0; border: 0; border-radius: 10px; background: transparent; }
 .pano-entete {
   position: absolute;
   top: 0;
@@ -4337,6 +4360,7 @@ body.panorama-camera #panorama { background: #000; }
 .pano-titre { display: grid; min-width: 0; flex: 1; }
 .pano-titre strong { font-size: 16px; line-height: 1.2; }
 .pano-lieu { overflow: hidden; color: var(--pano-texte-2); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.pano-modes[hidden] { display: none; }
 .pano-modes { display: flex; flex: none; padding: 3px; border: 1px solid var(--pano-bord); border-radius: 12px; background: var(--pano-fond); }
 #panorama .pano-modes button { min-width: 52px; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; }
 #panorama .pano-modes button[aria-pressed='true'] { background: var(--accent-sombre); color: #0b1410; }

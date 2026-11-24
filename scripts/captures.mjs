@@ -228,7 +228,8 @@ const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { stat
 const BREVENT = [6.8381, 45.9375];
 const VUE_BREVENT = '#vue=13/45.9375/6.8381/150/0';
 const ouvrirPanorama = [
-  attendre('#outil-rapide-bouton-panorama'),
+  // Après plusieurs panoramas, les serveurs de tuiles ralentissent : le menu peut tarder
+  (p) => p.waitForSelector('#outil-rapide-bouton-panorama', { state: 'attached', timeout: 60000 }),
   clic('#outil-rapide-bouton-panorama'),
   // Sommets chargés et calculés : le message de chargement est parti (attendreSur : waitForSelector bloquait le rendu)
   (p) => attendreSur(p, () => document.querySelector('.pano-sommet:not([hidden])') && !/Chargement|Recherche/.test(document.querySelector('.pano-etat')?.hidden ? '' : document.querySelector('.pano-etat').textContent), null, 60000),
@@ -876,7 +877,8 @@ const ECRANS = [
   // Panorama des sommets (lot 4.1) : depuis le Brévent, face au Mont Blanc ; boussole et caméra simulées
   { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
   { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
-  { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, boussoleSimulee(150, 3), (p) => p.waitForTimeout(1000), clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
+  { nom: 'panorama-fiche', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, (p) => p.evaluate(() => { const nom = [...document.querySelectorAll('.pano-sommet:not([hidden])')].find((e) => e.textContent.includes('Midi')) ?? document.querySelector('.pano-sommet:not([hidden])'); const r = nom.getBoundingClientRect(); const o = { bubbles: true, pointerId: 1, clientX: r.left + 10, clientY: r.bottom - 10 }; nom.dispatchEvent(new PointerEvent('pointerdown', o)); nom.dispatchEvent(new PointerEvent('pointerup', o)); }), (p) => p.waitForTimeout(800)] },
   { nom: 'partage-lien-parcours', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])')] },
   { nom: 'partage-parcours-bouton', lien: `#${LIEN_PARCOURS}`, actions: [attendre('.parcours-partager:not([disabled])'), defiler('.parcours-pied'), clic('.parcours-partager')] },
   { nom: 'partage-lien-illisible', lien: '#parcours=1abcd', actions: [] },
