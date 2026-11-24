@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   angleApparent, choisirEtiquettes, cretesCap, dedoublonner, directionCamera, directionVers, ecartCap, estVisible,
-  pointA, pointCardinal, projeter, relierCretes, champHorizontal,
+  pointA, pointCardinal, projeter, relierCretes, champHorizontal, choisirDepart, positionUtilisable,
+  refraction, hauteurApparente, trajetAstre, profilHorizon, leverCoucherReels,
 } from '../src/panorama-calcul.js';
 
 const chamonix = { lng: 6.8694, lat: 45.9237, altitude: 1035 };
@@ -214,5 +215,77 @@ describe('étiquettes', () => {
     ]);
     expect(s).toHaveLength(2);
     expect(s[0].altitude).toBe(4807);
+  });
+});
+
+describe('point de départ', () => {
+  const maintenant = 1_800_000_000_000;
+  const centre = { lng: 6.4954, lat: 44.5644 }; // Embrun
+  const proche = { lng: 6.50, lat: 44.57, precision: 15, instant: maintenant - 5000 };
+  const loin = { lng: 6.36, lat: 44.70, precision: 15, instant: maintenant - 5000 }; // ~18 km
+
+  it('part du point demandé par la fiche', () => {
+    expect(choisirDepart({ point: centre, gps: proche, centre }, maintenant)).toEqual({ source: 'point', lieu: centre, autre: null });
+  });
+
+  it('part de la position quand la carte montre ses alentours, et propose le centre', () => {
+    const d = choisirDepart({ gps: proche, centre }, maintenant);
+    expect(d.source).toBe('gps');
+    expect(d.autre).toBe('centre');
+  });
+
+  it('part du centre de la carte quand on regarde ailleurs, et propose la position', () => {
+    const d = choisirDepart({ gps: loin, centre }, maintenant);
+    expect(d.source).toBe('centre');
+    expect(d.lieu).toBe(centre);
+    expect(d.autre).toBe('gps');
+  });
+
+  it('écarte une position vieille ou approximative', () => {
+    expect(positionUtilisable({ ...proche, instant: maintenant - 20 * 3600000 }, maintenant)).toBe(false);
+    expect(positionUtilisable({ ...proche, precision: 3000 }, maintenant)).toBe(false);
+    expect(choisirDepart({ gps: { ...proche, precision: 3000 }, centre }, maintenant)).toEqual({ source: 'centre', lieu: centre, autre: null });
+  });
+
+  it('ne propose rien quand position et centre se confondent', () => {
+    expect(choisirDepart({ gps: { ...proche, lng: centre.lng, lat: centre.lat }, centre }, maintenant).autre).toBeNull();
+  });
+});
+
+describe('soleil et Lune au-dessus du relief', () => {
+  it('relève un astre d’environ un demi-degré à l’horizon, presque pas en haut du ciel', () => {
+    expect(refraction(0)).toBeGreaterThan(0.45);
+    expect(refraction(0)).toBeLessThan(0.6);
+    expect(refraction(60)).toBeLessThan(0.02);
+    expect(hauteurApparente(-5)).toBe(-5);
+  });
+
+  it('suit la trajectoire d’un astre pas à pas', () => {
+    const trajet = trajetAstre((t) => ({ azimut: t / 1000, hauteur: 30 }), 0, 60000, 20000);
+    expect(trajet.map((p) => p.t)).toEqual([0, 20000, 40000, 60000]);
+    expect(trajet[1].azimut).toBe(20);
+  });
+
+  it('lit l’angle de l’horizon entre deux directions, nord compris', () => {
+    const depuis = { altitude: 1000 };
+    const points = [0, 90, 180, 270].map((cap) => ({ cap, d: 10000, h: cap === 90 ? 2000 : 1000 }));
+    const horizon = profilHorizon(points, depuis);
+    expect(horizon(90)).toBeGreaterThan(5);
+    expect(horizon(45)).toBeCloseTo(horizon(90) / 2 + horizon(0) / 2, 6);
+    expect(horizon(315)).toBeCloseTo(horizon(0), 6);
+  });
+
+  it('trouve le vrai lever et le vrai coucher derrière une montagne', () => {
+    // Soleil qui monte de −10° à 30° puis redescend, horizon à 10° partout
+    const trajet = [];
+    for (let i = 0; i <= 80; i += 1) trajet.push({ t: i * 1000, azimut: 90 + i, hauteur: 30 - Math.abs(40 - i) });
+    const { lever, coucher } = leverCoucherReels(trajet, () => 10);
+    expect(lever).toBe(20000); // hauteur 10° au point 20
+    expect(coucher).toBe(60000);
+  });
+
+  it('ne trouve rien quand l’astre reste caché', () => {
+    const trajet = [0, 1, 2].map((i) => ({ t: i, azimut: 180, hauteur: 5 }));
+    expect(leverCoucherReels(trajet, () => 10)).toEqual({ lever: null, coucher: null });
   });
 });

@@ -1,6 +1,8 @@
 // Le soleil dessiné dans le ciel en 3D, quand l'ombre du soleil est allumée : on voit d'où vient l'ombre.
 // Hors du champ, un petit soleil au bord de l'écran montre sa direction. Derrière une montagne, il pâlit.
 // La Lune aussi, à sa place et avec sa phase (côté éclairé vers le soleil), seulement quand elle est à l'écran.
+// Avec « Voir dans le ciel », leurs trajectoires du jour (demande du propriétaire du 24 novembre 2026) : trait plein
+// jusqu'à l'heure de la frise, pointillés ensuite, une marque par heure.
 import { placerSoleil, positionCamera, projeterSoleil } from './soleil-ciel-calcul.js';
 import { dessinPhase } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
@@ -26,7 +28,20 @@ export function creerSoleilCiel(map) {
   elementLune.hidden = true;
   elementLune.setAttribute('aria-hidden', 'true');
   elementLune.innerHTML = `${svgLune({ contour: true })}<i class="lune-ciel-fleche"></i>`;
-  map.getCanvasContainer().append(element, elementLune);
+  // Trajectoires, sous les astres (mêmes styles que la vue au sol de panorama.js)
+  const SVG = 'http://www.w3.org/2000/svg';
+  const elementTrajets = document.createElementNS(SVG, 'svg');
+  elementTrajets.setAttribute('class', 'soleil-ciel-trajets');
+  elementTrajets.setAttribute('aria-hidden', 'true');
+  const traces = {};
+  for (const astre of ['soleil', 'lune']) {
+    const groupe = document.createElementNS(SVG, 'g');
+    groupe.setAttribute('class', `pano-astre pano-astre-${astre}`);
+    groupe.innerHTML = '<path class="passe"/><path class="futur"/><g class="heures"></g>';
+    elementTrajets.appendChild(groupe);
+    traces[astre] = { passe: groupe.querySelector('.passe'), futur: groupe.querySelector('.futur'), heures: groupe.querySelector('.heures') };
+  }
+  map.getCanvasContainer().append(elementTrajets, element, elementLune);
   // Un appui sur la Lune propose ses informations ou sa visite, sur le soleil ses informations (lune-bulle.js)
   const toucher = (cible, astre) => cible.addEventListener('click', (event) => {
     event.stopPropagation();
@@ -44,6 +59,8 @@ export function creerSoleilCiel(map) {
 
   let soleil = null; // { azimut, hauteur } ou null pour le cacher
   let lune = null; // { azimut, hauteur, fraction } ou null
+  // { soleil, lune : [{ t, azimut, hauteur }] (un point toutes les 10 min depuis minuit), instant, heure(t) } ou null
+  let trajets = null;
 
   // Le relief cache-t-il cet astre (le soleil par défaut), vu depuis la caméra ?
   function cacheParRelief(astre = soleil) {
@@ -135,7 +152,52 @@ export function creerSoleilCiel(map) {
     elementLune.style.transform = `translate(${place.x.toFixed(1)}px, ${place.y.toFixed(1)}px)`;
   }
 
+  // Trajectoires : seulement au-dessus de l'horizon et devant la caméra
+  const POINTS_PAR_HEURE = 6;
+  function placerTrajets() {
+    const voir = trajets && ciel3D();
+    elementTrajets.style.display = voir ? '' : 'none';
+    if (!voir) return;
+    const cam = camera();
+    elementTrajets.setAttribute('viewBox', `0 0 ${cam.largeur} ${cam.hauteurEcran}`);
+    const marge = Math.max(cam.largeur, cam.hauteurEcran);
+    for (const astre of ['soleil', 'lune']) {
+      const tr = traces[astre];
+      let passe = '';
+      let futur = '';
+      let suite = { passe: false, futur: false };
+      let heures = '';
+      const points = trajets[astre];
+      points.forEach((p, i) => {
+        const q = p.hauteur > 0 ? projeterSoleil(p, cam) : null;
+        const dedans = q?.devant && q.x > -marge && q.x < cam.largeur + marge && q.y > -marge && q.y < cam.hauteurEcran + marge;
+        if (!dedans) {
+          suite = { passe: false, futur: false };
+          return;
+        }
+        const cote = p.t <= trajets.instant ? 'passe' : 'futur';
+        const point = `${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+        if (cote === 'passe') passe += `${suite.passe ? 'L' : 'M'}${point}`;
+        else futur += `${suite.futur ? 'L' : 'M'}${point}`;
+        suite = { passe: cote === 'passe', futur: cote === 'futur' };
+        if (i % POINTS_PAR_HEURE === 0 && i > 0 && i < points.length - 1) {
+          heures += `<circle cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="2.2"/><text x="${(q.x + 6).toFixed(1)}" y="${(q.y - 6).toFixed(1)}">${trajets.heure(p.t).replace(/h00$/, 'h')}</text>`;
+        }
+      });
+      // Le trait plein rejoint l'astre, à l'heure de la frise
+      const ici = astre === 'soleil' ? soleil : lune;
+      if (ici && ici.hauteur > 0 && passe) {
+        const q = projeterSoleil(ici, cam);
+        if (q.devant) passe += `L${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      }
+      tr.passe.setAttribute('d', passe);
+      tr.futur.setAttribute('d', futur);
+      tr.heures.innerHTML = heures;
+    }
+  }
+
   function placer() {
+    placerTrajets();
     placerLune();
     const voir = soleil && soleil.hauteur > 0 && ciel3D();
     element.hidden = !voir;
@@ -162,6 +224,11 @@ export function creerSoleilCiel(map) {
       }
       lune = nouvelleLune;
       placer();
+    },
+    // Trajectoires du jour (« Voir dans le ciel ») ; null les retire
+    montrerTrajets(nouveaux) {
+      trajets = nouveaux;
+      placerTrajets();
     },
   };
 }

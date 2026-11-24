@@ -276,6 +276,9 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
     fuseauLieu: () => fuseauLieu,
     changerFuseau,
     soleil: () => soleil,
+    // Jour de la frise (« 2026-11-24 ») et lieu des calculs ({ lng, lat }) : vue au sol de Soleil et Lune
+    jour: () => jour,
+    lieu: () => lieu,
     journee: () => journee,
     placer,
     // `point` ({ lng, lat }) : calculs à ce lieu tant que la carte tourne sous la frise ; null : le centre de la carte

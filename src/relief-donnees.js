@@ -1,17 +1,48 @@
 // Altitudes lues dans les tuiles de relief (Terrain Tiles, même source que la 3D et les zones hors ligne).
 import { penteOrientation, pixelMonde, taillePixel } from './point-calcul.js';
 import { t } from './i18n.js';
+import { DELAI_RESEAU } from './requete.js';
+
+// Une image d'environ 80 Ko : sur une liaison lente (vu : 14 s pour une tuile), le double du délai des services
+const DELAI_TUILE = 2 * DELAI_RESEAU;
 
 const MODELE = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
 const tuiles = new Map(); // « z/x/y » → promesse des pixels
 
+// Six téléchargements à la fois, ce que le navigateur mène par serveur : le délai d'une tuile restée
+// en file (Horizon en demande environ 25) courait avant même qu'elle parte
+const SIMULTANES = 6;
+let enCours = 0;
+const enAttente = [];
+function aTonTour(tache) {
+  return new Promise((resolve, reject) => {
+    const lancer = () => {
+      enCours += 1;
+      tache().then(resolve, reject).finally(() => {
+        enCours -= 1;
+        enAttente.shift()?.();
+      });
+    };
+    if (enCours < SIMULTANES) lancer();
+    else enAttente.push(lancer);
+  });
+}
+
 function chargerTuile(z, x, y) {
   const cle = `${z}/${x}/${y}`;
   if (tuiles.has(cle)) return tuiles.get(cle);
-  const promesse = new Promise((resolve, reject) => {
+  const promesse = aTonTour(() => new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    // Une liaison qui traîne (DNS lent en montagne) laissait attendre sans fin : échec lisible au bout du délai
+    const minuteur = setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      reject(Object.assign(new Error('délai dépassé'), { name: 'TimeoutError' }));
+    }, DELAI_TUILE);
     img.onload = () => {
+      clearTimeout(minuteur);
       const canvas = document.createElement('canvas');
       canvas.width = 256;
       canvas.height = 256;
@@ -19,9 +50,12 @@ function chargerTuile(z, x, y) {
       g.drawImage(img, 0, 0);
       resolve(g.getImageData(0, 0, 256, 256).data);
     };
-    img.onerror = () => reject(new Error(t('fiche.tuile')));
+    img.onerror = () => {
+      clearTimeout(minuteur);
+      reject(new Error(t('fiche.tuile')));
+    };
     img.src = MODELE.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-  });
+  }));
   // Un échec (réseau coupé) ne reste pas en mémoire : on réessaiera
   promesse.catch(() => tuiles.delete(cle));
   tuiles.set(cle, promesse);
