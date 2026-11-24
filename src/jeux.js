@@ -1,5 +1,6 @@
 // Jeux (lots P.4a et P.4b) : quiz de géographie joué sur le globe. Drapeaux, Capitales, Où est-ce ?, Liste chrono, Révise tes erreurs.
 // Chargé à la première ouverture de la ligne du menu ; contours et drapeaux à la première partie (public/data/jeux).
+import * as maplibregl from 'maplibre-gl';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { bloquerFiches } from './fiche.js';
 import { POLICE_GRAS } from './polices.js';
@@ -609,7 +610,27 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       };
       requestAnimationFrame(etape);
     },
+    // Point culminant d'un pays sur sa fiche : une petite montagne et son nom, pour se situer (demande du
+    // propriétaire du 25 novembre 2026). Sans position (rien dans Wikidata) ou null : retiré.
+    repereSommet: null,
+    sommet(sommet) {
+      if (!sommet || !Number.isFinite(sommet.lng) || !Number.isFinite(sommet.lat)) {
+        this.repereSommet?.remove();
+        this.repereSommet = null;
+        return;
+      }
+      if (!this.repereSommet) {
+        const element = document.createElement('div');
+        element.className = 'jeux-sommet';
+        element.innerHTML = '<svg viewBox="0 0 24 20" aria-hidden="true"><path d="M12 2 22.5 18.5h-21Z"/><path class="neige" d="M12 2 15.7 7.8 13.6 7l-1.6 1.4L10.4 7l-2.1.8Z"/></svg><span></span>';
+        this.repereSommet = new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat([sommet.lng, sommet.lat]).addTo(map);
+      }
+      this.repereSommet.setLngLat([sommet.lng, sommet.lat]);
+      this.repereSommet.getElement().querySelector('span').textContent =
+        `${majuscule(sommet[langue()] ?? sommet.fr)} · ${formatAltitude(sommet.altitude)}`;
+    },
     toutEffacer() {
+      this.sommet(null);
       for (const code of this.etats.keys()) {
         for (const source of [SOURCE, SOURCE_POINTS]) map.setFeatureState({ source, id: code }, { etat: null });
       }
@@ -1474,7 +1495,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.titre.textContent = zone ? `${t('jeux.carte-fiches')} · ${t(`jeux.zone-${zone}`)}` : t('jeux.carte-fiches');
       jeu.afficher();
       jeu.agrandir();
-      globe.poser(liste);
+      // Fiches : zoom libre (demande du propriétaire du 25 novembre 2026), la partie garde sa limite
+      globe.poser(liste, globe.zoomMax ?? map.getMaxZoom());
       this.ficheCourante();
     },
 
@@ -1502,6 +1524,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       globe.toutEffacer();
       globe.marquer(code, 'question');
       globe.lieux([], { position: pays.capitale.position, nom: capitale(code), juste: null });
+      globe.sommet(donnees.fiches?.[code]?.sommet);
       const position = `${p.indice + 1} / ${p.fiches.length}`;
       jeu.meta.textContent = position;
       jeu.definirResume({ nom: nom(code), detail: t('jeux.carte-fiches'), valeur: position, unite: '' });
@@ -1533,7 +1556,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         if (i < 0) {
           p.fiches.splice(p.indice + 1, 0, voisin);
           i = p.indice + 1;
-          globe.poser(p.fiches);
+          globe.poser(p.fiches, globe.zoomMax ?? map.getMaxZoom());
         }
         aller(i - p.indice);
       }));
