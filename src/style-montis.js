@@ -228,7 +228,6 @@ const ROUTES = VERSIONS_ROUTES[VERSION_ROUTES];
 
 const ZONES_HABITEES = ['residential', 'commercial', 'retail', 'industrial', 'neighbourhood', 'suburb', 'quarter'];
 
-const sousClasses = (valeurs) => ['in', ['get', 'subclass'], ['literal', valeurs]];
 
 const NOM_EAU = {
   'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
