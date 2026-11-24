@@ -29,7 +29,7 @@ function chargerTuile(z, x, y) {
 }
 
 // Charge les tuiles qui couvrent les pixels du monde [x0, x1] × [y0, y1], puis lit l'altitude d'un pixel entier
-async function lecteur(z, x0, y0, x1, y1) {
+export async function lecteur(z, x0, y0, x1, y1) {
   const n = 2 ** z;
   const cles = [];
   for (let ty = Math.floor(y0 / 256); ty <= Math.floor(y1 / 256); ty += 1) {
@@ -50,7 +50,7 @@ async function lecteur(z, x0, y0, x1, y1) {
 }
 
 // Altitude interpolée entre les quatre pixels voisins
-function interpoler(lire, x, y) {
+export function interpoler(lire, x, y) {
   const x0 = Math.floor(x - 0.5);
   const y0 = Math.floor(y - 0.5);
   const fx = x - 0.5 - x0;
