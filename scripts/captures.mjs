@@ -980,6 +980,20 @@ const ECRANS = [
       (page) => page.waitForTimeout(5000),
     ],
   },
+  // Visite d'un bike park sur la carte Montis (fonds Montis et Satellite, 24 novembre 2026)
+  {
+    nom: 'visite-bikepark',
+    actions: [
+      module('velo'),
+      attendre('.parcours-park-recherche'),
+      async (page) => {
+        await page.fill('.parcours-park-recherche >> visible=true', 'Avoriaz');
+        await page.waitForTimeout(1500);
+        await page.press('.parcours-park-recherche >> visible=true', 'Enter');
+        await page.waitForTimeout(8000);
+      },
+    ],
+  },
   // Bulletin détaillé du massif dans l'onglet Sécurité d'une station en visite, puis ses pentes sur le décor
   ...['visite-bulletin', 'visite-bulletin-pentes'].map((nom) => ({
     nom,
