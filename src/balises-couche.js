@@ -229,7 +229,9 @@ export function creerCoucheBalises(map, { peutOuvrir = () => true, onRetourFiche
           'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.72, 10, 1],
           'icon-rotate': ['get', 'cap'],
           'icon-rotation-alignment': 'map',
-          'icon-pitch-alignment': 'map',
+          // Debout face à la caméra, comme les pins : à plat, la manche disparaissait sur le sol en 3D
+          // (demande du propriétaire du 24 novembre 2026). Elle garde le sens du vent quand la carte tourne.
+          'icon-pitch-alignment': 'viewport',
           'icon-allow-overlap': true,
           'icon-ignore-placement': true,
         },

@@ -346,6 +346,8 @@ const ECRANS = [
   { nom: 'parapente-terrains-pins', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
   { nom: 'parapente-terrains-pins-nord', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 0, pitch: 0 }), attendreCouche('terrains-ffvl-anneaux')] },
   { nom: 'parapente-terrains-pins-3d', actions: [...SITES, clic('#menu-bouton'), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.25, 45.815], zoom: 13.2, bearing: 30, pitch: 60 }), (p) => p.waitForTimeout(5000), attendreCouche('terrains-ffvl-anneaux')] },
+  // Manches à air debout en 3D
+  { nom: 'parapente-balises-3d', actions: [...SITES, clic('#menu-bouton'), clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.83, 45.925], zoom: 13, bearing: 20, pitch: 65 }), (p) => p.waitForTimeout(6000)] },
   { nom: 'parapente-terrain', actions: TERRAIN },
   // « Évaluer l'exposition » (lot 4.7) : Soleil et Lune › Ombre du soleil, cadrée sur le décollage
   { nom: 'parapente-terrain-exposition', actions: [...TERRAIN, attendre('.lien-exposition'), clicVisible('.lien-exposition'), (p) => p.waitForTimeout(4000)] },
@@ -1056,8 +1058,8 @@ async function main() {
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));
         page.on('requestfailed', (r) => reseauEnEchec.add(new URL(r.url()).host));
-        // Le réseau des sessions cloud coupe souvent data.gouv.fr : quelques essais, et une seule lecture par fichier
-        await page.route(/www\.data\.gouv\.fr\/api\/1\/datasets\/r\//, async (route) => {
+        // Le réseau des sessions cloud coupe souvent data.gouv.fr (et OpenWindMap traîne) : quelques essais, une seule lecture par fichier
+        await page.route(/www\.data\.gouv\.fr\/api\/1\/datasets\/r\/|api\.pioupiou\.fr\/v1\/live/, async (route) => {
           const url = route.request().url();
           for (let essai = 0; !fichiersDataGouv.has(url) && essai < 5; essai += 1) {
             try {
