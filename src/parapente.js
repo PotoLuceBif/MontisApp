@@ -4,7 +4,7 @@ import { gardee } from './reponses-gardees.js';
 import { creerCoucheBalises } from './balises-couche.js';
 import { creerFicheTerrain } from './terrain-fiche.js';
 import { lireTerrains, terrainsEnGeoJSON } from './terrains-calcul.js';
-import { IMAGE_AUTORISATION, IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, poserImagesTerrains } from './terrains-images.js';
+import { IMAGE_AUTORISATION, IMAGE_GROUPE, chargerImagesTerrains, fournirImageTerrain, nomAnneau, orienterAnneaux, poserImagesTerrains } from './terrains-images.js';
 import { dateLisible, estHorsLigne } from './hors-ligne.js';
 import { heureCourte, surLangue, t } from './i18n.js';
 
@@ -22,10 +22,9 @@ const COUCHES_TERRAINS = [COUCHE_GROUPES, COUCHE_ANNEAUX, COUCHE_ANNEAU_CHOISI, 
 const TOLERANCE_CLIC = 6;
 // Au-delà (à partir du zoom 11), chaque terrain a son pin ; jusque-là, les voisins se regroupent comme les stations
 const ZOOM_MAX_GROUPES = 10;
-// Pointe du pin (48 px) à 4,25 px du bas ; centre de la tête 17 px au-dessus de la pointe, 19,5 choisi (×1,15)
+// Pointe du pin (48 px) à 4,25 px du bas ; centre de la tête 17 px au-dessus de la pointe
 const DECALAGE_POINTE = [0, 4.25];
 const HAUT_TETE = 17;
-const HAUT_TETE_CHOISIE = 19.5;
 const SANS_GROUPE = ['!', ['has', 'point_count']];
 // Pastille « ! » en haut à droite de la tête du pin, à 45°
 const PLACE_AUTORISATION = [9, -26];
@@ -49,7 +48,12 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
   let terrainsRecus = 0;
   let terrainsEnregistres = null;
   const source = BALISES;
-  const couche = creerCoucheBalises(map, { peutOuvrir: peutOuvrirBalise, onRetourFiche, analyserVent });
+  // Balise et terrain voisins : le doigt va au plus proche, pastille de la balise ou tête du pin (avant, la grande
+  // manche à air de la balise prenait tous les appuis et le décollage ne s'ouvrait plus)
+  const couche = creerCoucheBalises(map, {
+    peutOuvrir: peutOuvrirBalise, onRetourFiche, analyserVent,
+    cede: (point, ecart) => (terrainVise(point)?.ecart ?? Infinity) < ecart,
+  });
   const ficheTerrain = creerFicheTerrain(map, {
     onOuvrir: (terrain) => marquerTerrain(terrain.id),
     onFermer: () => marquerTerrain(null),
@@ -65,6 +69,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', sitesVisibles ? 'visible' : 'none');
     });
     if (!sitesVisibles) ficheTerrain.fermer();
+    else orienterAnneaux(map); // la carte a pu tourner pendant qu'ils étaient cachés
     couche.definirVisible(balisesVisibles);
   }
 
@@ -92,8 +97,10 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     if (id.startsWith('terrain-')) fournirImageTerrain(map, id, await chargerImagesTerrains().catch(() => null));
   });
 
-  // Les secteurs suivent la carte quand elle tourne ; le pin, lui, reste droit
-  const coucheAnneau = (id, hauteur, taille) => ({
+  // Anneau debout et ancré comme le pin : il garde sa tête au centre quelle que soit l'inclinaison (avant, posé à
+  // plat et remonté par une translation, il glissait vers la pointe en 3D). Les secteurs suivent le cap : redessinés
+  // quand la carte tourne (`orienterAnneaux`). Choisi, il grandit avec le pin (×1,15).
+  const coucheAnneau = (id, taille) => ({
     id,
     type: 'symbol',
     source: SOURCE_TERRAINS,
@@ -101,12 +108,18 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     layout: {
       'icon-image': ['concat', nomAnneau(''), ['get', 'anneau']],
       'icon-size': taille,
-      'icon-rotation-alignment': 'map',
-      'icon-pitch-alignment': 'viewport',
+      'icon-anchor': 'bottom',
+      'icon-offset': DECALAGE_POINTE,
       'icon-allow-overlap': true,
       'icon-ignore-placement': true,
     },
-    paint: { 'icon-translate': [0, -hauteur], 'icon-translate-anchor': 'viewport' },
+  });
+  let orientation = null;
+  map.on('rotate', () => {
+    orientation ??= requestAnimationFrame(() => {
+      orientation = null;
+      if (sitesVisibles) orienterAnneaux(map);
+    });
   });
 
   // Sous les balises : un relevé se lit par-dessus son décollage
@@ -146,8 +159,8 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         paint: { 'text-color': '#ffffff' },
       }, dessous);
     }
-    if (!map.getLayer(COUCHE_ANNEAUX)) map.addLayer(coucheAnneau(COUCHE_ANNEAUX, HAUT_TETE, 1), dessous);
-    if (!map.getLayer(COUCHE_ANNEAU_CHOISI)) map.addLayer(coucheAnneau(COUCHE_ANNEAU_CHOISI, HAUT_TETE_CHOISIE, 1.15), dessous);
+    if (!map.getLayer(COUCHE_ANNEAUX)) map.addLayer(coucheAnneau(COUCHE_ANNEAUX, 1), dessous);
+    if (!map.getLayer(COUCHE_ANNEAU_CHOISI)) map.addLayer(coucheAnneau(COUCHE_ANNEAU_CHOISI, 1.15), dessous);
     if (!map.getLayer(COUCHE_TERRAINS)) {
       map.addLayer({
         id: COUCHE_TERRAINS,
@@ -214,13 +227,25 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
     onDonnees();
   }
 
-  // Un clic sur un terrain ouvre sa fiche, sauf si une balise est dessus (elle passe d'abord)
+  // Le pin le plus proche du doigt : on vise sa tête, au-dessus de la coordonnée. { feature, ecart } ou null
+  function terrainVise({ x, y }) {
+    if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS)) return null;
+    const boite = [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]];
+    return map.queryRenderedFeatures(boite, { layers: [COUCHE_TERRAINS] })
+      .map((feature) => {
+        const ecran = map.project(feature.geometry.coordinates);
+        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - HAUT_TETE - y) };
+      })
+      .sort((a, b) => a.ecart - b.ecart)[0] ?? null;
+  }
+
+  // Un clic sur un terrain ouvre sa fiche, sauf si une balise est plus près du doigt (elle s'ouvre alors)
   map.on('click', (event) => {
     if (!sitesVisibles || !map.getLayer(COUCHE_TERRAINS) || !peutOuvrirBalise()) return;
     const { x, y } = event.point;
     const boite = [[x - TOLERANCE_CLIC, y - TOLERANCE_CLIC], [x + TOLERANCE_CLIC, y + TOLERANCE_CLIC]];
-    const balises = ['balises-vent-pastilles', 'balises-vent-manches'].filter((id) => map.getLayer(id));
-    if (balisesVisibles && balises.length && map.queryRenderedFeatures(boite, { layers: balises }).length) {
+    const vise = terrainVise(event.point);
+    if (balisesVisibles && couche.ecartPlusProche(event.point) <= (vise?.ecart ?? Infinity)) {
       ficheTerrain.fermer();
       return;
     }
@@ -233,15 +258,7 @@ export function initParapente(map, { onEtat = () => {}, onDonnees = () => {}, pe
         .catch(() => {});
       return;
     }
-    // Le pin le plus proche du doigt : on vise sa tête, au-dessus de la coordonnée
-    const touches = map.queryRenderedFeatures(boite, { layers: [COUCHE_TERRAINS] });
-    const plusPres = touches
-      .map((feature) => {
-        const ecran = map.project(feature.geometry.coordinates);
-        return { feature, ecart: Math.hypot(ecran.x - x, ecran.y - HAUT_TETE - y) };
-      })
-      .sort((a, b) => a.ecart - b.ecart)[0]?.feature;
-    const terrain = plusPres && terrains.get(String(plusPres.properties.id));
+    const terrain = vise && terrains.get(String(vise.feature.properties.id));
     if (!terrain) {
       ficheTerrain.fermer();
       return;
