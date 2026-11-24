@@ -8,7 +8,6 @@ import { creerOptionOmbres } from './ombres-panneau.js';
 import { creerPastilleCouche } from './couches-actives.js';
 import { etat } from './options-carte.js';
 import { tuilesAstre } from './astre-icones.js';
-import { lire, ecrire } from './reglages.js';
 import { poser, surLangue, t } from './i18n.js';
 import { opaciteCiel } from './ciel-calcul.js';
 import { centreFrise } from './globe-nuit-calcul.js';
@@ -29,12 +28,14 @@ export function creerSoleilLune(map) {
     <div class="relief-bascule ciel-choix" role="group">
       <button type="button" aria-pressed="false">${ICONE_CIEL}<span data-i18n="ciel.dans-le-ciel"></span></button>
     </div>
+    <p class="ciel-relief" hidden></p>
     <p class="note ciel-fuseau"></p>
   `;
   entete.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   const choixCiel = entete.querySelector('.ciel-choix');
   const boutonCiel = choixCiel.querySelector('button');
   const fuseau = entete.querySelector('.ciel-fuseau');
+  const ligneRelief = entete.querySelector('.ciel-relief');
 
   // Ligne Soleil, retouchée le 16 novembre 2026 (demande du propriétaire) : en tête, une carte avec le cadran et la
   // hauteur en grand ; puis lever, passage au plus haut et coucher en tuiles (aussi sur la frise), et la durée du jour
@@ -57,9 +58,17 @@ export function creerSoleilLune(map) {
     if (e.detail?.categorie === 'ciel') montrerSeul(e.detail.astre ?? null);
   });
   // Panneau fermé (tête de rubrique cachée) : la frise montre de nouveau les deux astres
-  new ResizeObserver(() => { if (astreSeul && !visible()) montrerSeul(null); }).observe(entete);
+  // Panneau fermé : la vue au sol s'arrête aussi (elle n'a de sens qu'avec la frise)
+  new ResizeObserver(() => {
+    if (astreSeul && !visible()) montrerSeul(null);
+    if (vueSol && panneau()?.hidden) basculerCiel(false);
+  }).observe(entete);
   let ombres = null;
-  let cielActif = lire('ciel-astres', false);
+  // « Voir dans le ciel » : vue au sol, à hauteur d'yeux, au lieu de Soleil et Lune (demande du propriétaire du
+  // 24 novembre 2026), avec les trajectoires du jour et le vrai lever derrière le relief (panorama.js, mode ciel).
+  // Jamais rouverte d'office au démarrage.
+  let cielActif = false;
+  let vueSol = null; // { lieu } pendant la vue au sol
   let reglage = null;
   let m = null; // modules chargés : { r: réglage, s: soleil, l: Lune, c: ciel }
   let ciel = null;
@@ -151,19 +160,85 @@ export function creerSoleilLune(map) {
   function majChoix() {
     boutonCiel.classList.toggle('actif', cielActif);
     boutonCiel.setAttribute('aria-pressed', String(cielActif));
-    // Option utile en 3D seulement : masquée en 2D (règle des panneaux)
-    choixCiel.hidden = !etat.mode3D;
   }
 
-  async function basculerCiel(oui) {
+  // Vrais levers et couchers derrière le relief, sous la frise, le temps de la vue au sol
+  let levers = null;
+  function majLigneRelief() {
+    ligneRelief.hidden = !vueSol || !levers;
+    if (ligneRelief.hidden) return;
+    const heure = (t) => (t ? m.s.heureDuLieu(t, reglage.decalage()) : '–');
+    const plage = (l) => (l?.lever || l?.coucher ? `${heure(l.lever)} – ${heure(l.coucher)}` : t('ciel.cache'));
+    ligneRelief.textContent = t('ciel.derriere-relief', { soleil: plage(levers.soleil), lune: plage(levers.lune) });
+  }
+
+  const panneau = () => entete.closest('.outil-rapide-panneau');
+  // `boussole` : la permission demandée à iOS pendant l'appui lui-même (sinon refusée)
+  async function basculerCiel(oui, boussole) {
+    if (oui === cielActif) return;
     cielActif = oui;
-    ecrire('ciel-astres', oui);
     majChoix();
-    if (oui) await charger();
+    if (oui) {
+      await charger();
+      if (!cielActif) return;
+      // Le lieu de la frise devient le point où l'on se tient : il ne suit plus la carte, qui tourne avec le regard
+      const ici = { ...(reglage.lieu() ?? map.getCenter()) };
+      vueSol = { lieu: ici };
+      reglage.figerLieu(ici);
+      lieu.figer(true);
+      panneau()?.classList.add('frise-seule');
+      const jourCle = () => `${reglage.jour()}/${reglage.decalage()}/${ici.lng.toFixed(4)}/${ici.lat.toFixed(4)}`;
+      import('./panorama.js')
+        .then((module) => module.ouvrirPanorama(map, {
+          point: ici,
+          boussole,
+          retour: () => basculerCiel(false),
+          ciel: {
+            trajets: () => {
+              const debut = m.s.midiLocal(reglage.jour(), reglage.decalage()).getTime() - 12 * 3600000;
+              return {
+                cle: jourCle(),
+                debut,
+                fin: debut + 24 * 3600000,
+                soleil: (instant) => m.s.positionSoleil(instant, ici.lat, ici.lng),
+                lune: (instant) => m.l.positionLune(instant, ici.lat, ici.lng),
+              };
+            },
+            instant: () => reglage.instant(),
+            heure: (instant) => m.s.heureDuLieu(instant, reglage.decalage()),
+            abonner: partage.abonner,
+            surLevers: (nouveaux) => {
+              levers = nouveaux;
+              majLigneRelief();
+            },
+          },
+        }))
+        .catch((err) => {
+          console.warn('Vue au sol indisponible :', err);
+          basculerCiel(false);
+        });
+    } else if (vueSol) {
+      vueSol = null;
+      levers = null;
+      majLigneRelief();
+      panneau()?.classList.remove('frise-seule');
+      reglage.figerLieu(null);
+      lieu.figer(false);
+      import('./panorama.js').then((module) => module.fermerPanorama());
+    }
     majCiel();
     majPastille();
   }
-  boutonCiel.addEventListener('click', () => basculerCiel(!cielActif));
+  boutonCiel.addEventListener('click', () => {
+    const boussole = cielActif ? null : window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
+    basculerCiel(!cielActif, boussole);
+  });
+  requestAnimationFrame(() => {
+    panneau()?.querySelector('.outil-rapide-entete')?.addEventListener('click', (event) => {
+      if (!vueSol || event.target.closest('button') || panneau().classList.contains('reduit')) return;
+      panneau().classList.toggle('frise-seule');
+    });
+  });
 
   // `attendre` : pendant un glissement du curseur, l'ombre portée attend que le doigt se pose
   function maj(options = {}) {
@@ -228,7 +303,10 @@ export function creerSoleilLune(map) {
     majCiel();
     majPastille();
   });
-  surLangue(() => { if (reglage && visible()) majTextes(); });
+  surLangue(() => {
+    if (reglage && visible()) majTextes();
+    if (vueSol) majLigneRelief();
+  });
 
   const partage = {
     // Promesse du réglage, chargé au premier besoin
@@ -248,7 +326,6 @@ export function creerSoleilLune(map) {
   ombres.bloc.prepend(position, heuresSoleil);
   poserAttributCiel();
   majChoix();
-  if (cielActif) basculerCiel(true);
 
   function poserAttributCiel() {
     choixCiel.setAttribute('aria-label', t('ciel.dans-le-ciel'));

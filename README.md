@@ -44,7 +44,7 @@ Dans **Météo > Conditions locales**, la section **Soleil** donne pour le lieu 
 
 ## Horizon : les sommets autour de toi
 
-Le bouton « Horizon », sous Météo, Carte et Soleil et Lune, montre la vue depuis ta position à hauteur d’yeux, en 3D, avec le nom, l’altitude et la distance des sommets que tu vois vraiment (ceux cachés par le relief ou la courbure de la Terre ne sont pas nommés). La vue suit la boussole et l’inclinaison du téléphone ; si les noms ne tombent pas pile sur les sommets, glisse du doigt pour recaler. Sans boussole (ordinateur), glisse pour regarder autour. « Caméra » pose les mêmes noms sur l’image de l’appareil photo, avec la ligne d’horizon calculée pour aider au recalage. Sommets : OpenStreetMap, jusqu’à 100 km.
+Le bouton « Horizon », sous Météo, Carte et Soleil et Lune, montre la vue depuis ta position à hauteur d’yeux, en 3D, avec le nom, l’altitude et la distance des sommets que tu vois vraiment (ceux cachés par le relief ou la courbure de la Terre ne sont pas nommés). La vue suit la boussole et l’inclinaison du téléphone ; si les noms ne tombent pas pile sur les sommets, glisse du doigt pour recaler. Sans boussole (ordinateur), glisse pour regarder autour. « Caméra » pose les mêmes noms sur l’image de l’appareil photo, avec la ligne d’horizon calculée pour aider au recalage. Sommets : OpenStreetMap, jusqu’à 100 km. Dans Soleil et Lune, « Voir dans le ciel » te pose au sol de la même façon : la course du soleil et de la Lune du jour s’y dessine au-dessus du relief (en trait plein jusqu’à l’heure choisie, en pointillés ensuite), avec leur vrai lever et leur vrai coucher derrière les montagnes.
 
 ## Création d’un parcours de randonnée
 

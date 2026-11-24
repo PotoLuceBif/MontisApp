@@ -142,7 +142,8 @@ export function projeter(cap, angle, vue) {
   const haut = haut0 * Math.cos(p) - avant0 * Math.sin(p);
   if (avant <= 1e-6) return null;
   const f = vue.hauteur / 2 / Math.tan((vue.champ / 2) * RAD);
-  return { x: vue.largeur / 2 + (f * droite) / avant, y: vue.hauteur / 2 - (f * haut) / avant };
+  // `centreY` : centre de la perspective, quand une marge le décale (panneau posé en bas de l'écran)
+  return { x: vue.largeur / 2 + (f * droite) / avant, y: (vue.centreY ?? vue.hauteur / 2) - (f * haut) / avant };
 }
 
 // Champ horizontal (degrés) d'un champ vertical sur un écran de largeur × hauteur

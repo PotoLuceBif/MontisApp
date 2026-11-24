@@ -240,6 +240,18 @@ const ouvrirPanorama = [
   clic('#outil-rapide-bouton-panorama'),
   ...attendreHorizon(),
 ];
+// Vue au sol de Soleil et Lune, à une heure de la frise (minutes depuis minuit)
+const VUE_EMBRUN = '#vue=12/44.5644/6.4954/0/0';
+const ouvrirCielSol = (minutes) => [
+  (p) => p.waitForSelector('#outil-rapide-bouton-ciel', { state: 'attached', timeout: 60000 }),
+  clic('#outil-rapide-bouton-ciel'),
+  attendre('.ciel-course'),
+  heureOmbres(minutes),
+  (p) => p.waitForTimeout(600),
+  clic('.ciel-choix button'),
+  (p) => attendreSur(p, () => document.querySelector('.ciel-relief') && !document.querySelector('.ciel-relief').hidden, null, 90000),
+  (p) => p.waitForTimeout(6000),
+];
 // Téléphone debout (bêta 90°), arrière tourné vers `cap`, relevé de `inclinaison` degrés
 // (une mesure toutes les 50 ms, comme un vrai capteur)
 const boussoleSimulee = (cap, inclinaison = 0) => (p) => p.evaluate(([c, i]) => {
@@ -718,13 +730,12 @@ const ECRANS = [
   { nom: 'ciel-pleine-lune', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-phase:nth-child(3)'), (p) => p.waitForTimeout(1000)] },
   // Flèche › : le jour suivant, entre deux phases
   { nom: 'ciel-lune-jour', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-pas[data-pas="1"]'), (p) => p.waitForTimeout(800), defiler('.lunaison')] },
-  // Option « Soleil et Lune dans le ciel » sans l'ombre : la Lune basse au sud-ouest (16 novembre 2026, 22 h 40)
-  {
-    nom: 'ciel-lune-3d',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
-      clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
-      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
-  },
+  // « Voir dans le ciel » : vue au sol au lieu de Soleil et Lune, trajectoires du jour, vrai lever derrière le relief
+  // (demande du propriétaire du 24 novembre 2026). Près d'Embrun : la crête cache le soleil jusqu'à 8h48
+  { nom: 'ciel-sol', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60)] },
+  { nom: 'ciel-sol-nuit', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(18 * 60 + 50)] },
+  // Le titre du panneau déplie le reste de Soleil et Lune
+  { nom: 'ciel-sol-deplie', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-titre'), (p) => p.waitForTimeout(800)] },
   // Visiter la Lune (lot 4.10) : bouton en bas de la ligne Lune, globe lunaire, temps réel, gros plan 3D, fiche
   { nom: 'ciel-lune-visiter', actions: [vue(MATIN), module('lune'), attendre('.lune-visiter'), (p) => p.waitForTimeout(800), defiler('.lune-visiter')] },
   { nom: 'lune-visite', actions: [...ALLER_LUNE, (p) => p.waitForTimeout(8000)] },
@@ -850,13 +861,6 @@ const ECRANS = [
       },
       (p) => p.waitForTimeout(1000),
     ],
-  },
-  // Même option au dézoom (zoom 7, globe) : le ciel 3D prend le relais du ciel du globe
-  {
-    nom: 'ciel-lune-3d-dezoom',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
-      clic('.ciel-choix button'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
-      (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: elementsCarte },

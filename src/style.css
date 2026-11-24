@@ -4461,3 +4461,35 @@ body.panorama-camera #panorama { background: #000; }
   .pano-titre strong { font-size: 15px; }
   #panorama .pano-modes button { min-width: 44px; padding: 0 8px; }
 }
+
+/* ===== Vue au sol de Soleil et Lune (« Voir dans le ciel ») ===== */
+/* Le panneau Soleil et Lune reste au-dessus de la vue, réduit à la frise ; son titre le déplie */
+/* Deux identifiants : plus fort que la règle qui cache tout le reste pendant Horizon */
+body.panorama-ciel #outil-rapide-panneau-ciel#outil-rapide-panneau-ciel:not([hidden]) {
+  display: flex !important;
+  z-index: 90;
+  top: auto;
+  right: 10px;
+  bottom: calc(126px + env(safe-area-inset-bottom));
+  max-height: min(60dvh, 560px);
+}
+body.panorama-ciel #outil-rapide-panneau-ciel:not(.reduit) .outil-rapide-entete { cursor: pointer; }
+/* Frise seule : le lieu est dans l'en-tête de la vue, et sa croix en sort */
+#outil-rapide-panneau-ciel.frise-seule :is(.menu-vue-entete, .menu-module, .ciel-fuseau, .ciel-lieu, .ciel-choix) { display: none; }
+.ciel-relief { margin: 8px 0 0; color: var(--texte); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ciel-relief[hidden] { display: none; }
+body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bottom: auto; }
+/* Trajectoires : déjà parcourue en trait plein, à venir en pointillés, une marque par heure */
+.pano-astre path { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.75)); }
+.pano-astre .futur { stroke-dasharray: 2 7; opacity: 0.9; }
+.pano-astre-soleil path { stroke: #ffd36b; }
+.pano-astre-lune path { stroke: #c9d6ff; }
+.pano-astre .heures circle { fill: #fff; filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.8)); }
+.pano-astre text { fill: #fff; font: 700 11px var(--police); paint-order: stroke; stroke: rgba(0, 0, 0, 0.75); stroke-width: 3px; }
+.pano-astre-soleil .reel { fill: #ffd36b; }
+.pano-astre-lune .reel { fill: #c9d6ff; }
+.pano-astre circle.reel { stroke: #fff; stroke-width: 1.5; }
+.pano-astre text.reel { font-size: 12px; }
+@media (max-width: 700px) {
+  body.panorama-ciel #outil-rapide-panneau-ciel#outil-rapide-panneau-ciel:not([hidden]) { right: 10px; left: 10px; width: auto; }
+}

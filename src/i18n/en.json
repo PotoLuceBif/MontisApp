@@ -2026,5 +2026,11 @@
   "panorama.point": "Chosen point · {altitude}",
   "panorama.changer-lieu": "Change viewpoint: your position or the map centre",
   "panorama.depuis-centre": "View from the map centre, far from your position. Tap the place at the top to start from your position.",
-  "point.horizon": "See the horizon from here"
+  "point.horizon": "See the horizon from here",
+  "ciel.vue-titre": "In the sky",
+  "ciel.au-sol": "On the ground · {altitude}",
+  "ciel.derriere-relief": "Behind the terrain: sun {soleil} · Moon {lune}",
+  "ciel.cache": "hidden",
+  "panorama.chargement-relief": "Loading terrain…",
+  "panorama.erreur-relief": "Terrain unavailable: {message}"
 }
