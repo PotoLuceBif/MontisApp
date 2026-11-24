@@ -4,11 +4,13 @@ import * as maplibregl from 'maplibre-gl';
 import { distance, echantillonner, extraireTrace, titreDe } from './rando-api.js';
 import { altitudesDuTrace, denivele, lisser } from './rando-profil.js';
 import { DECALAGE_PIN, imagePin } from './pins.js';
+import { poserPastilleGroupe, surAppuiLong } from './groupe-pastille.js';
 import { formatAltitude, formatDistance } from './unites.js';
 import { t } from './i18n.js';
 
 const PARALLELISME_REPERES = 2;
 const DISTANCE_GRAPPE_PX = 56;
+const ZOOM_LISTE_GRAPPE = 14; // plus près, un appui sur une grappe montre sa liste au lieu de zoomer
 
 const km = formatDistance;
 const metres = formatAltitude;
@@ -74,6 +76,7 @@ export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () =>
   let actif = false;
   let entrees = [];
   let marqueurs = [];
+  let clesGrappes = new Set(); // grappes affichées, pour le fondu de celles qui apparaissent
   let controleur = null;
   let popupGrappe = null;
   let popupResume = null;
@@ -298,13 +301,13 @@ export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () =>
     });
   }
 
-  function creerGrappe(routes, coordonnees) {
+  function creerGrappe(routes, coordonnees, nouveau) {
     const element = el('button', 'rando-groupe');
     element.type = 'button';
     element.setAttribute('aria-label', t('decouverte.regroupes-aria', { n: routes.length, nom: t(nomPluriel) }));
     element.title = t('decouverte.regroupes-aide', { n: routes.length, nom: t(nomPluriel) });
-    element.innerHTML =
-      `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${routes.length}</span>`;
+    poserPastilleGroupe(element, routes.length, { nouveau });
+    surAppuiLong(element, () => afficherGrappe(routes, coordonnees));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherGrappe(routes, coordonnees);
     });
@@ -315,9 +318,19 @@ export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () =>
       if (element.matches(':focus-visible')) afficherGrappe(routes, coordonnees);
     });
     element.addEventListener('blur', () => programmerFermetureGrappe());
+    // Un appui zoome jusqu'à ce que la grappe se sépare (demande du propriétaire du 24 novembre 2026) ; des départs
+    // au même endroit ne se sépareraient jamais : de près, ou sans écart entre eux, la liste
     element.addEventListener('click', (event) => {
       event.stopPropagation();
-      afficherGrappe(routes, coordonnees);
+      const limites = new maplibregl.LngLatBounds();
+      routes.forEach((entree) => limites.extend(entree.coordonnees));
+      const ecart = map.project(limites.getNorthEast()).dist(map.project(limites.getSouthWest()));
+      if (map.getZoom() >= ZOOM_LISTE_GRAPPE || ecart < 2) {
+        afficherGrappe(routes, coordonnees);
+        return;
+      }
+      popupGrappe?.remove();
+      map.fitBounds(limites, { padding: 90, maxZoom: ZOOM_LISTE_GRAPPE, duration: 700 });
     });
     return new maplibregl.Marker({ element, anchor: 'center' }).setLngLat(coordonnees).addTo(map);
   }
@@ -346,6 +359,8 @@ export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () =>
         if (dx * dx + dy * dy <= DISTANCE_GRAPPE_PX * DISTANCE_GRAPPE_PX) parents[racine(j)] = racine(i);
       }
     }
+    const avant = clesGrappes;
+    clesGrappes = new Set();
     const groupes = new Map();
     visibles.forEach(({ entree }, index) => {
       const id = racine(index);
@@ -361,7 +376,9 @@ export function creerDecouverte(map, { clients = {}, ouvrirRoute, masque = () =>
         (centre, { coordonnees: point }) => [centre[0] + point[0] / groupe.length, centre[1] + point[1] / groupe.length],
         [0, 0]
       );
-      marqueurs.push(creerGrappe(groupe, coordonnees));
+      const cle = `${entrees.indexOf(groupe[0])}/${groupe.length}`;
+      clesGrappes.add(cle);
+      marqueurs.push(creerGrappe(groupe, coordonnees, avant.size > 0 && !avant.has(cle)));
     });
   }
 

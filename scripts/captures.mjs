@@ -445,6 +445,10 @@ const ECRANS = [
   // Ski de rando (lot 3.3) : choix de la pratique, pentes allumées d'office, bulletin du massif au centre
   { nom: 'ski-rando', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(4000)] },
   // Itinéraires d'OSM (piste:type=skitour), lus dans /data/skitour
+  // Groupes de lieux en pastilles rondes (24 novembre 2026) : stations de la zone, itinéraires de ski de rando, terrains
+  { nom: 'ski-groupes', actions: [vue({ center: [6.6, 45.6], zoom: 8.2, bearing: 0, pitch: 0 }), module('ski'), attendre('.ski-zone .rando-zone-bouton'), clic('.ski-zone .rando-zone-bouton'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
+  { nom: 'ski-rando-groupes', actions: [vue({ ...PASSON, zoom: 11 }), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
+  { nom: 'parapente-terrains-groupes', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 9, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(4000)] },
   { nom: 'ski-rando-itineraires', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500)] },
   { nom: 'ski-rando-itineraires-carte', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // Un itinéraire touché dans la liste s'ouvre dans l'éditeur, comme une trace importée
