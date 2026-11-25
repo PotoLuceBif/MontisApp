@@ -237,6 +237,7 @@ export function creerSoleilLune(map) {
       reglage.figerLieu(ici);
       lieu.figer(true);
       panneau()?.classList.add('frise-seule');
+      if (panneau()) garderFrise.observe(panneau(), { attributes: true, attributeFilter: ['class'] });
       const jourCle = () => `${reglage.jour()}/${reglage.decalage()}/${ici.lng.toFixed(4)}/${ici.lat.toFixed(4)}`;
       import('./panorama.js')
         .then((module) => module.ouvrirPanorama(map, {
@@ -272,6 +273,7 @@ export function creerSoleilLune(map) {
       majChoix();
       levers = null;
       majLigneRelief();
+      garderFrise.disconnect();
       panneau()?.classList.remove('frise-seule');
       reglage.figerLieu(null);
       lieu.figer(false);
@@ -290,11 +292,11 @@ export function creerSoleilLune(map) {
     // Là où l'on est si la position est connue, sinon on demande où regarder (comme Horizon)
     import('./panorama.js').then((m) => m.ouvrirAuBonEndroit(map, (lieu) => basculerSol(true, boussole, lieu)));
   });
-  requestAnimationFrame(() => {
-    panneau()?.querySelector('.outil-rapide-entete')?.addEventListener('click', (event) => {
-      if (!vueSol || event.target.closest('button') || panneau().classList.contains('reduit')) return;
-      panneau().classList.toggle('frise-seule');
-    });
+  // Vue au sol : le panneau reste à la frise seule, même rouvert depuis sa barre réduite ou la colonne
+  // (demande du propriétaire du 25 novembre 2026 : le grand panneau revenait d'un appui)
+  const garderFrise = new MutationObserver(() => {
+    const p = panneau();
+    if (vueSol && p && !p.classList.contains('frise-seule')) p.classList.add('frise-seule');
   });
 
   // `attendre` : pendant un glissement du curseur, l'ombre portée attend que le doigt se pose
