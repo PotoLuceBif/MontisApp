@@ -5,7 +5,7 @@
 import { addProtocol } from 'maplibre-gl';
 import { REPERE_CALQUES } from './style-montis.js';
 import { couleurCalotte, melangerTuile, pointSubsolaire } from './globe-nuit-calcul.js';
-import { enModeFrise, instantEspace } from './heure-espace.js';
+import { enModeFrise, instantEspace, pleinJour } from './heure-espace.js';
 
 const PROTOCOLE = 'montis-globe';
 const SOURCE = 'globe-jour-nuit';
@@ -23,8 +23,9 @@ const CALOTTES = 'globe-calottes';
 const SECTEURS = 48; // tranches de longitude d'une calotte, chacune à la couleur du bord de l'image
 
 // Deux bandes au bord du monde, que MapLibre étire jusqu'aux pôles
+// `instant` null : plein jour
 function calottes(instant) {
-  const soleil = pointSubsolaire(new Date(instant));
+  const soleil = instant === null ? null : pointSubsolaire(new Date(instant));
   const pas = 360 / SECTEURS;
   const features = [];
   for (const nord of [true, false]) {
@@ -67,21 +68,26 @@ function pixelsDe(adresse) {
 const adresse = (modele, z, x, y) => modele.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 // Mode frise de Soleil et Lune (heure-espace.js) : au pas du curseur, pour que la Terre tourne sans à-coups
 const PAS_FRISE = 5 * 60 * 1000;
+// null en plein jour (jeux) : une seule série de tuiles, sans nuit
 const instantArrondi = () => {
+  if (pleinJour()) return null;
   const pas = enModeFrise() ? PAS_FRISE : PAS_HEURE;
   return Math.floor(instantEspace() / pas) * pas;
 };
 
 export function initGlobeNuit(map) {
   addProtocol(PROTOCOLE, async ({ url }) => {
-    const [, instant, z, x, y] = url.match(/^[\w-]+:\/\/(\d+)\/(\d+)\/(\d+)\/(\d+)/).map(Number);
+    // « jour » au lieu de l'instant : plein jour
+    const [, quand, ...coordonnees] = url.match(/^[\w-]+:\/\/(\d+|jour)\/(\d+)\/(\d+)\/(\d+)/);
+    const [z, x, y] = coordonnees.map(Number);
     const [jour, nuit] = await Promise.all([pixelsDe(adresse(JOUR, z, x, y)), pixelsDe(adresse(NUIT, z, x, y))]);
-    const pixels = melangerTuile(jour, nuit, z, x, y, pointSubsolaire(new Date(instant)));
+    const soleil = quand === 'jour' ? null : pointSubsolaire(new Date(Number(quand)));
+    const pixels = melangerTuile(jour, nuit, z, x, y, soleil);
     return { data: await createImageBitmap(new ImageData(pixels, 256, 256)) };
   });
 
   let instant = instantArrondi();
-  const tuiles = () => [`${PROTOCOLE}://${instant}/{z}/{x}/{y}`];
+  const tuiles = () => [`${PROTOCOLE}://${instant ?? 'jour'}/{z}/{x}/{y}`];
 
   // Au-dessus de tous les fonds (ils se posent sous le repère), sous les pentes, ombres et calques
   function poser() {

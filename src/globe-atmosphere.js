@@ -3,7 +3,7 @@
 // Deux toiles : le halo derrière la carte (il ne se voit qu'autour du globe), le liseré par-dessus le bord du globe.
 import { hauteurSoleil, limbeGlobe, pointADistance, pointSubsolaire } from './globe-nuit-calcul.js';
 import { opaciteCiel } from './ciel-calcul.js';
-import { instantEspace } from './heure-espace.js';
+import { instantEspace, pleinJour } from './heure-espace.js';
 
 const SECTEURS = 48; // directions autour du bord
 const HALO = 0.09; // épaisseur du halo dans l'espace, en part du rayon
@@ -70,7 +70,7 @@ export function initAtmosphere(map) {
 
   // Lumière du bord, direction par direction : le soleil vu depuis ce point du bord
   function lumieresDuBord(bord) {
-    const soleil = pointSubsolaire(new Date(instantEspace()));
+    const soleil = pleinJour() ? null : pointSubsolaire(new Date(instantEspace()));
     return bord.limbe
       .map((p) => ({ angleEcran: p.angleEcran, jour: lisse(-12, 25, hauteurSoleil(p.lat, p.lng, soleil)) }))
       .sort((u, v) => u.angleEcran - v.angleEcran);

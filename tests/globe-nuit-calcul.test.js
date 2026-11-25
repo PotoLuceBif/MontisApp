@@ -182,3 +182,20 @@ describe('mode frise de la vue d’espace', () => {
     expect(centreFrise({ lng: 10, lat: 0 }, depart, depart + 24 * heure).lng).toBeCloseTo(10, 0);
   });
 });
+
+describe('plein jour (jeux)', () => {
+  it('met le soleil au zénith partout', () => {
+    expect(hauteurSoleil(45, 6, null)).toBe(90);
+    expect(hauteurSoleil(-70, 170, null)).toBe(90);
+  });
+
+  it('peint une tuile toute en jour, sans la nuit', () => {
+    const jour = new Uint8ClampedArray(256 * 256 * 4).fill(200);
+    const nuit = new Uint8ClampedArray(256 * 256 * 4).fill(10);
+    // Tuile du milieu au zoom 2 : loin des pôles
+    const pixels = melangerTuile(jour, nuit, 2, 1, 1, null);
+    const milieu = (128 * 256 + 128) * 4;
+    expect(pixels[milieu]).toBeGreaterThan(150);
+    expect(pixels[milieu + 3]).toBe(255);
+  });
+});

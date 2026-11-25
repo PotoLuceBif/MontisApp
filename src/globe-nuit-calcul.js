@@ -31,7 +31,9 @@ export function pointSubsolaire(date) {
 }
 
 // Hauteur du soleil (°) vue d'un point, le soleil étant au zénith de `soleil`
+// `soleil` null : plein jour, le soleil au zénith partout (jeux)
 export function hauteurSoleil(lat, lng, soleil) {
+  if (!soleil) return 90;
   const phi = lat * RAD;
   const delta = soleil.lat * RAD;
   const h = (lng - soleil.lng) * RAD;
