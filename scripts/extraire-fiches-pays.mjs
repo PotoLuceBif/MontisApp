@@ -1,7 +1,7 @@
 // Fiches des pays de Géographie (retour du propriétaire du 17 novembre 2026) : public/data/jeux/fiches.json.
 // - langues officielles, monnaies, voisins, accès à la mer : mledoze/countries (ODbL), la base de REST Countries,
 //   dont l'API publique est fermée depuis 2026 ;
-// - population et point culminant (nom et altitude) : Wikidata (CC0) ;
+// - population et point culminant (nom, altitude, position) : Wikidata (CC0) ;
 // - fuseaux horaires : zone.tab de la base IANA (domaine public), décalage d'hiver calculé par Intl.
 // Anecdotes à part, écrites à la main : public/data/jeux/anecdotes.json.
 // Usage : node scripts/extraire-fiches-pays.mjs (réseau requis ; caches dans scripts/cache-fiches-*.json)
@@ -44,6 +44,12 @@ const parCca3 = new Map(mledoze.map((p) => [p.cca3, p.cca2]));
 // Kosovo : « XKX » dans mledoze, sans code ISO officiel
 const fiche = (code) => mledoze.find((p) => p.cca2 === code);
 
+// « Point(6.8652 45.8326) » de Wikidata → { lng, lat }, arrondis à 0,001° (100 m)
+const position = (wkt) => {
+  const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec(wkt ?? '');
+  return m ? { lng: Math.round(Number(m[1]) * 1000) / 1000, lat: Math.round(Number(m[2]) * 1000) / 1000 } : {};
+};
+
 // Population : la valeur la plus récente ; point culminant : le plus haut si plusieurs
 const population = await enCache('population', () => sparql(`
   SELECT ?iso ?pop ?date WHERE {
@@ -54,17 +60,19 @@ const population = await enCache('population', () => sparql(`
   }`));
 const populationKosovo = await enCache('population-kosovo', () => sparql(`
   SELECT ?pop ?date WHERE { wd:Q1246 p:P1082 ?d. ?d ps:P1082 ?pop. OPTIONAL { ?d pq:P585 ?date } }`));
-const sommets = await enCache('sommets', () => sparql(`
-  SELECT ?iso ?pays ?sommet ?fr ?en ?alt WHERE {
+// Position du sommet (P625) : la petite montagne sur la fiche du pays (demande du propriétaire du 25 novembre 2026)
+const sommets = await enCache('sommets-2', () => sparql(`
+  SELECT ?iso ?pays ?sommet ?fr ?en ?alt ?coord WHERE {
     VALUES ?pays { ${codes.map((c) => `"${c}"`).join(' ')} }
     ?entite wdt:P297 ?pays; wdt:P610 ?sommet.
     BIND(?pays AS ?iso)
     ?sommet wdt:P2044 ?alt.
+    OPTIONAL { ?sommet wdt:P625 ?coord }
     OPTIONAL { ?sommet rdfs:label ?fr FILTER(LANG(?fr) = "fr") }
     OPTIONAL { ?sommet rdfs:label ?en FILTER(LANG(?en) = "en") }
   }`));
-const sommetKosovo = await enCache('sommet-kosovo', () => sparql(`
-  SELECT ?fr ?en ?alt WHERE { wd:Q1246 wdt:P610 ?s. ?s wdt:P2044 ?alt.
+const sommetKosovo = await enCache('sommet-kosovo-2', () => sparql(`
+  SELECT ?fr ?en ?alt ?coord WHERE { wd:Q1246 wdt:P610 ?s. ?s wdt:P2044 ?alt. OPTIONAL { ?s wdt:P625 ?coord }
     OPTIONAL { ?s rdfs:label ?fr FILTER(LANG(?fr) = "fr") } OPTIONAL { ?s rdfs:label ?en FILTER(LANG(?en) = "en") } }`));
 
 const zoneTab = await enCache('zones', async () => (await texte(SOURCES.zones)).split('\n'));
@@ -122,7 +130,7 @@ for (const code of codes) {
   sortie[code] = {
     population: pop ? Number(pop.pop) : null,
     annee: pop?.date ? Number(pop.date.slice(0, 4)) : null,
-    sommet: sommet ? { fr: sommet.fr ?? sommet.en, en: sommet.en ?? sommet.fr, altitude: Math.round(Number(sommet.alt)) } : null,
+    sommet: sommet ? { fr: sommet.fr ?? sommet.en, en: sommet.en ?? sommet.fr, altitude: Math.round(Number(sommet.alt)), ...position(sommet.coord) } : null,
     langues: m ? Object.entries(m.languages ?? {}).map(([c, nom]) => ({ code: c, en: nom })) : [],
     monnaies: m ? Object.entries(m.currencies ?? {}).map(([c, v]) => ({ code: c, en: v.name, symbole: v.symbol ?? '' })) : [],
     fuseaux,

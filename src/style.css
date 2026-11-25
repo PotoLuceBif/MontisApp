@@ -4247,6 +4247,10 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
   .bf-jeu.jeux-clavier .jeux-quitter { width: 30px; height: 30px; }
 }
 /* Saisie refusée (nom inconnu, champ vide) : le champ le dit en rouge, avec une secousse */
+/* « Vérifie l'orthographe » : pastille rouge dans le champ, à droite du texte resté écrit */
+.jeux-saisie { position: relative; }
+.jeux-champ-bulle { position: absolute; z-index: 2; max-width: 60%; overflow: hidden; padding: 3px 8px; border-radius: 999px; background: #ff5c7a; color: #fff; font: 750 11.5px/1.3 var(--police); text-overflow: ellipsis; white-space: nowrap; pointer-events: none; transform: translateY(-50%); }
+.jeux-champ-bulle.dessous { max-width: none; transform: none; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); }
 .jeux-saisie input.jeux-champ-refus { border-color: #ff5c7a; outline-color: #ff5c7a; text-overflow: ellipsis; animation: jeux-secousse 0.32s ease; }
 .jeux-saisie input.jeux-champ-refus::placeholder { color: #ff8da1; opacity: 1; }
 @keyframes jeux-secousse { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
@@ -4495,3 +4499,18 @@ body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bott
 @media (max-width: 700px) {
   body.panorama-ciel #outil-rapide-panneau-ciel#outil-rapide-panneau-ciel:not([hidden]) { right: 10px; left: 10px; width: auto; }
 }
+
+/* Géographie : point culminant d'un pays sur sa fiche (25 novembre 2026). Ni transform ni position sur l'élément du
+   repère : MapLibre les pose lui-même ; le dessin et le nom sont dans des enfants */
+.jeux-sommet { display: flex; align-items: flex-end; gap: 4px; pointer-events: none; }
+.jeux-sommet svg { width: 22px; height: 18px; flex: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+.jeux-sommet svg path { fill: #8a7a6a; stroke: #fff; stroke-width: 1.4; stroke-linejoin: round; }
+.jeux-sommet svg path.neige { fill: #fff; stroke: none; }
+.jeux-sommet span { margin-bottom: 1px; color: #fff; font: 700 11.5px/1.2 var(--police); white-space: nowrap; text-shadow: 0 0 3px rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9); }
+
+/* Géographie : drapeau agrandi d'un appui (25 novembre 2026), par-dessus tout ; un appui ou Échap le referme */
+.bf-jeu img.jeux-drapeau:not(button img) { cursor: zoom-in; }
+.jeux-drapeau-grand { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: rgba(5, 8, 14, 0.86); cursor: zoom-out; animation: jeux-drapeau-entree 0.16s ease-out; }
+.jeux-drapeau-grand img { width: min(92vw, 900px); max-height: 82dvh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 18px 60px rgba(0, 0, 0, 0.6); }
+@keyframes jeux-drapeau-entree { from { opacity: 0; transform: scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .jeux-drapeau-grand { animation: none; } }

@@ -1,5 +1,6 @@
 // Jeux (lots P.4a et P.4b) : quiz de géographie joué sur le globe. Drapeaux, Capitales, Où est-ce ?, Liste chrono, Révise tes erreurs.
 // Chargé à la première ouverture de la ligne du menu ; contours et drapeaux à la première partie (public/data/jeux).
+import * as maplibregl from 'maplibre-gl';
 import { creerPanneauCarte } from './panneau-carte.js';
 import { bloquerFiches } from './fiche.js';
 import { POLICE_GRAS } from './polices.js';
@@ -609,7 +610,27 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       };
       requestAnimationFrame(etape);
     },
+    // Point culminant d'un pays sur sa fiche : une petite montagne et son nom, pour se situer (demande du
+    // propriétaire du 25 novembre 2026). Sans position (rien dans Wikidata) ou null : retiré.
+    repereSommet: null,
+    sommet(sommet) {
+      if (!sommet || !Number.isFinite(sommet.lng) || !Number.isFinite(sommet.lat)) {
+        this.repereSommet?.remove();
+        this.repereSommet = null;
+        return;
+      }
+      if (!this.repereSommet) {
+        const element = document.createElement('div');
+        element.className = 'jeux-sommet';
+        element.innerHTML = '<svg viewBox="0 0 24 20" aria-hidden="true"><path d="M12 2 22.5 18.5h-21Z"/><path class="neige" d="M12 2 15.7 7.8 13.6 7l-1.6 1.4L10.4 7l-2.1.8Z"/></svg><span></span>';
+        this.repereSommet = new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat([sommet.lng, sommet.lat]).addTo(map);
+      }
+      this.repereSommet.setLngLat([sommet.lng, sommet.lat]);
+      this.repereSommet.getElement().querySelector('span').textContent =
+        `${majuscule(sommet[langue()] ?? sommet.fr)} · ${formatAltitude(sommet.altitude)}`;
+    },
     toutEffacer() {
+      this.sommet(null);
       for (const code of this.etats.keys()) {
         for (const source of [SOURCE, SOURCE_POINTS]) map.setFeatureState({ source, id: code }, { etat: null });
       }
@@ -792,6 +813,36 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     },
   });
 
+  // Drapeau agrandi d'un appui (demande du propriétaire du 25 novembre 2026) : celui de la question et celui de la
+  // fiche ; pas ceux des choix de « Trouve le drapeau », qui sont des réponses. Un appui n'importe où ou Échap referme.
+  function agrandirDrapeau(image) {
+    const voile = document.createElement('div');
+    voile.className = 'jeux-drapeau-grand';
+    voile.setAttribute('role', 'dialog');
+    voile.setAttribute('aria-label', image.alt || t('jeux.drapeau-mystere'));
+    const grand = document.createElement('img');
+    grand.src = image.src;
+    grand.alt = image.alt;
+    grand.draggable = false;
+    voile.appendChild(grand);
+    const fermer = () => {
+      voile.remove();
+      document.removeEventListener('keydown', surTouche, true);
+    };
+    const surTouche = (event) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
+      fermer();
+    };
+    voile.addEventListener('click', fermer);
+    document.addEventListener('keydown', surTouche, true);
+    document.body.appendChild(voile);
+  }
+  jeu.element.addEventListener('click', (event) => {
+    const image = event.target.closest('img.jeux-drapeau');
+    if (image && !image.closest('button')) agrandirDrapeau(image);
+  });
+
   // Barre de la partie, au-dessus des questions : chrono, avancement, ↻ (retour du propriétaire du 17 novembre 2026).
   // En liste chrono sur téléphone, elle est tout le panneau avec le champ ; ⌃ ou un glissé vers le haut déplie les trouvés.
   const barre = document.createElement('div');
@@ -932,15 +983,6 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     else armerRetour();
   });
 
-  // R relance la partie sur ordinateur (Alt+R depuis un champ de saisie)
-  document.addEventListener('keydown', (event) => {
-    if (event.code !== 'KeyR' || event.ctrlKey || event.metaKey || !partie.en || partie.en.reglage.mode === 'fiches' || jeu.element.hidden) return;
-    const champ = event.target.closest?.('input, textarea, select, [contenteditable="true"]');
-    if (champ && !event.altKey) return;
-    event.preventDefault();
-    partie.recommencer();
-  });
-
   // Une question : { type, code (pays), ville (indice), seuil (km), cle (erreur) }
   // Types : drapeau (drapeau → pays), drapeau-pays (pays allumé → drapeau), capitale (pays → capitale),
   // capitale-pays (capitale → pays), ou-pays et ou-ville (toucher le globe)
@@ -953,22 +995,61 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
   })[mode];
   const ville = (id) => donnees.villes.villes[id];
   const nomVille = (id) => ville(id)[langue()] || ville(id).fr;
-  // Saisie refusée (nom inconnu, champ vide) : le champ le dit lui-même, en rouge, à la place de son texte d'aide
-  // (retour du propriétaire du 23 novembre 2026 : le message sous le champ passait inaperçu). Taper le rétablit.
-  function signalerChamp(champ, genre) {
-    const saisie = champ.value.trim();
-    const court = saisie.length > 18 ? `${saisie.slice(0, 17)}…` : saisie;
-    if (!champ.dataset.aide) champ.dataset.aide = champ.placeholder;
-    champ.value = '';
-    champ.placeholder = saisie ? t(`jeux.champ-inconnu-${genre}`, { saisie: court }) : t(`jeux.champ-vide-${genre}`);
+  // Saisie refusée : le champ le dit lui-même, en rouge (retour du propriétaire du 23 novembre 2026 : le message sous
+  // le champ passait inaperçu). En deux temps (demande du 25 novembre 2026) : un nom inconnu reste écrit, avec
+  // « Vérifie l'orthographe » dans le champ ; le même nom validé encore s'efface, et le champ dit qu'il n'existe pas.
+  // Taper rétablit le champ.
+  function secouer(champ) {
     champ.classList.remove('jeux-champ-refus');
     void champ.offsetWidth; // relance la secousse
     champ.classList.add('jeux-champ-refus');
     champ.addEventListener('input', () => effacerSignal(champ), { once: true });
   }
+  function signalerChamp(champ, genre) {
+    const saisie = champ.value.trim();
+    if (saisie && champ.dataset.verifie !== saisie) {
+      champ.dataset.verifie = saisie;
+      bulleChamp(champ, t('jeux.champ-verifie'));
+      secouer(champ);
+      return;
+    }
+    const court = saisie.length > 18 ? `${saisie.slice(0, 17)}…` : saisie;
+    bulleChamp(champ, null);
+    delete champ.dataset.verifie;
+    if (!champ.dataset.aide) champ.dataset.aide = champ.placeholder;
+    champ.value = '';
+    champ.placeholder = saisie ? t(`jeux.champ-inconnu-${genre}`, { saisie: court }) : t(`jeux.champ-vide-${genre}`);
+    secouer(champ);
+  }
+  // Pastille rouge posée dans le champ, à droite du texte (le texte garde sa place à gauche)
+  function bulleChamp(champ, texte) {
+    const cadre = champ.parentElement;
+    let bulle = cadre.querySelector('.jeux-champ-bulle');
+    if (!texte) {
+      bulle?.remove();
+      champ.style.paddingRight = '';
+      return;
+    }
+    if (!bulle) {
+      bulle = document.createElement('span');
+      bulle.className = 'jeux-champ-bulle';
+      bulle.setAttribute('role', 'alert');
+      cadre.appendChild(bulle);
+    }
+    bulle.textContent = texte;
+    // Champ étroit (barre de la liste chrono sur ordinateur) : dessous, sinon elle cachait le texte tapé
+    const dessous = champ.offsetWidth < 220;
+    bulle.classList.toggle('dessous', dessous);
+    bulle.style.right = dessous ? 'auto' : `${cadre.clientWidth - (champ.offsetLeft + champ.offsetWidth) + 6}px`;
+    bulle.style.left = dessous ? `${champ.offsetLeft}px` : 'auto';
+    bulle.style.top = dessous ? `${champ.offsetTop + champ.offsetHeight + 4}px` : `${champ.offsetTop + champ.offsetHeight / 2}px`;
+    champ.style.paddingRight = dessous ? '' : `${bulle.offsetWidth + 12}px`;
+  }
   function effacerSignal(champ) {
     if (champ.dataset.aide) champ.placeholder = champ.dataset.aide;
     delete champ.dataset.aide;
+    delete champ.dataset.verifie;
+    bulleChamp(champ, null);
     champ.classList.remove('jeux-champ-refus');
   }
 
@@ -1444,7 +1525,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       jeu.titre.textContent = zone ? `${t('jeux.carte-fiches')} · ${t(`jeux.zone-${zone}`)}` : t('jeux.carte-fiches');
       jeu.afficher();
       jeu.agrandir();
-      globe.poser(liste);
+      // Fiches : zoom libre (demande du propriétaire du 25 novembre 2026), la partie garde sa limite
+      globe.poser(liste, globe.zoomMax ?? map.getMaxZoom());
       this.ficheCourante();
     },
 
@@ -1472,6 +1554,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       globe.toutEffacer();
       globe.marquer(code, 'question');
       globe.lieux([], { position: pays.capitale.position, nom: capitale(code), juste: null });
+      globe.sommet(donnees.fiches?.[code]?.sommet);
       const position = `${p.indice + 1} / ${p.fiches.length}`;
       jeu.meta.textContent = position;
       jeu.definirResume({ nom: nom(code), detail: t('jeux.carte-fiches'), valeur: position, unite: '' });
@@ -1503,7 +1586,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         if (i < 0) {
           p.fiches.splice(p.indice + 1, 0, voisin);
           i = p.indice + 1;
-          globe.poser(p.fiches);
+          globe.poser(p.fiches, globe.zoomMax ?? map.getMaxZoom());
         }
         aller(i - p.indice);
       }));
