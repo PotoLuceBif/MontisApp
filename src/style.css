@@ -4559,3 +4559,302 @@ body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bott
 .jeux-drapeau-grand img { width: min(92vw, 900px); max-height: 82dvh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 18px 60px rgba(0, 0, 0, 0.6); }
 @keyframes jeux-drapeau-entree { from { opacity: 0; transform: scale(0.96); } }
 @media (prefers-reduced-motion: reduce) { .jeux-drapeau-grand { animation: none; } }
+
+/* ===== Onglets (refonte du 25 novembre 2026) ===== */
+/* Barre du bas sur téléphone, rail à gauche sur ordinateur. Le corps de la page devient la zone de l'appli
+   (contain: layout : il contient aussi les éléments fixes), la barre se pose juste à côté : tout ce qui était
+   calé en bas ou à gauche de l'écran se cale sur elle, sans retoucher chaque panneau. */
+#barre-onglets {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  box-sizing: border-box;
+  border: 0 solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background: var(--surface);
+  font: 600 11px var(--police);
+}
+#barre-onglets .onglet.onglet {
+  position: relative;
+  inset: auto;
+  display: flex;
+  visibility: visible;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--texte-2);
+  font: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: none;
+  filter: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+#barre-onglets .onglet.onglet::after { content: none; }
+#barre-onglets .onglet.onglet > svg {
+  width: 23px; height: 23px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+#barre-onglets .onglet.onglet > span {
+  max-width: none; overflow: hidden; opacity: 1;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+#barre-onglets .onglet.onglet:hover { color: var(--texte); background: color-mix(in srgb, var(--texte) 6%, transparent); }
+#barre-onglets .onglet.onglet[aria-expanded='true'] { color: var(--accent); background: transparent; }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before {
+  position: absolute; border-radius: 2px; background: var(--accent); content: '';
+}
+#barre-onglets .onglet.onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Le tiroir ne montre que la rubrique de l'onglet, sans le bandeau : le titre de la rubrique suffit */
+#menu-tiroir .menu-entete { display: none; }
+#menu-tiroir .menu-corps { padding-top: 6px; }
+#menu-tiroir[data-onglet='activites'] .menu-corps > .menu-vue:not(#menu-vue-activites),
+#menu-tiroir[data-onglet='traces'] .menu-corps > .menu-vue:not(#menu-vue-traces),
+#menu-tiroir[data-onglet='jeux'] .menu-corps > .menu-vue:not(#menu-vue-jeux) { display: none; }
+.outil-rapide-panneau .menu-partage { margin-top: 8px; }
+
+@media (max-width: 700px) {
+  :root { --onglets: calc(62px + env(safe-area-inset-bottom)); }
+  body { position: relative; height: calc(100% - var(--onglets)); contain: layout; }
+  #barre-onglets {
+    left: 0; right: 0; bottom: calc(-1 * var(--onglets));
+    height: var(--onglets);
+    padding: 0 4px env(safe-area-inset-bottom);
+    border-top-width: 1px;
+  }
+  #barre-onglets .onglet.onglet { flex: 1 1 0; margin: 4px 0; }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: -4px; left: 50%; width: 24px; height: 3px; transform: translateX(-50%); }
+  /* Plus de logo en haut à gauche : Paramètres prend sa place, la barre du haut s'élargit */
+  #menu-parametres-bouton { left: 10px; }
+  #barre-haut { left: 64px; }
+  /* Météo et Carte ne sont plus dans la colonne : leurs panneaux remontent sous Soleil et Lune et Horizon */
+  .outil-rapide-panneau { top: 268px; max-height: calc(100% - 278px); }
+  #menu-tiroir .menu-corps { padding-top: 10px; }
+}
+
+@media (min-width: 701px) {
+  :root { --rail: 88px; }
+  body { position: relative; margin-left: var(--rail); width: calc(100% - var(--rail)); contain: layout; }
+  #barre-onglets {
+    top: 0; bottom: 0; left: calc(-1 * var(--rail));
+    width: var(--rail);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 10px 84px;
+    border-right-width: 1px;
+  }
+  #barre-onglets .onglet.onglet { height: 64px; flex: none; }
+  #barre-onglets .onglet.onglet[aria-expanded='true'] { background: var(--accent-doux); }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 14px; bottom: 14px; left: -10px; width: 3px; }
+  /* Paramètres en bas du rail */
+  #menu-parametres-bouton { z-index: 31; top: auto; bottom: 18px; left: calc(-1 * var(--rail) + 20px); }
+  #barre-haut { left: 14px; }
+}
+
+/* Vues plein écran (Lune, Horizon, mode poche du guidage) : la barre s'efface, l'appli reprend tout l'écran */
+body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) { width: 100%; height: 100%; margin-left: 0; }
+body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #barre-onglets,
+body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #menu-parametres-bouton { display: none; }
+/* L'ancien bouton du menu se cachait tiroir ouvert : devenu onglet, il reste visible */
+body #barre-onglets #menu-bouton.onglet.onglet { visibility: visible; pointer-events: auto; }
+
+/* Logo de l'appli : montre ou cache les onglets. Sur ordinateur, il coiffe le rail ; rail caché, il reste en haut à gauche */
+#logo-onglets {
+  position: absolute; z-index: 32; top: 12px; left: 12px;
+  width: 46px; height: 46px; padding: 0; overflow: hidden;
+  border: 0; border-radius: 13px; background: #0a1020;
+  box-shadow: var(--ombre), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer; transition: transform 0.14s ease, filter 0.14s ease;
+}
+#logo-onglets img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#logo-onglets:hover { filter: brightness(1.12); }
+#logo-onglets:active { transform: scale(0.96); }
+#logo-onglets:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.onglets-masques #barre-onglets { display: none; }
+@media (max-width: 700px) {
+  #logo-onglets { top: max(10px, env(safe-area-inset-top)); left: 10px; }
+  #menu-parametres-bouton { left: 64px; }
+  #barre-haut { left: 118px; }
+  body.onglets-masques { height: 100%; }
+  body:has(#menu-tiroir.ouvert) #logo-onglets { visibility: hidden; }
+}
+@media (min-width: 701px) {
+  #logo-onglets { top: 14px; left: calc(-1 * var(--rail) + 21px); }
+  #barre-onglets { padding-top: 74px; }
+  body.onglets-masques { width: 100%; margin-left: 0; }
+  body.onglets-masques #logo-onglets { left: 14px; }
+  body.onglets-masques #menu-parametres-bouton { top: 14px; bottom: auto; left: 72px; }
+  body.onglets-masques #barre-haut { left: 130px; }
+}
+body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #logo-onglets { display: none; }
+/* Onglets cachés : plus d'engrenage, le logo seul en haut à gauche (demande du propriétaire du 25 novembre 2026) */
+body.onglets-masques #menu-parametres-bouton { display: none; }
+@media (max-width: 700px) { body.onglets-masques #barre-haut { left: 64px; } }
+@media (min-width: 701px) { body.onglets-masques #barre-haut { left: 72px; } }
+
+/* ===== Transitions des onglets (refonte du 25 novembre 2026) ===== */
+/* Sur téléphone, tout ce qu'ouvre un onglet monte du bas, juste au-dessus de la barre : tiroir et panneaux
+   deviennent des feuilles. Sur ordinateur, le tiroir glisse depuis le rail. */
+:root { --glisse: cubic-bezier(0.22, 0.8, 0.24, 1); }
+#barre-onglets .onglet.onglet:active { transform: scale(0.94); }
+#barre-onglets .onglet.onglet > svg { transition: transform 0.2s var(--glisse); }
+#barre-onglets .onglet.onglet[aria-expanded='true'] > svg { transform: translateY(-1px); }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: onglet-trait 0.24s var(--glisse); }
+@keyframes onglet-trait { from { opacity: 0; transform: translateX(-50%) scaleX(0.2); } }
+@media (min-width: 701px) {
+  @keyframes onglet-trait { from { opacity: 0; transform: scaleY(0.2); } }
+}
+/* Changer d'onglet fait apparaître la rubrique en fondu */
+#menu-tiroir .menu-corps > .menu-vue { animation: vue-entree 0.22s var(--glisse); }
+@keyframes vue-entree { from { opacity: 0; transform: translateY(6px); } }
+#menu-tiroir { transition: transform 0.3s var(--glisse), visibility 0s linear 0.3s; visibility: hidden; }
+#menu-tiroir.ouvert { visibility: visible; transition: transform 0.3s var(--glisse); }
+
+@media (max-width: 700px) {
+  #menu-tiroir {
+    top: auto; right: 8px; bottom: 8px; left: 8px;
+    width: auto; height: auto; max-height: calc(100% - 76px);
+    border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+    border-radius: 20px;
+    transform: translateY(calc(100% + 16px));
+  }
+  #menu-tiroir.ouvert { transform: none; }
+  #menu-tiroir.en-parametres { height: calc(100% - 76px); }
+  #menu-tiroir .menu-corps { flex: 0 1 auto; min-height: 0; }
+  :root[data-theme] #menu-tiroir { box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.45); }
+  :root[data-theme] body:has(#menu-tiroir.ouvert)::before { background: rgba(2, 6, 12, 0.32); animation: voile-entree 0.3s ease; }
+  @keyframes voile-entree { from { opacity: 0; } }
+  /* Panneaux Carte, Météo, Soleil et Lune : feuilles du bas, sous la colonne de droite */
+  .outil-rapide-panneau {
+    top: auto; right: 8px; bottom: 8px; left: 8px;
+    width: auto; max-height: calc(100% - 276px);
+    border-radius: 20px;
+    animation: feuille-entree 0.3s var(--glisse);
+  }
+  .outil-rapide-panneau.reduit { right: 8px; bottom: 8px; left: 8px; }
+  @keyframes feuille-entree { from { opacity: 0.4; transform: translateY(40px); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  #menu-tiroir, #menu-tiroir.ouvert, #barre-onglets .onglet.onglet > svg { transition: none; }
+  #menu-tiroir .menu-corps > .menu-vue, .outil-rapide-panneau,
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: none; }
+}
+
+/* ===== Préparer : les quatre activités en tuiles, les outils de l'activité choisie dessous ===== */
+/* Chaque module garde sa ligne (même bouton, même comportement) : seule la mise en page change. */
+#menu-vue-activites { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-activites > :not(.menu-module) { grid-column: 1 / -1; }
+#menu-vue-activites .menu-module { display: contents; }
+#menu-vue-activites .menu-module:first-of-type { margin-top: 0; }
+#menu-tiroir #menu-vue-activites .menu-ligne {
+  grid-row: 2;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 84px;
+  padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: none;
+  font-size: 12px;
+  text-align: center;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+#menu-tiroir #menu-vue-activites .menu-ligne > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#menu-tiroir #menu-vue-activites .menu-ligne::after { content: none; }
+#menu-tiroir #menu-vue-activites .menu-ligne > .icone-activite { width: 40px; height: 40px; transition: transform 0.2s var(--glisse); }
+#menu-tiroir #menu-vue-activites .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+#menu-tiroir #menu-vue-activites .menu-ligne.actif > .icone-activite { transform: scale(1.08); }
+#menu-tiroir #menu-vue-activites .menu-ligne:active { transform: scale(0.96); }
+/* Une seule activité à la fois : ses outils prennent toute la largeur sous les tuiles */
+#menu-vue-activites .menu-contenu { grid-row: 3; grid-column: 1 / -1; padding: 6px 2px 4px; animation: vue-entree 0.24s var(--glisse); }
+@media (max-width: 380px) {
+  #menu-tiroir #menu-vue-activites .menu-ligne { min-height: 76px; font-size: 11px; }
+  #menu-tiroir #menu-vue-activites .menu-ligne > .icone-activite { width: 34px; height: 34px; }
+}
+@media (prefers-reduced-motion: reduce) { #menu-vue-activites .menu-contenu { animation: none; } }
+
+/* ===== Explorer : bande de petites cartes, la carte libre au-dessus ===== */
+#explorer-bande {
+  position: absolute; z-index: 14; right: 0; bottom: 10px; left: 0;
+  display: flex; gap: 8px;
+  overflow-x: auto; padding: 4px 12px;
+  scroll-snap-type: x proximity; scrollbar-width: none;
+  animation: bande-entree 0.3s var(--glisse);
+}
+#explorer-bande[hidden] { display: none; }
+#explorer-bande::-webkit-scrollbar { display: none; }
+@keyframes bande-entree { from { opacity: 0; transform: translateY(24px); } }
+.explorer-carte {
+  display: flex; flex: 0 0 auto; align-items: center; gap: 10px;
+  min-width: 156px; height: 60px; box-sizing: border-box; padding: 0 14px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--ombre-forte);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3); backdrop-filter: blur(12px) saturate(1.3);
+  color: var(--texte); font: inherit; text-align: left;
+  cursor: pointer; scroll-snap-align: start;
+  transition: border-color 0.16s ease, transform 0.12s ease;
+}
+.explorer-carte:hover { border-color: var(--accent); }
+.explorer-carte:active { transform: scale(0.96); }
+.explorer-carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.explorer-carte > img { width: 40px; height: 40px; flex: none; border-radius: 10px; }
+.explorer-position { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 10px; background: var(--accent-doux); color: var(--accent); }
+.explorer-position svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.explorer-noms { display: grid; gap: 1px; min-width: 0; }
+.explorer-noms strong { font-size: 13px; font-weight: 650; white-space: nowrap; }
+.explorer-noms small { color: var(--accent); font-size: 11px; white-space: nowrap; }
+/* Rien à droite pendant Explorer : le globe a tout l'écran (décision du propriétaire du 25 novembre 2026) */
+body.explorer-ouvert .outils-rapides,
+body.explorer-ouvert .maplibregl-ctrl-top-right { visibility: hidden; pointer-events: none; }
+body.explorer-ouvert .maplibregl-ctrl-bottom-right { margin-bottom: 76px; }
+@media (min-width: 701px) {
+  #explorer-bande { bottom: 16px; padding: 4px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { #explorer-bande { animation: none; } }
+
+/* Météo d'abord : les conditions du moment avant le choix du lieu, sans le paragraphe d'aide */
+.meteo-locale { display: flex; flex-direction: column; }
+.meteo-locale > .meteo-emplacement { order: 1; margin-top: 10px; }
+.meteo-locale > .meteo-actuelle ~ :not(.meteo-emplacement) { order: 2; }
+.meteo-locale .meteo-emplacement-aide { display: none; }
+
+/* Météo : Météo locale, Radar et Vent en tuiles côte à côte, comme les activités ; chaque contenu ouvert dessous */
+#menu-vue-meteo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-meteo > :not(.menu-module) { grid-column: 1 / -1; }
+#menu-vue-meteo > .menu-vue-entete { display: none; }
+#menu-vue-meteo .menu-module { display: contents; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne {
+  grid-row: 1;
+  flex-direction: column; justify-content: center; gap: 6px;
+  min-height: 74px; padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px; background: var(--surface-2); box-shadow: none;
+  font-size: 12px; line-height: 1.2; text-align: center;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne::after { content: none; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne > svg { width: 28px; height: 28px; padding: 5px; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne:active { transform: scale(0.96); }
+#menu-vue-meteo .menu-contenu { grid-column: 1 / -1; padding: 4px 0 2px; animation: vue-entree 0.24s var(--glisse); }
+@media (prefers-reduced-motion: reduce) { #menu-vue-meteo .menu-contenu { animation: none; } }
+#menu-tiroir #menu-vue-activites .menu-ligne { padding-inline: 2px; font-size: 11.5px; letter-spacing: -0.01em; }

@@ -412,6 +412,10 @@ const ECRANS = [
   { nom: 'fond-batiments-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 15, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
+  // Refonte du 25 novembre 2026 : onglets Traces et Explorer
+  { nom: 'onglet-traces', actions: [clic('#onglet-traces')] },
+  { nom: 'onglet-explorer', actions: [clic('#onglet-explorer')] },
+  { nom: 'onglets-masques', actions: [clic('#logo-onglets')] },
   { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
   { nom: 'parapente', actions: [module('parapente')] },
   // Balises OpenWindMap et FFVL réunies, terrains FFVL (réseau requis : api.pioupiou.fr, data.gouv.fr)
@@ -939,7 +943,7 @@ const ECRANS = [
   { nom: 'point-geologie', simuler: true, actions: [vue(MATIN), appuiLong(0.5, 0.42), (p) => p.waitForTimeout(3000), defiler('.point-prudence')] },
   { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
   // Partage par lien (lot 4.5) : boutons, lien copié, liens reçus
-  { nom: 'partage-menu', actions: [clic('#menu-bouton'), defiler('.menu-partage'), clic('.menu-partage .menu-ligne')] },
+  { nom: 'partage-menu', actions: [clic('#outil-rapide-bouton-carte'), defiler('.menu-partage'), clic('.menu-partage .menu-ligne')] },
   { nom: 'partage-point', simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-partager'), defiler('.point-partager'), clic('.point-partager')] },
   { nom: 'partage-lien-point', simuler: true, lien: '#point=45.92/6.87&z=14', actions: [attendre('.point-partager')] },
   { nom: 'partage-lien-vue', lien: '#vue=13.5/45.9/6.88/40/60&3d=1', actions: [] },
@@ -1177,7 +1181,7 @@ const RESSEMBLE_AU_FRANCAIS = /[éèêàùç]|\b(le|la|les|des|du|une|aucun|pour
 
 async function main() {
   const filtres = process.argv.slice(2);
-  const ecrans = filtres.length ? ECRANS.filter((e) => filtres.some((f) => e.nom.includes(f))) : ECRANS;
+  const ecrans = filtres.length ? ECRANS.filter((e) => filtres.some((f) => (f.startsWith('=') ? e.nom === f.slice(1) : e.nom.includes(f)))) : ECRANS;
 
   rmSync(DOSSIER, { recursive: true, force: true });
   mkdirSync(DOSSIER, { recursive: true });

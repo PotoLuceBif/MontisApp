@@ -14,6 +14,8 @@ import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 import { etat as etatCarte } from './options-carte.js';
 import { fragmentVue } from './partage-calcul.js';
 import { partagerLien } from './partage.js';
+import { visiterLaLune } from './lune-bulle.js';
+import { getMoonIllumination, getTimes } from 'suncalc';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -29,15 +31,22 @@ const ICONES_MENU = {
   courbes: '<path d="M4 19c4-5 12-5 16 0M3 14c5-6 13-6 18 0M5 9c4-4 10-4 14 0"/>',
   nature: '<path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/>',
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
-  reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
+  reglages: '<path d="M10.3 4.3c.4-1.8 3-1.8 3.4 0a1.7 1.7 0 0 0 2.5 1.1c1.6-.9 3.3.8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 0 0-1 2.5c.9 1.6-.8 3.3-2.4 2.4a1.7 1.7 0 0 0-2.5 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 0 0-2.5-1c-1.6.9-3.3-.8-2.4-2.4a1.7 1.7 0 0 0-1-2.5c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 0 0 1-2.5c-.9-1.6.8-3.3 2.4-2.4 1 .6 2.3.1 2.5-1.1Z"/><circle cx="12" cy="12" r="3"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   partage: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
   'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
-  sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
+  sorties: '<path d="M12 8v4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/>',
   parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
   jeux: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>',
   panorama: '<path d="M2 20h20"/><path d="m4 20 5-8 3 4 3-5 5 9"/><path d="M5 7.5a10 10 0 0 1 14 0"/><path d="M12 4.5v1.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
+  // Onglets : dessins de la maquette choisie par le propriétaire (25 novembre 2026)
+  'onglet-carte': '<path d="m3 7 6-3 6 3 6-3v13l-6 3-6-3-6 3V7Z"/><path d="M9 4v13M15 7v13"/>',
+  'onglet-preparer': '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-8a3.5 3.5 0 0 1 0-7H12"/>',
+  'onglet-meteo': '<path d="M6.7 18C4 18 2 16 2 13.5S4 9 6.7 9c.4-1.8 1.8-3.2 3.6-3.8 1.9-.6 4-.2 5.5 1 1.5 1.2 2.1 3 1.8 4.8h1c1.9 0 3.4 1.6 3.4 3.5S20.5 18 18.6 18H6.7Z"/>',
+  'onglet-traces': '<path d="M12 8v4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/>',
+  'onglet-explorer': '<circle cx="12" cy="12" r="9"/><path d="m8 16 2-6 6-2-2 6-6 2Z"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>',
+  position: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -110,17 +119,30 @@ export function initMenu(map) {
     import('./carte-vent.js').then((m) => m.creerCarteVent(map))
   );
 
-  // ---------- Bouton et tiroir ----------
-  const bouton = document.createElement('button');
-  bouton.id = 'menu-bouton';
-  bouton.type = 'button';
-  bouton.setAttribute('aria-controls', 'menu-tiroir');
-  bouton.setAttribute('aria-expanded', 'false');
-  bouton.innerHTML = `
-    <img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />
-  `;
+  // ---------- Onglets (refonte du 25 novembre 2026) : barre du bas sur téléphone, rail à gauche sur ordinateur ----------
+  // Carte et Météo sont les boutons de leurs panneaux flottants ; Préparer, Traces et Explorer ouvrent le tiroir
+  // sur une seule de ses rubriques. Préparer garde l'identifiant de l'ancien bouton du menu (#menu-bouton).
+  const barreOnglets = document.createElement('nav');
+  barreOnglets.id = 'barre-onglets';
+  poserAttribut(barreOnglets, 'aria-label', 'onglets.titre');
+  const creerOnglet = (id, icone, cle) => {
+    const onglet = document.createElement('button');
+    onglet.id = id;
+    onglet.type = 'button';
+    onglet.className = 'onglet';
+    onglet.setAttribute('aria-controls', 'menu-tiroir');
+    onglet.setAttribute('aria-expanded', 'false');
+    onglet.innerHTML = `${creerIconeMenu(icone)}<span ${ti(cle)}>${t(cle)}</span>`;
+    return onglet;
+  };
+  const bouton = creerOnglet('menu-bouton', 'onglet-preparer', 'onglets.preparer');
   poserAttribut(bouton, 'aria-label', 'menu.ouvrir-activites');
-  poserAttribut(bouton, 'title', 'menu.activites');
+  const ongletTraces = creerOnglet('onglet-traces', 'onglet-traces', 'onglets.traces');
+  const ongletExplorer = creerOnglet('onglet-explorer', 'onglet-explorer', 'onglets.explorer');
+  // Onglet → rubrique du tiroir qu'il montre
+  const ONGLETS_TIROIR = new Map([[bouton, 'activites'], [ongletTraces, 'traces']]);
+  // Explorer n'ouvre pas le tiroir mais une bande de cartes au-dessus de la carte (posée en fin d'initMenu)
+  let fermerExplorer = () => {};
 
   const boutonParametres = document.createElement('button');
   boutonParametres.id = 'menu-parametres-bouton';
@@ -147,7 +169,8 @@ export function initMenu(map) {
     <div class="menu-corps" ${ta('aria-label', 'menu.activites')}></div>
     <div class="menu-parametres"></div>
   `;
-  document.body.append(bouton, boutonParametres, tiroir);
+  tiroir.dataset.onglet = 'activites';
+  document.body.append(boutonParametres, tiroir, barreOnglets);
   const corps = tiroir.querySelector('.menu-corps');
 
   const boutonFermer = tiroir.querySelector('#menu-fermer');
@@ -189,11 +212,19 @@ export function initMenu(map) {
   });
 
   const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
-  const ouvrir = (ouvert, pageParametres = false) => {
+  const ouvrir = (ouvert, pageParametres = false, rubrique = 'activites') => {
     tiroir.classList.toggle('ouvert', ouvert);
+    if (ouvert) {
+      tiroir.dataset.onglet = rubrique;
+      fermerExplorer();
+    }
     montrerParametres(ouvert && pageParametres);
-    bouton.setAttribute('aria-expanded', String(ouvert));
-    poserAttribut(bouton, 'aria-label', ouvert ? 'menu.ouvert' : 'menu.ouvrir-activites');
+    for (const [onglet, sienne] of ONGLETS_TIROIR) {
+      onglet.setAttribute('aria-expanded', String(ouvert && !pageParametres && tiroir.dataset.onglet === sienne));
+    }
+    // Géographie s'ouvre depuis Explorer : c'est lui qui reste allumé
+    if (tiroir.dataset.onglet === 'jeux') ongletExplorer.setAttribute('aria-expanded', String(ouvert && !pageParametres));
+    poserAttribut(bouton, 'aria-label', bouton.getAttribute('aria-expanded') === 'true' ? 'menu.ouvert' : 'menu.ouvrir-activites');
     boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
     // La météo affichée (radar, vent) reste sur la carte pendant qu'on parcourt le menu
     if (ouvert) {
@@ -273,6 +304,12 @@ export function initMenu(map) {
     },
     {
       id: 'meteo',
+      onglet: true,
+      // L'onglet Météo montre tout de suite la météo d'ici, s'il n'y a rien d'autre d'ouvert dedans
+      surOuverture: () => {
+        const etats = etatsParCategorie.get('meteo');
+        if (etats && !etats.some((e) => e.actif)) demarrer(etats[0]);
+      },
       titre: 'menu.meteo',
       icone: 'meteo',
       aide: 'menu.aide-meteo',
@@ -290,6 +327,7 @@ export function initMenu(map) {
     },
     {
       id: 'carte',
+      onglet: true,
       titre: 'menu.carte',
       icone: 'carte',
       aide: 'menu.aide-carte',
@@ -325,7 +363,14 @@ export function initMenu(map) {
     },
   ];
 
-  bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
+  // Un onglet ouvre sa rubrique ; touché de nouveau, il referme le tiroir
+  for (const [onglet, rubrique] of ONGLETS_TIROIR) {
+    onglet.addEventListener('click', () => {
+      const dejaLa = onglet.getAttribute('aria-expanded') === 'true';
+      ouvrir(!dejaLa, false, rubrique);
+      if (!dejaLa) corps.scrollTop = 0;
+    });
+  }
   boutonParametres.addEventListener('click', () => {
     ouvrir(true, true);
     obtenirParametres().then(
@@ -388,7 +433,7 @@ export function initMenu(map) {
     },
     onOuvrir: () => {
       const e = activiteEnCours;
-      ouvrir(true);
+      ouvrir(true, false, 'activites');
       if (e) requestAnimationFrame(() => e.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     },
     onRetirer: () => activiteEnCours?.ligne.click(),
@@ -521,7 +566,7 @@ export function initMenu(map) {
       boutonOutil.setAttribute('aria-controls', `outil-rapide-panneau-${categorie.id}`);
       boutonOutil.setAttribute('aria-expanded', 'false');
       poserAttribut(boutonOutil, 'aria-label', `menu.ouvrir-outils-${categorie.id}`);
-      boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span ${ti(categorie.titre)}>${t(categorie.titre)}</span>`;
+      boutonOutil.innerHTML = `${creerIconeMenu(categorie.onglet ? `onglet-${categorie.id}` : categorie.icone)}<span ${ti(categorie.titre)}>${t(categorie.titre)}</span>`;
       ajouterAideMaintien(boutonOutil, categorie.titre);
 
       const panneauOutil = document.createElement('aside');
@@ -544,7 +589,9 @@ export function initMenu(map) {
         <div class="outil-rapide-corps"></div>
       `;
       panneauOutil.querySelector('.outil-rapide-corps').appendChild(vue);
-      actionsFlottantes.appendChild(boutonOutil);
+      // Carte et Météo sont des onglets ; Soleil et Lune reste dans la colonne de droite
+      if (categorie.onglet) boutonOutil.classList.add('onglet');
+      else actionsFlottantes.appendChild(boutonOutil);
       document.body.appendChild(panneauOutil);
       boutonsFlottants.set(categorie.id, boutonOutil);
       panneauxFlottants.set(categorie.id, panneauOutil);
@@ -563,6 +610,7 @@ export function initMenu(map) {
       });
 
       boutonOutil.addEventListener('click', () => {
+        fermerExplorer();
         // Le bouton d'un panneau réduit le rouvre, sans rien arrêter
         if (!panneauOutil.hidden && panneauOutil.classList.contains('reduit')) {
           reduirePanneau(panneauOutil, false);
@@ -704,5 +752,104 @@ export function initMenu(map) {
     }), 'Montis');
   });
   partage.append(lignePartage);
-  corps.appendChild(partage);
+  // La vue se partage depuis l'onglet Carte
+  panneauxFlottants.get('carte').querySelector('.outil-rapide-corps').appendChild(partage);
+
+  // Logo de l'appli en haut à gauche : il montre ou cache les onglets (demande du propriétaire du 25 novembre 2026)
+  const logo = document.createElement('button');
+  logo.id = 'logo-onglets';
+  logo.type = 'button';
+  logo.setAttribute('aria-controls', 'barre-onglets');
+  logo.innerHTML = '<img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />';
+  const montrerOnglets = (visibles) => {
+    document.body.classList.toggle('onglets-masques', !visibles);
+    logo.setAttribute('aria-expanded', String(visibles));
+    poserAttribut(logo, 'aria-label', visibles ? 'onglets.masquer' : 'onglets.montrer');
+    logo.title = logo.getAttribute('aria-label');
+  };
+  montrerOnglets(!lire('onglets-masques', false));
+  logo.addEventListener('click', () => {
+    const visibles = document.body.classList.contains('onglets-masques');
+    ecrire('onglets-masques', !visibles);
+    montrerOnglets(visibles);
+    if (!visibles) {
+      fermerPanneauxFlottants({ garderReduits: true });
+      ouvrir(false);
+      fermerExplorer();
+    }
+  });
+  document.body.appendChild(logo);
+  barreOnglets.append(boutonsFlottants.get('carte'), bouton, boutonsFlottants.get('meteo'), ongletTraces, ongletExplorer);
+
+  // ---------- Explorer : bande de petites cartes (Globe, La Lune, Soleil et Lune, Géographie) ----------
+  // La carte reste libre au-dessus : on fait tourner le globe, on touche un pays. Horizon reste dans la colonne.
+  const bande = document.createElement('section');
+  bande.id = 'explorer-bande';
+  bande.hidden = true;
+  poserAttribut(bande, 'aria-label', 'onglets.explorer');
+  const carteExplorer = (id, image, cleTitre, action) => {
+    const carte = document.createElement('button');
+    carte.type = 'button';
+    carte.className = 'explorer-carte';
+    carte.dataset.explorer = id;
+    carte.innerHTML = `${image}<span class="explorer-noms"><strong></strong><small></small></span>`;
+    poser(carte.querySelector('strong'), cleTitre);
+    carte.addEventListener('click', action);
+    bande.appendChild(carte);
+    return carte.querySelector('small');
+  };
+  const vignette = (fichier) => `<img src="/icons/activites/${fichier}.svg" alt="" width="40" height="40" />`;
+  const detailPosition = carteExplorer('position', `<span class="explorer-position">${creerIconeMenu('position')}</span>`, 'explorer.position', () => {
+    document.querySelector('.maplibregl-ctrl-geolocate')?.click();
+  });
+  const detailGlobe = carteExplorer('globe', vignette('globe'), 'explorer.globe', () => {
+    map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true });
+  });
+  const detailLune = carteExplorer('lune', vignette('lune'), 'explorer.lune', () => {
+    fermerExplorer();
+    visiterLaLune(map);
+  });
+  const detailCiel = carteExplorer('ciel', vignette('ciel'), 'menu.ciel', () => {
+    fermerExplorer();
+    boutonsFlottants.get('ciel')?.click();
+  });
+  const detailGeo = carteExplorer('geo', vignette('culture-geo'), 'explorer.geo', () => {
+    ouvrir(true, false, 'jeux');
+    const jeu = etatsParCategorie.get('jeux')?.[0];
+    if (jeu && !jeu.actif) jeu.ligne.click();
+  });
+  document.body.appendChild(bande);
+
+  // Détails du moment : phase de la Lune, coucher du soleil au centre de la carte
+  const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);
+  function majDetails() {
+    const maintenant = new Date();
+    const { lng, lat } = map.getCenter();
+    poser(detailPosition, 'explorer.position-detail');
+    poser(detailGlobe, 'explorer.globe-detail');
+    poser(detailLune, 'explorer.lune-detail', { pourcent: Math.round(getMoonIllumination(maintenant).fraction * 100) });
+    const coucher = heure(getTimes(maintenant, lat, lng).sunset);
+    if (coucher) poser(detailCiel, 'explorer.ciel-detail', { heure: coucher });
+    else poser(detailCiel, 'explorer.ciel-sans-coucher');
+    poser(detailGeo, 'explorer.geo-detail');
+  }
+
+  const montrerExplorer = (oui) => {
+    bande.hidden = !oui;
+    document.body.classList.toggle('explorer-ouvert', oui);
+    ongletExplorer.setAttribute('aria-expanded', String(oui));
+  };
+  fermerExplorer = () => {
+    if (!bande.hidden) montrerExplorer(false);
+  };
+  ongletExplorer.addEventListener('click', () => {
+    if (!bande.hidden) {
+      montrerExplorer(false);
+      return;
+    }
+    fermerPanneauxFlottants({ garderReduits: true });
+    ouvrir(false);
+    majDetails();
+    montrerExplorer(true);
+  });
 }

@@ -11,11 +11,13 @@ const SELECTEURS_OBSTACLES = [
   '#menu-bouton',
   '#menu-parametres-bouton',
   '.outils-rapides',
+  '#explorer-bande',
   '.maplibregl-ctrl-top-right',
   '.maplibregl-ctrl-bottom-right',
   '.maplibregl-popup',
 ];
 const SELECTEURS_PANNEAUX = [
+  '#explorer-bande',
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
