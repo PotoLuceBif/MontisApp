@@ -5363,3 +5363,51 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 /* Boutons secondaires : fond neutre, pas de contour coloré ; l'accent reste au bouton principal */
 :root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour) { border-color: transparent; background: var(--survol); }
 :root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour):hover { border-color: transparent; background: color-mix(in srgb, var(--texte) 10%, var(--survol)); }
+
+/* Ordinateur : la bande d'un onglet devient une colonne le long du rail, de haut en bas (demande du
+   propriétaire du 25 novembre 2026 : la place y est, plus besoin de défiler sur le côté) */
+@keyframes bande-entree-gauche { from { opacity: 0; transform: translateX(-20px); } }
+@media (min-width: 701px) {
+  .bande-onglet {
+    top: 74px; right: auto; bottom: auto; left: 12px;
+    flex-direction: column; gap: 8px;
+    width: 264px; max-height: calc(100% - 96px);
+    overflow-x: hidden; overflow-y: auto; padding: 4px;
+    touch-action: pan-y; overscroll-behavior-y: contain;
+    animation: bande-entree-gauche 0.26s var(--glisse);
+  }
+  .bande-onglet .bande-carte { width: 100%; min-width: 0; height: 64px; }
+  .bande-onglet .bande-noms strong, .bande-onglet .bande-noms small { overflow: hidden; text-overflow: ellipsis; }
+  .bande-onglet .bande-fermer { align-self: flex-end; order: -1; width: 40px; height: 40px; border-radius: 12px; }
+  .bande-onglet .bande-suite { display: none !important; }
+  body.bande-ouverte .maplibregl-ctrl-bottom-right { margin-bottom: 0; }
+}
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) { .bande-onglet { animation: none; } }
+@media (min-width: 701px) {
+  /* De la place autour des cartes : sinon leur ombre, coupée par le défilement, dessinait un cadre gris */
+  .bande-onglet { left: 0; width: 292px; padding: 6px 16px 24px 12px; }
+  .bande-onglet :is(.bande-carte, .bande-fermer) { box-shadow: var(--ombre); }
+}
+
+/* Ordinateur : Carte, Météo et Soleil et Lune s'ouvrent comme Préparer, en feuille le long du rail
+   (demande du propriétaire du 25 novembre 2026 : tout du même côté, la carte libre à droite).
+   Réduits, ils gardent leur barre en bas à gauche. La vue au sol garde sa frise en bas. */
+@media (min-width: 701px) {
+  body:not(.panorama-ciel) .outil-rapide-panneau:not(.reduit) {
+    top: 0; right: auto; bottom: 0; left: 0;
+    width: min(352px, 88vw); max-height: none;
+    border-width: 0 1px 0 0; border-radius: 0;
+    box-shadow: 14px 0 42px rgba(3, 6, 20, 0.35);
+    animation: outil-feuille-gauche 0.22s var(--glisse);
+  }
+  body:not(.panorama-ciel) .outil-rapide-panneau.reduit {
+    top: auto; right: auto; bottom: 12px; left: 12px; width: 300px; max-height: none;
+  }
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) #barre-haut { left: calc(min(352px, 88vw) + 22px); }
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) .bande-onglet { display: none; }
+}
+@media (min-width: 780px) {
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) .bf { left: 364px; }
+}
+@keyframes outil-feuille-gauche { from { opacity: 0; transform: translateX(-24px); } }
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) { .outil-rapide-panneau { animation: none; } }
