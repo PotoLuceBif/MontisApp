@@ -26,13 +26,14 @@ const ALLER_REPONSE = 500;
 const PAUSE_REPONSE = 250;
 const RETOUR_REPONSE = 650;
 // Pictogrammes des cartes de jeu (traits, comme les icônes du menu)
+// Modes de jeu dans la DA des logos Montis (25 novembre 2026) : dessin blanc, une touche de cyan ou de magenta
 const ICONES_MODES = {
-  drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
-  capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/>',
-  liste: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
-  fiches: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/>',
-  ou: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
-  revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/>',
+  drapeaux: '<path d="M6 21V3.5"/><path class="plein-m" d="M6.8 4.5c2.4-1.2 4.4-1.2 6.6 0s4.3 1.2 6.6 0v8.8c-2.3 1.2-4.3 1.2-6.6 0s-4.2-1.2-6.6 0Z"/><path d="M6.8 4.5c2.4-1.2 4.4-1.2 6.6 0s4.3 1.2 6.6 0v8.8c-2.3 1.2-4.3 1.2-6.6 0s-4.2-1.2-6.6 0"/>',
+  capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/><circle class="plein-c" cx="12" cy="6.6" r="1.4"/>',
+  liste: '<circle cx="12" cy="13.5" r="7.5"/><path class="trait-c" d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
+  fiches: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/><path class="plein-m" d="M15 5.6v5l1.5-1 1.5 1v-5.2c-1-.1-2 0-3 .2Z"/>',
+  ou: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5Z" opacity=".55"/><path class="plein-c" d="M15.5 13.5s3.2-2.8 3.2-5.5a3.2 3.2 0 1 0-6.4 0c0 2.7 3.2 5.5 3.2 5.5Z"/>',
+  revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/><circle class="plein-c" cx="12" cy="12" r="2"/>',
 };
 const ICONE_RECOMMENCER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';
 const ICONE_LIVRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/></svg>';

@@ -15,6 +15,7 @@ import { etat as etatCarte } from './options-carte.js';
 import { fragmentVue } from './partage-calcul.js';
 import { partagerLien } from './partage.js';
 import { visiterLaLune } from './lune-bulle.js';
+import { deposer } from './demandes.js';
 import { getMoonIllumination, getTimes } from 'suncalc';
 import { fixerPleinJour, pleinJour } from './heure-espace.js';
 import { suivreGlisse } from './geste-feuille.js';
@@ -912,7 +913,19 @@ export function initMenu(map) {
     const etat = etatModule('traces', id);
     if (etat && !etat.actif) etat.ligne.click();
   });
-  creerBande('traces', ongletTraces, [trace('sorties'), trace('parcours')]);
+  // Créer un parcours : dans l'activité en cours si elle a ses parcours, sinon en Randonnée ; on le range à
+  // l'enregistrement dans l'activité voulue
+  const creerParcours = {
+    cle: 'creer', image: icone('onglet-traces'), titre: 'bande.creer', detail: () => ['bande.creer-detail'],
+    action: () => {
+      const enCours = etatsParCategorie.get('activites')?.find((e) => e.actif)?.def.id;
+      const activite = ['rando', 'velo'].includes(enCours) ? enCours : 'rando';
+      deposer(`creer-parcours-${activite}`, true);
+      fermerExplorer();
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
+    },
+  };
+  creerBande('traces', ongletTraces, [creerParcours, trace('sorties'), trace('parcours')]);
 
   // Explorer : détails du moment (phase de la Lune, coucher du soleil au centre de la carte)
   const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);

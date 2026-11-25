@@ -5179,3 +5179,23 @@ body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue > :not(.ciel
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete::before { content: none; }
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ciel-entete { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue { padding-bottom: 0; }
+
+/* Modes de jeu dans la DA des logos (25 novembre 2026) : carré bleu nuit, contour cyan-magenta, dessin blanc */
+.jeux-carte-icone, .jeux-carte-icone:is(.jeux-carte-drapeaux, .jeux-carte-capitales, .jeux-carte-liste, .jeux-carte-ou, .jeux-carte-revision, .jeux-carte-fiches) {
+  border: 1.5px solid transparent; border-radius: 28%; box-shadow: none;
+  background: var(--icone-fond) padding-box, linear-gradient(135deg, #22d3ee, #c026d3) border-box;
+}
+.jeux-carte-icone svg { stroke: var(--icone-trait); }
+.jeux-carte-icone .plein-c { fill: #22d3ee; stroke: none; }
+.jeux-carte-icone .plein-m { fill: #e040fb; stroke: none; opacity: .85; }
+.jeux-carte-icone .trait-c { stroke: #22d3ee; }
+
+/* Éditeur : ranger le parcours dans une activité ; Mes parcours : onglets par activité (25 novembre 2026) */
+.parcours-ranger { display: grid; gap: 6px; margin: 8px 0 4px; }
+.parcours-ranger[hidden] { display: none; }
+.parcours-ranger > span { color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.parcours-ranger .segments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.parcours-ranger .segments button { min-height: 36px; font-size: 12.5px; }
+.traces-filtres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 8px 0 10px; }
+.traces-filtres button { display: grid; justify-items: center; gap: 1px; min-height: 44px; padding: 4px 2px; font-size: 12px; }
+.traces-filtres small { font-size: 11px; opacity: .75; }

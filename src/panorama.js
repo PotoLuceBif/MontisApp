@@ -13,6 +13,7 @@ import { capBoussole, lisserAngle } from './guidage-calcul.js';
 import { altitudeRelief } from './relief-donnees.js';
 import { chargerSommets, chargerRelief, DISTANCE_MAX } from './panorama-donnees.js';
 import {
+  passageAstre,
   angleApparent, champHorizontal, choisirDepart, choisirEtiquettes, cretesCap, leverCoucherReels, profilHorizon, trajetAstre, directionCamera, ecartCap, estVisible,
   importanceSommet, pointA, pointCardinal, projeter, relierCretes,
 } from './panorama-calcul.js';
@@ -718,6 +719,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
   let trajets = null; // { cle, soleil, lune }
   let horizonDe = null; // cap → angle du relief, d'après la ligne d'horizon
   let levers = { soleil: null, lune: null };
+  let passagesLevers = {}; // début du passage dont les levers sont calculés, par astre
   const ASTRES = ['soleil', 'lune'];
   const traces = {};
   for (const astre of ASTRES) {
@@ -744,7 +746,14 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     const ligne = cretes.find((l) => l.horizon);
     if (!ligne || !observateur || !trajets) return;
     horizonDe = profilHorizon(ligne.points, observateur);
-    levers = Object.fromEntries(ASTRES.map((a) => [a, leverCoucherReels(trajets[a], horizonDe)]));
+    const t = ciel.instant();
+    levers = Object.fromEntries(ASTRES.map((a) => {
+      const passage = passageAstre(trajets[a], t, horizonDe);
+      if (!passage) return [a, { lever: null, coucher: null }];
+      // Un point de part et d'autre, pour trouver le passage de la crête
+      return [a, leverCoucherReels(trajets[a].slice(Math.max(0, passage[0] - 1), passage[1] + 2), horizonDe)];
+    }));
+    passagesLevers = Object.fromEntries(ASTRES.map((a) => [a, passageAstre(trajets[a], t, horizonDe)?.[0] ?? null]));
     ciel.surLevers(levers);
   }
 
@@ -804,8 +813,13 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
       return dansEcran(q) ? q : null;
     };
     const visible = (p) => p.hauteur > (horizonDe ? horizonDe(p.azimut) : 0) && Boolean(place(p));
+    const passages = Object.fromEntries(ASTRES.map((a) => [a, passageAstre(trajets[a], t, horizonDe ?? undefined)]));
+    // Le passage a changé (on a fait défiler la frise) : ses vrais lever et coucher aussi
+    if (horizonDe && ASTRES.some((a) => (passages[a]?.[0] ?? null) !== (passagesLevers[a] ?? null))) majLevers();
     for (const astre of ASTRES) {
-      const trajet = trajets[astre];
+      const passage = passages[astre];
+      // Un point de part et d'autre du passage : la trajectoire touche l'horizon
+      const trajet = passage ? trajets[astre].slice(Math.max(0, passage[0] - 1), passage[1] + 2) : [];
       const tr = traces[astre];
       let passe = '';
       let futur = '';

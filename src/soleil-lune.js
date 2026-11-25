@@ -243,11 +243,11 @@ export function creerSoleilLune(map) {
           retour: () => basculerSol(false),
           ciel: {
             trajets: () => {
-              const debut = m.s.midiLocal(reglage.jour(), reglage.decalage()).getTime() - 12 * 3600000;
+              const debut = m.s.midiLocal(reglage.jour(), reglage.decalage()).getTime() - 24 * 3600000;
               return {
                 cle: jourCle(),
                 debut,
-                fin: debut + 24 * 3600000,
+                fin: debut + 48 * 3600000,
                 soleil: (instant) => m.s.positionSoleil(instant, ici.lat, ici.lng),
                 lune: (instant) => m.l.positionLune(instant, ici.lat, ici.lng),
               };

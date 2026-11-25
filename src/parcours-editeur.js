@@ -12,7 +12,7 @@ import { calculerTroncon, tronconLibre } from './parcours-routage.js';
 import { nettoyerPreferences } from './parcours-preferences.js';
 import { PALIERS_PENTE, VOIES, analyserTrace, palierDifficulte, palierPente, passagesRaides, repartir } from './parcours-analyse.js';
 import { creerProfilParcours } from './parcours-profil.js';
-import { compacter } from './parcours-stockage.js';
+import { compacter, creerStockageParcours } from './parcours-stockage.js';
 import { fragmentParcours } from './partage-calcul.js';
 import { ICONE_PARTAGE, annoncer, partagerLien } from './partage.js';
 import { formatAltitude, formatDistance, formatLongueur, uniteAllure, uniteDistance, valeurDistance, versAllure, depuisAllure } from './unites.js';
@@ -81,6 +81,10 @@ function legende(parts, total) {
     .map(({ couleur, libelle, longueur }) => `<span><i style="background: ${couleur}"></i>${libelle} ${pourcent(longueur, total)} %</span>`)
     .join('');
 }
+
+// Activités qui ont leurs parcours : un tracé se range dans l'une d'elles en l'enregistrant (demande du propriétaire
+// du 25 novembre 2026), par défaut celle où il a été tracé
+const RANGEMENTS = ['rando', 'velo', 'skirando'];
 
 export function creerEditeurParcours(map, { activite, stockage, onFermer = () => {}, onRetour = () => {}, onEnregistre = () => {} }) {
   const SOURCE_TRACE = `${activite.id}-trace`;
@@ -178,6 +182,12 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       <div class="parcours-legende-couleur" hidden></div>
     </div>
     <label class="parcours-nom">${tt('editeur.nom')}<input type="text" maxlength="60" ${ta('placeholder', 'editeur.nom-placeholder')}></label>
+    <div class="parcours-ranger">
+      <span ${ti('editeur.ranger')}>${t('editeur.ranger')}</span>
+      <div class="segments" role="group" ${ta('aria-label', 'editeur.ranger')}>
+        ${RANGEMENTS.map((id) => `<button type="button" data-ranger="${id}" ${ti(`editeur.ranger-${id}`)}>${t(`editeur.ranger-${id}`)}</button>`).join('')}
+      </div>
+    </div>
     <div class="parcours-sortie">
     <button type="button" class="para-bouton para-bouton-principal parcours-demarrer" hidden ${ti('guidage.demarrer')}>${t('guidage.demarrer')}</button>
     <a class="para-bouton parcours-trajet" hidden><svg viewBox="0 0 24 24" aria-hidden="true">${DESSIN_TRAJET}</svg><span ${ti('editeur.s-y-rendre')}>${t('editeur.s-y-rendre')}</span></a>
@@ -214,7 +224,23 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   const boutonGpx = $('.parcours-gpx');
   const boutonPartager = $('.parcours-partager');
   const boutonEnregistrer = $('.parcours-enregistrer');
+  let rangement = RANGEMENTS.includes(activite.id) ? activite.id : null;
+  let rangementGarde = rangement; // activité où le parcours est enregistré, pour le déplacer si on en change
+  const majRangement = () => panneau.element.querySelectorAll('[data-ranger]').forEach((b) => {
+    b.classList.toggle('actif', b.dataset.ranger === rangement);
+    b.setAttribute('aria-pressed', String(b.dataset.ranger === rangement));
+  });
+  const stockageDe = (id) => (id === activite.id ? stockage : creerStockageParcours(id));
   const champNom = $('.parcours-nom input');
+  $('.parcours-ranger').hidden = !rangement;
+  $('.parcours-ranger').addEventListener('click', (event) => {
+    const bouton = event.target.closest('[data-ranger]');
+    if (!bouton) return;
+    rangement = bouton.dataset.ranger;
+    majRangement();
+    if (idParcours !== null) aEnregistrer = true;
+    majEnregistrer();
+  });
   const boutonAide = $('.parcours-bouton-aide');
   const blocAide = $('.parcours-aide');
   const lienTrajet = $('.parcours-trajet');
@@ -690,7 +716,10 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
   function enregistrer() {
     if (etapes.length < 2) return false;
     idParcours = idParcours ?? String(Date.now());
-    const reussi = stockage.enregistrer({
+    const cible = rangement ? stockageDe(rangement) : stockage;
+    // Changé d'activité : le parcours quitte la liste de l'ancienne
+    if (rangement && rangementGarde && rangementGarde !== rangement) stockageDe(rangementGarde).supprimer(idParcours);
+    const reussi = cible.enregistrer({
       id: idParcours,
       nom,
       pratique: pratique.id,
@@ -704,7 +733,9 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     annoncer(t(reussi ? 'editeur.enregistre' : 'editeur.stockage-plein', { nom }), !reussi);
     if (reussi) {
       aEnregistrer = false;
+      rangementGarde = rangement;
       onEnregistre();
+      if (rangement !== activite.id) window.dispatchEvent(new CustomEvent('montis:parcours-modifies'));
     }
     majEnregistrer();
     return reussi;
@@ -1219,6 +1250,8 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
       rendreInfos([]);
       idParcours = parcours.id;
       aEnregistrer = false;
+      rangement = rangementGarde = RANGEMENTS.includes(activite.id) ? activite.id : null;
+      majRangement();
       passe = [];
       futur = [];
       definirNom(parcours.nom);
@@ -1254,6 +1287,8 @@ export function creerEditeurParcours(map, { activite, stockage, onFermer = () =>
     },
     // Toujours un parcours neuf : celui d'avant a été enregistré ou abandonné en le quittant
     ouvrirCreation() {
+      rangement = rangementGarde = RANGEMENTS.includes(activite.id) ? activite.id : null;
+      majRangement();
       guidage.arreter();
       controleur?.abort();
       lignesEnsemble = null;

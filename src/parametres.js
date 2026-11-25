@@ -34,7 +34,7 @@ const APERCUS = {
   sombre: ['#15191c', '#1c2125', '#5fb59a'],
   auto: ['linear-gradient(135deg, #eef1f6 50%, #15191c 50%)', 'linear-gradient(135deg, #ffffff 50%, #1c2125 50%)', '#5fb59a'],
 };
-function vignettesTheme(themes, actif, choisir) {
+function vignettesTheme(themes, actif, choisir, accent) {
   const grille = document.createElement('div');
   grille.className = 'params-themes';
   grille.setAttribute('role', 'group');
@@ -43,8 +43,8 @@ function vignettesTheme(themes, actif, choisir) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'params-theme';
-    const [fond, panneau, accent] = APERCUS[theme.id] ?? APERCUS.sombre;
-    b.innerHTML = `<span class="params-theme-apercu" style="background:${fond}"><i style="background:${panneau}"></i><b style="background:${accent}"></b></span><span class="params-theme-nom"></span>`;
+    const [fond, panneau] = APERCUS[theme.id] ?? APERCUS.sombre;
+    b.innerHTML = `<span class="params-theme-apercu" style="background:${fond}"><i style="background:${panneau}"></i><b></b></span><span class="params-theme-nom"></span>`;
     poser(b.querySelector('.params-theme-nom'), theme.cle);
     b.addEventListener('click', () => {
       choisir(theme.id);
@@ -54,9 +54,11 @@ function vignettesTheme(themes, actif, choisir) {
     return { id: theme.id, b };
   });
   function maj() {
+    const couleurs = accent();
     boutons.forEach(({ id, b }) => {
       b.classList.toggle('actif', id === actif());
       b.setAttribute('aria-pressed', String(id === actif()));
+      b.querySelector('.params-theme-apercu b').style.background = id === 'clair' ? couleurs.clair : couleurs.sombre;
     });
   }
   maj();
@@ -130,7 +132,8 @@ export function creerPageParametres({ retour }) {
   // ---------- Thème ----------
   poser(page.querySelector('.params-accueil-version'), 'params.version', { version: __VERSION_MONTIS__ });
   const theme = groupe('params.theme', 'theme');
-  const choixTheme = vignettesTheme(THEMES, themeChoisi, definirTheme);
+  const accentActuel = () => ACCENTS.find((a) => a.id === accentChoisi()) ?? ACCENTS[0];
+  const choixTheme = vignettesTheme(THEMES, themeChoisi, definirTheme, accentActuel);
   theme.appendChild(choixTheme.element);
 
   const ligneAccent = ligne('params.accent');
@@ -151,8 +154,10 @@ export function creerPageParametres({ retour }) {
     pastilles.appendChild(b);
     return { id: a.id, b };
   });
-  const majAccent = () =>
+  const majAccent = () => {
     boutonsAccent.forEach(({ id, b }) => b.classList.toggle('actif', id === accentChoisi()));
+    choixTheme.maj();
+  };
   majAccent();
   ligneAccent.appendChild(pastilles);
   theme.appendChild(ligneAccent);
