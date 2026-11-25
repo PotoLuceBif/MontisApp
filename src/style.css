@@ -5227,3 +5227,6 @@ body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-
 .bande-suite { width: 64px; margin-left: -64px; background: linear-gradient(90deg, transparent, var(--surface) 62%); }
 .bande-onglet.deborde .bande-suite { place-items: center end; padding-right: 4px; }
 .bande-suite svg { box-sizing: border-box; width: 34px; height: 34px; padding: 7px; border: 1px solid color-mix(in srgb, var(--bord) 60%, var(--accent) 40%); border-radius: 50%; background: var(--surface-2); box-shadow: var(--ombre); }
+/* En-tête de Soleil et Lune : la même vignette que sa carte de Plus */
+.outil-rapide-titre .outil-rapide-vignette { flex: none; width: 30px; height: 30px; display: block; }
+body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; height: 24px; }

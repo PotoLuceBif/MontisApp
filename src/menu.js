@@ -634,7 +634,10 @@ export function initMenu(map) {
       panneauOutil.innerHTML = `
         <header class="outil-rapide-entete">
           <div class="outil-rapide-titre">
-            ${creerIconeMenu(categorie.icone)}
+            ${categorie.id === 'ciel'
+              // Même vignette que sa carte de Plus (comme Jeux)
+              ? '<img class="outil-rapide-vignette" src="/icons/activites/ciel.svg" alt="" width="30" height="30" />'
+              : creerIconeMenu(categorie.icone)}
             <span class="outil-rapide-noms">
               <strong ${ti(categorie.titre)}>${t(categorie.titre)}</strong>
               <small class="outil-rapide-resume" hidden></small>
