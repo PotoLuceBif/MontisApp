@@ -34,6 +34,15 @@ describe('la Terre vue de la Lune', () => {
     expect(pixels[3]).toBe(0); // coin hors du disque
     expect(lum(16, 10)).toBeGreaterThan(lum(3, 10) + 50); // côté est éclairé, ouest dans la nuit
   });
+  it('éclaircit l’océan sombre côté jour, pour que la nuit s’en détache', () => {
+    const largeur = 4;
+    const jour = new Uint8ClampedArray(largeur * largeur * 4);
+    for (let k = 0; k < jour.length; k += 4) jour.set([4, 10, 40, 255], k); // abysses de Blue Marble
+    const pixels = peindreTerre({ jour, largeur, centre: { lat: 0, lng: 0 }, soleil: { lat: 0, lng: 90 }, taille: 20 });
+    const bleu = (x, y) => pixels[(y * 20 + x) * 4 + 2];
+    expect(bleu(16, 10)).toBeGreaterThan(90);
+    expect(bleu(16, 10)).toBeGreaterThan(bleu(3, 10) * 3);
+  });
 });
 
 describe('vue où la Lune dépasse au nord du globe', () => {

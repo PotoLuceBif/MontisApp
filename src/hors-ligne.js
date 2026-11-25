@@ -2,6 +2,7 @@
 import { basculerFondHorsLigne } from './fond-de-carte.js';
 import { dateEtHeure, poser, t } from './i18n.js';
 import { suivreMisesAJour } from './mise-a-jour.js';
+import { suivreConnexionLente } from './connexion-lente.js';
 
 const EN_TETE_DATE = 'x-montis-date';
 
@@ -48,12 +49,17 @@ export function initHorsLigne(map) {
   document.body.append(pastille);
 
   let etaitHorsLigne = false;
+  // Même pastille pour « Connexion lente », seulement informative ; hors ligne passe avant
+  const lenteur = suivreConnexionLente(map, () => majEtat());
 
   function majEtat() {
     const horsLigne = estHorsLigne();
+    const lente = !horsLigne && lenteur.lente();
     document.documentElement.dataset.reseau = horsLigne ? 'hors-ligne' : 'en-ligne';
-    pastille.hidden = !horsLigne;
-    if (dateDonnees) poser(pastille, 'hl.hors-ligne-date', { date: dateLisible(dateDonnees) });
+    pastille.hidden = !horsLigne && !lente;
+    pastille.classList.toggle('hl-lente', lente);
+    if (lente) poser(pastille, 'hl.lente');
+    else if (dateDonnees) poser(pastille, 'hl.hors-ligne-date', { date: dateLisible(dateDonnees) });
     else poser(pastille, 'hl.hors-ligne');
     if (horsLigne === etaitHorsLigne) return;
     etaitHorsLigne = horsLigne;

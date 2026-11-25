@@ -2,6 +2,7 @@
 // sur la carte. Un lieu est un Feature GeoJSON ponctuel dont les propriétés portent `nom`.
 import * as maplibregl from 'maplibre-gl';
 import { DECALAGE_PIN, imagePin } from './pins.js';
+import { poserPastilleGroupe, surAppuiLong } from './groupe-pastille.js';
 import { t } from './i18n.js';
 import { annoncerOutilActivite } from './outil-activite.js';
 
@@ -97,6 +98,7 @@ function grouper(entrees) {
 // `surChoix(feature, deplacer)` : `deplacer` vaut vrai quand le lieu n'est pas déjà sous le doigt.
 export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume, surChoix }) {
   let marqueurs = [];
+  let clesGroupes = new Set(); // groupes affichés, pour le fondu de ceux qui apparaissent
   let popupGroupe = null;
   let minuteurFermetureGroupe = null;
   let popupResume = null;
@@ -219,12 +221,13 @@ export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume,
     map.fitBounds(limites, { padding: 90, maxZoom: ZOOM_LISTE_GROUPE, duration: 700 });
   }
 
-  function creerRepereGroupe(features, coordonnees) {
+  function creerRepereGroupe(features, coordonnees, nouveau) {
     const element = el('button', 'rando-groupe ski-groupe');
     element.type = 'button';
     element.setAttribute('aria-label', t('lieu.groupe-aide', { libelle: libelleGroupe(features.length) }));
-    element.innerHTML =
-      `<svg viewBox="0 0 56 56" aria-hidden="true"><path class="rando-groupe-halo" d="M28 2 52 16v24L28 54 4 40V16z"/><path class="rando-groupe-forme" d="M28 7 47 18v20L28 49 9 38V18z"/></svg><span>${features.length}</span>`;
+    poserPastilleGroupe(element, features.length, { nouveau });
+    // Au doigt, l'appui long montre la liste ; l'appui simple zoome (demande du propriétaire du 24 novembre 2026)
+    surAppuiLong(element, () => afficherGroupe(features, coordonnees));
     element.addEventListener('pointerenter', (event) => {
       if (event.pointerType !== 'touch') afficherGroupe(features, coordonnees);
     });
@@ -259,11 +262,16 @@ export function creerReperesZone(map, { pin, titreGroupe, libelleGroupe, resume,
         .filter((feature) => feature !== choisi)
         .map((feature) => ({ feature, pixel: map.project(feature.geometry.coordinates) }))
         .filter(({ pixel }) => pixel.x >= 0 && pixel.x <= largeur && pixel.y >= 0 && pixel.y <= hauteur);
+      // Un groupe qu'on ne voyait pas avant ce déplacement (il vient de se séparer) apparaît en fondu
+      const avant = clesGroupes;
+      clesGroupes = new Set();
       for (const groupe of grouper(visibles)) {
         if (groupe.length === 1) {
           marqueurs.push(creerRepere(groupe[0].feature, choisi));
         } else {
-          marqueurs.push(creerRepereGroupe(groupe.map(({ feature }) => feature), groupe[0].feature.geometry.coordinates));
+          const cle = `${groupe[0].feature.properties.nom}/${groupe.length}`;
+          clesGroupes.add(cle);
+          marqueurs.push(creerRepereGroupe(groupe.map(({ feature }) => feature), groupe[0].feature.geometry.coordinates, avant.size > 0 && !avant.has(cle)));
         }
       }
       if (choisi) marqueurs.push(creerRepere(choisi, choisi));

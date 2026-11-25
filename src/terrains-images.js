@@ -9,8 +9,8 @@ const PREFIXE_ANNEAU = 'terrain-anneau-';
 const RAYON_INTERIEUR = 13.5;
 const RAYON_EXTERIEUR = 17.5;
 const COULEURS = { o: '#35d07f', n: '#ff4f5e', '-': 'rgba(176, 186, 206, 0.55)' };
-// Hexagone des groupes, comme celui des stations et des randos (zone-lieux.js)
-const SVG_GROUPE = `<svg xmlns="http://www.w3.org/2000/svg" width="58" height="58" viewBox="-1 -1 58 58"><path d="M28 2 52 16v24L28 54 4 40V16z" fill="rgba(77,235,212,0.2)" stroke="#4debd4" stroke-width="3"/><path d="M28 7 47 18v20L28 49 9 38V18z" fill="#0b111b" stroke="#ff59d6" stroke-width="1.8"/></svg>`;
+// Pastille ronde des groupes, comme celle des stations et des randos (groupe-pastille.js, 24 novembre 2026)
+const SVG_GROUPE = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18.5" fill="rgba(77,235,212,0.16)"/><circle cx="20" cy="20" r="16" fill="rgba(11,17,27,0.92)" stroke="#4debd4" stroke-width="2"/></svg>`;
 
 export const nomAnneau = (code) => `${PREFIXE_ANNEAU}${code}`;
 
@@ -36,7 +36,7 @@ export function chargerImagesTerrains() {
     const fichiers = PINS.flatMap((nom) => [[nom, `/pins/${nom}.svg`], [`${nom}-selected`, `/pins/${nom}-selected.svg`]]);
     chargement = Promise.all([
       ...fichiers.map(([nom, src]) => charger(src, 48, 48).then((donnees) => [nom, donnees])),
-      charger(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(SVG_GROUPE)}`, 58, 58).then((donnees) => [IMAGE_GROUPE, donnees]),
+      charger(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(SVG_GROUPE)}`, 40, 40).then((donnees) => [IMAGE_GROUPE, donnees]),
     ]).then((paires) => new Map(paires)).catch((erreur) => {
       chargement = null;
       throw erreur;

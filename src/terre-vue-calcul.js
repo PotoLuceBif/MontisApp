@@ -2,7 +2,7 @@
 // fond des étoiles, comme on voit la Lune depuis la Terre ») : la face tournée vers la Lune à cet instant, peinte
 // avec les images de la NASA (Blue Marble le jour, lumières des villes la nuit), éclairée par le vrai soleil, donc
 // avec sa phase. Calculs purs (testés) ; le dessin se fait dans lune-visite.js.
-import { pointSubsolaire } from './globe-nuit-calcul.js';
+import { oceanClair, pointSubsolaire } from './globe-nuit-calcul.js';
 import { tempsSideral } from './ciel-calcul.js';
 
 const RAD = Math.PI / 180;
@@ -76,8 +76,11 @@ export function peindreTerre({ jour, nuit = null, largeur, centre, soleil = null
       // Assombrissement vers le bord, et voile bleu de l'atmosphère
       const bord = 0.55 + 0.45 * Math.pow(point.z, 0.35);
       const atmo = Math.pow(1 - point.z, 3) * 0.55;
+      // Océan éclairci côté jour, comme sur le globe : presque noir dans l'image, il se confondait avec la nuit et
+      // la phase de la Terre ne se voyait pas (retour du propriétaire du 24 novembre 2026)
+      const clairs = polaire ? [236, 242, 248] : oceanClair(jour[k], jour[k + 1], jour[k + 2]);
       for (let c = 0; c < 3; c++) {
-        const clair = polaire ? [236, 242, 248][c] : jour[k + c];
+        const clair = clairs[c];
         const lumiere = nuit && !polaire ? nuit[k + c] * 0.9 : 0;
         const sombre = [4, 8, 20][c] + lumiere;
         const valeur = (clair * jourIci + sombre * (1 - jourIci)) * bord;

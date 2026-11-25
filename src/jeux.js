@@ -21,6 +21,10 @@ const COUCHES = ['jeu-pays-fond', 'jeu-pays-contour', 'jeu-pays-points', 'jeu-pa
 const SOURCE_CAPITALE = 'jeu-capitale';
 const COUCHES_CAPITALE = ['jeu-lieux-anneau', 'jeu-lieux-noms', 'jeu-lieux-nom', 'jeu-lieux-coeur', 'jeu-noms-pays'];
 const ZOOM_PAYS = 4; // cadrage d'un pays après une réponse
+// Liste chrono : aller au pays répondu, s'y arrêter, revenir (ms)
+const ALLER_REPONSE = 500;
+const PAUSE_REPONSE = 250;
+const RETOUR_REPONSE = 650;
 // Pictogrammes des cartes de jeu (traits, comme les icônes du menu)
 const ICONES_MODES = {
   drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
@@ -1638,6 +1642,37 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         retour.innerHTML = `<span>${html}</span>`;
         retour.className = `jeux-retour ${classe}`.trim();
       };
+      // Après une réponse, la carte va au pays (vert trouvé, rouge hors de la zone), puis revient à la vue d'avant,
+      // le tout en moins d'une seconde et demie pour garder le rythme ; un geste du joueur arrête le retour
+      // (demande du propriétaire du 24 novembre 2026). Une nouvelle réponse remplace la transition en cours.
+      let transition = null; // { camera, minuteur, rouge }
+      const surGeste = (event) => { if (event.originalEvent) arreterTransition(); };
+      const effacerRouge = (code) => { if (globe.etats.get(code) === 'rate') globe.marquer(code, null); };
+      const arreterTransition = () => {
+        if (!transition) return;
+        clearTimeout(transition.minuteur);
+        map.off('movestart', surGeste);
+        transition = null;
+      };
+      const montrerReponse = (code, juste) => {
+        const camera = transition?.camera
+          ?? { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
+        arreterTransition();
+        if (!juste) {
+          globe.marquer(code, 'rate', { eclat: false });
+          setTimeout(() => effacerRouge(code), ALLER_REPONSE + PAUSE_REPONSE + RETOUR_REPONSE);
+        }
+        transition = { camera };
+        map.on('movestart', surGeste);
+        globe.allerA(code, ZOOM_PAYS, ALLER_REPONSE);
+        transition.minuteur = setTimeout(() => {
+          if (this.en !== p) return arreterTransition();
+          // Pendant le retour, un geste arrête le vol de lui-même (MapLibre)
+          map.off('movestart', surGeste);
+          map.flyTo({ ...camera, duration: RETOUR_REPONSE, essential: true });
+          transition.minuteur = setTimeout(arreterTransition, RETOUR_REPONSE);
+        }, ALLER_REPONSE + PAUSE_REPONSE);
+      };
       // Pendant la frappe (entree false) : seulement un nom sans ambiguïté, d'un pays de la zone pas encore trouvé
       // (priseAuVol : « UK » attend l'Ukraine). Entrée : le nom tel quel, faute de frappe comprise, avec un message sinon.
       const essayer = (entree) => {
@@ -1657,6 +1692,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         }
         if (!p.codesZone.includes(code)) {
           dire(t(p.codesListe ? 'jeux.hors-erreurs' : 'jeux.hors-zone', { nom: paysAvecDrapeau(code) }), 'jeux-inconnu');
+          montrerReponse(code, false);
           return;
         }
         p.trouves.push(code);
@@ -1669,7 +1705,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         pastille.innerHTML = paysAvecDrapeau(code);
         $('.jeux-trouves', jeu.corps).prepend(pastille);
         majCompte();
-        if (p.trouves.length === p.codesZone.length) this.terminer();
+        if (p.trouves.length === p.codesZone.length) {
+          arreterTransition();
+          this.terminer();
+        } else montrerReponse(code, true);
       };
       // Un nom juste est pris dès qu'il est tapé ; Entrée accepte aussi une faute de frappe
       champ.addEventListener('input', () => essayer(false));
@@ -1677,7 +1716,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
         event.preventDefault();
         essayer(true);
       });
-      $('.jeux-abandon', jeu.corps).addEventListener('click', () => this.terminer());
+      $('.jeux-abandon', jeu.corps).addEventListener('click', () => {
+        arreterTransition();
+        this.terminer();
+      });
       majCompte();
       if (!estTelephone()) champ.focus();
       recadrerBientot();

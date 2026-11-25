@@ -2,7 +2,7 @@ import { POLICE } from './polices.js';
 import * as maplibregl from 'maplibre-gl';
 import { etat, majCourbes } from './options-carte.js';
 import { bloquerFiches } from './fiche.js';
-import { SOURCE_SATELLITE, SOURCE_TOPO, retablirFond } from './fond-de-carte.js';
+import { SOURCE_SATELLITE, retablirFond } from './fond-de-carte.js';
 import { lire, ecrire } from './reglages.js';
 import { SOURCE_VECTEUR } from './source-vecteur.js';
 import { expressionSommet, formatDenivele, formatLongueur, imperial } from './unites.js';
@@ -51,7 +51,8 @@ const brouillard = (couleur) => ({
 const SATELLITE = { id: 'satellite', cle: 'visite.satellite', source: SOURCE_SATELLITE };
 // Le premier de chaque liste est le fond par défaut
 const FONDS_SKI = [{ id: 'defaut', cle: 'visite.blanc' }, SATELLITE];
-const FONDS_BIKEPARK = [SATELLITE, { id: 'relief', cle: 'visite.relief', source: SOURCE_TOPO }, { id: 'defaut', cle: 'visite.clair' }];
+// Bike parks : la carte Montis, ou la photo (demande du propriétaire du 24 novembre 2026)
+const FONDS_BIKEPARK = [{ id: 'montis', cle: 'visite.montis' }, SATELLITE];
 const CLASSES_PENTES = [
   ['30-35°', '#f7e600'],
   ['35-40°', '#f5801f'],
@@ -66,9 +67,14 @@ const SOURCE_OMBRE_PORTEE = 'visite-ombre-portee';
 const ICONE_PENTES = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 20h18L6.500 6 3 20Z"/><path d="M11.500 20a7 7 0 0 0-1.400-4.200"/></svg>';
 // Sous un fond en image, le décor dessiné ferait double emploi
 const COUCHES_DECOR = {
-  relief: ['visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes'],
   satellite: ['visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes'],
+  // La carte Montis elle-même, sous les pistes : le décor et ses noms feraient double emploi
+  montis: [
+    'visite-neige', 'visite-forets', 'visite-eau', 'visite-ombrage', 'visite-batiments', 'visite-routes',
+    'visite-hameaux', 'visite-sommets', 'visite-lieux', 'visite-communes',
+  ],
 };
+const estCoucheMontis = (id) => id.startsWith('montis-');
 const METRES_PAR_DEGRE = 111_320;
 const POINTS_PAR_ARRONDI = 8;
 // Chaque source globale a sa copie, retirée avec les calques de la visite
@@ -673,20 +679,27 @@ export function creerVisiteStation(map, {
       const couche = `visite-image-${id}`;
       if (map.getLayer(couche)) map.setLayoutProperty(couche, 'visibility', id === idFond ? 'visible' : 'none');
     });
+    // Fond Montis : ses couches, coupées au début de la visite, reviennent sous le décor des pistes.
+    // Sans aucune d'elles (autre fond choisi dans l'appli), toutes, retirées à la sortie (reafficherCarte)
+    const masquees = enCours.calquesMasques ?? [];
+    const montis = masquees.some(estCoucheMontis)
+      ? masquees.filter(estCoucheMontis)
+      : map.getStyle().layers.map(({ id }) => id).filter(estCoucheMontis);
+    montis.forEach((id) => map.setLayoutProperty(id, 'visibility', idFond === 'montis' ? 'visible' : 'none'));
     const caches = COUCHES_DECOR[idFond] ?? [];
     Object.values(COUCHES_DECOR).flat().forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', caches.includes(id) ? 'none' : 'visible');
     });
     // L'ombre du soleil remplace l'ombrage fixe du décor
     if (ombresVisibles && map.getLayer('visite-ombrage')) map.setLayoutProperty('visite-ombrage', 'visibility', 'none');
-    // OpenTopoMap a déjà ses courbes ; sur une photo, seul le blanc reste lisible
+    // Sur une photo, seul le blanc reste lisible
     const photo = idFond === 'satellite';
     if (map.getLayer('visite-courbes')) {
-      map.setLayoutProperty('visite-courbes', 'visibility', courbesVisibles && idFond !== 'relief' ? 'visible' : 'none');
+      map.setLayoutProperty('visite-courbes', 'visibility', courbesVisibles ? 'visible' : 'none');
       map.setPaintProperty('visite-courbes', 'line-color', photo ? '#ffffff' : decor.courbes);
     }
     if (map.getLayer('visite-courbes-altitude')) {
-      map.setLayoutProperty('visite-courbes-altitude', 'visibility', courbesVisibles && idFond !== 'relief' ? 'visible' : 'none');
+      map.setLayoutProperty('visite-courbes-altitude', 'visibility', courbesVisibles ? 'visible' : 'none');
     }
   }
 
@@ -697,8 +710,6 @@ export function creerVisiteStation(map, {
         return;
       }
       bloc.querySelectorAll('[data-fond]').forEach((bouton) => bouton.setAttribute('aria-pressed', String(bouton.dataset.fond === idFond)));
-      // OpenTopoMap dessine déjà ses courbes : l'option n'aurait pas d'effet
-      bloc.querySelector('.visite-option-courbes').hidden = idFond === 'relief';
     });
   }
 
@@ -736,6 +747,10 @@ export function creerVisiteStation(map, {
 
   function reafficherCarte(calquesMasques) {
     document.body.classList.remove('en-visite');
+    // Couches Montis montrées pour le fond de la visite alors qu'elles étaient cachées avant
+    map.getStyle().layers
+      .filter(({ id }) => estCoucheMontis(id) && !calquesMasques.includes(id))
+      .forEach(({ id }) => map.setLayoutProperty(id, 'visibility', 'none'));
     calquesMasques.forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible'); });
     retablirFond(map); // le fond a pu changer pendant la visite : seul le choix actuel doit rester visible
     majCourbes(map);
@@ -980,7 +995,6 @@ export function creerVisiteStation(map, {
       afficherCourbes(coche);
     });
     courbes.classList.add('visite-option-courbes');
-    courbes.hidden = idFond === 'relief';
 
     const legende = document.createElement('div');
     legende.className = 'ski-pentes-legende';

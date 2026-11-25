@@ -2,7 +2,7 @@
 // (soleil-lune.js) et aux visites de stations (visite-station.js). Le soleil se calcule au centre de la carte.
 // Option `course` (Soleil et Lune) : au-dessus du curseur, la course du soleil et, plus discrète, celle de la
 // Lune ; les deux astres suivent le curseur, se lèvent et se couchent sur la ligne d'horizon.
-import { courseSoleil, decalageAppareil, hauteurMaxAnnee, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
+import { courseSoleil, decalageAppareil, heureDuLieu, jourLocal, journeeSoleil, midiLocal, positionSoleil } from './soleil.js';
 import { courseLune, dessinPhase, eclairementLune, positionLune } from './lune-calcul.js';
 import { svgLune } from './lune-dessin.js';
 import { codeCardinal } from './vent-calcul.js';
@@ -13,16 +13,16 @@ import { nombre } from './unites.js';
 const MINUTE = 60000;
 const PAS_CURSEUR = 5;
 // Dessin de la course : largeur arbitraire (étirée), horizon au milieu, même échelle au-dessus et en dessous : de
-// vraies sinusoïdes, sans plat la nuit (demande du propriétaire du 16 novembre 2026). L'échelle est fixe pour un lieu,
-// calée sur le soleil le plus haut de l'année (un peu plus pour la Lune, qui monte jusqu'à 5° plus haut) : l'été
-// monte plus haut que l'hiver, et rien ne bouge d'un jour à l'autre. Avant, elle suivait chaque jour le plus haut
-// du soleil et de la Lune, et le soleil semblait monter et descendre au rythme de la Lune.
+// vraies sinusoïdes, sans plat la nuit (demande du propriétaire du 16 novembre 2026). On trace le sinus de la hauteur :
+// c'est une vraie sinusoïde de l'heure, alors que la hauteur en degrés fait une pointe quand l'astre passe près du
+// zénith ou du nadir (la Lune vue du centre du globe, en vue d'espace). Échelle fixe partout, zénith en haut et
+// nadir en bas : l'été monte plus haut que l'hiver, et rien ne change d'un lieu ou d'un jour à l'autre (retour du
+// propriétaire du 24 novembre 2026 : la courbe faisait des angles ou rasait le sol depuis l'espace).
 const LARGEUR_COURSE = 288;
 const HAUTEUR_COURSE = 72;
 const HORIZON = HAUTEUR_COURSE / 2;
 const AMPLITUDE = HORIZON - 3;
-let echelleCourse = 1;
-const yCourse = (hauteur) => Math.max(2, Math.min(HAUTEUR_COURSE - 2, HORIZON - hauteur * echelleCourse));
+const yCourse = (hauteur) => HORIZON - Math.sin((hauteur * Math.PI) / 180) * AMPLITUDE;
 const xCourse = (minutes) => (minutes / (24 * 60)) * LARGEUR_COURSE;
 const traceCourse = (points) => points.map((p, i) => `${i ? 'L' : 'M'}${xCourse(p.minutes).toFixed(1)} ${yCourse(p.hauteur).toFixed(1)}`).join('');
 
@@ -171,7 +171,6 @@ export function creerReglageSoleil(map, { surChangement, actif, course = false }
       courseCle = cle;
       const pointsSoleil = courseSoleil(jour, lieu.lat, lieu.lng, decalage);
       const pointsLune = courseLune(jour, lieu.lat, lieu.lng, decalage);
-      echelleCourse = AMPLITUDE / Math.min(90, hauteurMaxAnnee(lieu.lat) + 5.2);
       const trace = traceCourse(pointsSoleil);
       boite.querySelector('.ciel-course-soleil-jour').setAttribute('d', trace);
       boite.querySelector('.ciel-course-soleil-nuit').setAttribute('d', trace);

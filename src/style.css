@@ -933,25 +933,45 @@ a.point-lien { box-sizing: border-box; text-decoration: none; }
   font-size: 12px;
 }
 .rando-resume-ligne strong { color: var(--texte); font-variant-numeric: tabular-nums; }
+/* Groupe de lieux (groupe-pastille.js) : pastille ronde sombre, liseré cyan, le nombre au centre ; un peu plus grande
+   pour un gros groupe. Remplace l'hexagone de 58 px (retour du propriétaire du 24 novembre 2026). La zone d'appui
+   reste de 44 px : le cercle visible est dessiné par ::before */
 .rando-groupe {
-  width: 58px;
-  height: 58px;
-  filter: drop-shadow(0 5px 7px rgba(0, 0, 0, 0.78)) drop-shadow(0 0 10px rgba(77, 235, 212, 0.48));
-  transition: transform 0.16s ease;
-}
-.rando-groupe:hover { transform: scale(1.09); }
-.rando-groupe svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.rando-groupe-halo { fill: rgba(77, 235, 212, 0.2); stroke: #4debd4; stroke-width: 3; }
-.rando-groupe-forme { fill: #0b111b; stroke: #ff59d6; stroke-width: 1.8; }
-.rando-groupe span {
-  position: absolute;
-  inset: 0;
+  --groupe: 30px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  color: #e6f7ff;
-  font: 800 17px/1 var(--police);
-  text-shadow: 0 0 9px rgba(77, 235, 212, 0.75);
 }
+.rando-groupe[data-taille="moyen"] { --groupe: 34px; }
+.rando-groupe[data-taille="grand"] { --groupe: 39px; }
+.rando-groupe::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--groupe);
+  height: var(--groupe);
+  margin: calc(var(--groupe) / -2) 0 0 calc(var(--groupe) / -2);
+  border: 2px solid #4debd4;
+  border-radius: 50%;
+  background: rgba(11, 17, 27, 0.92);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 0 0 3px rgba(77, 235, 212, 0.16);
+  transition: transform 0.16s ease;
+}
+.rando-groupe:hover::before { transform: scale(1.08); }
+.rando-groupe span {
+  position: relative;
+  color: #f2fbff;
+  font: 750 13px/1 var(--police);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.rando-groupe[data-taille="grand"] span { font-size: 13.5px; }
+/* Jamais sur le marqueur lui-même : MapLibre le place avec `transform` */
+.groupe-apparait::before, .groupe-apparait span { animation: groupe-apparait 0.22s ease-out; }
+@keyframes groupe-apparait { from { opacity: 0; transform: scale(0.7); } }
+@media (prefers-reduced-motion: reduce) { .groupe-apparait::before, .groupe-apparait span { animation: none; } }
 .rando-groupe-liste { display: grid; gap: 5px; max-height: 260px; overflow-y: auto; }
 .rando-groupe-titre { padding: 2px 6px 6px; color: var(--texte-2); font-size: 12px; }
 .rando-groupe-choix {
@@ -2889,6 +2909,12 @@ button.parcours-alerte { cursor: pointer; }
 }
 .hl-pastille::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #d99522; }
 .hl-pastille[hidden] { display: none; }
+/* Connexion lente (connexion-lente.js) : un escargot à la place du point orange */
+.hl-pastille.hl-lente { display: inline-flex; align-items: center; }
+.hl-pastille.hl-lente::before {
+  width: 15px; height: 15px; border-radius: 0; background: #d99522;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 18h13a5 5 0 0 0 5-5V6'/%3E%3Cpath d='M19 3.5 21 6l2-2.5'/%3E%3Ccircle cx='11' cy='12' r='5'/%3E%3Cpath d='M11 12a1.8 1.8 0 1 0 0-.01'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 18h13a5 5 0 0 0 5-5V6'/%3E%3Cpath d='M19 3.5 21 6l2-2.5'/%3E%3Ccircle cx='11' cy='12' r='5'/%3E%3Cpath d='M11 12a1.8 1.8 0 1 0 0-.01'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .fond-pastille { max-width: calc(100vw - 100px); }
 [data-reseau="hors-ligne"] .fond-pastille { display: none; }
 /* Sur ordinateur, les panneaux occupent le haut à gauche : les pastilles passent à côté du zoom */
@@ -3581,8 +3607,13 @@ body:has(#menu-tiroir.ouvert) .ski-fiche-recherche { left: calc(min(320px, 88vw)
 .visite-soleil .ombres-curseur { height: 28px; }
 .visite-soleil .ombres-soleil { font-size: 12px; color: var(--texte-2); }
 .visite-soleil .ombres-cadran { width: 26px; height: 26px; }
-/* Fiche réduite : seulement l'heure, pour voir l'ombre bouger sans rouvrir la fiche */
-:is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure) { display: none; }
+/* Fiche réduite : le jour et l'heure, pour voir l'ombre bouger sans rouvrir la fiche ; le jour en une ligne basse
+   (‹ › et calendrier, demande du propriétaire du 24 novembre 2026) */
+:is(#ski-fiche, #bikepark-fiche).fiche-reduite .visite-soleil > :not(.ombres-heure, .ombres-jour) { display: none; }
+.visite-soleil .ombres-jour { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+.visite-soleil :is(.ombres-jour-nom, .ombres-jour-bouton) { height: 36px; }
+.visite-soleil .ombres-jour-nom { font-size: 13px; }
+.visite-soleil .ombres-jour-bouton { font-size: 20px; }
 .ombres-details > .soleil-reglage { display: contents; }
 
 /* Partage par lien (lot 4.5) */
@@ -3702,6 +3733,20 @@ body.sur-la-lune .lune-visite .lune-visite-panneau.bf { display: grid !important
 .lune-visite-reel[hidden] { display: none; }
 /* Frise de Soleil et Lune dans la visite : sans la ligne du soleil sur la Terre */
 .lune-visite-frise .ombres-soleil { display: none; }
+/* Sur téléphone, frise compacte : la Lune doit rester visible au-dessus du panneau (retour du propriétaire du
+   24 novembre 2026) ; jour en ligne basse, course aplatie, « Maintenant » plus petit */
+@media (max-width: 640px) {
+  .lune-visite-frise .ombres-jour { grid-template-columns: 38px minmax(0, 1fr) 38px; }
+  .lune-visite-frise :is(.ombres-jour-nom, .ombres-jour-bouton) { height: 36px; }
+  .lune-visite-frise .ombres-jour-nom { font-size: 13px; }
+  .lune-visite-frise .ombres-jour-bouton { font-size: 20px; }
+  .lune-visite-frise .ombres-heure { margin-top: 6px; }
+  .lune-visite-frise .relief-entete { font-size: 13px; }
+  .lune-visite-frise .ciel-course { height: 40px; margin: 10px 8px 0; }
+  .lune-visite-frise .ombres-curseur { height: 26px; }
+  .lune-visite-frise .ombres-reperes { margin-top: 2px; }
+  .lune-visite-frise .ombres-maintenant { min-height: 30px; padding: 4px 12px; font-size: 12.5px; }
+}
 .lune-visite-barre { display: none; align-items: center; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--texte); text-align: left; cursor: pointer; }
 .lune-visite-barre-icone .lune-icone { width: 26px; height: 26px; }
 .lune-visite-barre .bf-chevron { margin-left: auto; }

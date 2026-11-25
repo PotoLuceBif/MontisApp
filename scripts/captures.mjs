@@ -222,6 +222,16 @@ const lireFrise = (fraction) => async (page) => {
   await frise.click({ position: { x: boite.width * fraction, y: boite.height / 2 } });
 };
 
+// Liste chrono : la carte au milieu de la transition (le cliché final, lui, montre le retour), et le zoom au fil du temps
+const milieuTransition = (nom) => async (page) => {
+  const zooms = [];
+  for (let i = 0; i < 8; i += 1) {
+    zooms.push((await page.evaluate(() => window.map.getZoom())).toFixed(2));
+    if (i === 3) await page.screenshot({ path: `captures/${page.viewportSize().width < 700 ? 'telephone' : 'ordinateur'}-${nom}-milieu.png` });
+    await page.waitForTimeout(200);
+  }
+  console.log('ZOOMS', nom, zooms.join(' '));
+};
 const attendre = (selecteur) => (page) => page.waitForSelector(selecteur, { state: 'attached', timeout: 15000 });
 
 // Panorama des sommets (lot 4.1) : près du sommet du Brévent, la carte tournée vers le Mont Blanc
@@ -435,6 +445,14 @@ const ECRANS = [
   // Ski de rando (lot 3.3) : choix de la pratique, pentes allumées d'office, bulletin du massif au centre
   { nom: 'ski-rando', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), (p) => p.waitForTimeout(4000)] },
   // Itinéraires d'OSM (piste:type=skitour), lus dans /data/skitour
+  // Groupes de lieux en pastilles rondes (24 novembre 2026) : stations de la zone, itinéraires de ski de rando, terrains
+  // Pastille « Connexion lente » (24 novembre 2026) : tuiles de relief retardées de 6 s, puis la carte va ailleurs
+  { nom: 'connexion-lente', actions: [
+    (p) => p.route(/elevation-tiles-prod/, async (route) => { await new Promise((r) => setTimeout(r, 6000)); await route.continue().catch(() => {}); }),
+    vue({ center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(6500)] },
+  { nom: 'ski-groupes', actions: [vue({ center: [6.6, 45.6], zoom: 8.2, bearing: 0, pitch: 0 }), module('ski'), attendre('.ski-zone .rando-zone-bouton'), clic('.ski-zone .rando-zone-bouton'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
+  { nom: 'ski-rando-groupes', actions: [vue({ ...PASSON, zoom: 11 }), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(3000), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
+  { nom: 'parapente-terrains-groupes', actions: [...SITES, clic('#menu-bouton'), vue({ center: [6.25, 45.815], zoom: 9, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(4000)] },
   { nom: 'ski-rando-itineraires', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500)] },
   { nom: 'ski-rando-itineraires-carte', actions: [vue(PASSON), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-zone'), clic('.ski-activite .parcours-zone'), (p) => p.waitForTimeout(2500), clic('#menu-fermer'), (p) => p.waitForTimeout(2000)] },
   // Un itinéraire touché dans la liste s'ouvre dans l'éditeur, comme une trace importée
@@ -758,6 +776,13 @@ const ECRANS = [
   { nom: 'lune-visite-terre-vue', actions: [...ALLER_LUNE, clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-terre-vue-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(8000)] },
   { nom: 'lune-visite-reel', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), (p) => p.waitForTimeout(8000)] },
+  // La Terre vue de la Lune à demi éclairée (frise avancée d'une semaine) : l'océan éclairé se distingue de la nuit
+  { nom: 'lune-visite-terre-phase', actions: [...ALLER_LUNE, clic('[data-eclairage="reel"]'), clic('[data-vue="terre"]'), (p) => p.waitForTimeout(5000),
+    ...Array.from({ length: 7 }, () => clic('.lune-visite-frise .ombres-jour-bouton[data-pas="1"]')), (p) => p.waitForTimeout(4000),
+    async (page) => {
+      const point = await page.evaluate(() => window.mapLune?.project?.([0, 0]));
+      if (point) console.log('TERRE', JSON.stringify(point));
+    }] },
   { nom: 'lune-visite-reduit', actions: [...ALLER_LUNE, clic('.lune-visite-panneau .bf-reduire'), (p) => p.waitForTimeout(6000)] },
   // Copernic en 3D, incliné, panneau réduit
   {
@@ -878,6 +903,34 @@ const ECRANS = [
       (p) => p.waitForTimeout(1000),
     ],
   },
+  // Lune touchée au dézoom, puis « Informations » : frise de la Lune seule
+  {
+    nom: 'globe-lune-frise',
+    actions: [
+      async (page) => {
+        const maintenant = new Date();
+        let meilleur = null;
+        for (let lat = -70; lat <= 70; lat += 2) {
+          for (let lng = -180; lng < 180; lng += 3) {
+            // 14° du nadir, au nord ou au sud : sur l'écran étroit d'un téléphone, la Lune reste visible au-dessus ou au-dessous de la Terre
+            const lune = getMoonPosition(maintenant, lat, lng);
+            const ecart = Math.abs(lune.altitude + 76) + Math.min(Math.abs(lune.azimuth % 180), 180 - Math.abs(lune.azimuth % 180)) / 4;
+            if (!meilleur || ecart < meilleur.ecart) meilleur = { ecart, lat, lng };
+          }
+        }
+        await vue({ center: [meilleur.lng, meilleur.lat], zoom: 0.8, bearing: 0, pitch: 0 })(page);
+      },
+      (p) => p.waitForTimeout(4000),
+      async (page) => {
+        const point = await page.evaluate(() => window.cielMontis?.pointLune());
+        if (point) await page.mouse.click(point.x, point.y);
+      },
+      (p) => p.waitForTimeout(800),
+      clic('.lune-bulle [data-action="infos"]'),
+      (p) => p.waitForSelector('.ombres-curseur', { state: 'attached', timeout: 15000 }),
+      (p) => p.waitForTimeout(2500),
+    ],
+  },
   { nom: 'meteo-reduit', actions: [module('radar'), clic('#outil-rapide-panneau-meteo .outil-rapide-reduire')] },
   { nom: 'carte-elements', actions: elementsCarte },
   { nom: 'carte-hors-ligne', actions: [module('hors-ligne')] },
@@ -980,6 +1033,20 @@ const ECRANS = [
       (page) => page.waitForTimeout(5000),
     ],
   },
+  // Visite d'un bike park sur la carte Montis (fonds Montis et Satellite, 24 novembre 2026)
+  {
+    nom: 'visite-bikepark',
+    actions: [
+      module('velo'),
+      attendre('.parcours-park-recherche'),
+      async (page) => {
+        await page.fill('.parcours-park-recherche >> visible=true', 'Avoriaz');
+        await page.waitForTimeout(1500);
+        await page.press('.parcours-park-recherche >> visible=true', 'Enter');
+        await page.waitForTimeout(8000);
+      },
+    ],
+  },
   // Bulletin détaillé du massif dans l'onglet Sécurité d'une station en visite, puis ses pentes sur le décor
   ...['visite-bulletin', 'visite-bulletin-pentes'].map((nom) => ({
     nom,
@@ -1063,6 +1130,9 @@ const ECRANS = [
   { nom: 'jeux-capitales-expert', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(3000)] },
   { nom: 'jeux-capitales-inconnue', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Zorglub'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
   { nom: 'jeux-capitales-vide', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
+  // Transition après une réponse (24 novembre 2026) : la carte au pays trouvé, en vert, ou hors de la zone, en rouge
+  { nom: 'jeux-liste-transition', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(2500), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Portugal'), milieuTransition('jeux-liste-transition')] },
+  { nom: 'jeux-liste-hors-zone', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.waitForTimeout(2500), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Japon'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), milieuTransition('jeux-liste-hors-zone')] },
   { nom: 'jeux-liste-inconnu', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="liste"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), (p) => p.fill('.bf-jeu .jeux-saisie input', 'Fraaance'), (p) => p.press('.bf-jeu .jeux-saisie input', 'Enter'), (p) => p.waitForTimeout(2500)] },
   { nom: 'jeux-frontieres-proche', actions: [module('quiz-pays'), attendre('.jeux-pays-villes option'), clic('.jeux-carte[data-mode="ou"]'), clic('[data-choix="cible"] [data-valeur="pays"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-ou-aide'), (p) => p.waitForTimeout(2000), (p) => p.evaluate(() => window.map.jumpTo({ center: [7.6, 46.6], zoom: 6.8 })), (p) => p.waitForTimeout(4000)] },
   { nom: 'jeux-capitales-expert-reponse', actions: [module('quiz-pays'), attendre('.jeux-jouer'), clic('.jeux-carte[data-mode="capitales"]'), clic('[data-choix="sensCapitales"] [data-valeur="capitale"]'), clic('[data-choix="niveau"] [data-valeur="expert"]'), clic('[data-choix="zone"] [data-valeur="europe"]'), clic('.jeux-jouer'), attendre('.bf-jeu .jeux-saisie input'), clic('.bf-jeu .jeux-passer'), (p) => p.waitForTimeout(3000)] },
