@@ -4823,9 +4823,7 @@ body.onglets-masques #menu-parametres-bouton { display: none; }
 .bande-noms strong { font-size: 13px; font-weight: 650; white-space: nowrap; }
 .bande-noms small { color: var(--accent); font-size: 11px; white-space: nowrap; }
 /* Rien à droite pendant Explorer : le globe a tout l'écran (décision du propriétaire du 25 novembre 2026) */
-body.explorer-ouvert .outils-rapides,
-body.explorer-ouvert .maplibregl-ctrl-top-right { visibility: hidden; pointer-events: none; }
-body.explorer-ouvert .maplibregl-ctrl-bottom-right { margin-bottom: 76px; }
+body.bande-ouverte .maplibregl-ctrl-bottom-right { margin-bottom: 76px; }
 @media (min-width: 701px) {
   .bande-onglet { bottom: 16px; padding: 4px 16px; }
 }
@@ -4991,8 +4989,15 @@ body.jeu-en-cours #barre-haut { display: none; }
 .vent-lieu svg { width: 15px; height: 15px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; }
 .vent-lieu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texte); }
 .vent-zone-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-/* Fond de carte : les deux parties repliables s'espacent */
-.fond-avance + .fond-avance { margin-top: 8px; }
+/* Fond de carte : deux onglets sous la Carte Montis (25 novembre 2026) */
+.fond-parties { display: grid; grid-template-columns: 1fr 1fr; margin-top: 4px; }
+.fond-parties button { display: grid; justify-items: center; gap: 1px; min-height: 44px; padding: 4px 6px; }
+.fond-parties small { max-width: 100%; overflow: hidden; color: inherit; font-size: 11px; font-weight: 500; opacity: .75; text-overflow: ellipsis; white-space: nowrap; }
+.fond-parties small:empty { display: none; }
+.fond-partie[hidden] { display: none; }
+.fond-partie > .fond-groupe:first-child { margin-top: 14px; }
+.fond-partie .fond-onglets { margin-bottom: 8px; }
+.fond-partie[data-section="elements"] { padding-top: 6px; }
 
 /* Horizon et vue au sol : « Changer d'endroit », puis bandeau du choix sur la carte */
 .pano-choisir {
@@ -5002,13 +5007,6 @@ body.jeu-en-cours #barre-haut { display: none; }
 }
 .pano-choisir svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 640px) { .pano-choisir span { display: none; } .pano-choisir { padding: 0 10px; } }
-.choix-endroit {
-  position: absolute; z-index: 40; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 8px 8px 8px 16px;
-  border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); box-shadow: var(--ombre-forte);
-  color: var(--texte); font: 600 13px var(--police); animation: bande-entree 0.25s var(--glisse);
-}
-.choix-endroit button { min-height: 34px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 999px; background: var(--surface-2); color: var(--texte); font: inherit; cursor: pointer; }
 
 /* Soleil et Lune : la tuile de visite disparaît, la visite est en tête de la ligne Lune (25 novembre 2026) */
 #menu-vue-ciel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -5021,8 +5019,118 @@ body.jeu-en-cours #barre-haut { display: none; }
   background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre-forte);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
 }
-body.vue-espace:not(.jeu-en-cours) .eclairage-globe { display: flex; animation: bande-entree 0.25s var(--glisse); }
+body.vue-espace:not(.jeu-en-cours, .eclairage-ferme) .eclairage-globe { display: flex; animation: bande-entree 0.25s var(--glisse); }
 body:has(#menu-tiroir.ouvert:not(.reduit), .outil-rapide-panneau:not([hidden], .reduit)) .eclairage-globe { display: none; }
 .eclairage-globe button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); font: 600 12px var(--police); cursor: pointer; }
 .eclairage-globe button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
 @media (min-width: 701px) { .eclairage-globe { top: 214px; right: 14px; } }
+
+/* Logo = Paramètres : l'engrenage du rail et de la barre du haut disparaît, un petit engrenage marque le logo */
+#menu-parametres-bouton, body #menu-parametres-bouton { display: none; }
+@media (min-width: 701px) { #barre-haut { left: 14px; } }
+#logo-onglets { overflow: visible; }
+#logo-onglets img { border-radius: 13px; }
+.logo-engrenage {
+  position: absolute; right: -4px; bottom: -4px; display: grid; width: 20px; height: 20px; place-items: center;
+  border: 1.5px solid var(--surface); border-radius: 50%; background: var(--accent); color: var(--accent-texte);
+}
+.logo-engrenage svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 700px) { #menu-tiroir .params-entete { position: relative; touch-action: none; } }
+
+/* Bulle d'éclairage de la Terre (25 novembre 2026) : titre, choix, croix ; sous la colonne de droite */
+.eclairage-globe { flex-direction: column; align-items: stretch; gap: 6px; width: 184px; padding: 8px 8px 8px 10px; border-radius: 14px; }
+.eclairage-titre { padding-right: 26px; color: var(--texte); font: 650 12px var(--police); }
+.eclairage-choix { display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--surface-2); }
+.eclairage-choix button { flex: 1; }
+.eclairage-globe .eclairage-fermer { position: absolute; top: 4px; right: 4px; display: grid; width: 28px; min-height: 28px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--texte-2); cursor: pointer; }
+.eclairage-globe .eclairage-fermer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+/* « Où veux-tu regarder ? » (Horizon et vue au sol, 25 novembre 2026) */
+.demande-lieu {
+  position: absolute; z-index: 45; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: grid; gap: 10px; width: min(360px, calc(100% - 24px)); box-sizing: border-box; padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte); font: 14px var(--police);
+  animation: bande-entree 0.25s var(--glisse);
+}
+.demande-lieu strong { font-size: 16px; }
+.demande-lieu p { margin: 0; color: var(--texte-2); font-size: 13px; line-height: 1.45; }
+.demande-lieu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.demande-lieu-actions button, .demande-lieu-annuler {
+  min-height: 44px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 12px;
+  background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
+}
+.demande-lieu-carte { border-color: var(--accent) !important; background: var(--accent) !important; color: var(--accent-texte) !important; }
+.demande-lieu-annuler { min-height: 36px; border: 0; background: transparent; color: var(--texte-2); }
+/* Vue au sol : plus de panneau autour de la frise, seulement le jour et la frise (25 novembre 2026) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule :is(.ciel-lieu, .ciel-choix, .ciel-fuseau) { display: none; }
+
+/* ===== Icônes encadrées comme les logos (demande du propriétaire du 25 novembre 2026) ===== */
+/* Carré arrondi, contour cyan-magenta du logo, fond bleu nuit (blanc en thème clair), dessin blanc (bleu nuit en clair) */
+:root { --icone-fond: radial-gradient(circle at 50% 40%, #17234f, #0a1020); --icone-trait: #ffffff; }
+:root[data-theme='clair'] { --icone-fond: radial-gradient(circle at 50% 40%, #ffffff, #eef2fa); --icone-trait: #17234f; }
+.bande-icone,
+.menu-ligne:not(.menu-ligne-activite) > svg,
+#menu-tiroir .tiroir-icone {
+  box-sizing: border-box;
+  border: 1.5px solid transparent !important;
+  border-radius: 28% !important;
+  background: var(--icone-fond) padding-box, linear-gradient(135deg, #22d3ee, #c026d3) border-box !important;
+  color: var(--icone-trait) !important;
+}
+.bande-icone { display: grid; width: 40px; height: 40px; flex: none; place-items: center; }
+.bande-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#menu-tiroir .tiroir-icone { width: 30px; height: 30px; }
+#menu-tiroir .tiroir-icone svg { width: 18px; height: 18px; }
+.menu-ligne.actif:not(.menu-ligne-activite) > svg { filter: none !important; }
+
+/* Vue au sol : se tourner vers le soleil ou la Lune (25 novembre 2026) */
+.pano-astres-boutons { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; pointer-events: auto; }
+.pano-astres-boutons[hidden] { display: none; }
+.pano-astres-boutons button {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.pano-pastille-soleil, .pano-pastille-lune { width: 14px; height: 14px; border-radius: 50%; }
+.pano-pastille-soleil { background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); }
+.pano-pastille-lune { background: radial-gradient(circle at 40% 40%, #f4f4ef, #c9ccd4 70%, #9aa0aa); }
+/* Horizon n'est pas Soleil et Lune : ni astres, ni trajectoires dans sa vue (demande du propriétaire) */
+body.panorama-actif:not(.panorama-ciel) :is(.soleil-ciel, .lune-ciel, .soleil-ciel-trajets) { display: none !important; }
+
+/* Choix d'un endroit : repère fixe au centre et carte en bas (25 novembre 2026) */
+.choix-endroit-viseur { position: absolute; z-index: 30; left: 50%; top: 50%; width: 48px; height: 48px; margin: -48px 0 0 -24px; pointer-events: none; }
+.choix-endroit-viseur img { display: block; width: 48px; height: 48px; transition: transform .2s var(--glisse); filter: drop-shadow(0 4px 6px rgb(0 0 0 / .35)); }
+.choix-endroit-viseur i { position: absolute; left: 50%; bottom: -3px; width: 10px; height: 4px; margin-left: -5px; border-radius: 50%; background: rgb(0 0 0 / .35); }
+.choix-endroit-viseur.bouge img { transform: translateY(-10px); }
+.choix-endroit {
+  position: absolute; z-index: 45; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: grid; gap: 12px; width: min(380px, calc(100% - 24px)); box-sizing: border-box; padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte); font: 14px var(--police);
+  animation: bande-entree 0.25s var(--glisse);
+}
+.choix-endroit-textes { display: grid; gap: 3px; }
+.choix-endroit-textes strong { font-size: 15px; }
+.choix-endroit-textes small { color: var(--texte-2); font-size: 13px; line-height: 1.4; }
+.choix-endroit-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.choix-endroit-actions button { min-height: 44px; padding: 0 16px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface-2); color: var(--texte); font: 600 14px var(--police); cursor: pointer; }
+.choix-endroit-actions .choix-endroit-valider { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+/* Pendant le choix : rien d'autre sur la carte que la recherche */
+body.choix-endroit-actif :is(.bande-onglet, .couches-actives, .eclairage-globe) { display: none !important; }
+/* Vue au sol : les boutons Soleil et Lune sous le titre, la frise occupe le bas */
+body.panorama-ciel .pano-astres-boutons { position: fixed; z-index: 6; top: calc(max(10px, env(safe-area-inset-top)) + 70px); left: 50%; transform: translateX(-50%); margin: 0; }
+
+/* Réglages de partie : icône devant chaque rubrique et dans chaque choix, plus d'espace (25 novembre 2026) */
+.jeux-options .jeux-reglage { gap: 8px; margin-top: 4px; }
+.jeux-options .jeux-legende { display: inline-flex; align-items: center; gap: 7px; color: var(--texte); font-size: 12px; letter-spacing: .02em; text-transform: none; }
+.jeux-options .jeux-legende .jeux-ico { width: 18px; height: 18px; color: var(--accent); }
+.jeux-ico { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.jeux-options .segments button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; }
+.jeux-options .segments button .jeux-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Vue au sol : la frise du temps seule, sans le dessin de la course ; une poignée pour la replier d'un glissé (25 novembre 2026) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .ciel-course { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 14px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit)::before { position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--texte) 28%, transparent); content: ''; transform: translateX(-50%); }

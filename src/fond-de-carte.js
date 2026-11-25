@@ -127,9 +127,10 @@ export function creerFondDeCarte(map, { elements } = {}) {
   const paysOuverts = new Set(); // pays dépliés dans l'onglet Pays (le temps de la session)
   let signatureIci = '';
 
-  // Deux parties repliables sous les fonds de base (réorganisation du 25 novembre 2026) : éléments de la carte,
-  // puis tous les fonds ; chacune garde son état
-  const plisOuverts = { elements: lire('fond-pli-elements', false), fonds: lire('fond-pli-fonds', lire('fond-avance', false)) };
+  // Sous la Carte Montis, deux onglets (demande du propriétaire du 25 novembre 2026) : Autres fonds (les plus
+  // utilisés, puis tous les fonds par endroit) et Éléments de la carte ; l'onglet choisi est gardé
+  let partie = lire('fond-partie', 'fonds');
+  let avanceOuvert = lire('fond-avance', false);
   const chevron = '<svg class="fond-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 
   const panneau = document.createElement('div');
@@ -148,29 +149,29 @@ export function creerFondDeCarte(map, { elements } = {}) {
       </div>
       <small class="fond-montis-etat" aria-live="polite"></small>
     </section>
-    <h4 class="fond-groupe" ${ti('fond.groupe-base')}>${t('fond.groupe-base')}</h4>
-    <div class="fond-base"></div>
-    <section class="fond-avance" data-pli="elements">
+    <section class="fond-avance">
       <button type="button" class="fond-avance-entete" aria-expanded="false">
-        <span class="fond-avance-titre" ${ti('elements.titre')}>${t('elements.titre')}</span>
-        <small class="fond-avance-resume" ${ti('fond.pli-elements')}>${t('fond.pli-elements')}</small>
+        <span class="fond-avance-titre" ${ti('fond.avance')}>${t('fond.avance')}</span>
+        <small class="fond-avance-resume"></small>
         ${chevron}
       </button>
-      <div class="fond-avance-corps" data-section="elements" hidden>
-        <div class="fond-elements"></div>
+      <div class="fond-avance-corps" hidden>
+    <div class="segments fond-parties" role="tablist">
+      <button type="button" role="tab" data-partie="fonds"><span ${ti('fond.groupe-base')}>${t('fond.groupe-base')}</span></button>
+      <button type="button" role="tab" data-partie="elements"><span ${ti('elements.titre')}>${t('elements.titre')}</span></button>
+    </div>
+    <section class="fond-partie" data-section="fonds" role="tabpanel">
+      <h4 class="fond-groupe" ${ti('fond.plus-utilises')}>${t('fond.plus-utilises')}</h4>
+      <div class="fond-base"></div>
+      <h4 class="fond-groupe" ${ti('fond.par-endroit')}>${t('fond.par-endroit')}</h4>
+      <div class="fond-onglets" role="tablist">
+        ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
       </div>
+      <div class="fond-contenu"></div>
     </section>
-    <section class="fond-avance" data-pli="fonds">
-      <button type="button" class="fond-avance-entete" aria-expanded="false">
-        <span class="fond-avance-titre" ${ti('fond.tous')}>${t('fond.tous')}</span>
-        <small class="fond-avance-resume fond-tous-resume"></small>
-        ${chevron}
-      </button>
-      <div class="fond-avance-corps" data-section="fonds" hidden>
-        <div class="fond-onglets" role="tablist">
-          ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
-        </div>
-        <div class="fond-contenu"></div>
+    <section class="fond-partie" data-section="elements" role="tabpanel" hidden>
+      <div class="fond-elements"></div>
+    </section>
       </div>
     </section>
     <p class="note fond-actuel"></p>
@@ -179,20 +180,32 @@ export function creerFondDeCarte(map, { elements } = {}) {
   if (elements) panneau.querySelector('.fond-elements').append(elements.panneau);
   const base = panneau.querySelector('.fond-base');
   const choixMontis = panneau.querySelector('.fond-montis-choix input');
-  const resumeAvance = panneau.querySelector('.fond-tous-resume');
-  const plis = new Map([...panneau.querySelectorAll('.fond-avance')].map((pli) => [pli.dataset.pli, pli]));
-  function ouvrirPli(nom, oui) {
-    const pli = plis.get(nom);
-    plisOuverts[nom] = oui;
-    ecrire(`fond-pli-${nom}`, oui);
-    pli.classList.toggle('ouvert', oui);
-    pli.querySelector('.fond-avance-corps').hidden = !oui;
-    pli.querySelector('.fond-avance-entete').setAttribute('aria-expanded', String(oui));
+  const resumeAvance = panneau.querySelector('.fond-avance-resume');
+  const parties = new Map([...panneau.querySelectorAll('.fond-partie')].map((p) => [p.dataset.section, p]));
+  const boutonsParties = panneau.querySelectorAll('.fond-parties [data-partie]');
+  function montrerPartie(nom) {
+    if (!parties.has(nom)) return;
+    partie = nom;
+    ecrire('fond-partie', nom);
+    for (const [cle, element] of parties) element.hidden = cle !== nom;
+    boutonsParties.forEach((b) => {
+      b.classList.toggle('actif', b.dataset.partie === nom);
+      b.setAttribute('aria-selected', String(b.dataset.partie === nom));
+    });
   }
-  for (const nom of plis.keys()) {
-    plis.get(nom).querySelector('.fond-avance-entete').addEventListener('click', () => ouvrirPli(nom, !plisOuverts[nom]));
-    ouvrirPli(nom, plisOuverts[nom]);
+  boutonsParties.forEach((b) => b.addEventListener('click', () => montrerPartie(b.dataset.partie)));
+  montrerPartie(partie);
+  const avance = panneau.querySelector('.fond-avance');
+  const enteteAvance = avance.querySelector('.fond-avance-entete');
+  function ouvrirAvance(oui) {
+    avanceOuvert = oui;
+    ecrire('fond-avance', oui);
+    avance.classList.toggle('ouvert', oui);
+    avance.querySelector('.fond-avance-corps').hidden = !oui;
+    enteteAvance.setAttribute('aria-expanded', String(oui));
   }
+  enteteAvance.addEventListener('click', () => ouvrirAvance(!avanceOuvert));
+  ouvrirAvance(avanceOuvert);
 
   const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button[data-onglet]');
   const boutonsModes = panneau.querySelectorAll('.fond-montis-modes button');
@@ -432,9 +445,10 @@ export function creerFondDeCarte(map, { elements } = {}) {
     desactiver() {},
     // Appui sur une pastille d'élément de la carte : « Avancé » s'ouvre sur sa partie
     ouvrirSection(section) {
-      if (!plis.has(section)) return null;
-      ouvrirPli(section, true);
-      return plis.get(section);
+      if (!parties.has(section)) return null;
+      ouvrirAvance(true);
+      montrerPartie(section);
+      return panneau.querySelector('.fond-parties');
     },
   };
 }

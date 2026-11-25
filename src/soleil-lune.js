@@ -226,6 +226,8 @@ export function creerSoleilLune(map) {
       await charger();
       // Le lieu de la frise devient le point où l'on se tient : il ne suit plus la carte, qui tourne avec le regard
       const ici = { ...(point ?? reglage.lieu() ?? map.getCenter()) };
+      // Choisir l'endroit sur la carte a pu refermer le panneau : la frise doit rester là
+      window.dispatchEvent(new Event('montis:ouvrir-ciel'));
       vueSol = { lieu: ici };
       majChoix();
       reglage.figerLieu(ici);
@@ -276,8 +278,13 @@ export function creerSoleilLune(map) {
   }
   boutonCiel.addEventListener('click', () => basculerCiel(!cielActif));
   boutonSol.addEventListener('click', () => {
-    const boussole = vueSol ? null : window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
-    basculerSol(!vueSol, boussole);
+    if (vueSol) {
+      basculerSol(false);
+      return;
+    }
+    const boussole = window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
+    // Là où l'on est si la position est connue, sinon on demande où regarder (comme Horizon)
+    import('./panorama.js').then((m) => m.ouvrirAuBonEndroit(map, (lieu) => basculerSol(true, boussole, lieu)));
   });
   requestAnimationFrame(() => {
     panneau()?.querySelector('.outil-rapide-entete')?.addEventListener('click', (event) => {

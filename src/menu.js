@@ -207,8 +207,10 @@ export function initMenu(map) {
     if (tiroir.classList.contains('reduit') && !event.target.closest('.outil-rapide-fermer')) reduireTiroir(false);
   });
   enteteTiroir.querySelector('.outil-rapide-fermer').addEventListener('click', () => ouvrir(false));
-  suivreGlisse(tiroir, (cible) => cible.closest('.tiroir-entete') && !cible.closest('button'), {
-    bas: () => (tiroir.classList.contains('reduit') ? ouvrir(false) : reduireTiroir(true)),
+  suivreGlisse(tiroir, (cible) => cible.closest('.tiroir-entete, .params-entete') && !cible.closest('button'), {
+    contenu: true,
+    // Paramètres n'a pas de barre réduite : un glissé les ferme
+    bas: () => (tiroir.classList.contains('reduit') || tiroir.classList.contains('en-parametres') ? ouvrir(false) : reduireTiroir(true)),
     haut: () => reduireTiroir(false),
   });
 
@@ -244,7 +246,14 @@ export function initMenu(map) {
     resume.hidden = !resume.textContent;
   }
 
-  window.addEventListener('fiche-ouverte', fermerPanneauxFlottants);
+  // Une fiche (point, objet, balise, station…) passe devant : bandes et panneaux s'effacent, pas de chevauchement
+  window.addEventListener('fiche-ouverte', () => {
+    fermerPanneauxFlottants();
+    fermerExplorer();
+  });
+  window.addEventListener('panneau-carte', () => {
+    if (document.querySelector('.bf:not([hidden]):not(.lune-visite-panneau)')) fermerExplorer();
+  });
   // Pastille du vent : son réglage est dans son panneau posé sur la carte, que Météo ou Carte cachent sur téléphone
   window.addEventListener('montis:montrer-carte', () => {
     fermerPanneauxFlottants();
@@ -322,7 +331,7 @@ export function initMenu(map) {
       exclusif: false,
       modules: [
         differer({ id: 'sorties', labelCle: 'traces.sorties', icone: 'sorties' }, () =>
-          import('./mes-traces.js').then((m) => m.creerSorties(map, { fermerMenu, ouvrirMenu }))
+          import('./mes-traces.js').then((m) => m.creerSorties(map, { fermerMenu, ouvrirMenu: () => ouvrir(true, false, 'traces') }))
         ),
         differer({ id: 'parcours', labelCle: 'traces.parcours', icone: 'parcours' }, () =>
           import('./mes-traces.js').then((m) => m.creerParcoursTraces(map, { fermerMenu }))
@@ -339,7 +348,7 @@ export function initMenu(map) {
       exclusif: false,
       modules: [
         differer({ id: 'quiz-pays', labelCle: 'jeux.quiz', icone: 'culture-geo' }, () =>
-          import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu }))
+          import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu: () => ouvrir(true, false, 'jeux') }))
         ),
       ],
       emplacement: 'menu',
@@ -388,6 +397,7 @@ export function initMenu(map) {
       // Lot 4.7 : jour et heure communs en tête, puis l'ombre du soleil et la Lune
       id: 'ciel',
       horsColonne: true,
+      uneSection: true,
       titre: 'menu.ciel',
       icone: 'ciel',
       aide: 'menu.aide-ciel',
@@ -487,6 +497,8 @@ export function initMenu(map) {
   }
 
   function demarrer(e) {
+    // Soleil et Lune : une seule section ouverte ; replier l'autre ne retire rien de la carte (ombre comprise)
+    if (e.uneSection) etatsParCategorie.get(e.categorie)?.forEach((autre) => autre !== e && autre.actif && arreter(autre));
     suivreActivite(e, true);
     e.actif = true;
     e.ligne.classList.add('actif');
@@ -638,6 +650,7 @@ export function initMenu(map) {
 
       reduirePanneau(panneauOutil, false);
       suivreGlisse(panneauOutil, (cible) => cible.closest('.outil-rapide-entete') && !cible.closest('button'), {
+        contenu: true,
         bas: () => {
           if (panneauOutil.classList.contains('reduit')) panneauOutil.querySelector('.outil-rapide-fermer').click();
           else reduirePanneau(panneauOutil, true);
@@ -717,7 +730,7 @@ export function initMenu(map) {
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);
 
-      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0, exclusif: categorie.exclusif };
+      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0, exclusif: categorie.exclusif, uneSection: categorie.uneSection, categorie: categorie.id };
       etats.push(etat);
 
       ligne.addEventListener('click', () => {
@@ -764,9 +777,12 @@ export function initMenu(map) {
     const boussole = window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
     fermerPanneauxFlottants();
     ouvrir(false);
+    fermerExplorer();
     boutonPanorama.disabled = true;
     import('./panorama.js')
-      .then((m) => m.ouvrirPanorama(map, { ...options, boussole }))
+      .then((m) => (options.point
+        ? m.ouvrirPanorama(map, { ...options, boussole })
+        : m.ouvrirAuBonEndroit(map, (point) => m.ouvrirPanorama(map, { ...options, point, boussole }))))
       .catch((err) => {
         console.warn('Panorama indisponible :', err);
         if (fichierDisparu(err)) rechargerSurNouvelleVersion();
@@ -804,28 +820,18 @@ export function initMenu(map) {
   // La vue se partage depuis l'onglet Carte
   panneauxFlottants.get('carte').querySelector('.outil-rapide-corps').appendChild(partage);
 
-  // Logo de l'appli en haut à gauche : il montre ou cache les onglets (demande du propriétaire du 25 novembre 2026)
+  // Logo de l'appli en haut à gauche : il ouvre les Paramètres, comme le profil des applis (décision du propriétaire
+  // du 25 novembre 2026). Un petit engrenage dans son coin le dit.
   const logo = document.createElement('button');
   logo.id = 'logo-onglets';
   logo.type = 'button';
-  logo.setAttribute('aria-controls', 'barre-onglets');
-  logo.innerHTML = '<img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />';
-  const montrerOnglets = (visibles) => {
-    document.body.classList.toggle('onglets-masques', !visibles);
-    logo.setAttribute('aria-expanded', String(visibles));
-    poserAttribut(logo, 'aria-label', visibles ? 'onglets.masquer' : 'onglets.montrer');
-    logo.title = logo.getAttribute('aria-label');
-  };
-  montrerOnglets(!lire('onglets-masques', false));
+  logo.setAttribute('aria-controls', 'menu-tiroir');
+  logo.innerHTML = `<img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" /><span class="logo-engrenage">${creerIconeMenu('reglages')}</span>`;
+  poserAttribut(logo, 'aria-label', 'menu.ouvrir-parametres');
+  poserAttribut(logo, 'title', 'menu.parametres');
   logo.addEventListener('click', () => {
-    const visibles = document.body.classList.contains('onglets-masques');
-    ecrire('onglets-masques', !visibles);
-    montrerOnglets(visibles);
-    if (!visibles) {
-      fermerPanneauxFlottants({ garderReduits: true });
-      ouvrir(false);
-      fermerExplorer();
-    }
+    if (tiroir.classList.contains('en-parametres') && tiroir.classList.contains('ouvert')) ouvrir(false);
+    else boutonParametres.click();
   });
   document.body.appendChild(logo);
   barreOnglets.append(boutonsFlottants.get('carte'), bouton, boutonsFlottants.get('meteo'), ongletTraces, ongletExplorer);
@@ -912,16 +918,15 @@ export function initMenu(map) {
   const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);
   creerBande('explorer', ongletExplorer, [
     {
-      cle: 'position', image: vignette('position'), titre: 'explorer.position', detail: () => ['explorer.position-detail'],
-      action: () => document.querySelector('.maplibregl-ctrl-geolocate')?.click(),
-    },
-    {
-      cle: 'horizon', image: icone('panorama'), titre: 'panorama.titre', detail: () => ['bande.horizon'],
+      cle: 'horizon', image: vignette('horizon'), titre: 'panorama.titre', detail: () => ['bande.horizon'],
       action: () => ouvrirHorizon(),
     },
     {
       cle: 'globe', image: vignette('globe'), titre: 'explorer.globe', detail: () => ['explorer.globe-detail'],
-      action: () => map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true }),
+      action: () => {
+        document.body.classList.remove('eclairage-ferme');
+        map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true });
+      },
     },
     {
       cle: 'ciel', image: vignette('ciel'), titre: 'menu.ciel',
@@ -940,7 +945,6 @@ export function initMenu(map) {
       cle: 'jeux', image: vignette('jeux'), titre: 'menu.jeux', detail: () => ['bande.jeux'],
       action: () => ouvrirRubrique('jeux'),
     },
-    { cle: 'parametres', image: icone('reglages'), titre: 'menu.parametres', detail: () => ['bande.parametres'], action: () => boutonParametres.click() },
   ]);
 
   // Globe tout éclairé ou à l'heure réelle, avec sa nuit (demande du propriétaire du 25 novembre 2026) ;
@@ -951,14 +955,21 @@ export function initMenu(map) {
   choixEclairage.className = 'eclairage-globe';
   choixEclairage.setAttribute('role', 'group');
   poserAttribut(choixEclairage, 'aria-label', 'bande.eclairage');
-  choixEclairage.innerHTML = '<button type="button" data-plein="0"></button><button type="button" data-plein="1"></button>';
+  // Bulle refermable : elle revient en touchant Globe ou en se rapprochant puis en s'éloignant de nouveau
+  choixEclairage.innerHTML = `<strong class="eclairage-titre"></strong><div class="eclairage-choix"><button type="button" data-plein="0"></button><button type="button" data-plein="1"></button></div><button type="button" class="eclairage-fermer">${creerIconeMenu('close')}</button>`;
+  poser(choixEclairage.querySelector('.eclairage-titre'), 'bande.eclairage-titre');
+  poserAttribut(choixEclairage.querySelector('.eclairage-fermer'), 'aria-label', 'menu.fermer');
+  choixEclairage.querySelector('.eclairage-fermer').addEventListener('click', (event) => {
+    event.stopPropagation();
+    document.body.classList.add('eclairage-ferme');
+  });
   poser(choixEclairage.querySelector('[data-plein="0"]'), 'bande.eclairage-reel');
   poser(choixEclairage.querySelector('[data-plein="1"]'), 'bande.eclairage-plein');
   const majChoixEclairage = () => {
     choixEclairage.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.plein === '1') === globeEclaire)));
   };
   choixEclairage.addEventListener('click', (event) => {
-    const bouton = event.target.closest('button');
+    const bouton = event.target.closest('button[data-plein]');
     if (!bouton) return;
     globeEclaire = bouton.dataset.plein === '1';
     ecrire('globe-plein-jour', globeEclaire);
@@ -967,7 +978,12 @@ export function initMenu(map) {
   });
   majChoixEclairage();
   document.body.appendChild(choixEclairage);
-  const majVueEspace = () => document.body.classList.toggle('vue-espace', map.getZoom() < 5.5);
+  // « Toute la Terre » : le globe entier tient à l'écran
+  const majVueEspace = () => {
+    const espace = map.getZoom() < 3.2;
+    if (!espace) document.body.classList.remove('eclairage-ferme');
+    document.body.classList.toggle('vue-espace', espace);
+  };
   map.on('zoomend', majVueEspace);
   map.on('zoom', majVueEspace);
   majVueEspace();

@@ -24,6 +24,7 @@ const VISEE = 3000; // m : point visé par la caméra 3D, dans la direction du r
 const SURELEVATION_3D = 20;
 const INCLINAISON_MIN = -40;
 const INCLINAISON_MAX = 35;
+const INCLINAISON_MAX_CIEL = 88; // vue au sol de Soleil et Lune : on lève les yeux jusqu'au zénith
 const CHAMP_3D_HORIZONTAL = 60; // degrés : champ visé en 3D, borné en hauteur
 const CHAMP_3D_MAX = 75;
 const CHAMP_CAMERA_DEFAUT = 67; // degrés sur le grand côté de l'image (objectif principal d'un téléphone)
@@ -38,33 +39,132 @@ let ouvert = null;
 export const fermerPanorama = () => ouvert?.fermer();
 
 // Choix d'un endroit sur la carte : un bandeau le demande, le premier appui le donne, Annuler ou Échap renonce
+// Choix d'un endroit, comme dans les applis de cartes (demande du propriétaire du 25 novembre 2026) : un repère fixe
+// au centre, on déplace la carte dessous (ou on touche un endroit pour y aller), puis « Regarder d'ici »
 function choisirEndroit(map, relancer) {
-  const bandeau = document.createElement('div');
-  bandeau.className = 'choix-endroit';
-  bandeau.setAttribute('role', 'status');
-  bandeau.innerHTML = '<span></span><button type="button"></button>';
-  poser(bandeau.querySelector('span'), 'panorama.toucher-carte');
-  poser(bandeau.querySelector('button'), 'panorama.annuler');
-  document.body.appendChild(bandeau);
+  // Bandes et panneaux s'effacent : la carte est toute à soi le temps du choix
+  window.dispatchEvent(new CustomEvent('montis:plein-ecran', { detail: { actif: true } }));
+  document.body.classList.add('choix-endroit-actif');
+  const viseur = document.createElement('div');
+  viseur.className = 'choix-endroit-viseur';
+  viseur.setAttribute('aria-hidden', 'true');
+  viseur.innerHTML = '<img src="/pins/recherche.svg" alt="" width="48" height="48" /><i></i>';
+  const carte = document.createElement('div');
+  carte.className = 'choix-endroit';
+  carte.setAttribute('role', 'dialog');
+  carte.innerHTML = `
+    <div class="choix-endroit-textes"><strong></strong><small></small></div>
+    <div class="choix-endroit-actions">
+      <button type="button" class="choix-endroit-annuler"></button>
+      <button type="button" class="choix-endroit-valider"></button>
+    </div>
+  `;
+  poser(carte.querySelector('strong'), 'lieu.placer-repere');
+  poser(carte.querySelector('small'), 'lieu.placer-aide');
+  poser(carte.querySelector('.choix-endroit-annuler'), 'panorama.annuler');
+  poser(carte.querySelector('.choix-endroit-valider'), 'lieu.regarder-ici');
+  document.body.append(viseur, carte);
   bloquerFiches(true);
+  const bouge = () => viseur.classList.add('bouge');
+  const pose = () => viseur.classList.remove('bouge');
   const finir = () => {
-    bandeau.remove();
+    viseur.remove();
+    carte.remove();
+    document.body.classList.remove('choix-endroit-actif');
     bloquerFiches(false);
     map.off('click', surClic);
+    map.off('movestart', bouge);
+    map.off('moveend', pose);
     window.removeEventListener('keydown', surTouche);
   };
-  const surClic = (event) => {
-    finir();
-    const lieu = { lng: event.lngLat.lng, lat: event.lngLat.lat };
-    map.jumpTo({ center: lieu });
-    relancer(lieu);
-  };
+  const surClic = (event) => map.easeTo({ center: event.lngLat, duration: 450 });
   const surTouche = (event) => {
     if (event.key === 'Escape') finir();
+    if (event.key === 'Enter') valider();
   };
-  bandeau.querySelector('button').addEventListener('click', finir);
+  const valider = () => {
+    const { lng, lat } = map.getCenter();
+    finir();
+    relancer({ lng, lat });
+  };
+  carte.querySelector('.choix-endroit-annuler').addEventListener('click', finir);
+  carte.querySelector('.choix-endroit-valider').addEventListener('click', valider);
   map.on('click', surClic);
+  map.on('movestart', bouge);
+  map.on('moveend', pose);
   window.addEventListener('keydown', surTouche);
+}
+
+// Position du téléphone, seulement si la permission est déjà donnée (pas de demande surprise au lancement)
+async function positionConnue() {
+  try {
+    const permission = await navigator.permissions?.query({ name: 'geolocation' });
+    if (permission?.state !== 'granted') return null;
+  } catch {
+    return null;
+  }
+  return lirePosition();
+}
+const lirePosition = () => new Promise((resolu) => {
+  if (!navigator.geolocation) return resolu(null);
+  navigator.geolocation.getCurrentPosition(
+    ({ coords }) => resolu(coords.accuracy <= 500 ? { lng: coords.longitude, lat: coords.latitude } : null),
+    () => resolu(null),
+    { enableHighAccuracy: true, maximumAge: 120000, timeout: 8000 },
+  );
+});
+
+// Petite fenêtre « Où veux-tu regarder ? » : toucher la carte, ou activer sa position
+export function demanderLieu(map, relancer) {
+  document.querySelector('.demande-lieu')?.remove();
+  const fenetre = document.createElement('div');
+  fenetre.className = 'demande-lieu';
+  fenetre.setAttribute('role', 'dialog');
+  fenetre.innerHTML = `
+    <strong></strong>
+    <p class="demande-lieu-texte"></p>
+    <div class="demande-lieu-actions">
+      <button type="button" class="demande-lieu-carte"></button>
+      <button type="button" class="demande-lieu-position"></button>
+    </div>
+    <p class="demande-lieu-message" role="status" hidden></p>
+    <button type="button" class="demande-lieu-annuler"></button>
+  `;
+  poser(fenetre.querySelector('strong'), 'lieu.question');
+  poser(fenetre.querySelector('.demande-lieu-texte'), 'lieu.texte');
+  poser(fenetre.querySelector('.demande-lieu-carte'), 'lieu.toucher-carte');
+  poser(fenetre.querySelector('.demande-lieu-position'), 'lieu.activer-position');
+  poser(fenetre.querySelector('.demande-lieu-annuler'), 'panorama.annuler');
+  const message = fenetre.querySelector('.demande-lieu-message');
+  const fermer = () => fenetre.remove();
+  fenetre.querySelector('.demande-lieu-annuler').addEventListener('click', fermer);
+  fenetre.querySelector('.demande-lieu-carte').addEventListener('click', () => {
+    fermer();
+    choisirEndroit(map, relancer);
+  });
+  fenetre.querySelector('.demande-lieu-position').addEventListener('click', async (event) => {
+    const bouton = event.currentTarget;
+    bouton.disabled = true;
+    poser(message, 'lieu.recherche-position');
+    message.hidden = false;
+    const lieu = await lirePosition();
+    bouton.disabled = false;
+    if (!lieu) {
+      poser(message, 'lieu.position-indisponible');
+      return;
+    }
+    fermer();
+    map.jumpTo({ center: lieu });
+    relancer(lieu);
+  });
+  document.body.appendChild(fenetre);
+}
+
+// Ouvre Horizon (ou la vue au sol) là où on est, sinon demande où
+export async function ouvrirAuBonEndroit(map, relancer) {
+  const lieu = await positionConnue();
+  if (lieu) relancer(lieu);
+  else demanderLieu(map, relancer);
 }
 
 export async function ouvrirPanorama(map, options = {}) {
@@ -89,6 +189,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     marges: map.getPadding(),
   };
   const textesCaches = new Set();
+  const inclinaisonMax = ciel ? INCLINAISON_MAX_CIEL : INCLINAISON_MAX;
 
   // ---------- Interface ----------
   const racine = document.createElement('div');
@@ -114,6 +215,10 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
       <div class="pano-fiche" hidden>
         <div><strong></strong><span></span></div>
         <button type="button" class="pano-fiche-fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="pano-astres-boutons" hidden>
+        <button type="button" data-astre="soleil"><i class="pano-pastille-soleil"></i><span></span></button>
+        <button type="button" data-astre="lune"><i class="pano-pastille-lune"></i><span></span></button>
       </div>
       <div class="pano-reglages">
         <button type="button" class="pano-boussole" aria-pressed="false">
@@ -227,7 +332,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     if (suivreBoussole && capteur) {
       return {
         cap: (capteur.cap + recalage.cap + 360) % 360,
-        inclinaison: borner(capteur.inclinaison + recalage.inclinaison, INCLINAISON_MIN, INCLINAISON_MAX),
+        inclinaison: borner(capteur.inclinaison + recalage.inclinaison, INCLINAISON_MIN, inclinaisonMax),
       };
     }
     return libre;
@@ -299,7 +404,9 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
       if (pointeurs.size < 2) pincement = null;
       if (e.type === 'pointerup' && appui) {
         const cle = appui.cible?.dataset.cle;
-        choisir(cle ? sommets.find((s) => s.cle === cle) ?? null : null);
+        const astre = !cle && astreTouche(appui.x, appui.y);
+        if (astre) regarderVers(astre);
+        else choisir(cle ? sommets.find((s) => s.cle === cle) ?? null : null);
       }
       appui = null;
       return;
@@ -321,7 +428,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
       recalage = { cap: ecartCap(recalage.cap + dCap, 0), inclinaison: borner(recalage.inclinaison + dIncl, -30, 30) };
       majRecalage();
     } else {
-      libre = { cap: (libre.cap + dCap + 360) % 360, inclinaison: borner(libre.inclinaison + dIncl, INCLINAISON_MIN, INCLINAISON_MAX) };
+      libre = { cap: (libre.cap + dCap + 360) % 360, inclinaison: borner(libre.inclinaison + dIncl, INCLINAISON_MIN, inclinaisonMax) };
     }
   }
   function surMolette(e) {
@@ -663,12 +770,37 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     libre = { cap: choix.azimut, inclinaison: borner(choix.hauteur * 0.6, 0, 30) };
   }
 
+  let vueAstres = null;
+  function regarderVers(astre) {
+    if (!trajets) return;
+    const p = astreA(trajets[astre], ciel.instant());
+    if (!p) return;
+    if (suivreBoussole) basculerBoussole(false);
+    libre = { cap: p.azimut, inclinaison: borner(p.hauteur, INCLINAISON_MIN, inclinaisonMax) };
+  }
+  // Astre sous le doigt : à moins de 44 px de sa position à l'écran
+  function astreTouche(x, y) {
+    if (!ciel || !trajets || !vueAstres) return null;
+    const boite = racine.getBoundingClientRect();
+    for (const astre of ASTRES) {
+      const p = astreA(trajets[astre], ciel.instant());
+      const q = p && projeter(p.azimut, p.hauteur, vueAstres);
+      if (q && Math.hypot(q.x - (x - boite.left), q.y - (y - boite.top)) < 44) return astre;
+    }
+    return null;
+  }
+
   function dessinerAstres(vue) {
     if (!trajets) return;
     const t = ciel.instant();
-    const demi = champHorizontal(vue.champ, vue.largeur, vue.hauteur) / 2 + 5;
-    const visible = (p) => p.hauteur > (horizonDe ? horizonDe(p.azimut) : 0) && Math.abs(ecartCap(p.azimut, vue.cap)) <= demi;
-    const place = (p) => projeter(p.azimut, p.hauteur, vue);
+    vueAstres = vue;
+    const marge = Math.max(vue.largeur, vue.hauteur);
+    const dansEcran = (q) => q && q.x > -marge && q.x < vue.largeur + marge && q.y > -marge && q.y < vue.hauteur + marge;
+    const place = (p) => {
+      const q = projeter(p.azimut, p.hauteur, vue);
+      return dansEcran(q) ? q : null;
+    };
+    const visible = (p) => p.hauteur > (horizonDe ? horizonDe(p.azimut) : 0) && Boolean(place(p));
     for (const astre of ASTRES) {
       const trajet = trajets[astre];
       const tr = traces[astre];
@@ -709,7 +841,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
         const instantReel = levers[astre]?.[cle];
         if (!instantReel) continue;
         const p = astreA(trajet, instantReel);
-        if (!p || Math.abs(ecartCap(p.azimut, vue.cap)) > demi) continue;
+        if (!p) continue;
         const q = place(p);
         if (!q) continue;
         reels += `<circle class="reel" cx="${q.x.toFixed(1)}" cy="${q.y.toFixed(1)}" r="4.5"/><text class="reel" x="${(q.x + 8).toFixed(1)}" y="${(q.y + 14).toFixed(1)}">${ciel.heure(instantReel)}</text>`;
@@ -845,10 +977,18 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
         ? (lieu) => window.dispatchEvent(new CustomEvent('montis:ciel-au-sol', { detail: lieu }))
         : (lieu) => ouvrirPanorama(map, { point: lieu, boussole: permissionBoussole, retour });
       fermer({ sansRetour: !ciel });
-      choisirEndroit(map, relancer);
+      demanderLieu(map, relancer);
     });
     racine.querySelectorAll('.pano-modes button').forEach((b) => b.addEventListener('click', () => changerMode(b.dataset.mode)));
     boutonBoussole.addEventListener('click', () => basculerBoussole(!suivreBoussole));
+    if (ciel) {
+      const boutonsAstres = $('.pano-astres-boutons');
+      boutonsAstres.hidden = false;
+      boutonsAstres.querySelectorAll('[data-astre]').forEach((b) => {
+        poser(b.querySelector('span'), b.dataset.astre === 'soleil' ? 'panorama.vers-soleil' : 'panorama.vers-lune');
+        b.addEventListener('click', () => regarderVers(b.dataset.astre));
+      });
+    }
     $('.pano-fiche-fermer').addEventListener('click', () => choisir(null));
     boutonRecalage.addEventListener('click', () => {
       recalage = { cap: 0, inclinaison: 0 };
@@ -868,7 +1008,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     if (!etat.mode3D) etat.basculerMode();
     etat.exageration = 1;
     etat.majTerrain?.();
-    map.setMaxPitch(90 + INCLINAISON_MAX);
+    map.setMaxPitch(90 + inclinaisonMax);
     map.setCenterClampedToGround(false);
     // Perspective centrée sur l'écran (une visite ou un panneau a pu poser une marge) ; la vue du ciel pose la sienne
     map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });

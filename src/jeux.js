@@ -113,6 +113,54 @@ function chargerVilles() {
   return promesseVilles;
 }
 
+// Petites icônes des réglages de partie (demande du propriétaire du 25 novembre 2026) : une par rubrique, une par
+// choix, sans fioriture ; le texte du bouton passe dans un span pour garder l'icône
+const ICO = {
+  question: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8v.1"/>',
+  cible: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',
+  zone: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
+  niveau: '<path d="M5 19V13M12 19V8M19 19V4"/>',
+  longueur: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".9"/><circle cx="4" cy="12" r=".9"/><circle cx="4" cy="18" r=".9"/>',
+  eclairage: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+  drapeau: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  pays: '<path d="M4 7l5-3 6 3 5-3v13l-5 3-6-3-5 3Z"/><path d="M9 4v13M15 7v13"/>',
+  capitale: '<path d="M4 20h16M6 20V10M10 20V10M14 20V10M18 20V10M3 10l9-6 9 6Z"/>',
+  villes: '<path d="M3 20h18M5 20V9h5v11M10 20V5h5v15M15 20v-8h4v8"/>',
+  'ville-pays': '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+  choix: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  expert: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>',
+  courte: '<circle cx="12" cy="13" r="7"/><path d="M12 13V9.5M10 3h4"/>',
+  complete: '<path d="M7 9a4 4 0 1 0 0 6c2 0 3.5-2 5-3s3-3 5-3a4 4 0 1 1 0 6c-2 0-3.5-2-5-3s-3-3-5-3Z"/>',
+  plein: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  reel: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/>',
+};
+const LEGENDES = { sens: 'question', sensCapitales: 'question', cible: 'cible', zone: 'zone', niveau: 'niveau', longueur: 'longueur', eclairage: 'eclairage' };
+const VALEURS = { sens: { drapeau: 'drapeau', pays: 'pays' }, sensCapitales: { pays: 'capitale', capitale: 'drapeau' } };
+const svgIco = (nom) => `<svg class="jeux-ico" viewBox="0 0 24 24" aria-hidden="true">${ICO[nom]}</svg>`;
+function decorerReglages(panneau) {
+  panneau.querySelectorAll('.jeux-options .jeux-reglage').forEach((reglage) => {
+    const groupe = reglage.querySelector('[data-choix]');
+    const nom = groupe ? LEGENDES[groupe.dataset.choix] : 'pays';
+    const legende = reglage.querySelector('.jeux-legende');
+    if (legende && nom && ICO[nom]) legende.insertAdjacentHTML('afterbegin', svgIco(nom));
+    if (!groupe || groupe.classList.contains('jeux-zones')) return;
+    groupe.querySelectorAll('button[data-valeur]').forEach((bouton) => {
+      const icone = VALEURS[groupe.dataset.choix]?.[bouton.dataset.valeur] ?? bouton.dataset.valeur;
+      if (!ICO[icone]) return;
+      const texte = document.createElement('span');
+      texte.className = 'jeux-texte';
+      while (bouton.firstChild) texte.appendChild(bouton.firstChild);
+      // Le texte suit la langue : on déplace aussi la clé de traduction
+      if (bouton.dataset.i18n) {
+        texte.dataset.i18n = bouton.dataset.i18n;
+        delete bouton.dataset.i18n;
+      }
+      bouton.insertAdjacentHTML('afterbegin', svgIco(icone));
+      bouton.appendChild(texte);
+    });
+  });
+}
+
 export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   // ---------- Réglage de la partie, dans le menu ----------
   const choix = {
@@ -125,6 +173,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     niveau: 'choix',
     longueur: 'courte',
     zone: 'europe',
+    eclairage: 'plein',
     ...lire('jeux-choix', {}),
   };
   const records = () => lire('jeux-records', {});
@@ -219,6 +268,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
         </div>
       </div>
+      <div class="jeux-reglage">
+        <span class="jeux-legende" ${ti('jeux.eclairage')}>${t('jeux.eclairage')}</span>
+        <div class="segments" data-choix="eclairage" role="group" ${ta('aria-label', 'jeux.eclairage')}>
+          <button type="button" data-valeur="plein" ${ti('bande.eclairage-plein')}>${t('bande.eclairage-plein')}</button>
+          <button type="button" data-valeur="reel" ${ti('bande.eclairage-reel')}>${t('bande.eclairage-reel')}</button>
+        </div>
+      </div>
       <div class="jeux-reglage" data-pour="niveau">
         <span class="jeux-legende" ${ti('jeux.niveau')}>${t('jeux.niveau')}</span>
         <div class="segments" data-choix="niveau" role="group" ${ta('aria-label', 'jeux.niveau')}>
@@ -240,6 +296,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     </div>
   `;
   const $ = (selecteur, racine = panneau) => racine.querySelector(selecteur);
+  decorerReglages(panneau);
   // Le niveau expert fait taper un nom : « Trouve le drapeau » se joue toujours en quatre choix
   const niveauImpose = (c) => c.mode === 'drapeaux' && c.sens === 'pays';
   // Ce que joue la partie : un seul sens, celui du mode choisi
@@ -370,8 +427,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     });
     rendreChoixPays();
     const total = villesPays ? donnees?.villes.parPays[choix.paysVilles]?.length : compte(choix.zone);
-    $('[data-valeur="courte"]').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
-    $('[data-valeur="complete"]').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
+    $('[data-valeur="courte"] .jeux-texte').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
+    $('[data-valeur="complete"] .jeux-texte').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
     const record = records()[cleRecord(reglageEffectif())];
     $('.jeux-record').textContent = record ? texteRecord(record) : t('jeux.record-aucun');
   }
@@ -528,8 +585,9 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       if (premiere) {
         this.vueAvant = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
         this.zoomMax = map.getMaxZoom();
-        fixerPleinJour(true); // la Terre entière éclairée pour jouer (retour du propriétaire du 25 novembre 2026)
+        // La Terre entière éclairée pour jouer, sauf si on a choisi le temps réel au lancement (25 novembre 2026)
         document.body.classList.add('jeu-en-cours');
+        fixerPleinJour(choix.eclairage !== 'reel');
         window.dispatchEvent(new CustomEvent('montis:plein-ecran', { detail: { actif: true } }));
       }
       if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: donnees.brut, promoteId: 'code' });

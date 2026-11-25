@@ -156,9 +156,11 @@ const ZERMATT = { center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 };
 // Panneau Fond de carte : un onglet, un fond, un calque officiel (la liste se redessine : on cherche à chaque fois)
 // « Avancé » du fond de carte : éléments de la carte et tous les fonds
 const ouvrirAvance = (section) => (page) => page.evaluate((section) => {
-  const entete = document.querySelector(`.fond-avance[data-pli="${section}"] .fond-avance-entete`);
+  const entete = document.querySelector('.fond-avance-entete');
   if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
-  entete?.scrollIntoView({ block: 'start' });
+  const onglet = document.querySelector(`.fond-parties [data-partie="${section}"]`);
+  onglet?.click();
+  onglet?.scrollIntoView({ block: 'start' });
 }, section);
 const elementsCarte = [module('fond'), ouvrirAvance('elements')];
 const ongletFond = (o) => async (page) => {
@@ -169,8 +171,9 @@ const choisirFond = (id) => async (page) => {
   await page.evaluate((i) => {
     let radio = document.querySelector(`.fond-panneau input[name="fond"][value="${i}"]`);
     if (!radio) {
-      const entete = document.querySelector('.fond-avance[data-pli="fonds"] .fond-avance-entete');
+      const entete = document.querySelector('.fond-avance-entete');
       if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
+      document.querySelector('.fond-parties [data-partie="fonds"]')?.click();
       document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
       for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
       radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
@@ -423,8 +426,7 @@ const ECRANS = [
   // Refonte du 25 novembre 2026 : onglets Traces et Explorer
   { nom: 'onglet-traces', actions: [clic('#onglet-traces')] },
   { nom: 'onglet-explorer', actions: [clic('#onglet-explorer')] },
-  { nom: 'onglets-masques', actions: [clic('#logo-onglets')] },
-  { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
+  { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#logo-onglets')] },
   { nom: 'parapente', actions: [module('parapente')] },
   // Balises OpenWindMap et FFVL réunies, terrains FFVL (réseau requis : api.pioupiou.fr, data.gouv.fr)
   { nom: 'parapente-sites', actions: [...SITES] },
@@ -763,10 +765,10 @@ const ECRANS = [
   { nom: 'ciel-lune-jour', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-pas[data-pas="1"]'), (p) => p.waitForTimeout(800), defiler('.lunaison')] },
   // « Au sol » : vue au sol au lieu de Soleil et Lune, trajectoires du jour, vrai lever derrière le relief
   // (demande du propriétaire du 24 novembre 2026). Près d'Embrun : la crête cache le soleil jusqu'à 8h48
-  { nom: 'ciel-sol', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60)] },
-  { nom: 'ciel-sol-nuit', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(18 * 60 + 50)] },
+  { nom: 'ciel-sol', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(11 * 60)] },
+  { nom: 'ciel-sol-nuit', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(18 * 60 + 50)] },
   // Le titre du panneau déplie le reste de Soleil et Lune
-  { nom: 'ciel-sol-deplie', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-titre'), (p) => p.waitForTimeout(800)] },
+  { nom: 'ciel-sol-deplie', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(11 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-titre'), (p) => p.waitForTimeout(800)] },
   // « Voir dans le ciel » sans l'ombre, vue 3D telle qu'elle est : la Lune basse au sud-ouest et sa trajectoire du
   // jour (16 novembre 2026, 22 h 40 ; trajectoires ajoutées le 24 novembre 2026)
   {
@@ -966,6 +968,9 @@ const ECRANS = [
   { nom: 'guidage-resume', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), (p) => p.evaluate(([lng, lat]) => { const t0 = Date.now() - 6000000; localStorage.setItem('montis.guidage-trace', JSON.stringify({ nom: 'Tour du lac · 17 nov.', debut: t0, segments: [[[t0, lng - 0.035, lat - 0.012, 1380], [t0 + 1800000, lng - 0.025, lat - 0.007, 1450], [t0 + 3600000, lng - 0.015, lat - 0.004, 1620]], [[t0 + 5400000, lng - 0.005, lat - 0.002, 1700], [t0 + 5900000, lng, lat, 1760]]] })); }, tracePartage[22]), clic('.parcours-demarrer'), attendre('.dialogue'), (p) => p.waitForTimeout(600), clic('.dialogue .para-bouton-principal'), (p) => p.waitForTimeout(2500), clic('.guidage-arreter'), attendre('.dialogue'), (p) => p.waitForTimeout(800)] },
   // Panorama des sommets (lot 4.1) : depuis le Brévent, face au Mont Blanc ; boussole et caméra simulées
   { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
+  // Sans position connue : Horizon demande où regarder, puis le repère central (25 novembre 2026)
+  { nom: 'horizon-question', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu')] },
+  { nom: 'horizon-repere', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu'), clic('.demande-lieu-carte'), attendre('.choix-endroit')] },
   { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
   { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, boussoleSimulee(150, 3), (p) => p.waitForTimeout(1000), clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
   // « Voir l'horizon d'ici » depuis la fiche d'un point (sans position : le point choisi)
