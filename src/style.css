@@ -1472,10 +1472,10 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] {
   --surface: #0b111b;
   --surface-2: #111d2a;
-  --survol: #172a3a;
-  --bord: #274252;
+  --survol: #1c2650;
+  --bord: #28325f;
   --texte: #e6f7ff;
-  --texte-2: #91adbd;
+  --texte-2: #a5aed0;
   --logo-ink: #f7faff;
   --logo-cyan: #20d9f5;
   --logo-blue: #b8d8ff;
@@ -1507,7 +1507,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-logotype img {
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 35%, transparent));
 }
-:root[data-theme='cyberpunk'] .menu-sous-titre { color: #a7c3d3; }
+:root[data-theme='cyberpunk'] .menu-sous-titre { color: #b3bad8; }
 :root[data-theme='cyberpunk'] .menu-vue-entete {
   border-bottom-color: color-mix(in srgb, var(--accent) 26%, var(--bord));
 }
@@ -1520,8 +1520,8 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-vue-entete p { color: var(--texte-2); }
 :root[data-theme='cyberpunk'] .menu-ligne { font-weight: 600; }
 :root[data-theme='cyberpunk'] .menu-ligne > svg {
-  border-color: #304c5d;
-  background: linear-gradient(145deg, #142638, #0d1722);
+  border-color: #2e386a;
+  background: linear-gradient(145deg, #1a2350, #121a38);
 }
 :root[data-theme='cyberpunk'] .menu-ligne:hover:not(.actif) {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--bord));
@@ -1530,7 +1530,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-ligne.actif {
   border-color: color-mix(in srgb, var(--accent) 52%, var(--bord));
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-  box-shadow: inset 2px 0 0 var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 :root[data-theme='cyberpunk'] .menu-ligne.actif > svg {
   border-color: color-mix(in srgb, var(--accent) 54%, var(--bord));
@@ -1550,7 +1550,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-contenu select,
 :root[data-theme='cyberpunk'] .menu-contenu textarea {
   border-color: var(--bord);
-  background-color: #0a141f;
+  background-color: #0b1128;
   color: var(--texte);
 }
 :root[data-theme='cyberpunk'] .fond-item:has(input:checked) {
@@ -1873,21 +1873,20 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .radar-lien-externe:hover { border-color: var(--accent); }
 :root[data-theme='cyberpunk'] .radar-panneau {
   border-color: color-mix(in srgb, var(--accent) 25%, var(--bord));
-  background: linear-gradient(145deg, #101e2b, #0b141f);
-  box-shadow: inset 0 1px 0 rgba(77, 235, 212, 0.05);
+  background: linear-gradient(145deg, #141c3c, #0d1430);
+  box-shadow: inset 0 1px 0 rgba(164, 148, 255, 0.05);
 }
 
 :root[data-theme='cyberpunk'] .radar-actions button {
   border-color: color-mix(in srgb, var(--accent) 28%, var(--bord));
-  background: #0b1520;
+  background: #121a38;
 }
 :root[data-theme='cyberpunk'] .radar-sources {
   border-color: color-mix(in srgb, var(--accent) 24%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .radar-sources button.actif {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent),
-    0 0 12px color-mix(in srgb, var(--accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 :root[data-theme='cyberpunk'] .radar-statut.erreur { color: #ff8296; }
 
@@ -2134,9 +2133,9 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .frise-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
 :root[data-theme='cyberpunk'] .frise {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
-:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #09131d); }
+:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #0b1128); }
 .meteo-icone {
   display: grid;
   width: 30px;
@@ -2201,29 +2200,28 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .meteo-credit a { color: var(--accent); }
 :root[data-theme='cyberpunk'] .meteo-locale {
   border-color: color-mix(in srgb, var(--accent) 25%, var(--bord));
-  background: linear-gradient(145deg, #101e2b, #0b141f);
-  box-shadow: inset 0 1px 0 rgba(77, 235, 212, 0.05);
+  background: linear-gradient(145deg, #141c3c, #0d1430);
+  box-shadow: inset 0 1px 0 rgba(164, 148, 255, 0.05);
 }
 :root[data-theme='cyberpunk'] .meteo-emplacement {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-reessayer {
   border-color: color-mix(in srgb, var(--accent) 24%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-actuelle,
 :root[data-theme='cyberpunk'] .meteo-soleil,
 :root[data-theme='cyberpunk'] .meteo-heure,
 :root[data-theme='cyberpunk'] .meteo-jour {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-jour[aria-pressed='true'] {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, #09131d);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
-    0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #0b1128);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 :root[data-theme='cyberpunk'] .meteo-locale-statut.erreur { color: #ff8296; }
 
@@ -4329,7 +4327,7 @@ body.panorama-camera #panorama { background: #000; }
 #panorama::before {
   position: absolute;
   inset: 0;
-  background: linear-gradient(#2a3d52, #0e141b);
+  background: linear-gradient(#2e386a, #0e141b);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.6s ease;
@@ -5316,3 +5314,52 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 @media (prefers-reduced-motion: reduce) {
   #barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: none; }
 }
+
+/* ===== Style « Nuit étoilée raffinée » (style B, choisi par le propriétaire le 25 novembre 2026) =====
+   Thème Montis : bleu nuit, un seul accent (le violet du logo), pas de néon ni de halo ; turquoise et
+   magenta restent dans les logos, les dégradés et les couleurs de données de la carte. */
+:root[data-theme='cyberpunk'] {
+  --surface: #0e1530;
+  --surface-2: #151d3e;
+  --survol: #1c2650;
+  --bord: #28325f;
+  --texte: #eef1fb;
+  --texte-2: #a5aed0;
+  --fond-tiroir: #121a38;
+  --accent-clair: #a494ff;
+  --accent-sombre: #a494ff;
+  --accent-texte: #0e1530;
+  --accent-doux: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --ombre: 0 4px 16px rgba(3, 6, 20, 0.5);
+  --ombre-forte: 0 16px 44px rgba(3, 6, 20, 0.6);
+}
+:root[data-theme='cyberpunk'][data-accent='montis'] { --accent: #a494ff; }
+:root[data-accent='montis'] { --accent-clair: #6a4fd6; --accent-sombre: #a494ff; }
+:root[data-theme='cyberpunk'] #menu-tiroir {
+  background: linear-gradient(180deg, #131b3b, #0d1430);
+  box-shadow: 2px 0 28px rgba(3, 6, 20, 0.6);
+}
+:root[data-theme='cyberpunk'] .menu-logotype img,
+:root[data-theme='cyberpunk'] .menu-ligne.actif > svg { filter: none; }
+:root[data-theme='cyberpunk'] .menu-ligne > svg { border-color: var(--bord); background: var(--surface-2); }
+:root[data-theme='cyberpunk'] .menu-ligne.actif { box-shadow: inset 3px 0 0 var(--accent); }
+:root[data-theme='cyberpunk'] .menu-contenu :is(input, select, textarea) { background-color: #0b1128; }
+:root[data-theme='cyberpunk'] .menu-sous-titre { color: var(--texte-2); }
+
+/* Sélections discrètes : plus de pavé plein, un fond un peu plus clair et un fin contour d'accent */
+:root[data-theme='cyberpunk'] :is(.segments, .fond-onglets, .relief-bascule) button.actif {
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+  color: var(--texte);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+:root[data-theme='cyberpunk'] .fond-item:has(input:checked) {
+  outline: 0;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+/* Le 2D/3D et l'action principale gardent l'accent plein : c'est le choix qu'on cherche des yeux */
+:root[data-theme='cyberpunk'] #bascule-mode button.actif { box-shadow: none; }
+
+/* Boutons secondaires : fond neutre, pas de contour coloré ; l'accent reste au bouton principal */
+:root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour) { border-color: transparent; background: var(--survol); }
+:root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour):hover { border-color: transparent; background: color-mix(in srgb, var(--texte) 10%, var(--survol)); }

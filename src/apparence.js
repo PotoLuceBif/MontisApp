@@ -9,6 +9,8 @@ export const THEMES = [
 
 // Les couleurs réelles sont définies dans style.css ; ici, seulement de quoi dessiner les pastilles
 export const ACCENTS = [
+  // Violet du logo : accent par défaut du thème Montis (style « Nuit étoilée raffinée », 25 novembre 2026)
+  { id: 'montis', cle: 'accent.montis', clair: '#6a4fd6', sombre: '#a494ff' },
   { id: 'aurore', cle: 'accent.aurore', clair: '#4b4fc7', sombre: '#a0a6ff' },
   { id: 'sapin', cle: 'accent.sapin', clair: '#2f6b57', sombre: '#5fb59a' },
   { id: 'ocre', cle: 'accent.ocre', clair: '#b65f26', sombre: '#f0ad64' },
@@ -25,7 +27,7 @@ export const themeChoisi = () => {
 };
 
 export const accentChoisi = () => {
-  const accentParDefaut = themeChoisi() === 'cyberpunk' ? 'sapin' : 'aurore';
+  const accentParDefaut = themeChoisi() === 'cyberpunk' ? 'montis' : 'aurore';
   const a = lire('accent', accentParDefaut);
   return ACCENTS.some((x) => x.id === a) ? a : accentParDefaut;
 };

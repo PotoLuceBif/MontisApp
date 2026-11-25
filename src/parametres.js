@@ -29,7 +29,7 @@ function groupe(cle, id) {
 
 // Thèmes en vignettes : chacune montre ses couleurs (fond, panneau, accent)
 const APERCUS = {
-  cyberpunk: ['#070b16', '#111a2c', '#45e6d0'],
+  cyberpunk: ['#0b1128', '#151d3e', '#a494ff'],
   clair: ['#eef1f6', '#ffffff', '#2f6b57'],
   sombre: ['#15191c', '#1c2125', '#5fb59a'],
   auto: ['linear-gradient(135deg, #eef1f6 50%, #15191c 50%)', 'linear-gradient(135deg, #ffffff 50%, #1c2125 50%)', '#5fb59a'],
