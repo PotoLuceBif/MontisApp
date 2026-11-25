@@ -5411,3 +5411,31 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 }
 @keyframes outil-feuille-gauche { from { opacity: 0; transform: translateX(-24px); } }
 @media (min-width: 701px) and (prefers-reduced-motion: reduce) { .outil-rapide-panneau { animation: none; } }
+
+/* En-tête des bandes : sur téléphone, la croix seule reste en tête de bande */
+.bande-tete { display: contents; }
+.bande-tete strong { display: none; }
+@media (min-width: 701px) {
+  /* Ordinateur : nom de l'onglet à gauche, croix à côté, sur une ligne au-dessus des cartes */
+  .bande-onglet .bande-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    order: -1; min-height: 40px; padding: 0 2px 0 6px; flex: none;
+  }
+  .bande-onglet .bande-tete strong {
+    display: block; color: var(--texte); font: 650 15px var(--police);
+    text-shadow: 0 1px 6px rgba(3, 6, 20, 0.55);
+  }
+  .bande-onglet .bande-tete .bande-fermer {
+    align-self: auto; order: 0; width: 34px; height: 34px; border-radius: 10px;
+  }
+}
+@media (min-width: 701px) {
+  .bande-onglet .bande-tete {
+    min-height: 44px; padding: 4px 4px 4px 14px; box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%); border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre);
+  }
+  .bande-onglet .bande-tete strong { text-shadow: none; }
+  .bande-onglet .bande-tete .bande-fermer { border: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .bande-onglet .bande-tete .bande-fermer:hover { background: var(--survol); }
+}

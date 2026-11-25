@@ -860,7 +860,16 @@ export function initMenu(map) {
     poserAttribut(fermer, 'aria-label', 'menu.fermer');
     fermer.innerHTML = creerIconeMenu('close');
     fermer.addEventListener('click', () => fermerExplorer());
-    element.appendChild(fermer);
+    // En-tête : sur ordinateur, le nom de l'onglet et la croix en tête de colonne ; sur téléphone, la croix
+    // seule en tête de bande (le nom est caché)
+    const tete = document.createElement('div');
+    tete.className = 'bande-tete';
+    const nom = document.createElement('strong');
+    const majNom = () => { nom.textContent = onglet.querySelector('span')?.textContent ?? ''; };
+    majNom();
+    surLangue(majNom);
+    tete.append(nom, fermer);
+    element.appendChild(tete);
     const details = [];
     for (const { cle, image, titre, detail, action } of cartes) {
       const carte = document.createElement('button');
