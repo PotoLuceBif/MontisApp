@@ -216,10 +216,6 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
         <div><strong></strong><span></span></div>
         <button type="button" class="pano-fiche-fermer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       </div>
-      <div class="pano-astres-boutons" hidden>
-        <button type="button" data-astre="soleil"><i class="pano-pastille-soleil"></i><span></span></button>
-        <button type="button" data-astre="lune"><i class="pano-pastille-lune"></i><span></span></button>
-      </div>
       <div class="pano-reglages">
         <button type="button" class="pano-boussole" aria-pressed="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m12 6 2.5 6h-5L12 6Z" class="plein"/><path d="m12 18-2.5-6h5L12 18Z"/></svg>
@@ -780,7 +776,14 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
   }
   // Astre sous le doigt : à moins de 44 px de sa position à l'écran
   function astreTouche(x, y) {
-    if (!ciel || !trajets || !vueAstres) return null;
+    if (!ciel || !trajets) return null;
+    for (const [astre, selecteur] of [['soleil', '.soleil-ciel'], ['lune', '.lune-ciel']]) {
+      const element = document.querySelector(`${selecteur}:not([hidden])`);
+      if (!element) continue;
+      const r = element.getBoundingClientRect();
+      if (Math.hypot(r.left - x, r.top - y) < 48) return astre;
+    }
+    if (!vueAstres) return null;
     const boite = racine.getBoundingClientRect();
     for (const astre of ASTRES) {
       const p = astreA(trajets[astre], ciel.instant());
@@ -981,14 +984,6 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     });
     racine.querySelectorAll('.pano-modes button').forEach((b) => b.addEventListener('click', () => changerMode(b.dataset.mode)));
     boutonBoussole.addEventListener('click', () => basculerBoussole(!suivreBoussole));
-    if (ciel) {
-      const boutonsAstres = $('.pano-astres-boutons');
-      boutonsAstres.hidden = false;
-      boutonsAstres.querySelectorAll('[data-astre]').forEach((b) => {
-        poser(b.querySelector('span'), b.dataset.astre === 'soleil' ? 'panorama.vers-soleil' : 'panorama.vers-lune');
-        b.addEventListener('click', () => regarderVers(b.dataset.astre));
-      });
-    }
     $('.pano-fiche-fermer').addEventListener('click', () => choisir(null));
     boutonRecalage.addEventListener('click', () => {
       recalage = { cap: 0, inclinaison: 0 };

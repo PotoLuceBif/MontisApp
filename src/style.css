@@ -5085,18 +5085,7 @@ body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule :is(.ciel-lieu, .ciel-
 #menu-tiroir .tiroir-icone svg { width: 18px; height: 18px; }
 .menu-ligne.actif:not(.menu-ligne-activite) > svg { filter: none !important; }
 
-/* Vue au sol : se tourner vers le soleil ou la Lune (25 novembre 2026) */
-.pano-astres-boutons { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; pointer-events: auto; }
-.pano-astres-boutons[hidden] { display: none; }
-.pano-astres-boutons button {
-  display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px;
-  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-}
-.pano-pastille-soleil, .pano-pastille-lune { width: 14px; height: 14px; border-radius: 50%; }
-.pano-pastille-soleil { background: radial-gradient(circle at 40% 40%, #fff7da, #ffd36b 55%, #f2a93b); }
-.pano-pastille-lune { background: radial-gradient(circle at 40% 40%, #f4f4ef, #c9ccd4 70%, #9aa0aa); }
+/* Vue au sol (25 novembre 2026) */
 /* Horizon n'est pas Soleil et Lune : ni astres, ni trajectoires dans sa vue (demande du propriétaire) */
 body.panorama-actif:not(.panorama-ciel) :is(.soleil-ciel, .lune-ciel, .soleil-ciel-trajets) { display: none !important; }
 
@@ -5120,8 +5109,6 @@ body.panorama-actif:not(.panorama-ciel) :is(.soleil-ciel, .lune-ciel, .soleil-ci
 .choix-endroit-actions .choix-endroit-valider { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
 /* Pendant le choix : rien d'autre sur la carte que la recherche */
 body.choix-endroit-actif :is(.bande-onglet, .couches-actives, .eclairage-globe) { display: none !important; }
-/* Vue au sol : les boutons Soleil et Lune sous le titre, la frise occupe le bas */
-body.panorama-ciel .pano-astres-boutons { position: fixed; z-index: 6; top: calc(max(10px, env(safe-area-inset-top)) + 70px); left: 50%; transform: translateX(-50%); margin: 0; }
 
 /* Réglages de partie : icône devant chaque rubrique et dans chaque choix, plus d'espace (25 novembre 2026) */
 .jeux-options .jeux-reglage { gap: 8px; margin-top: 4px; }
@@ -5134,3 +5121,61 @@ body.panorama-ciel .pano-astres-boutons { position: fixed; z-index: 6; top: calc
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .ciel-course { display: none; }
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 14px; }
 body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit)::before { position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--texte) 28%, transparent); content: ''; transform: translateX(-50%); }
+
+/* « Voir dans le ciel » seul dans Soleil et Lune : un bouton pleine largeur */
+.ciel-choix:has(.ciel-bouton-ciel[hidden]) { display: block; }
+.ciel-choix:has(.ciel-bouton-ciel[hidden]) .ciel-bouton-sol { width: 100%; }
+
+/* Vue au sol : frise compacte, toujours récupérable (demande du propriétaire du 25 novembre 2026). Pas de croix
+   (on quitte par celle de la vue), un bouton pour réduire, et la barre réduite pour la rouvrir */
+body.panorama-ciel #outil-rapide-panneau-ciel .outil-rapide-fermer { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete {
+  position: absolute; z-index: 2; top: 2px; right: 4px; display: flex; min-height: 0; padding: 0; border: 0; background: transparent;
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete .outil-rapide-titre { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire { width: 36px; min-height: 36px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 10px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-corps { padding-top: 0; padding-bottom: 6px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-right: 40px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule :is(.ombres-jour-bouton, .ombres-jour-nom) { height: 34px; min-height: 34px; font-size: 13px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-heure { margin-top: 6px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-maintenant { min-height: 28px; font-size: 12px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ciel-relief { margin: 4px 0 0; padding: 0; border: 0; font-size: 11px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue > :not(.ciel-entete) { display: none; }
+
+/* Zones de jeu : silhouette du continent derrière le nom, le contour de la Terre pour Monde */
+.jeux-zones button { position: relative; overflow: hidden; isolation: isolate; }
+.jeux-zone-forme { position: absolute; z-index: -1; inset: 3px 6px; width: calc(100% - 12px); height: calc(100% - 6px); fill: currentColor; opacity: .16; }
+.jeux-zone-forme.monde { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .3; }
+.jeux-zones button.actif .jeux-zone-forme { opacity: .24; }
+
+/* ===== Paramètres accueillants (25 novembre 2026) : en-tête Montis, une carte par section, thèmes en vignettes ===== */
+.params-accueil {
+  display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), var(--surface-2);
+}
+.params-accueil img { width: 56px; height: 56px; flex: none; border-radius: 16px; }
+.params-accueil div { display: grid; gap: 2px; min-width: 0; }
+.params-accueil strong { font-size: 18px; letter-spacing: .02em; }
+.params-accueil small { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.params-accueil .params-accueil-version { font-size: 11px; opacity: .8; }
+#menu-tiroir .params-groupe {
+  margin: 0 0 12px; padding: 14px; border: 1px solid var(--bord); border-radius: 16px; background: var(--surface-2);
+}
+.params-groupe-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.params-groupe-tete h3 { margin: 0; color: var(--texte); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.params-icone { width: 34px !important; height: 34px !important; }
+.params-icone svg { width: 19px !important; height: 19px !important; }
+.params-themes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.params-theme {
+  display: grid; gap: 6px; justify-items: center; padding: 6px 4px 8px; border: 1.5px solid var(--bord); border-radius: 14px;
+  background: transparent; color: var(--texte); font: 600 12px var(--police); cursor: pointer;
+}
+.params-theme.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.params-theme-apercu { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 9px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / .3); }
+.params-theme-apercu i { position: absolute; left: 12%; right: 12%; bottom: 0; height: 52%; border-radius: 6px 6px 0 0; }
+.params-theme-apercu b { position: absolute; left: 22%; bottom: 18%; width: 40%; height: 12%; border-radius: 4px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete::before { content: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ciel-entete { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue { padding-bottom: 0; }

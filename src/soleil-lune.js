@@ -75,7 +75,9 @@ export function creerSoleilLune(map) {
   // « Voir dans le ciel » : soleil, Lune et leurs trajectoires du jour dans le ciel de la vue 3D, gardé dans les réglages.
   // « Au sol » (demande du propriétaire du 24 novembre 2026) : caméra posée au lieu de Soleil et Lune, comme Horizon,
   // avec trajectoires, crêtes et vrai lever derrière le relief (panorama.js, mode ciel) ; jamais rouverte au démarrage.
-  let cielActif = lire('ciel-astres', false);
+  // « Voir dans le ciel » d'avant (astres dans le ciel de la carte 3D) est retiré : la vue au sol prend ce nom
+  // (décision du propriétaire du 25 novembre 2026)
+  let cielActif = false;
   let vueSol = null; // { lieu } pendant la vue au sol
   let reglage = null;
   let m = null; // modules chargés : { r: réglage, s: soleil, l: Lune, c: ciel }
@@ -195,7 +197,7 @@ export function creerSoleilLune(map) {
     boutonSol.classList.toggle('actif', Boolean(vueSol));
     boutonSol.setAttribute('aria-pressed', String(Boolean(vueSol)));
     // « Voir dans le ciel » sert en 3D seulement (règle des panneaux) ; « Au sol » passe en 3D de lui-même
-    boutonCiel.hidden = !etat.mode3D;
+    boutonCiel.hidden = true;
   }
 
   // Vrais levers et couchers derrière le relief, sous la frise, le temps de la vue au sol
@@ -379,7 +381,6 @@ export function creerSoleilLune(map) {
   ombres.bloc.prepend(position, heuresSoleil);
   poserAttributCiel();
   majChoix();
-  if (cielActif) basculerCiel(true);
 
   function poserAttributCiel() {
     choixCiel.setAttribute('aria-label', t('ciel.dans-le-ciel'));

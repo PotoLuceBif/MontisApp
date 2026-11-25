@@ -412,6 +412,7 @@
   "accent.prune": "Plum",
   "params.retour": "Back to menu",
   "params.titre": "Settings",
+  "params.accroche": "Your mountain map, from the trail to the stars.",
   "params.theme": "Theme",
   "params.accent": "Accent colour",
   "params.unites": "Units",
@@ -2051,8 +2052,6 @@
   "panorama.changer-endroit": "Change place",
   "panorama.toucher-carte": "Tap the map to choose the place",
   "panorama.annuler": "Cancel",
-  "panorama.vers-soleil": "Sun",
-  "panorama.vers-lune": "Moon",
   "lieu.question": "Where do you want to look?",
   "lieu.placer-repere": "Put the marker where you want to look",
   "lieu.placer-aide": "Move the map under the marker, or tap a place.",
@@ -2091,6 +2090,6 @@
   "ciel.cache": "hidden",
   "panorama.chargement-relief": "Loading terrain…",
   "panorama.erreur-relief": "Terrain unavailable: {message}",
-  "ciel.au-sol-bouton": "On the ground",
+  "ciel.au-sol-bouton": "See in the sky",
   "jeux.champ-verifie": "Check the spelling"
 }

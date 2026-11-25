@@ -412,6 +412,7 @@
   "accent.prune": "Prune",
   "params.retour": "Retour au menu",
   "params.titre": "Paramètres",
+  "params.accroche": "Ta carte de montagne, du sentier jusqu’aux étoiles.",
   "params.theme": "Thème",
   "params.accent": "Couleur d’accent",
   "params.unites": "Unités",
@@ -2051,8 +2052,6 @@
   "panorama.changer-endroit": "Changer d'endroit",
   "panorama.toucher-carte": "Touche la carte pour choisir l'endroit",
   "panorama.annuler": "Annuler",
-  "panorama.vers-soleil": "Soleil",
-  "panorama.vers-lune": "Lune",
   "lieu.question": "Où veux-tu regarder ?",
   "lieu.placer-repere": "Place le repère où tu veux regarder",
   "lieu.placer-aide": "Déplace la carte sous le repère, ou touche un endroit.",
@@ -2091,6 +2090,6 @@
   "ciel.cache": "caché",
   "panorama.chargement-relief": "Chargement du relief…",
   "panorama.erreur-relief": "Relief indisponible : {message}",
-  "ciel.au-sol-bouton": "Au sol",
+  "ciel.au-sol-bouton": "Voir dans le ciel",
   "jeux.champ-verifie": "Vérifie l’orthographe"
 }

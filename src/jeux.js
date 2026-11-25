@@ -136,6 +136,59 @@ const ICO = {
 };
 const LEGENDES = { sens: 'question', sensCapitales: 'question', cible: 'cible', zone: 'zone', niveau: 'niveau', longueur: 'longueur', eclairage: 'eclairage' };
 const VALEURS = { sens: { drapeau: 'drapeau', pays: 'pays' }, sensCapitales: { pays: 'capitale', capitale: 'drapeau' } };
+// Silhouette de chaque zone derrière son nom (demande du propriétaire du 25 novembre 2026) : les contours des pays de
+// la zone, à plat ; « Monde », le contour de la Terre
+const TERRE = '<circle cx="50" cy="30" r="27"/><ellipse cx="50" cy="30" rx="12" ry="27"/><path d="M23 30h54M27 16h46M27 44h46"/>';
+// Cadre de chaque zone (longitudes déjà recollées pour l'Océanie) : les territoires lointains d'un pays (Guyane,
+// Réunion, Alaska…) restent dehors, sinon l'Europe s'étirait jusqu'à l'Amérique
+const CADRES = {
+  europe: { lng: [-25, 45], lat: [34, 72] },
+  afrique: { lng: [-20, 55], lat: [-36, 38] },
+  asie: { lng: [25, 150], lat: [-12, 56] },
+  ameriques: { lng: [-170, -30], lat: [-56, 72] },
+  oceanie: { lng: [110, 190], lat: [-48, 0], recoller: true },
+};
+function silhouette(zone, codes, geometries) {
+  const cadre = CADRES[zone];
+  const lngDe = (lng) => (cadre.recoller && lng < 0 ? lng + 360 : lng);
+  const dedans = ([lng, lat]) => lngDe(lng) >= cadre.lng[0] && lngDe(lng) <= cadre.lng[1] && lat >= cadre.lat[0] && lat <= cadre.lat[1];
+  const anneaux = [];
+  for (const code of codes) {
+    const g = geometries.get(code);
+    if (!g) continue;
+    // Polygon ([anneaux]) ou MultiPolygon ([[anneaux]]) : contours extérieurs dont le milieu est dans le cadre
+    const polygones = typeof g[0][0][0] === 'number' ? [g] : g;
+    for (const polygone of polygones) {
+      const a = polygone[0];
+      if (dedans(a[Math.floor(a.length / 2)]) || dedans(a[0])) anneaux.push(a.map(([lng, lat]) => [lngDe(lng), Math.max(cadre.lat[0], Math.min(cadre.lat[1], lat))]));
+    }
+  }
+  if (!anneaux.length) return '';
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const a of anneaux) for (const [x, y] of a) {
+    x0 = Math.min(x0, Math.max(x, cadre.lng[0])); x1 = Math.max(x1, Math.min(x, cadre.lng[1]));
+    y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  // Largeur corrigée de la latitude moyenne, comme une carte, dans une boîte de 100 × 60
+  const kx = Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
+  const echelle = Math.min(92 / ((x1 - x0) * kx || 1), 52 / (y1 - y0 || 1));
+  const dx = (100 - (x1 - x0) * kx * echelle) / 2;
+  const dy = (60 - (y1 - y0) * echelle) / 2;
+  const chemin = anneaux.map((a) => {
+    const pas = Math.max(1, Math.floor(a.length / 60));
+    const points = a.filter((_, i) => i % pas === 0).map(([x, y]) => `${(dx + (x - x0) * kx * echelle).toFixed(1)} ${(dy + (y1 - y) * echelle).toFixed(1)}`);
+    return points.length > 2 ? `M${points.join('L')}Z` : '';
+  }).join('');
+  return `<path d="${chemin}"/>`;
+}
+function dessinerSilhouettes(panneau, pays, geometries) {
+  const formes = Object.fromEntries(ZONES.map((zone) => [zone, zone === 'monde' ? TERRE : silhouette(zone, paysDeZone(pays, zone), geometries)]));
+  panneau.querySelectorAll('.jeux-zones button[data-valeur]').forEach((bouton) => {
+    const forme = formes[bouton.dataset.valeur];
+    if (!forme || bouton.querySelector('.jeux-zone-forme')) return;
+    bouton.insertAdjacentHTML('afterbegin', `<svg class="jeux-zone-forme${bouton.dataset.valeur === 'monde' ? ' monde' : ''}" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${forme}</svg>`);
+  });
+}
 const svgIco = (nom) => `<svg class="jeux-ico" viewBox="0 0 24 24" aria-hidden="true">${ICO[nom]}</svg>`;
 function decorerReglages(panneau) {
   panneau.querySelectorAll('.jeux-options .jeux-reglage').forEach((reglage) => {
@@ -505,6 +558,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     };
     const geometries = new Map(brut.features.map((f) => [f.properties.code, f.geometry.coordinates]));
     donnees = { brut, pays, parCode: new Map(pays.map((p) => [p.code, p])), points, villes, geometries, fiches, anecdotes };
+    dessinerSilhouettes(panneau, pays, geometries);
     rendreReglage();
     return donnees;
   }

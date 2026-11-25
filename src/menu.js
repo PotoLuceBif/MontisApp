@@ -922,13 +922,6 @@ export function initMenu(map) {
       action: () => ouvrirHorizon(),
     },
     {
-      cle: 'globe', image: vignette('globe'), titre: 'explorer.globe', detail: () => ['explorer.globe-detail'],
-      action: () => {
-        document.body.classList.remove('eclairage-ferme');
-        map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true });
-      },
-    },
-    {
       cle: 'ciel', image: vignette('ciel'), titre: 'menu.ciel',
       detail: () => {
         const { lng, lat } = map.getCenter();
@@ -938,6 +931,13 @@ export function initMenu(map) {
       action: () => {
         fermerExplorer();
         boutonsFlottants.get('ciel')?.click();
+      },
+    },
+    {
+      cle: 'globe', image: vignette('globe'), titre: 'explorer.globe', detail: () => ['explorer.globe-detail'],
+      action: () => {
+        document.body.classList.remove('eclairage-ferme');
+        map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true });
       },
     },
     // Jeux : on choisit ensuite le jeu (Géographie aujourd'hui, d'autres viendront)
