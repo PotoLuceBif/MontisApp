@@ -5292,29 +5292,27 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 }
 [data-theme='clair'] #barre-onglets::before { opacity: .3; }
 
-/* Onglets encadrés, courbes de niveau derrière (demande du propriétaire du 25 novembre 2026 : les courbes
-   gênaient la lecture sous les icônes). Chaque onglet est une tuile pleine ; les courbes ne se voient
-   qu'entre elles. L'onglet ouvert prend le contour dégradé des logos, à la place de l'ancien trait violet. */
-#barre-onglets .onglet.onglet {
-  border: 1px solid color-mix(in srgb, var(--bord) 75%, transparent);
-  background: var(--surface);
-}
-#barre-onglets .onglet.onglet:hover:not([aria-expanded='true']) { background: color-mix(in srgb, var(--texte) 5%, var(--surface)); color: var(--texte); }
-#barre-onglets .onglet.onglet[aria-expanded='true'],
-body #barre-onglets #menu-bouton.onglet.onglet[aria-expanded='true'] {
-  border: 1.5px solid transparent;
+/* Onglet ouvert (demande du propriétaire du 25 novembre 2026 : ni trait violet, ni tuiles encadrées) :
+   une pilule derrière l'icône, au dégradé du logo, avec ses courbes de niveau ; le reste de la barre est uni */
+#barre-onglets::before { content: none; }
+#barre-onglets .onglet.onglet[aria-expanded='true'] { color: var(--accent); background: transparent; }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before {
+  position: absolute; z-index: -1; left: 50%; width: 58px; height: 32px; border-radius: 16px; content: '';
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   background:
-    linear-gradient(color-mix(in srgb, var(--accent) 12%, var(--surface)), color-mix(in srgb, var(--accent) 12%, var(--surface))) padding-box,
-    linear-gradient(135deg, #22d3ee, #8b5cf6 55%, #e040fb) border-box;
-  color: var(--accent);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='34' viewBox='0 0 90 34'%3E%3Cpath d='M0 6C15 3 30 9 45 6S75 9 90 6M0 13C15 9 30 17 45 13S75 17 90 13M0 20C15 16 30 24 45 20S75 24 90 20M0 27C15 24 30 30 45 27S75 30 90 27' fill='none' stroke='%2322d3ee' stroke-opacity='.55' stroke-width='1'/%3E%3C/svg%3E") center / 90px 34px,
+    linear-gradient(120deg, color-mix(in srgb, #22d3ee 22%, transparent), color-mix(in srgb, #e040fb 22%, transparent));
+  transform: translateX(-50%);
+  animation: onglet-pilule 0.26s var(--glisse);
 }
-#barre-onglets .onglet.onglet[aria-expanded='true']::before { content: none; animation: none; }
-#barre-onglets::before { opacity: .32; }
-[data-theme='clair'] #barre-onglets::before { opacity: .38; }
+@keyframes onglet-pilule { from { opacity: 0; transform: translateX(-50%) scaleX(0.5); } }
 @media (max-width: 700px) {
-  #barre-onglets { gap: 5px; padding: 0 6px env(safe-area-inset-bottom); }
-  #barre-onglets .onglet.onglet { margin: 6px 0; border-radius: 13px; }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 3.5px; bottom: auto; height: 28px; border-radius: 14px; }
 }
 @media (min-width: 701px) {
-  #barre-onglets .onglet.onglet { border-radius: 14px; }
+  #barre-onglets .onglet.onglet[aria-expanded='true'] { background: transparent; }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 8px; bottom: auto; height: 30px; border-radius: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: none; }
 }
