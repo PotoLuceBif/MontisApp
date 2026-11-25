@@ -50,6 +50,7 @@ const ICONES_MENU = {
   'onglet-traces': '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-8a3.5 3.5 0 0 1 0-7H12"/>',
   'onglet-explorer': '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>',
   position: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
+  'creer-parcours': '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-4a3.5 3.5 0 0 1 0-7h2"/><path d="M18 4v7M14.5 7.5h7"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -197,7 +198,10 @@ export function initMenu(map) {
   };
   const majEnteteTiroir = () => {
     const [icone, cle] = TITRES_TIROIR[tiroir.dataset.onglet] ?? TITRES_TIROIR.activites;
-    enteteTiroir.querySelector('.tiroir-icone').innerHTML = creerIconeMenu(icone);
+    enteteTiroir.querySelector('.tiroir-icone').innerHTML = icone === 'jeux'
+      ? '<img src="/icons/activites/jeux.svg" alt="" width="30" height="30" />'
+      : creerIconeMenu(icone);
+    enteteTiroir.querySelector('.tiroir-icone').classList.toggle('vignette', icone === 'jeux');
     poser(enteteTiroir.querySelector('strong'), cle);
   };
   enteteTiroir.querySelector('.outil-rapide-reduire').addEventListener('click', (event) => {
@@ -866,6 +870,16 @@ export function initMenu(map) {
       element.appendChild(carte);
       details.push([carte, carte.querySelector('small'), detail]);
     }
+    const suite = document.createElement('button');
+    suite.type = 'button';
+    suite.className = 'bande-suite';
+    poserAttribut(suite, 'aria-label', 'bande.suite');
+    suite.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+    suite.addEventListener('click', () => element.scrollTo({ left: element.scrollWidth, behavior: 'smooth' }));
+    element.appendChild(suite);
+    const majSuite = () => element.classList.toggle('deborde', element.scrollWidth - element.clientWidth - element.scrollLeft > 8);
+    element.addEventListener('scroll', majSuite, { passive: true });
+    window.addEventListener('resize', majSuite);
     document.body.appendChild(element);
     suivreGlisse(element, () => true, { bas: () => fermerExplorer() });
     const maj = () => {
@@ -875,7 +889,7 @@ export function initMenu(map) {
         carte.classList.toggle('allumee', Boolean(allume));
       }
     };
-    bandes.set(id, { element, onglet, maj });
+    bandes.set(id, { element, onglet, maj: () => { maj(); requestAnimationFrame(majSuite); } });
   }
   let globeEclaire = lire('globe-plein-jour', false);
   const etatModule = (categorie, id) => etatsParCategorie.get(categorie)?.find((e) => e.def.id === id);
@@ -916,7 +930,7 @@ export function initMenu(map) {
   // Créer un parcours : dans l'activité en cours si elle a ses parcours, sinon en Randonnée ; on le range à
   // l'enregistrement dans l'activité voulue
   const creerParcours = {
-    cle: 'creer', image: icone('onglet-traces'), titre: 'bande.creer', detail: () => ['bande.creer-detail'],
+    cle: 'creer', image: icone('creer-parcours'), titre: 'bande.creer', detail: () => ['bande.creer-detail'],
     action: () => {
       const enCours = etatsParCategorie.get('activites')?.find((e) => e.actif)?.def.id;
       const activite = ['rando', 'velo'].includes(enCours) ? enCours : 'rando';
@@ -925,7 +939,7 @@ export function initMenu(map) {
       window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
     },
   };
-  creerBande('traces', ongletTraces, [creerParcours, trace('sorties'), trace('parcours')]);
+  creerBande('traces', ongletTraces, [trace('sorties'), trace('parcours'), creerParcours]);
 
   // Explorer : détails du moment (phase de la Lune, coucher du soleil au centre de la carte)
   const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);

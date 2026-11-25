@@ -4,8 +4,9 @@ import { etat } from './options-carte.js';
 import { COUCHES_BATIMENTS, nomsAuDessusDesBatiments } from './style-montis.js';
 
 const [MURS, ARETE, TOIT] = COUCHES_BATIMENTS;
-// Zoom 14 : les tuiles d'avant n'ont pas la hauteur (tous à 6 m, puis un saut à la vraie taille)
-const ZOOM_MIN = 14;
+// Dès le zoom 13 (demande du propriétaire du 25 novembre 2026) : ces tuiles n'ont pas encore la hauteur, les
+// bâtiments y sont bas (6 m) et prennent leur vraie taille avec les tuiles du zoom 14
+const ZOOM_MIN = 13;
 const HAUTEUR = ['to-number', ['get', 'render_height'], 6];
 // Toujours à leur vraie hauteur ; `d` : mètres au-dessus des murs. Ils montaient avec le zoom (de 0 au zoom 13,5 à
 // leur taille au zoom 15,5) et grandissaient ou s'écrasaient à chaque cran (retour du propriétaire du 25 novembre

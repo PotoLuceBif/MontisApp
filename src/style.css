@@ -5199,3 +5199,31 @@ body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue { padding-bo
 .traces-filtres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 8px 0 10px; }
 .traces-filtres button { display: grid; justify-items: center; gap: 1px; min-height: 44px; padding: 4px 2px; font-size: 12px; }
 .traces-filtres small { font-size: 11px; opacity: .75; }
+
+/* Bandes : flèche « encore » collée au bord droit tant que la bande déborde (25 novembre 2026) */
+.bande-suite {
+  position: sticky; right: 0; z-index: 2; display: none; flex: none; align-self: stretch; width: 44px; margin-left: -44px; padding: 0;
+  border: 0; border-radius: 0 16px 16px 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 92%, transparent) 55%);
+  color: var(--accent); cursor: pointer;
+}
+.bande-onglet.deborde .bande-suite { display: grid; place-items: center end; padding-right: 6px; }
+.bande-suite svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* En-tête du panneau Jeux : la même vignette que sa carte de Plus */
+#menu-tiroir .tiroir-icone.vignette { border: 0 !important; background: none !important; }
+#menu-tiroir .tiroir-icone.vignette img { width: 30px; height: 30px; display: block; }
+/* Vue au sol : la languette centrée en haut de la frise la réduit (remplace la barre de prise) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit)::before { content: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete {
+  top: 0; right: auto; left: 50%; transform: translateX(-50%);
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire {
+  width: 64px; min-height: 22px; height: 22px; padding: 0; border-radius: 0 0 12px 12px;
+  background: color-mix(in srgb, var(--texte) 9%, transparent); color: var(--texte-2);
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire svg { width: 18px; height: 18px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 24px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-right: 0; }
+/* Flèche « encore » : pastille ronde sur un fondu franc, lisible au-dessus de la dernière carte */
+.bande-suite { width: 64px; margin-left: -64px; background: linear-gradient(90deg, transparent, var(--surface) 62%); }
+.bande-onglet.deborde .bande-suite { place-items: center end; padding-right: 4px; }
+.bande-suite svg { box-sizing: border-box; width: 34px; height: 34px; padding: 7px; border: 1px solid color-mix(in srgb, var(--bord) 60%, var(--accent) 40%); border-radius: 50%; background: var(--surface-2); box-shadow: var(--ombre); }

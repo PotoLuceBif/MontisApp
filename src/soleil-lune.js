@@ -207,7 +207,9 @@ export function creerSoleilLune(map) {
     if (ligneRelief.hidden) return;
     const heure = (t) => (t ? m.s.heureDuLieu(t, reglage.decalage()) : '–');
     const plage = (l) => (l?.lever || l?.coucher ? `${heure(l.lever)} – ${heure(l.coucher)}` : t('ciel.cache'));
-    ligneRelief.textContent = t('ciel.derriere-relief', { soleil: plage(levers.soleil), lune: plage(levers.lune) });
+    // La Lune avec sa part éclairée (demande du propriétaire du 25 novembre 2026)
+    const eclairee = Math.round(m.l.eclairementLune(reglage.instant()).fraction * 100);
+    ligneRelief.textContent = t('ciel.derriere-relief', { soleil: plage(levers.soleil), lune: `${plage(levers.lune)} (${eclairee} %)` });
   }
 
   const panneau = () => entete.closest('.outil-rapide-panneau');
