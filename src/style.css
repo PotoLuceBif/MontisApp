@@ -5291,3 +5291,30 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
   #barre-onglets::after { top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(180deg, transparent, color-mix(in srgb, #22d3ee 55%, transparent) 25%, color-mix(in srgb, #e040fb 55%, transparent) 75%, transparent); }
 }
 [data-theme='clair'] #barre-onglets::before { opacity: .3; }
+
+/* Onglets encadrés, courbes de niveau derrière (demande du propriétaire du 25 novembre 2026 : les courbes
+   gênaient la lecture sous les icônes). Chaque onglet est une tuile pleine ; les courbes ne se voient
+   qu'entre elles. L'onglet ouvert prend le contour dégradé des logos, à la place de l'ancien trait violet. */
+#barre-onglets .onglet.onglet {
+  border: 1px solid color-mix(in srgb, var(--bord) 75%, transparent);
+  background: var(--surface);
+}
+#barre-onglets .onglet.onglet:hover:not([aria-expanded='true']) { background: color-mix(in srgb, var(--texte) 5%, var(--surface)); color: var(--texte); }
+#barre-onglets .onglet.onglet[aria-expanded='true'],
+body #barre-onglets #menu-bouton.onglet.onglet[aria-expanded='true'] {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(color-mix(in srgb, var(--accent) 12%, var(--surface)), color-mix(in srgb, var(--accent) 12%, var(--surface))) padding-box,
+    linear-gradient(135deg, #22d3ee, #8b5cf6 55%, #e040fb) border-box;
+  color: var(--accent);
+}
+#barre-onglets .onglet.onglet[aria-expanded='true']::before { content: none; animation: none; }
+#barre-onglets::before { opacity: .32; }
+[data-theme='clair'] #barre-onglets::before { opacity: .38; }
+@media (max-width: 700px) {
+  #barre-onglets { gap: 5px; padding: 0 6px env(safe-area-inset-bottom); }
+  #barre-onglets .onglet.onglet { margin: 6px 0; border-radius: 13px; }
+}
+@media (min-width: 701px) {
+  #barre-onglets .onglet.onglet { border-radius: 14px; }
+}
