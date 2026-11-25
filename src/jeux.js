@@ -5,6 +5,7 @@ import { creerPanneauCarte } from './panneau-carte.js';
 import { bloquerFiches } from './fiche.js';
 import { POLICE_GRAS } from './polices.js';
 import { lire, ecrire } from './reglages.js';
+import { fixerPleinJour } from './heure-espace.js';
 import { langue } from './preferences.js';
 import { surLangue, t, ta, ti, tt } from './i18n.js';
 import {
@@ -523,6 +524,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       if (premiere) {
         this.vueAvant = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
         this.zoomMax = map.getMaxZoom();
+        fixerPleinJour(true); // la Terre entière éclairée pour jouer (retour du propriétaire du 25 novembre 2026)
       }
       if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: donnees.brut, promoteId: 'code' });
       if (!map.getSource(SOURCE_POINTS)) map.addSource(SOURCE_POINTS, { type: 'geojson', data: donnees.points, promoteId: 'code' });
@@ -795,6 +797,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       this.textesCaches.forEach((id) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', 'visible'));
       this.textesCaches.clear();
       if (this.zoomMax !== null) map.setMaxZoom(this.zoomMax);
+      fixerPleinJour(false);
       if (this.vueAvant) map.flyTo({ ...this.vueAvant, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 1600 });
       this.vueAvant = null;
       this.zoomMax = null;

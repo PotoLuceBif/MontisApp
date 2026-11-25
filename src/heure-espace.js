@@ -7,6 +7,16 @@ let instantFrise = null; // ms, ou null : heure réelle
 export const instantEspace = () => instantFrise ?? Date.now();
 export const enModeFrise = () => instantFrise !== null;
 
+// Plein jour (demande du propriétaire du 25 novembre 2026) : pendant les jeux, la Terre entière éclairée, sans nuit ni
+// lumières des villes, pour bien voir les pays. Globe, calottes et atmosphère placent alors le soleil au zénith partout.
+let jourComplet = false;
+export const pleinJour = () => jourComplet;
+export function fixerPleinJour(oui) {
+  if (Boolean(oui) === jourComplet) return;
+  jourComplet = Boolean(oui);
+  window.dispatchEvent(new CustomEvent('montis:heure-espace', { detail: { instant: instantFrise } }));
+}
+
 // `instant` : ms, ou null pour revenir à l'heure réelle ; prévient globe, atmosphère et ciel
 export function fixerInstantEspace(instant) {
   const nouveau = instant === null || instant === undefined ? null : Number(instant);

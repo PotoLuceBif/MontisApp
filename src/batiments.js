@@ -4,10 +4,14 @@ import { etat } from './options-carte.js';
 import { COUCHES_BATIMENTS, nomsAuDessusDesBatiments } from './style-montis.js';
 
 const [MURS, ARETE, TOIT] = COUCHES_BATIMENTS;
-const ZOOM_MIN = 13.5;
+// Zoom 14 : les tuiles d'avant n'ont pas la hauteur (tous à 6 m, puis un saut à la vraie taille)
+const ZOOM_MIN = 14;
 const HAUTEUR = ['to-number', ['get', 'render_height'], 6];
-// Les bâtiments montent doucement en zoomant, plutôt que de surgir ; `d` : mètres au-dessus des murs
-const monte = (d) => ['interpolate', ['linear'], ['zoom'], ZOOM_MIN, d, 15.5, ['+', HAUTEUR, d]];
+// Toujours à leur vraie hauteur ; `d` : mètres au-dessus des murs. Ils montaient avec le zoom (de 0 au zoom 13,5 à
+// leur taille au zoom 15,5) et grandissaient ou s'écrasaient à chaque cran (retour du propriétaire du 25 novembre
+// 2026) : ils apparaissent maintenant en fondu (OPACITE)
+const monte = (d) => ['+', HAUTEUR, d];
+const OPACITE = ['interpolate', ['linear'], ['zoom'], ZOOM_MIN, 0, ZOOM_MIN + 0.6, 0.95];
 // Nuance d'un bâtiment à l'autre, d'après son identifiant (stable d'une tuile à l'autre)
 const nuance = (...couleurs) => ['match', ['%', ['to-number', ['id'], 0], couleurs.length], ...couleurs.slice(0, -1).flatMap((c, i) => [i, c]), couleurs.at(-1)];
 
@@ -42,7 +46,7 @@ function couche(id, couleur, base, haut, degrade) {
       'fill-extrusion-color': couleur,
       'fill-extrusion-base': base,
       'fill-extrusion-height': haut,
-      'fill-extrusion-opacity': 0.95,
+      'fill-extrusion-opacity': OPACITE,
       'fill-extrusion-vertical-gradient': degrade,
     },
   };
