@@ -35,16 +35,21 @@ const clic = (selecteur) => (page) => page.evaluate((s) => document.querySelecto
 const module = (id) => async (page) => {
   await page.evaluate(async (id) => {
     const trouver = () => document.querySelector(`.menu-ligne[data-module="${id}"]`);
-    // Le menu peut ne se construire qu'à sa première ouverture
-    if (!trouver()) {
-      document.getElementById('menu-bouton')?.click();
-      await new Promise((fin) => setTimeout(fin, 400));
-    }
+    for (let i = 0; i < 20 && !trouver(); i++) await new Promise((fin) => setTimeout(fin, 200));
     const ligne = trouver();
     if (!ligne) throw new Error(`Module introuvable : ${id}`);
+    // Refonte en onglets : un panneau flottant s'ouvre par montis:ouvrir-module, le reste par sa carte de bande
     const flottant = ligne.closest('.outil-rapide-panneau');
-    if (flottant) document.getElementById(flottant.id.replace('panneau', 'bouton'))?.click();
-    else if (!document.getElementById('menu-bouton')?.matches('[aria-expanded="true"]')) document.getElementById('menu-bouton')?.click();
+    if (flottant) {
+      const categorie = flottant.id.replace('outil-rapide-panneau-', '');
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module: id } }));
+      return;
+    }
+    const carte = document.querySelector(`.bande-carte[data-carte="${id}"]`);
+    if (carte) {
+      carte.click();
+      return;
+    }
     if (ligne.getAttribute('aria-pressed') !== 'true') ligne.click();
   }, id);
 };
@@ -943,7 +948,7 @@ const ECRANS = [
   { nom: 'point-geologie', simuler: true, actions: [vue(MATIN), appuiLong(0.5, 0.42), (p) => p.waitForTimeout(3000), defiler('.point-prudence')] },
   { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
   // Partage par lien (lot 4.5) : boutons, lien copié, liens reçus
-  { nom: 'partage-menu', actions: [clic('#outil-rapide-bouton-carte'), defiler('.menu-partage'), clic('.menu-partage .menu-ligne')] },
+  { nom: 'partage-menu', actions: [clic('#outil-rapide-bouton-carte'), clic('.bande-carte[data-carte="partage"]')] },
   { nom: 'partage-point', simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-partager'), defiler('.point-partager'), clic('.point-partager')] },
   { nom: 'partage-lien-point', simuler: true, lien: '#point=45.92/6.87&z=14', actions: [attendre('.point-partager')] },
   { nom: 'partage-lien-vue', lien: '#vue=13.5/45.9/6.88/40/60&3d=1', actions: [] },
@@ -1151,7 +1156,7 @@ const ECRANS = [
   { nom: 'jeux-fiche-voisin', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="fiches"]'), attendre('.jeux-fiche-ligne'), clic('[data-choix="zoneFiches"] [data-valeur="europe"]'), clic('.jeux-fiche-ligne[data-code="CH"]'), attendre('.bf-jeu .jeux-voisin'), clic('.bf-jeu .jeux-voisin[data-code="LI"]'), (p) => p.waitForTimeout(3000)] },
   {
     nom: 'combine-parcours-carte-fermee',
-    actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
+    actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#bande-carte .bande-fermer')],
   },
 ];
 // Informations d'un astre du ciel : Soleil et Lune ouvert, la frise ne montre que cet astre
