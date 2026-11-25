@@ -165,7 +165,13 @@ const ouvrirAvance = (section) => (page) => page.evaluate((section) => {
 const elementsCarte = [module('fond'), ouvrirAvance('elements')];
 const ongletFond = (o) => async (page) => {
   await ouvrirAvance('fonds')(page);
-  await clic(`.fond-onglets [data-onglet="${o}"]`)(page);
+  // Groupe dépliable de « Autres fonds » (Ici, Monde, Pays, Anciennes)
+  await page.evaluate((g) => {
+    const entete = document.querySelector(`.fond-section[data-groupe="${g}"] .fond-section-entete`);
+    if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
+    document.querySelector(`.fond-section[data-groupe="${g}"]`)?.scrollIntoView({ block: 'start' });
+  }, o);
+  await page.waitForTimeout(300);
 };
 const choisirFond = (id) => async (page) => {
   await page.evaluate((i) => {
@@ -174,7 +180,10 @@ const choisirFond = (id) => async (page) => {
       const entete = document.querySelector('.fond-avance-entete');
       if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
       document.querySelector('.fond-parties [data-partie="fonds"]')?.click();
-      document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
+      for (const g of ['monde', 'pays', 'anciennes']) {
+        const e = document.querySelector(`.fond-section[data-groupe="${g}"] .fond-section-entete[aria-expanded="false"]`);
+        e?.click();
+      }
       for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
       radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
     }
@@ -528,7 +537,6 @@ const ECRANS = [
   { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
   { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
   // Bâtiments, eaux et voies ferrées : sans pastille sur le fond Montis, avec sur les autres, rallumés en revenant au fond Montis
-  { nom: 'carte-fond-elements-onglet', actions: [...elementsCarte, clic('.elements-onglets button:nth-child(3)')] },
   { nom: 'carte-fond-elements-autre', actions: [module('fond'), choisirFond('osm'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-elements-retour', actions: [...elementsCarte, (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
@@ -690,7 +698,7 @@ const ECRANS = [
   // Voies ferrées et gares (Carte › Éléments de la carte › Construit), en gare de Chamonix ; puis sur le satellite
   {
     nom: 'carte-gares',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte,
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -698,7 +706,7 @@ const ECRANS = [
   },
   {
     nom: 'carte-gares-satellite',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte,
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();

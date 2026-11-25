@@ -1384,6 +1384,10 @@
   "fond.aide-monde": "Ces cartes couvrent toute la planète.",
   "fond.aide-pays": "Cartes officielles des pays. Au-delà de leur pays, la Carte Montis complète.",
   "fond.aide-anciennes": "La montagne d'autrefois. Au-delà de leur pays, la Carte Montis complète.",
+  "fond.sous-ici": "Cartes qui couvrent l'endroit affiché",
+  "fond.sous-monde": "Toute la planète",
+  "fond.sous-pays": "Cartes officielles, par pays",
+  "fond.sous-anciennes": "La montagne d'autrefois",
   "fond.groupe-national": "Cartes nationales",
   "fond.groupe-monde": "Monde entier",
   "fond.groupe-anciennes": "Cartes anciennes",
@@ -1459,6 +1463,10 @@
   "elements.gares": "Gares",
   "elements.gares-aide": "Gares et haltes, dès le zoom 10 ; noms dès le zoom 12",
   "elements.titre": "Éléments de la carte",
+  "elements.allumes": {
+    "un": "{n} allumé",
+    "autre": "{n} allumés"
+  },
   "zh.intro": "Enregistre la Carte Montis et le relief d’une zone pour les consulter sans réseau.",
   "zh.telecharger-zone": "Télécharger une zone",
   "zh.espace": "Espace utilisé par Montis : {usage}",

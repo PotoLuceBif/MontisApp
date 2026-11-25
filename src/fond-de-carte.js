@@ -120,10 +120,9 @@ export function creerFondDeCarte(map, { elements } = {}) {
 
   let idActif = idEnregistre();
 
-  // Ancien réglage : onglets « France » et « Monde »
-  let onglet = lire('fond-onglet', 'ici');
-  if (onglet === 'Monde') onglet = 'monde';
-  if (!ONGLETS.includes(onglet)) onglet = 'ici';
+  // Autres fonds : une seule liste, en groupes dépliables (Ici, Monde, Pays, Anciennes) plutôt qu'en
+  // sous-onglets (demande du propriétaire du 25 novembre 2026) ; groupes ouverts gardés, Ici par défaut
+  const groupesOuverts = new Set((lire('fond-groupes', ['ici']) ?? []).filter((g) => ONGLETS.includes(g)));
   const paysOuverts = new Set(); // pays dépliés dans l'onglet Pays (le temps de la session)
   let signatureIci = '';
 
@@ -156,17 +155,13 @@ export function creerFondDeCarte(map, { elements } = {}) {
         ${chevron}
       </button>
       <div class="fond-avance-corps" hidden>
-    <div class="segments fond-parties" role="tablist">
+    <div class="fond-parties" role="tablist">
       <button type="button" role="tab" data-partie="fonds"><span ${ti('fond.groupe-base')}>${t('fond.groupe-base')}</span></button>
       <button type="button" role="tab" data-partie="elements"><span ${ti('elements.titre')}>${t('elements.titre')}</span></button>
     </div>
     <section class="fond-partie" data-section="fonds" role="tabpanel">
       <h4 class="fond-groupe" ${ti('fond.plus-utilises')}>${t('fond.plus-utilises')}</h4>
       <div class="fond-base"></div>
-      <h4 class="fond-groupe" ${ti('fond.par-endroit')}>${t('fond.par-endroit')}</h4>
-      <div class="fond-onglets" role="tablist">
-        ${ONGLETS.map((o) => `<button type="button" role="tab" data-onglet="${o}" ${ti(`fond.onglet-${o}`)}>${t(`fond.onglet-${o}`)}</button>`).join('')}
-      </div>
       <div class="fond-contenu"></div>
     </section>
     <section class="fond-partie" data-section="elements" role="tabpanel" hidden>
@@ -207,7 +202,6 @@ export function creerFondDeCarte(map, { elements } = {}) {
   enteteAvance.addEventListener('click', () => ouvrirAvance(!avanceOuvert));
   ouvrirAvance(avanceOuvert);
 
-  const boutonsOnglets = panneau.querySelectorAll('.fond-onglets button[data-onglet]');
   const boutonsModes = panneau.querySelectorAll('.fond-montis-modes button');
   const etatMontis = panneau.querySelector('.fond-montis-etat');
 
@@ -283,24 +277,26 @@ export function creerFondDeCarte(map, { elements } = {}) {
   const titre = (cle, variables) => `<h4 class="fond-groupe">${echapper(t(cle, variables))}</h4>`;
   const blocCalques = (liste) => (liste.length ? `${titre('fond.superposer')}<div class="fond-calques">${liste.join('')}</div>` : '');
 
-  // ---------- Onglets ----------
+  // ---------- Groupes ----------
+  const nationauxIci = () => FONDS.filter((f) => estNational(f) && !f.ancienne && couvreIci(f));
+  const anciensIci = () => FONDS.filter((f) => f.ancienne && couvreIci(f));
+  // Les fonds du monde sans ceux déjà proposés en tête (un même choix deux fois prêtait à confusion)
+  const autresMonde = () => FONDS.filter((f) => !f.pays && !FONDS_DE_BASE.includes(f.id) && f.id !== 'montis');
+
   function rendreIci() {
-    const nationaux = FONDS.filter((f) => estNational(f) && !f.ancienne && couvreIci(f));
-    const anciens = FONDS.filter((f) => f.ancienne && couvreIci(f));
-    const monde = FONDS.filter((f) => !f.pays);
+    const nationaux = nationauxIci();
+    const anciens = anciensIci();
     const calquesIci = CALQUES.filter(couvreIci);
     return `
-      <p class="note fond-aide">${echapper(t('fond.aide-ici'))}</p>
       ${nationaux.length
-        ? `${titre('fond.groupe-national')}${liste(nationaux.map((f) => ligneFond(f, { avecPays: true })))}`
+        ? liste(nationaux.map((f) => ligneFond(f, { avecPays: true })))
         : `<p class="note fond-vide">${echapper(t('fond.aucun-national'))}</p>`}
       ${blocCalques(calquesIci.map((c) => ligneCalque(c, { avecPays: true })))}
-      ${titre('fond.groupe-monde')}${liste(monde.map((f) => ligneFond(f)))}
       ${anciens.length ? `${titre('fond.groupe-anciennes')}${liste(anciens.map((f) => ligneFond(f, { avecPays: true })))}` : ''}`;
   }
 
   function rendreMonde() {
-    return `<p class="note fond-aide">${echapper(t('fond.aide-monde'))}</p>${liste(FONDS.filter((f) => !f.pays).map((f) => ligneFond(f)))}`;
+    return liste(autresMonde().map((f) => ligneFond(f)));
   }
 
   function rendrePays() {
@@ -356,12 +352,38 @@ export function creerFondDeCarte(map, { elements } = {}) {
     if (cle) alerte.textContent = t(cle, { nom });
   }
 
+  // Nombre affiché à droite de chaque groupe
+  const NOMBRES = {
+    ici: () => nationauxIci().length + anciensIci().length + CALQUES.filter(couvreIci).length,
+    monde: () => autresMonde().length,
+    pays: () => new Set(FONDS.filter((f) => f.pays && !f.ancienne).map((f) => f.pays)).size,
+    anciennes: () => FONDS.filter((f) => f.ancienne).length,
+  };
+  const SOUS_TITRES = { ici: 'fond.sous-ici', monde: 'fond.sous-monde', pays: 'fond.sous-pays', anciennes: 'fond.sous-anciennes' };
+
+  function rendreGroupes() {
+    return ONGLETS.map((g) => {
+      const ouvert = groupesOuverts.has(g);
+      const n = NOMBRES[g]();
+      const choisi = !ouvert && g !== 'ici' && (g === 'monde' ? autresMonde() : g === 'pays' ? FONDS.filter((f) => f.pays && !f.ancienne) : FONDS.filter((f) => f.ancienne)).some((f) => f.id === idActif);
+      return `
+        <section class="fond-section${ouvert ? ' ouvert' : ''}" data-groupe="${g}">
+          <button type="button" class="fond-section-entete" aria-expanded="${ouvert}">
+            <span class="fond-section-textes">
+              <span class="fond-section-nom">${echapper(t(`fond.onglet-${g}`))}</span>
+              <small>${echapper(t(SOUS_TITRES[g], { n }))}</small>
+            </span>
+            ${choisi ? `<span class="fond-badge fond-badge-choisi">${echapper(t('fond.badge-choisi'))}</span>` : ''}
+            <span class="fond-section-nb">${n}</span>
+            ${chevron}
+          </button>
+          ${ouvert ? `<div class="fond-section-corps">${RENDUS[g]()}</div>` : ''}
+        </section>`;
+    }).join('');
+  }
+
   function afficher() {
-    boutonsOnglets.forEach((b) => {
-      b.classList.toggle('actif', b.dataset.onglet === onglet);
-      b.setAttribute('aria-selected', String(b.dataset.onglet === onglet));
-    });
-    contenu.innerHTML = RENDUS[onglet]();
+    contenu.innerHTML = rendreGroupes();
     base.innerHTML = liste(FONDS_DE_BASE.map(fondDe).filter(Boolean).map((f) => ligneFond(f)));
     // Fond choisi dans « Avancé » : son nom reste visible, panneau replié
     const ailleurs = idActif !== 'montis' && !FONDS_DE_BASE.includes(idActif);
@@ -375,12 +397,6 @@ export function creerFondDeCarte(map, { elements } = {}) {
   const signature = () => [...FONDS, ...CALQUES].filter((e) => zoneDe(e) && couvreIci(e)).map((e) => e.id).join(',');
 
   // ---------- Événements ----------
-  boutonsOnglets.forEach((b) => b.addEventListener('click', () => {
-    onglet = b.dataset.onglet;
-    ecrire('fond-onglet', onglet);
-    if (onglet === 'pays') deplierUtiles();
-    afficher();
-  }));
 
   panneau.addEventListener('change', (e) => {
     const cible = e.target;
@@ -404,6 +420,18 @@ export function creerFondDeCarte(map, { elements } = {}) {
   });
 
   contenu.addEventListener('click', (e) => {
+    const section = e.target.closest('.fond-section-entete');
+    if (section) {
+      const g = section.parentElement.dataset.groupe;
+      if (groupesOuverts.has(g)) groupesOuverts.delete(g);
+      else {
+        groupesOuverts.add(g);
+        if (g === 'pays') deplierUtiles();
+      }
+      ecrire('fond-groupes', [...groupesOuverts]);
+      afficher();
+      return;
+    }
     const entete = e.target.closest('.fond-pays-entete');
     if (!entete) return;
     const code = entete.parentElement.dataset.pays;
@@ -438,7 +466,7 @@ export function creerFondDeCarte(map, { elements } = {}) {
     icone: 'fond',
     panneau,
     activer() {
-      if (onglet === 'pays') deplierUtiles();
+      if (groupesOuverts.has('pays')) deplierUtiles();
       afficher();
       if (!zonesChargees()) quandZones();
     },

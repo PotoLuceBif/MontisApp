@@ -1384,6 +1384,10 @@
   "fond.aide-monde": "These maps cover the whole planet.",
   "fond.aide-pays": "Official national maps. Beyond their country, the Montis Map fills in.",
   "fond.aide-anciennes": "Mountains as they used to be. Beyond their country, the Montis Map fills in.",
+  "fond.sous-ici": "Maps covering the area on screen",
+  "fond.sous-monde": "The whole planet",
+  "fond.sous-pays": "Official maps, by country",
+  "fond.sous-anciennes": "Mountains as they used to be",
   "fond.groupe-national": "National maps",
   "fond.groupe-monde": "Whole world",
   "fond.groupe-anciennes": "Historic maps",
@@ -1459,6 +1463,10 @@
   "elements.gares": "Stations",
   "elements.gares-aide": "Stations and halts, from zoom 10; names from zoom 12",
   "elements.titre": "Map elements",
+  "elements.allumes": {
+    "un": "{n} on",
+    "autre": "{n} on"
+  },
   "zh.intro": "Save the Montis Map and terrain of an area to view them offline.",
   "zh.telecharger-zone": "Download an area",
   "zh.espace": "Storage used by Montis: {usage}",

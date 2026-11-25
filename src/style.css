@@ -5230,3 +5230,36 @@ body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-
 /* En-tête de Soleil et Lune : la même vignette que sa carte de Plus */
 .outil-rapide-titre .outil-rapide-vignette { flex: none; width: 30px; height: 30px; display: block; }
 body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; height: 24px; }
+
+/* Fond de carte › Avancé (25 novembre 2026) : deux onglets en barre soulignée, fonds en groupes dépliables,
+   éléments de la carte sous des titres (plus de sous-onglets empilés) */
+.fond-parties { display: flex; gap: 0; margin: 2px 0 10px; padding: 0; border: 0; border-bottom: 1px solid var(--bord); background: none; border-radius: 0; }
+.fond-parties button {
+  flex: 1; display: block; min-height: 42px; margin-bottom: -1px; padding: 8px 6px; border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; background: none; color: var(--texte-2); font: 600 14px var(--police); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.fond-parties button:hover:not(.actif) { background: none; color: var(--texte); }
+.fond-parties button.actif { background: none; color: var(--accent); border-bottom-color: var(--accent); }
+.fond-contenu { display: grid; gap: 8px; margin-top: 12px; }
+.fond-section { border: 1px solid var(--bord); border-radius: 12px; overflow: hidden; }
+.fond-section.ouvert { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.fond-section-entete {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 12px 8px 14px;
+  border: 0; background: none; color: var(--texte); text-align: left; cursor: pointer;
+}
+.fond-section-entete:hover { background: var(--survol); }
+.fond-section-textes { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.fond-section-nom { font: 600 15px var(--police); }
+.fond-section-textes small { color: var(--texte-2); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fond-section-nb {
+  flex: none; min-width: 26px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--texte) 8%, transparent);
+  color: var(--texte-2); font: 600 12px var(--police); text-align: center;
+}
+.fond-section-entete .fond-chevron { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--texte-2); stroke-width: 2; transition: rotate .2s; }
+.fond-section-entete[aria-expanded="true"] .fond-chevron { rotate: 180deg; }
+.fond-section-corps { padding: 0 10px 10px; }
+.fond-section-corps > .note:first-child { margin-top: 0; }
+.elements-titre { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.elements-titre:first-child { margin-top: 4px; }
+.elements-titre small { color: var(--accent); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.elements-bloc { display: grid; }

@@ -13,7 +13,7 @@ import { etat } from './options-carte.js';
 // pas de pastille, et il est rallumé chaque fois qu'on revient au fond Montis ; on peut l'éteindre
 // ici. Sur les autres fonds, il a sa pastille comme les autres éléments (demande du propriétaire
 // du 17 novembre 2026).
-// Pour ajouter un élément : une ligne dans le bon groupe (ou un nouveau groupe = un nouvel onglet)
+// Pour ajouter un élément : une ligne dans le bon groupe (ou un nouveau groupe = un nouveau titre)
 const GROUPES = [
   {
     id: 'lieux',
@@ -52,43 +52,31 @@ const GROUPES = [
 export function creerElementsCarte(map) {
   const panneau = document.createElement('div');
 
-  let groupeCourant = lire('elements-onglet', GROUPES[0].id);
-  if (!GROUPES.some((g) => g.id === groupeCourant)) groupeCourant = GROUPES[0].id;
-
-  const onglets = document.createElement('div');
-  onglets.className = 'fond-onglets elements-onglets';
-  onglets.setAttribute('role', 'tablist');
-  panneau.appendChild(onglets);
-
-  const boutons = new Map();
-  const blocs = new Map();
+  // Les groupes l'un sous l'autre, chacun sous son titre (plus de sous-onglets : demande du propriétaire
+  // du 25 novembre 2026) ; le titre dit combien d'éléments sont allumés
+  panneau.className = 'elements-groupes';
+  const titres = new Map();
   let rang = 0;
 
-  // Texte des onglets (avec le nombre d'éléments actifs) et onglet visible
   function majOnglets() {
     for (const g of GROUPES) {
       const nb = g.calques.filter((c) => lire(c.cle, c.defaut)).length;
-      const bouton = boutons.get(g.id);
-      bouton.textContent = nb ? `${t(g.nom)} · ${nb}` : t(g.nom);
-      bouton.classList.toggle('actif', g.id === groupeCourant);
-      blocs.get(g.id).hidden = g.id !== groupeCourant;
+      const titre = titres.get(g.id);
+      titre.querySelector('span').textContent = t(g.nom);
+      titre.querySelector('small').textContent = nb ? t('elements.allumes', { n: nb }) : '';
     }
   }
 
   for (const g of GROUPES) {
-    const bouton = document.createElement('button');
-    bouton.type = 'button';
-    bouton.addEventListener('click', () => {
-      groupeCourant = g.id;
-      ecrire('elements-onglet', g.id);
-      majOnglets();
-    });
-    onglets.appendChild(bouton);
-    boutons.set(g.id, bouton);
+    const titre = document.createElement('h4');
+    titre.className = 'fond-groupe elements-titre';
+    titre.innerHTML = '<span></span><small></small>';
+    panneau.appendChild(titre);
+    titres.set(g.id, titre);
 
     const bloc = document.createElement('div');
+    bloc.className = 'elements-bloc';
     panneau.appendChild(bloc);
-    blocs.set(g.id, bloc);
 
     for (const c of g.calques) {
       const actifAuDepart = lire(c.cle, c.defaut);
@@ -112,10 +100,8 @@ export function creerElementsCarte(map) {
         ordre: 10 + rang,
         nom: () => t(`elements.court-${c.cle}`),
         onOuvrir: () => {
-          groupeCourant = g.id;
-          ecrire('elements-onglet', g.id);
-          majOnglets();
           ouvrirReglage('fond', 'elements');
+          requestAnimationFrame(() => ligne.scrollIntoView({ block: 'center' }));
         },
         onRetirer: () => {
           input.checked = false;
