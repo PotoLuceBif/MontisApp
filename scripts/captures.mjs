@@ -50,6 +50,8 @@ const module = (id) => async (page) => {
       carte.click();
       return;
     }
+    // Un jeu : la carte Jeux de Plus ouvre leur liste, puis on choisit le jeu
+    if (ligne.closest('#menu-vue-jeux')) document.querySelector('.bande-carte[data-carte="jeux"]')?.click();
     if (ligne.getAttribute('aria-pressed') !== 'true') ligne.click();
   }, id);
 };
@@ -154,9 +156,9 @@ const ZERMATT = { center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 };
 // Panneau Fond de carte : un onglet, un fond, un calque officiel (la liste se redessine : on cherche à chaque fois)
 // « Avancé » du fond de carte : éléments de la carte et tous les fonds
 const ouvrirAvance = (section) => (page) => page.evaluate((section) => {
-  const entete = document.querySelector('.fond-avance-entete');
+  const entete = document.querySelector(`.fond-avance[data-pli="${section}"] .fond-avance-entete`);
   if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
-  document.querySelector(`.fond-avance [data-section="${section}"]`)?.scrollIntoView({ block: 'start' });
+  entete?.scrollIntoView({ block: 'start' });
 }, section);
 const elementsCarte = [module('fond'), ouvrirAvance('elements')];
 const ongletFond = (o) => async (page) => {
@@ -167,7 +169,7 @@ const choisirFond = (id) => async (page) => {
   await page.evaluate((i) => {
     let radio = document.querySelector(`.fond-panneau input[name="fond"][value="${i}"]`);
     if (!radio) {
-      const entete = document.querySelector('.fond-avance-entete');
+      const entete = document.querySelector('.fond-avance[data-pli="fonds"] .fond-avance-entete');
       if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
       document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
       for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
@@ -251,15 +253,16 @@ function attendreHorizon() {
 }
 const ouvrirPanorama = [
   // Après plusieurs panoramas, les serveurs de tuiles ralentissent : le menu peut tarder
-  (p) => p.waitForSelector('#outil-rapide-bouton-panorama', { state: 'attached', timeout: 60000 }),
-  clic('#outil-rapide-bouton-panorama'),
+  (p) => p.waitForSelector('#onglet-explorer', { state: 'attached', timeout: 60000 }),
+  clic('#onglet-explorer'),
+  clic('.bande-carte[data-carte="horizon"]'),
   ...attendreHorizon(),
 ];
 // Vue au sol de Soleil et Lune, à une heure de la frise (minutes depuis minuit)
 const VUE_EMBRUN = '#vue=12/44.5644/6.4954/0/0';
 const ouvrirCielSol = (minutes) => [
-  (p) => p.waitForSelector('#outil-rapide-bouton-ciel', { state: 'attached', timeout: 60000 }),
-  clic('#outil-rapide-bouton-ciel'),
+  (p) => p.waitForSelector('#onglet-explorer', { state: 'attached', timeout: 60000 }),
+  (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))),
   attendre('.ciel-course'),
   heureOmbres(minutes),
   (p) => p.waitForTimeout(600),
@@ -741,11 +744,11 @@ const ECRANS = [
   },
   { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
-  { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
+  { nom: 'ciel', actions: [vue(MATIN), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
   // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
   {
     nom: 'ciel-lieu',
-    actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
+    actions: [vue(MATIN), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
       async (page) => {
         await page.fill('.ciel-lieu-champ', 'Tokyo');
         await page.waitForSelector('.ciel-lieu-liste .rando-item', { timeout: 15000 }).catch(() => {});
@@ -768,14 +771,14 @@ const ECRANS = [
   // jour (16 novembre 2026, 22 h 40 ; trajectoires ajoutées le 24 novembre 2026)
   {
     nom: 'ciel-lune-3d',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-bouton-ciel'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
   // Même option au dézoom (zoom 7, globe) : le ciel 3D prend le relais du ciel du globe
   {
     nom: 'ciel-lune-3d-dezoom',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-bouton-ciel'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },

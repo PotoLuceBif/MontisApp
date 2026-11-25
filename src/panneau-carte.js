@@ -96,7 +96,9 @@ export function creerPanneauCarte({ cle, libelle, classe = '', onFermer = () => 
     departGeste = null;
     if (Math.abs(ecart) < SEUIL_GESTE || !window.matchMedia('(max-width: 640px)').matches) return;
     gesteFait = true;
-    basculer(ecart > 0);
+    // Déjà réduit, un glissé vers le bas le ferme (comme les feuilles des onglets)
+    if (ecart > 0 && reduit) onFermer();
+    else basculer(ecart > 0);
   });
   element.addEventListener('pointercancel', () => {
     departGeste = null;

@@ -743,6 +743,7 @@ export function creerVisiteStation(map, {
       .map(({ id }) => id);
     enCours.calquesMasques.forEach((id) => map.setLayoutProperty(id, 'visibility', 'none'));
     document.body.classList.add('en-visite'); // les pastilles des couches de la carte se retirent
+    window.dispatchEvent(new CustomEvent('montis:plein-ecran', { detail: { actif: true } }));
   }
 
   function reafficherCarte(calquesMasques) {

@@ -38,6 +38,11 @@ export function creerLune(map, partage, reglage) {
   const panneau = document.createElement('div');
   panneau.className = 'lune-panneau';
   panneau.innerHTML = `
+    <button type="button" class="lune-visiter">
+      ${svgLune({ fraction: 1, classe: 'lune-icone' })}
+      <span class="lune-visiter-textes"><strong data-i18n="lune-visite.visiter"></strong><small data-i18n="lune-visite.visiter-detail"></small></span>
+      <svg class="lune-visiter-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+    </button>
     <div class="astre-carte lune-carte" role="status">
       <span class="lune-icone-boite"></span>
       <div class="astre-valeurs"><strong class="astre-grande lune-nom"></strong><span class="astre-sous lune-fraction"></span><span class="astre-sous lune-position-texte"></span></div>
@@ -57,11 +62,6 @@ export function creerLune(map, partage, reglage) {
         <div class="lunaison-phases"></div>
       </div>
     </div>
-    <button type="button" class="lune-visiter">
-      ${svgLune({ fraction: 1, classe: 'lune-icone' })}
-      <span class="lune-visiter-textes"><strong data-i18n="lune-visite.visiter"></strong><small data-i18n="lune-visite.visiter-detail"></small></span>
-      <svg class="lune-visiter-fleche" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
-    </button>
   `;
   panneau.querySelectorAll('[data-i18n]').forEach((el) => poser(el, el.dataset.i18n));
   const $ = (selecteur) => panneau.querySelector(selecteur);
@@ -77,7 +77,7 @@ export function creerLune(map, partage, reglage) {
     const decalage = reglage.decalage();
     reglage.placer(plusHautDuJour(jourLocal(instant, decalage), lat, lng, decalage));
   }
-  // Tout en bas : partir sur la Lune, au moment affiché (pour son éclairage en temps réel)
+  // En tête de la ligne : partir sur la Lune, au moment affiché (pour son éclairage en temps réel)
   $('.lune-visiter').addEventListener('click', () => visiterLaLune(map, { instant: reglage.instant() }));
   // Jour par jour, à la même heure
   const decaler = (jours) => reglage.placer(reglage.instant() + jours * JOUR);

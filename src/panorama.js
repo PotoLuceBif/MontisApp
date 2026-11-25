@@ -37,6 +37,36 @@ let ouvert = null;
 
 export const fermerPanorama = () => ouvert?.fermer();
 
+// Choix d'un endroit sur la carte : un bandeau le demande, le premier appui le donne, Annuler ou Échap renonce
+function choisirEndroit(map, relancer) {
+  const bandeau = document.createElement('div');
+  bandeau.className = 'choix-endroit';
+  bandeau.setAttribute('role', 'status');
+  bandeau.innerHTML = '<span></span><button type="button"></button>';
+  poser(bandeau.querySelector('span'), 'panorama.toucher-carte');
+  poser(bandeau.querySelector('button'), 'panorama.annuler');
+  document.body.appendChild(bandeau);
+  bloquerFiches(true);
+  const finir = () => {
+    bandeau.remove();
+    bloquerFiches(false);
+    map.off('click', surClic);
+    window.removeEventListener('keydown', surTouche);
+  };
+  const surClic = (event) => {
+    finir();
+    const lieu = { lng: event.lngLat.lng, lat: event.lngLat.lat };
+    map.jumpTo({ center: lieu });
+    relancer(lieu);
+  };
+  const surTouche = (event) => {
+    if (event.key === 'Escape') finir();
+  };
+  bandeau.querySelector('button').addEventListener('click', finir);
+  map.on('click', surClic);
+  window.addEventListener('keydown', surTouche);
+}
+
 export async function ouvrirPanorama(map, options = {}) {
   if (ouvert) return;
   ouvert = creerPanorama(map, options);
@@ -73,6 +103,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
         <strong></strong>
         <button type="button" class="pano-lieu" disabled><span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h13M17 20l4-4-4-4M21 16H8"/></svg></button>
       </div>
+      <button type="button" class="pano-choisir"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s6-5.3 6-10.5a6 6 0 1 0-12 0C6 15.7 12 21 12 21Z"/><path d="M12 7.5v6M9 10.5h6"/></svg><span></span></button>
       <div class="pano-modes" role="group" hidden>
         <button type="button" data-mode="3d" aria-pressed="true">3D</button>
         <button type="button" data-mode="camera" aria-pressed="false"></button>
@@ -131,6 +162,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
   majRegle();
   poser($('.pano-titre strong'), ciel ? 'ciel.vue-titre' : 'panorama.titre');
   poserAttribut($('.pano-fermer'), 'aria-label', 'panorama.fermer');
+  poser($('.pano-choisir span'), 'panorama.changer-endroit');
   poserAttribut($('.pano-modes'), 'aria-label', 'panorama.vue');
   poser($('[data-mode="camera"]'), 'panorama.camera');
   poser($('.pano-boussole span'), 'panorama.boussole');
@@ -807,6 +839,14 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     racine.addEventListener('pointercancel', surPointeur);
     racine.addEventListener('wheel', surMolette, { passive: false });
     $('.pano-fermer').addEventListener('click', fermer);
+    $('.pano-choisir').addEventListener('click', () => {
+      // Vue au sol de Soleil et Lune : c'est elle qui se relance, au point touché ; sinon Horizon lui-même
+      const relancer = ciel
+        ? (lieu) => window.dispatchEvent(new CustomEvent('montis:ciel-au-sol', { detail: lieu }))
+        : (lieu) => ouvrirPanorama(map, { point: lieu, boussole: permissionBoussole, retour });
+      fermer({ sansRetour: !ciel });
+      choisirEndroit(map, relancer);
+    });
     racine.querySelectorAll('.pano-modes button').forEach((b) => b.addEventListener('click', () => changerMode(b.dataset.mode)));
     boutonBoussole.addEventListener('click', () => basculerBoussole(!suivreBoussole));
     $('.pano-fiche-fermer').addEventListener('click', () => choisir(null));
@@ -854,7 +894,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     if (e.key === 'Escape') fermer();
   }
 
-  function fermer() {
+  function fermer(options) {
     if (ouvert === null) return;
     ouvert = null;
     chargement?.abort();
@@ -884,7 +924,7 @@ function creerPanorama(map, { boussole: permissionBoussole, point = null, retour
     bloquerFiches(false);
     document.body.classList.remove('panorama-actif', 'panorama-camera', 'panorama-ciel');
     racine.remove();
-    retour?.();
+    if (!options?.sansRetour) retour?.();
   }
 
   return { demarrer, fermer };

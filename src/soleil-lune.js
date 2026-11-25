@@ -59,6 +59,9 @@ export function creerSoleilLune(map) {
     astreSeul = astre;
     reglage?.montrerSeul(astre);
   };
+  window.addEventListener('montis:ciel-au-sol', (e) => {
+    if (e.detail) basculerSol(true, undefined, e.detail);
+  });
   window.addEventListener('montis:ouvrir-module', (e) => {
     if (e.detail?.categorie === 'ciel') montrerSeul(e.detail.astre ?? null);
   });
@@ -181,7 +184,8 @@ export function creerSoleilLune(map) {
     onRetirer: () => basculerCiel(false),
   });
   const majPastille = () => {
-    pastille.montrer(cielActif && Boolean(etat.mode3D));
+    // Plus de pastille pour les astres dans le ciel (demande du propriétaire du 25 novembre 2026)
+    pastille.montrer(false);
     if (pastille.visible) pastille.maj();
   };
 
@@ -215,12 +219,13 @@ export function creerSoleilLune(map) {
   }
 
   // Vue au sol. `boussole` : la permission demandée à iOS pendant l'appui lui-même (sinon refusée)
-  async function basculerSol(oui, boussole) {
+  // `point` : l'endroit choisi sur la carte par « Changer d'endroit » de la vue au sol
+  async function basculerSol(oui, boussole, point = null) {
     if (oui === Boolean(vueSol)) return;
     if (oui) {
       await charger();
       // Le lieu de la frise devient le point où l'on se tient : il ne suit plus la carte, qui tourne avec le regard
-      const ici = { ...(reglage.lieu() ?? map.getCenter()) };
+      const ici = { ...(point ?? reglage.lieu() ?? map.getCenter()) };
       vueSol = { lieu: ici };
       majChoix();
       reglage.figerLieu(ici);

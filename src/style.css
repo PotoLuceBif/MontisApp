@@ -4667,9 +4667,9 @@ body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bott
 }
 
 /* Vues plein écran (Lune, Horizon, mode poche du guidage) : la barre s'efface, l'appli reprend tout l'écran */
-body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) { width: 100%; height: 100%; margin-left: 0; }
-body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #barre-onglets,
-body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #menu-parametres-bouton { display: none; }
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) { width: 100%; height: 100%; margin-left: 0; }
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #barre-onglets,
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #menu-parametres-bouton { display: none; }
 /* L'ancien bouton du menu se cachait tiroir ouvert : devenu onglet, il reste visible */
 body #barre-onglets #menu-bouton.onglet.onglet { visibility: visible; pointer-events: auto; }
 
@@ -4701,7 +4701,7 @@ body.onglets-masques #barre-onglets { display: none; }
   body.onglets-masques #menu-parametres-bouton { top: 14px; bottom: auto; left: 72px; }
   body.onglets-masques #barre-haut { left: 130px; }
 }
-body:has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden])) #logo-onglets { display: none; }
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #logo-onglets { display: none; }
 /* Onglets cachés : plus d'engrenage, le logo seul en haut à gauche (demande du propriétaire du 25 novembre 2026) */
 body.onglets-masques #menu-parametres-bouton { display: none; }
 @media (max-width: 700px) { body.onglets-masques #barre-haut { left: 64px; } }
@@ -4874,8 +4874,6 @@ body.explorer-ouvert .maplibregl-ctrl-bottom-right { margin-bottom: 76px; }
 #menu-tiroir.reduit { bottom: auto; }
 body:has(#menu-tiroir.reduit)::before { content: none; }
 /* Paramètres : ligne de Traces sur téléphone seulement */
-.menu-ligne-parametres { margin-top: 14px; }
-@media (min-width: 701px) { .menu-ligne-parametres { display: none; } }
 
 /* Croix de la bande Explorer, en tête de bande */
 .bande-fermer {
@@ -4929,3 +4927,102 @@ body:has(#menu-tiroir.reduit)::before { content: none; }
 .bande-onglet { scroll-padding-inline: 12px; overscroll-behavior-x: contain; touch-action: pan-x; }
 /* Carte d'un module allumé : liseré d'accent */
 .bande-carte.allumee { border-color: var(--accent); }
+/* Jeu en cours : la colonne de droite et les pastilles s'effacent aussi, le panneau du jeu garde sa croix */
+body.jeu-en-cours :is(.outils-rapides, .couches-actives, .maplibregl-ctrl-top-right, #logo-onglets) { display: none; }
+/* Colonne de droite sans Horizon : les feuilles du bas montent plus haut */
+@media (max-width: 700px) { .outil-rapide-panneau { max-height: calc(100% - 228px); } }
+body.jeu-en-cours #barre-haut { display: none; }
+
+/* Poignée des feuilles du bas : on peut les glisser (réduire, fermer, rouvrir) */
+@media (max-width: 700px) {
+  .outil-rapide-panneau > .outil-rapide-entete, #menu-tiroir > .tiroir-entete { position: relative; touch-action: none; }
+  .outil-rapide-panneau > .outil-rapide-entete::before, #menu-tiroir > .tiroir-entete::before {
+    position: absolute; top: 5px; left: 50%; width: 36px; height: 4px; border-radius: 2px;
+    background: color-mix(in srgb, var(--texte) 28%, transparent); content: ''; transform: translateX(-50%);
+  }
+}
+
+/* ===== Soleil et Lune plus compact sur téléphone (demande du propriétaire du 25 novembre 2026) ===== */
+/* Soleil, Lune et Visiter la Lune en tuiles, comme Météo */
+#menu-vue-ciel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-ciel > :not(.menu-module, .ciel-visiter) { grid-column: 1 / -1; }
+#menu-vue-ciel > .menu-vue-entete { display: none; }
+#menu-vue-ciel .menu-module { display: contents; }
+.outil-rapide-panneau #menu-vue-ciel :is(.menu-module > .menu-ligne, .ciel-visiter) {
+  grid-row: 2;
+  flex-direction: column; justify-content: center; gap: 6px;
+  min-height: 74px; padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px; background: var(--surface-2); box-shadow: none;
+  font-size: 12px; line-height: 1.2; text-align: center;
+}
+.outil-rapide-panneau #menu-vue-ciel :is(.menu-ligne)::after { content: none; }
+.outil-rapide-panneau #menu-vue-ciel .menu-ligne > svg { width: 28px; height: 28px; padding: 5px; }
+.outil-rapide-panneau #menu-vue-ciel .ciel-visiter > img { width: 30px; height: 30px; border-radius: 8px; }
+.outil-rapide-panneau #menu-vue-ciel .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+#menu-vue-ciel .menu-contenu { grid-column: 1 / -1; padding: 4px 0 2px; animation: vue-entree 0.24s var(--glisse); }
+@media (max-width: 700px) {
+  #outil-rapide-panneau-ciel .ombres-jour { min-height: 0; }
+  #outil-rapide-panneau-ciel .ombres-jour-bouton,
+  #outil-rapide-panneau-ciel .ombres-jour-nom { height: 36px; min-height: 36px; }
+  #outil-rapide-panneau-ciel .ciel-lieu-bouton { min-height: 28px; }
+  /* Heure et « Maintenant » sur la même ligne, au-dessus d'une frise plus basse */
+  #outil-rapide-panneau-ciel .ombres-heure { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; }
+  #outil-rapide-panneau-ciel .ombres-heure > :not(.relief-entete, .ombres-reperes) { grid-column: 1 / -1; }
+  #outil-rapide-panneau-ciel .ombres-heure > .relief-entete { grid-row: 1; grid-column: 1; margin: 0; }
+  #outil-rapide-panneau-ciel .ombres-heure > .ombres-reperes { grid-row: 1; grid-column: 2; margin: 0; }
+  #outil-rapide-panneau-ciel .ombres-maintenant { min-height: 30px; padding: 0 12px; font-size: 12px; }
+  #outil-rapide-panneau-ciel .ciel-course { height: 54px; }
+  #outil-rapide-panneau-ciel .ombres-curseur { margin: 0; }
+  #outil-rapide-panneau-ciel .ciel-choix button { min-height: 32px; }
+  #outil-rapide-panneau-ciel .ciel-fuseau { display: none; }
+}
+/* Quitter la Lune : bien visible, avec son nom, même sur téléphone (demande du propriétaire du 25 novembre 2026) */
+.lune-visite .lune-visite-quitter { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 640px) {
+  .lune-visite .lune-visite-quitter { padding: 0 14px 0 10px; }
+  .lune-visite .lune-visite-quitter span { display: inline; }
+  .lune-visite .lune-recherche { flex: 1 1 0; }
+}
+
+/* Analyse du vent : lieu étudié et retour au point (demande du propriétaire du 25 novembre 2026) */
+.vent-lieu { display: flex; align-items: center; gap: 6px; margin: 6px 2px 0; color: var(--texte-2); font-size: 12px; }
+.vent-lieu[hidden] { display: none; }
+.vent-lieu svg { width: 15px; height: 15px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; }
+.vent-lieu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texte); }
+.vent-zone-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Fond de carte : les deux parties repliables s'espacent */
+.fond-avance + .fond-avance { margin-top: 8px; }
+
+/* Horizon et vue au sol : « Changer d'endroit », puis bandeau du choix sur la carte */
+.pano-choisir {
+  display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
+  border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--accent);
+  font: 600 13px var(--police); cursor: pointer;
+}
+.pano-choisir svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 640px) { .pano-choisir span { display: none; } .pano-choisir { padding: 0 10px; } }
+.choix-endroit {
+  position: absolute; z-index: 40; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 8px 8px 8px 16px;
+  border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); box-shadow: var(--ombre-forte);
+  color: var(--texte); font: 600 13px var(--police); animation: bande-entree 0.25s var(--glisse);
+}
+.choix-endroit button { min-height: 34px; padding: 0 14px; border: 1px solid var(--bord); border-radius: 999px; background: var(--surface-2); color: var(--texte); font: inherit; cursor: pointer; }
+
+/* Soleil et Lune : la tuile de visite disparaît, la visite est en tête de la ligne Lune (25 novembre 2026) */
+#menu-vue-ciel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lune-panneau > .lune-visiter { margin: 0 0 12px; border: 1px solid var(--accent); background: var(--accent-doux); }
+.lune-panneau > .lune-visiter .lune-visiter-textes strong { color: var(--accent); }
+/* Éclairage du globe : posé sur la vue d'espace, sous la colonne de droite */
+.eclairage-globe {
+  position: absolute; z-index: 11; top: 178px; right: 10px; display: none; gap: 2px; padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre-forte);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+body.vue-espace:not(.jeu-en-cours) .eclairage-globe { display: flex; animation: bande-entree 0.25s var(--glisse); }
+body:has(#menu-tiroir.ouvert:not(.reduit), .outil-rapide-panneau:not([hidden], .reduit)) .eclairage-globe { display: none; }
+.eclairage-globe button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); font: 600 12px var(--police); cursor: pointer; }
+.eclairage-globe button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
+@media (min-width: 701px) { .eclairage-globe { top: 214px; right: 14px; } }

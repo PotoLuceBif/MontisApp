@@ -16,6 +16,8 @@ import { fragmentVue } from './partage-calcul.js';
 import { partagerLien } from './partage.js';
 import { visiterLaLune } from './lune-bulle.js';
 import { getMoonIllumination, getTimes } from 'suncalc';
+import { fixerPleinJour, pleinJour } from './heure-espace.js';
+import { suivreGlisse } from './geste-feuille.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -45,7 +47,7 @@ const ICONES_MENU = {
   'onglet-preparer': '<path d="M2.5 20 9.5 8.5l3.6 5.6 2.6-3.6L21.5 20h-19Z"/><path d="m7.4 12 2.1 1.6 1.7-1.5"/><circle cx="18" cy="5" r="1.8"/>',
   'onglet-meteo': '<path d="M6.7 18C4 18 2 16 2 13.5S4 9 6.7 9c.4-1.8 1.8-3.2 3.6-3.8 1.9-.6 4-.2 5.5 1 1.5 1.2 2.1 3 1.8 4.8h1c1.9 0 3.4 1.6 3.4 3.5S20.5 18 18.6 18H6.7Z"/>',
   'onglet-traces': '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-8a3.5 3.5 0 0 1 0-7H12"/>',
-  'onglet-explorer': '<circle cx="12" cy="12" r="9"/><path d="m8 16 2-6 6-2-2 6-6 2Z"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>',
+  'onglet-explorer': '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>',
   position: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
@@ -176,7 +178,7 @@ export function initMenu(map) {
   tiroir.dataset.onglet = 'activites';
   document.body.append(boutonParametres, tiroir, barreOnglets);
   const corps = tiroir.querySelector('.menu-corps');
-  const TITRES_TIROIR = { activites: ['onglet-preparer', 'onglets.preparer'], traces: ['onglet-traces', 'onglets.traces'], jeux: ['onglet-explorer', 'explorer.geo'] };
+  const TITRES_TIROIR = { activites: ['onglet-preparer', 'onglets.preparer'], traces: ['onglet-traces', 'onglets.traces'], jeux: ['jeux', 'menu.jeux'] };
   const enteteTiroir = document.createElement('header');
   enteteTiroir.className = 'outil-rapide-entete tiroir-entete';
   enteteTiroir.innerHTML = `
@@ -205,6 +207,10 @@ export function initMenu(map) {
     if (tiroir.classList.contains('reduit') && !event.target.closest('.outil-rapide-fermer')) reduireTiroir(false);
   });
   enteteTiroir.querySelector('.outil-rapide-fermer').addEventListener('click', () => ouvrir(false));
+  suivreGlisse(tiroir, (cible) => cible.closest('.tiroir-entete') && !cible.closest('button'), {
+    bas: () => (tiroir.classList.contains('reduit') ? ouvrir(false) : reduireTiroir(true)),
+    haut: () => reduireTiroir(false),
+  });
 
   const boutonFermer = tiroir.querySelector('#menu-fermer');
   const panneauxFlottants = new Map();
@@ -381,6 +387,7 @@ export function initMenu(map) {
     {
       // Lot 4.7 : jour et heure communs en tête, puis l'ombre du soleil et la Lune
       id: 'ciel',
+      horsColonne: true,
       titre: 'menu.ciel',
       icone: 'ciel',
       aide: 'menu.aide-ciel',
@@ -624,12 +631,19 @@ export function initMenu(map) {
       panneauOutil.querySelector('.outil-rapide-corps').appendChild(vue);
       // Carte et Météo sont des onglets ; Soleil et Lune reste dans la colonne de droite
       if (categorie.onglet) boutonOutil.classList.add('onglet');
-      else actionsFlottantes.appendChild(boutonOutil);
+      else if (!categorie.horsColonne) actionsFlottantes.appendChild(boutonOutil);
       document.body.appendChild(panneauOutil);
       boutonsFlottants.set(categorie.id, boutonOutil);
       panneauxFlottants.set(categorie.id, panneauOutil);
 
       reduirePanneau(panneauOutil, false);
+      suivreGlisse(panneauOutil, (cible) => cible.closest('.outil-rapide-entete') && !cible.closest('button'), {
+        bas: () => {
+          if (panneauOutil.classList.contains('reduit')) panneauOutil.querySelector('.outil-rapide-fermer').click();
+          else reduirePanneau(panneauOutil, true);
+        },
+        haut: () => reduirePanneau(panneauOutil, false),
+      });
       const reduire = panneauOutil.querySelector('.outil-rapide-reduire');
       reduire.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -736,14 +750,6 @@ export function initMenu(map) {
     }
   }
 
-  const ligneParametres = document.createElement('button');
-  ligneParametres.type = 'button';
-  ligneParametres.className = 'menu-ligne menu-ligne-parametres';
-  ligneParametres.innerHTML = `${creerIconeMenu('reglages')}<span></span>`;
-  poser(ligneParametres.querySelector('span'), 'menu.parametres');
-  ligneParametres.addEventListener('click', () => boutonParametres.click());
-  document.getElementById('menu-vue-traces')?.append(ligneParametres);
-
   // ---------- Panorama des sommets (lot 4.1) : dernier bouton de la colonne, chargé au premier appui ----------
   const boutonPanorama = document.createElement('button');
   boutonPanorama.type = 'button';
@@ -752,7 +758,6 @@ export function initMenu(map) {
   poserAttribut(boutonPanorama, 'aria-label', 'panorama.ouvrir');
   boutonPanorama.innerHTML = `${creerIconeMenu('panorama')}<span ${ti('panorama.titre')}>${t('panorama.titre')}</span>`;
   ajouterAideMaintien(boutonPanorama, 'panorama.titre');
-  actionsFlottantes.appendChild(boutonPanorama);
   // options : point ({ lng, lat }) et retour, quand Horizon s'ouvre depuis la fiche d'un point
   const ouvrirHorizon = (options = {}) => {
     // iOS n'accorde la boussole que pendant l'appui lui-même : la demande part avant tout chargement
@@ -855,6 +860,7 @@ export function initMenu(map) {
       details.push([carte, carte.querySelector('small'), detail]);
     }
     document.body.appendChild(element);
+    suivreGlisse(element, () => true, { bas: () => fermerExplorer() });
     const maj = () => {
       for (const [carte, petit, detail] of details) {
         const [cle, variables, allume] = detail();
@@ -864,6 +870,7 @@ export function initMenu(map) {
     };
     bandes.set(id, { element, onglet, maj });
   }
+  let globeEclaire = lire('globe-plein-jour', false);
   const etatModule = (categorie, id) => etatsParCategorie.get(categorie)?.find((e) => e.def.id === id);
   const ouvrirModule = (categorie, module) => () =>
     window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module } }));
@@ -899,30 +906,22 @@ export function initMenu(map) {
     const etat = etatModule('traces', id);
     if (etat && !etat.actif) etat.ligne.click();
   });
-  creerBande('traces', ongletTraces, [
-    trace('sorties'),
-    trace('parcours'),
-    { cle: 'parametres', image: icone('reglages'), titre: 'menu.parametres', detail: () => ['bande.parametres'], action: () => boutonParametres.click() },
-  ]);
+  creerBande('traces', ongletTraces, [trace('sorties'), trace('parcours')]);
 
   // Explorer : détails du moment (phase de la Lune, coucher du soleil au centre de la carte)
   const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);
   creerBande('explorer', ongletExplorer, [
     {
-      cle: 'position', image: icone('position'), titre: 'explorer.position', detail: () => ['explorer.position-detail'],
+      cle: 'position', image: vignette('position'), titre: 'explorer.position', detail: () => ['explorer.position-detail'],
       action: () => document.querySelector('.maplibregl-ctrl-geolocate')?.click(),
+    },
+    {
+      cle: 'horizon', image: icone('panorama'), titre: 'panorama.titre', detail: () => ['bande.horizon'],
+      action: () => ouvrirHorizon(),
     },
     {
       cle: 'globe', image: vignette('globe'), titre: 'explorer.globe', detail: () => ['explorer.globe-detail'],
       action: () => map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true }),
-    },
-    {
-      cle: 'lune', image: vignette('lune'), titre: 'explorer.lune',
-      detail: () => ['explorer.lune-detail', { pourcent: Math.round(getMoonIllumination(new Date()).fraction * 100) }],
-      action: () => {
-        fermerExplorer();
-        visiterLaLune(map);
-      },
     },
     {
       cle: 'ciel', image: vignette('ciel'), titre: 'menu.ciel',
@@ -936,15 +935,58 @@ export function initMenu(map) {
         boutonsFlottants.get('ciel')?.click();
       },
     },
+    // Jeux : on choisit ensuite le jeu (Géographie aujourd'hui, d'autres viendront)
     {
-      cle: 'quiz-pays', image: vignette('culture-geo'), titre: 'explorer.geo', detail: () => ['explorer.geo-detail'],
-      action: () => {
-        ouvrirRubrique('jeux');
-        const jeu = etatModule('jeux', 'quiz-pays');
-        if (jeu && !jeu.actif) jeu.ligne.click();
-      },
+      cle: 'jeux', image: vignette('jeux'), titre: 'menu.jeux', detail: () => ['bande.jeux'],
+      action: () => ouvrirRubrique('jeux'),
     },
+    { cle: 'parametres', image: icone('reglages'), titre: 'menu.parametres', detail: () => ['bande.parametres'], action: () => boutonParametres.click() },
   ]);
+
+  // Globe tout éclairé ou à l'heure réelle, avec sa nuit (demande du propriétaire du 25 novembre 2026) ;
+  // un jeu remet le plein jour puis l'enlève en finissant : on rétablit alors le choix gardé
+  if (globeEclaire) fixerPleinJour(true);
+  // Choix posé sur la vue d'espace, sous la colonne de droite, dès que le globe se voit
+  const choixEclairage = document.createElement('div');
+  choixEclairage.className = 'eclairage-globe';
+  choixEclairage.setAttribute('role', 'group');
+  poserAttribut(choixEclairage, 'aria-label', 'bande.eclairage');
+  choixEclairage.innerHTML = '<button type="button" data-plein="0"></button><button type="button" data-plein="1"></button>';
+  poser(choixEclairage.querySelector('[data-plein="0"]'), 'bande.eclairage-reel');
+  poser(choixEclairage.querySelector('[data-plein="1"]'), 'bande.eclairage-plein');
+  const majChoixEclairage = () => {
+    choixEclairage.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.plein === '1') === globeEclaire)));
+  };
+  choixEclairage.addEventListener('click', (event) => {
+    const bouton = event.target.closest('button');
+    if (!bouton) return;
+    globeEclaire = bouton.dataset.plein === '1';
+    ecrire('globe-plein-jour', globeEclaire);
+    if (!document.body.classList.contains('jeu-en-cours')) fixerPleinJour(globeEclaire);
+    majChoixEclairage();
+  });
+  majChoixEclairage();
+  document.body.appendChild(choixEclairage);
+  const majVueEspace = () => document.body.classList.toggle('vue-espace', map.getZoom() < 5.5);
+  map.on('zoomend', majVueEspace);
+  map.on('zoom', majVueEspace);
+  majVueEspace();
+  window.addEventListener('montis:heure-espace', () => {
+    if (globeEclaire && !pleinJour() && !document.body.classList.contains('jeu-en-cours')) fixerPleinJour(true);
+  });
+
+  window.addEventListener('montis:ouvrir-ciel', () => {
+    if (panneauxFlottants.get('ciel')?.hidden) basculeurs.get('ciel')();
+  });
+
+  // Jeu, visite, Horizon… : un mode à part. Tout ce qui est ouvert se referme et les onglets s'effacent
+  // (style.css, body.jeu-en-cours, en-visite) : on n'ouvre pas les pentes au milieu d'un quiz des drapeaux
+  window.addEventListener('montis:plein-ecran', (event) => {
+    if (!event.detail?.actif) return;
+    fermerExplorer();
+    fermerPanneauxFlottants();
+    ouvrir(false);
+  });
 
   // Sur ordinateur, la molette fait défiler une bande de côté
   for (const { element } of bandes.values()) {
