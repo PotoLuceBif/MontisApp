@@ -5263,3 +5263,31 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 .elements-titre:first-child { margin-top: 4px; }
 .elements-titre small { color: var(--accent); font-size: 11px; letter-spacing: 0; text-transform: none; }
 .elements-bloc { display: grid; }
+
+/* Barre d'onglets : courbes de niveau en filigrane, au dégradé du logo (demande du propriétaire du 25 novembre 2026).
+   Un masque porte le dessin : la couleur vient du dégradé, le thème clair l'éclaircit. */
+#barre-onglets::before {
+  position: absolute; inset: 0; z-index: 0; content: ''; pointer-events: none;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 55%, #e040fb);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64' viewBox='0 0 240 64'%3E%3Cg fill='none' stroke='black' stroke-width='1.1'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 0 50% / auto 100% repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64' viewBox='0 0 240 64'%3E%3Cg fill='none' stroke='black' stroke-width='1.1'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 0 50% / auto 100% repeat-x;
+  opacity: .16;
+}
+#barre-onglets .onglet.onglet { z-index: 1; }
+/* Un liseré dégradé sur le bord, du côté de la carte */
+#barre-onglets::after {
+  position: absolute; z-index: 1; content: ''; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #22d3ee 55%, transparent) 25%, color-mix(in srgb, #e040fb 55%, transparent) 75%, transparent);
+}
+@media (max-width: 700px) {
+  #barre-onglets::after { top: -1px; left: 0; right: 0; height: 1px; }
+}
+@media (min-width: 701px) {
+  #barre-onglets::before {
+    background: linear-gradient(180deg, #22d3ee, #8b5cf6 55%, #e040fb);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='240' viewBox='0 0 64 240'%3E%3Cg fill='none' stroke='black' stroke-width='1.1' transform='matrix(0 1 1 0 0 0)'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 50% 0 / 100% auto repeat-y;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='240' viewBox='0 0 64 240'%3E%3Cg fill='none' stroke='black' stroke-width='1.1' transform='matrix(0 1 1 0 0 0)'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 50% 0 / 100% auto repeat-y;
+  }
+  #barre-onglets::after { top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(180deg, transparent, color-mix(in srgb, #22d3ee 55%, transparent) 25%, color-mix(in srgb, #e040fb 55%, transparent) 75%, transparent); }
+}
+[data-theme='clair'] #barre-onglets::before { opacity: .3; }
