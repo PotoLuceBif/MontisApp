@@ -5471,3 +5471,12 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 @media (prefers-reduced-motion: reduce) { .aide-bulle { animation: none; } }
 .aide-ligne { display: flex; align-items: center; gap: 0; }
 .aide-bulle p, .aide-bulle p:is(*) { color: var(--texte); font-size: 12.5px; }
+/* « ? » d'aide : icône au trait, sans pastille, alignée sur le titre ; l'accent au survol et ouverte */
+.aide-bouton {
+  width: 22px; height: 22px; margin-left: 5px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--texte-2); vertical-align: -5px;
+}
+.aide-bouton svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.aide-bouton .aide-point { fill: currentColor; stroke-width: 1.4; }
+.aide-bouton:hover, .aide-bouton.actif { border: 0; background: transparent; color: var(--accent); }
+.aide-bouton.actif svg circle:first-child { fill: var(--accent-doux); }

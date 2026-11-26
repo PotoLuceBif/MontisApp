@@ -9,7 +9,8 @@ export function creerAide(cle) {
   bouton.type = 'button';
   bouton.className = 'aide-bouton';
   bouton.setAttribute('aria-expanded', 'false');
-  bouton.textContent = '?';
+  // Icône au trait, dessinée comme celles du menu (cercle et point d'interrogation)
+  bouton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.4 9.3a2.7 2.7 0 0 1 5.2 1c0 1.8-2.6 2.3-2.6 3.9"/><circle class="aide-point" cx="12" cy="17.1" r="0.6"/></svg>';
 
   const bulle = document.createElement('div');
   bulle.className = 'aide-bulle';
