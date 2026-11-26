@@ -18,6 +18,7 @@ import { estHorsLigne } from './hors-ligne.js';
 import { messageErreur, requete } from './requete.js';
 import { surPreferences } from './preferences.js';
 import { heureCourte, nomJour, poser, t, ta, ti, tt } from './i18n.js';
+import { creerAide } from './aide.js';
 
 const RELAIS = '/api/plafonds?v=2'; // v : format de la réponse, pour ne pas relire une ancienne en cache
 const SOURCE = 'plafonds';
@@ -85,6 +86,14 @@ export function initPlafonds(map, { onFermer = () => {}, onRetour = null } = {})
     </div>
   `;
   const corps = panneau.corps;
+  // « ? » au bout du titre de la légende, explication sous la légende
+  const aide = creerAide('plafonds');
+  const titreAide = corps.querySelector('.plafonds-legende-titre');
+  const ligneTitre = document.createElement('div');
+  ligneTitre.className = 'aide-ligne';
+  titreAide.before(ligneTitre);
+  ligneTitre.append(titreAide, aide.bouton);
+  corps.querySelector('.plafonds-legende').after(aide.bulle);
   const curseur = corps.querySelector('.vent-temps-curseur');
   const heureTexte = corps.querySelector('[data-plafonds-heure]');
   const ecartTexte = corps.querySelector('[data-plafonds-ecart]');

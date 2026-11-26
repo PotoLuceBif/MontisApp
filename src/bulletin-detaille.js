@@ -6,6 +6,7 @@ import { requete } from './requete.js';
 import { DUREE_AVALANCHES, gardee } from './reponses-gardees.js';
 import { formatAltitude, formatNeige } from './unites.js';
 import { formatDate, t } from './i18n.js';
+import { creerAide } from './aide.js';
 
 const URL_BULLETINS = 'https://static.avalanche.report/eaws_bulletins';
 const API_PREVISIONS = 'https://api.open-meteo.com/v1/forecast';
@@ -159,7 +160,11 @@ export function creerBulletinDetaille(bulletin, neige, carte = null, { noteNeige
     const orientations = el('div', 'bulletin-orientations');
     orientations.innerHTML = rose(bulletin.orientations, bulletin.max);
     const texte = el('div', 'bulletin-orientations-textes');
-    texte.append(el('strong', null, t('bulletin.orientations')), el('span', null, bulletin.orientations.map((o) => cardinal(o)).join(', ')));
+    // « ? » à côté du titre de la rose, explication sous la rose
+    const aide = creerAide('bulletin-rose');
+    const titreRose = el('strong', 'aide-titre', t('bulletin.orientations'));
+    titreRose.append(aide.bouton);
+    texte.append(titreRose, el('span', null, bulletin.orientations.map((o) => cardinal(o)).join(', ')));
     if (carte) {
       const bouton = el('button', 'bulletin-carte', t(carte.actif ? 'bulletin.carte-masquer' : 'bulletin.carte-voir'));
       bouton.type = 'button';
@@ -168,7 +173,7 @@ export function creerBulletinDetaille(bulletin, neige, carte = null, { noteNeige
       texte.append(bouton);
     }
     orientations.append(texte);
-    bloc.append(orientations);
+    bloc.append(orientations, aide.bulle);
   }
 
   // Problèmes d'avalanche

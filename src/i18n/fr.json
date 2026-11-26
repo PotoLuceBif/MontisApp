@@ -2111,5 +2111,10 @@
   "panorama.chargement-relief": "Chargement du relief…",
   "panorama.erreur-relief": "Relief indisponible : {message}",
   "ciel.au-sol-bouton": "Voir dans le ciel",
-  "jeux.champ-verifie": "Vérifie l’orthographe"
+  "jeux.champ-verifie": "Vérifie l’orthographe",
+  "aide.ouvrir": "Comment lire ce graphique",
+  "aide.fermer": "Fermer l’aide",
+  "aide.vent-profil": "Chaque colonne est une heure, chaque ligne une altitude au-dessus du repère. Les flèches pointent là où va le vent, leur couleur dit sa force (échelle en dessous).\nLe jaune montre jusqu’où montent les thermiques : plus il est soutenu, plus ils sont forts. Le trait en tirets marque la base des cumulus, le gris les nuages.\nTouche une heure pour lire ses valeurs.",
+  "aide.plafonds": "Chaque couleur dit jusqu’où montent les thermiques à l’heure choisie.\n« Au-dessus du sol » : la hauteur que tu peux gagner depuis le décollage. « Au-dessus de la mer » : l’altitude à lire sur ton altimètre. En gris, pas de thermique exploitable.\nFais glisser le curseur pour changer d’heure ; la valeur au centre de la carte s’affiche sous la légende.",
+  "aide.bulletin-rose": "La rose représente les pentes selon leur orientation, le nord en haut.\nLes secteurs colorés sont les pentes où le bulletin voit le plus de danger, dans la couleur du niveau de risque. Croise-les avec les altitudes indiquées au-dessus."
 }

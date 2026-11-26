@@ -5439,3 +5439,35 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
   .bande-onglet .bande-tete .bande-fermer { border: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
   .bande-onglet .bande-tete .bande-fermer:hover { background: var(--survol); }
 }
+
+/* Aide d'un graphique (aide.js) : petit « ? » discret à côté d'un titre, explication dépliée dessous */
+.aide-bouton {
+  display: inline-grid; flex: none; place-items: center; width: 20px; height: 20px; margin-left: 6px; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--texte-2) 45%, transparent); border-radius: 50%;
+  background: transparent; color: var(--texte-2); font: 700 11.5px/1 var(--police); vertical-align: 1px; cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+/* Zone de toucher plus large que le dessin */
+.aide-bouton { position: relative; }
+.aide-bouton::after { position: absolute; inset: -12px; content: ''; }
+.aide-bouton:hover, .aide-bouton.actif { border-color: var(--accent); color: var(--accent); background: var(--accent-doux); }
+.aide-bulle {
+  position: relative; margin: 8px 0 10px; padding: 10px 36px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--bord)); border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  color: var(--texte); font-size: 12.5px; line-height: 1.5;
+  animation: aide-entree .18s ease-out;
+}
+.aide-bulle p { margin: 0; }
+.aide-bulle p + p { margin-top: 6px; }
+.aide-fermer {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.aide-fermer:hover { background: var(--survol); color: var(--texte); }
+.aide-fermer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.aide-titre { display: inline-flex; align-items: center; }
+@keyframes aide-entree { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .aide-bulle { animation: none; } }
+.aide-ligne { display: flex; align-items: center; gap: 0; }
+.aide-bulle p, .aide-bulle p:is(*) { color: var(--texte); font-size: 12.5px; }

@@ -10,6 +10,7 @@ import { dateHorsLigne, estHorsLigne } from './hors-ligne.js';
 import { erreurHttp, messageErreur, requete } from './requete.js';
 import { nomJour, poser, t, ta, ti, tt } from './i18n.js';
 import { lire, ecrire } from './reglages.js';
+import { creerAide } from './aide.js';
 
 const API = 'https://api.open-meteo.com/v1/forecast';
 const DUREE_CACHE = 15 * 60 * 1000;
@@ -59,6 +60,10 @@ export function creerProfilVertical(map, { onHeure = () => {}, onCharge = () => 
     <p class="vent-profil-statut" role="status" aria-live="polite"></p>
     <p class="note vent-profil-note" ${ti('vent.profil-note')}>${t('vent.profil-note')}</p>
   `;
+  // « ? » à côté du titre, explication sous l'en-tête
+  const aide = creerAide('vent-profil');
+  element.querySelector('.vent-profil-titres strong').after(aide.bouton);
+  element.querySelector('.vent-profil-entete').after(aide.bulle);
   const grille = element.querySelector('.vent-profil-grille');
   const lecture = element.querySelector('.vent-profil-lecture');
   const lieu = element.querySelector('[data-profil-lieu]');

@@ -186,6 +186,7 @@ src/                    Tout le code (détail ci-dessous)
 | `fiche.js` | Fiche d'un objet de la carte touché (via Overpass) ; appui long et clic droit pour la fiche du point |
 | `fiche-point.js`, `point-calcul.js` | Fiche d'un point quelconque (chargée au premier appui long) ; ses calculs purs : pente, orientation, distances, plus proche (testés) |
 | `relief-donnees.js`, `overpass.js` | Altitude, pente et orientation lues dans les tuiles de relief ; requêtes Overpass avec serveurs de repli et délai par serveur |
+| `aide.js` | `creerAide(cle)` : petit « ? » d'un graphique difficile (profil du vent, plafonds, rose du bulletin), qui déplie dessous le texte `aide.<cle>` (paragraphes séparés par un saut de ligne) ; jamais ouvert d'office (lot R.4, 26 novembre 2026). Un graphique ajouté qui demande une explication en reçoit un |
 | `dialogue.js` | `demanderChoix()` : petite fenêtre de question (titre, texte, champ facultatif, boutons), par-dessus tout |
 | `reponses-gardees.js` | `gardee(cle, duree, charger)` : réponses lentes gardées d'une ouverture à l'autre dans le Cache Storage (`montis-reponses`) : Overpass et objets OSM 7 jours, avalanches 30 min, liste des balises FFVL 6 h, terrains 12 h, relevés 2 min (testé) |
 | `mise-a-jour.js` | Nouvelle version : `/sw.js` recherché au retour sur l'appli (au plus une fois par heure), page rechargée une fois si un module de l'ancienne version a disparu |
