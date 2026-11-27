@@ -268,6 +268,9 @@ const ouvrirPanorama = [
   (p) => p.waitForSelector('#onglet-explorer', { state: 'attached', timeout: 60000 }),
   clic('#onglet-explorer'),
   clic('.bande-carte[data-carte="horizon"]'),
+  // Toujours la question « Où veux-tu regarder ? » : position déjà autorisée, « Là où je suis »
+  attendre('.demande-lieu'),
+  clic('.demande-lieu-position'),
   ...attendreHorizon(),
 ];
 // Vue au sol de Soleil et Lune, à une heure de la frise (minutes depuis minuit)
@@ -279,6 +282,8 @@ const ouvrirCielSol = (minutes) => [
   heureOmbres(minutes),
   (p) => p.waitForTimeout(600),
   clic('.ciel-bouton-sol'),
+  attendre('.demande-lieu'),
+  clic('.demande-lieu-position'),
   // Relief (25 tuiles) et crêtes : long avec le rendu logiciel des captures et un réseau lent
   (p) => attendreSur(p, () => document.querySelector('.ciel-relief') && !document.querySelector('.ciel-relief').hidden, null, 150000),
   (p) => p.waitForTimeout(6000),
@@ -985,6 +990,7 @@ const ECRANS = [
   { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
   // Sans position connue : Horizon demande où regarder, puis le repère central (25 novembre 2026)
   { nom: 'horizon-question', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu')] },
+  { nom: 'horizon-question-ici', lien: VUE_BREVENT, position: BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu')] },
   { nom: 'horizon-repere', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu'), clic('.demande-lieu-carte'), attendre('.choix-endroit')] },
   { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
   { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, boussoleSimulee(150, 3), (p) => p.waitForTimeout(1000), clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },

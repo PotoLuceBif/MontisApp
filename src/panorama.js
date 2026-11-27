@@ -97,14 +97,13 @@ function choisirEndroit(map, relancer) {
 }
 
 // Position du téléphone, seulement si la permission est déjà donnée (pas de demande surprise au lancement)
-async function positionConnue() {
+async function positionAutorisee() {
   try {
     const permission = await navigator.permissions?.query({ name: 'geolocation' });
-    if (permission?.state !== 'granted') return null;
+    return permission?.state === 'granted';
   } catch {
-    return null;
+    return false;
   }
-  return lirePosition();
 }
 const lirePosition = () => new Promise((resolu) => {
   if (!navigator.geolocation) return resolu(null);
@@ -115,8 +114,9 @@ const lirePosition = () => new Promise((resolu) => {
   );
 });
 
-// Petite fenêtre « Où veux-tu regarder ? » : toucher la carte, ou activer sa position
-export function demanderLieu(map, relancer) {
+// Petite fenêtre « Où veux-tu regarder ? » : choisir sur la carte, ou sa position. `ici` : la position est déjà
+// autorisée, le bouton dit « Là où je suis » et passe en premier choix
+export function demanderLieu(map, relancer, { ici = false } = {}) {
   document.querySelector('.demande-lieu')?.remove();
   const fenetre = document.createElement('div');
   fenetre.className = 'demande-lieu';
@@ -132,9 +132,10 @@ export function demanderLieu(map, relancer) {
     <button type="button" class="demande-lieu-annuler"></button>
   `;
   poser(fenetre.querySelector('strong'), 'lieu.question');
-  poser(fenetre.querySelector('.demande-lieu-texte'), 'lieu.texte');
+  poser(fenetre.querySelector('.demande-lieu-texte'), ici ? 'lieu.texte-ici' : 'lieu.texte');
   poser(fenetre.querySelector('.demande-lieu-carte'), 'lieu.toucher-carte');
-  poser(fenetre.querySelector('.demande-lieu-position'), 'lieu.activer-position');
+  poser(fenetre.querySelector('.demande-lieu-position'), ici ? 'lieu.ma-position' : 'lieu.activer-position');
+  fenetre.classList.toggle('position-ici', ici);
   poser(fenetre.querySelector('.demande-lieu-annuler'), 'panorama.annuler');
   const message = fenetre.querySelector('.demande-lieu-message');
   const fermer = () => fenetre.remove();
@@ -161,11 +162,10 @@ export function demanderLieu(map, relancer) {
   document.body.appendChild(fenetre);
 }
 
-// Ouvre Horizon (ou la vue au sol) là où on est, sinon demande où
+// Horizon et la vue au sol demandent toujours où regarder (décision du propriétaire du 27 novembre 2026 : sinon,
+// position autorisée, on partait chez soi alors que la carte montrait ailleurs) ; sa position en premier choix
 export async function ouvrirAuBonEndroit(map, relancer) {
-  const lieu = await positionConnue();
-  if (lieu) relancer(lieu);
-  else demanderLieu(map, relancer);
+  demanderLieu(map, relancer, { ici: await positionAutorisee() });
 }
 
 export async function ouvrirPanorama(map, options = {}) {

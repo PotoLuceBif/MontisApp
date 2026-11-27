@@ -2143,5 +2143,7 @@
   "bienvenue.plus-1": "Horizon|Hold up your phone: the name and height of every peak in front of you.",
   "bienvenue.plus-2": "Sun and Moon|When the sun drops behind the ridge, shadows on the terrain, the phase of the Moon.",
   "bienvenue.plus-3": "Globe|Earth from space, lit by the real sun, its cities glowing at night.",
-  "bienvenue.plus-4": "Games|Flags, capitals, “Where is it?” on the globe."
+  "bienvenue.plus-4": "Games|Flags, capitals, “Where is it?” on the globe.",
+  "lieu.texte-ici": "Look from where you are, or place the marker on the map to look from somewhere else.",
+  "lieu.ma-position": "Where I am"
 }

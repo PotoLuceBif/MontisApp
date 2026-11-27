@@ -5563,3 +5563,6 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 }
 /* Piste · Ski de rando : même segment que les autres (le bouton éteint gardait son propre cadre) */
 .ski-pratiques button:not(.actif) { border-color: transparent; background: transparent; box-shadow: none; }
+/* Position déjà autorisée : « Là où je suis » devient le choix principal, en premier */
+.demande-lieu.position-ici .demande-lieu-position { order: -1; border-color: var(--accent) !important; background: var(--accent) !important; color: var(--accent-texte) !important; }
+.demande-lieu.position-ici .demande-lieu-carte { border-color: var(--bord) !important; background: var(--surface-2) !important; color: var(--texte) !important; }
