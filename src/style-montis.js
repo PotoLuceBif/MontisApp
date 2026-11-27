@@ -1,7 +1,7 @@
 import { ADRESSE_POLICES, POLICE, POLICE_GRAS, POLICE_ITALIQUE } from './polices.js';
 import { SOURCE_VECTEUR, definitionSourceVecteur } from './source-vecteur.js';
 import { expressionSommet } from './unites.js';
-import { COUCHES_POINTS_UTILES, ajouterPictos, couchesPointsUtiles } from './points-utiles.js';
+import { COUCHES_POINTS_UTILES, SOURCE_LOIN, ajouterPictos, couchesPointsUtiles, sourcePointsLoin } from './points-utiles.js';
 
 const classes = (valeurs) => ['in', ['get', 'class'], ['literal', valeurs]];
 
@@ -243,6 +243,7 @@ export const STYLE_MONTIS = {
   glyphs: `${ADRESSE_POLICES}/{fontstack}/{range}.pbf`,
   sources: {
     [SOURCE_VECTEUR]: definitionSourceVecteur(),
+    [SOURCE_LOIN]: sourcePointsLoin(),
   },
   layers: [
     { id: 'montis-background', type: 'background', paint: { 'background-color': '#e8e6ec' } },
@@ -611,7 +612,7 @@ export const STYLE_MONTIS = {
         'line-dasharray': [0.3, 10],
       },
     },
-    // Points utiles de près : parkings, abris, points d'eau (points-utiles.js, Éléments de la carte)
+    // Points utiles de près : parkings, abris, points d'eau, dès le zoom 13 (points-utiles.js, Éléments de la carte)
     ...couchesPointsUtiles(),
     // Noms des lacs (certains sont des lignes, l'axe du lac, d'autres des points) et des rivières : toujours là
     {

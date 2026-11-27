@@ -12,6 +12,7 @@ import { dessinerPicto } from './points-utiles.js';
 const GENRE_PAR_COUCHE = {
   sommets: 'sommet',
   'montis-parkings': 'parking',
+  'montis-parkings-loin': 'parking',
   'lieux-refuges': 'refuge',
   'lieux-villes': 'lieu',
   'lieux-bourgs': 'lieu',
