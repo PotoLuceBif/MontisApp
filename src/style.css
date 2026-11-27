@@ -5531,3 +5531,25 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
   justify-self: start; margin-top: 4px; padding: 0; border: 0; background: none;
   color: var(--accent); font: 600 12.5px var(--police); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
 }
+/* Bienvenue : chaque onglet se déplie sur ses sous-sections (une ligne à la fois) */
+.bienvenue-onglets > li { display: block; padding: 0; }
+.bienvenue-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 6px; border: 0; border-radius: 12px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.bienvenue-ligne:hover { background: var(--survol); }
+.bienvenue-textes { display: grid; flex: 1; gap: 1px; min-width: 0; }
+.bienvenue-textes strong { font: 650 14px var(--police); }
+.bienvenue-textes small { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.bienvenue-chevron { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: rotate .2s ease; }
+.bienvenue-onglets > li.ouvert .bienvenue-chevron { rotate: 180deg; stroke: var(--accent); }
+.bienvenue-onglets > li.ouvert .bienvenue-textes strong { color: var(--accent); }
+.bienvenue-sous {
+  display: grid; gap: 8px; margin: 2px 6px 10px 56px; padding: 2px 0 2px 12px; list-style: none;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: aide-entree .18s ease-out;
+}
+.bienvenue-sous[hidden] { display: none; }
+.bienvenue-sous li { display: grid; gap: 1px; padding: 0; border: 0 !important; }
+.bienvenue-sous b { font: 650 13px var(--police); color: var(--texte); }
+.bienvenue-sous span { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
