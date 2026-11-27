@@ -26,13 +26,14 @@ const ALLER_REPONSE = 500;
 const PAUSE_REPONSE = 250;
 const RETOUR_REPONSE = 650;
 // Pictogrammes des cartes de jeu (traits, comme les icônes du menu)
+// Modes de jeu dans la DA des logos Montis (25 novembre 2026) : dessin blanc, une touche de cyan ou de magenta
 const ICONES_MODES = {
-  drapeaux: '<path d="M5 21V4"/><path d="M5 4.5c2.5-1.3 4.5-1.3 7 0s4.5 1.3 7 0v9c-2.5 1.3-4.5 1.3-7 0s-4.5-1.3-7 0"/>',
-  capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/>',
-  liste: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
-  fiches: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/>',
-  ou: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>',
-  revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/>',
+  drapeaux: '<path d="M6 21V3.5"/><path class="plein-m" d="M6.8 4.5c2.4-1.2 4.4-1.2 6.6 0s4.3 1.2 6.6 0v8.8c-2.3 1.2-4.3 1.2-6.6 0s-4.2-1.2-6.6 0Z"/><path d="M6.8 4.5c2.4-1.2 4.4-1.2 6.6 0s4.3 1.2 6.6 0v8.8c-2.3 1.2-4.3 1.2-6.6 0s-4.2-1.2-6.6 0"/>',
+  capitales: '<path d="m3 9 9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v8m4-8v8m4-8v8m4-8v8"/><path d="M3.5 20h17M4.5 17h15"/><circle class="plein-c" cx="12" cy="6.6" r="1.4"/>',
+  liste: '<circle cx="12" cy="13.5" r="7.5"/><path class="trait-c" d="M12 13.5V9.5M12 13.5l2.8 2"/><path d="M9.5 2.5h5M12 2.5V6M18.5 6.5l1.5-1.5"/>',
+  fiches: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/><path class="plein-m" d="M15 5.6v5l1.5-1 1.5 1v-5.2c-1-.1-2 0-3 .2Z"/>',
+  ou: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5S9.6 5.9 12 3.5Z" opacity=".55"/><path class="plein-c" d="M15.5 13.5s3.2-2.8 3.2-5.5a3.2 3.2 0 1 0-6.4 0c0 2.7 3.2 5.5 3.2 5.5Z"/>',
+  revision: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 3.5v5h-5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20.5v-5h5"/><circle class="plein-c" cx="12" cy="12" r="2"/>',
 };
 const ICONE_RECOMMENCER = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>';
 const ICONE_LIVRE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5Z"/><path d="M12 6.5v13"/></svg>';
@@ -113,6 +114,107 @@ function chargerVilles() {
   return promesseVilles;
 }
 
+// Petites icônes des réglages de partie (demande du propriétaire du 25 novembre 2026) : une par rubrique, une par
+// choix, sans fioriture ; le texte du bouton passe dans un span pour garder l'icône
+const ICO = {
+  question: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.8v.1"/>',
+  cible: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',
+  zone: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
+  niveau: '<path d="M5 19V13M12 19V8M19 19V4"/>',
+  longueur: '<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r=".9"/><circle cx="4" cy="12" r=".9"/><circle cx="4" cy="18" r=".9"/>',
+  eclairage: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+  drapeau: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  pays: '<path d="M4 7l5-3 6 3 5-3v13l-5 3-6-3-5 3Z"/><path d="M9 4v13M15 7v13"/>',
+  capitale: '<path d="M4 20h16M6 20V10M10 20V10M14 20V10M18 20V10M3 10l9-6 9 6Z"/>',
+  villes: '<path d="M3 20h18M5 20V9h5v11M10 20V5h5v15M15 20v-8h4v8"/>',
+  'ville-pays': '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
+  choix: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  expert: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10"/>',
+  courte: '<circle cx="12" cy="13" r="7"/><path d="M12 13V9.5M10 3h4"/>',
+  complete: '<path d="M7 9a4 4 0 1 0 0 6c2 0 3.5-2 5-3s3-3 5-3a4 4 0 1 1 0 6c-2 0-3.5-2-5-3s-3-3-5-3Z"/>',
+  plein: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  reel: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/>',
+};
+const LEGENDES = { sens: 'question', sensCapitales: 'question', cible: 'cible', zone: 'zone', niveau: 'niveau', longueur: 'longueur', eclairage: 'eclairage' };
+const VALEURS = { sens: { drapeau: 'drapeau', pays: 'pays' }, sensCapitales: { pays: 'capitale', capitale: 'drapeau' } };
+// Silhouette de chaque zone derrière son nom (demande du propriétaire du 25 novembre 2026) : les contours des pays de
+// la zone, à plat ; « Monde », le contour de la Terre
+const TERRE = '<circle cx="50" cy="30" r="27"/><ellipse cx="50" cy="30" rx="12" ry="27"/><path d="M23 30h54M27 16h46M27 44h46"/>';
+// Cadre de chaque zone (longitudes déjà recollées pour l'Océanie) : les territoires lointains d'un pays (Guyane,
+// Réunion, Alaska…) restent dehors, sinon l'Europe s'étirait jusqu'à l'Amérique
+const CADRES = {
+  europe: { lng: [-25, 45], lat: [34, 72] },
+  afrique: { lng: [-20, 55], lat: [-36, 38] },
+  asie: { lng: [25, 150], lat: [-12, 56] },
+  ameriques: { lng: [-170, -30], lat: [-56, 72] },
+  oceanie: { lng: [110, 190], lat: [-48, 0], recoller: true },
+};
+function silhouette(zone, codes, geometries) {
+  const cadre = CADRES[zone];
+  const lngDe = (lng) => (cadre.recoller && lng < 0 ? lng + 360 : lng);
+  const dedans = ([lng, lat]) => lngDe(lng) >= cadre.lng[0] && lngDe(lng) <= cadre.lng[1] && lat >= cadre.lat[0] && lat <= cadre.lat[1];
+  const anneaux = [];
+  for (const code of codes) {
+    const g = geometries.get(code);
+    if (!g) continue;
+    // Polygon ([anneaux]) ou MultiPolygon ([[anneaux]]) : contours extérieurs dont le milieu est dans le cadre
+    const polygones = typeof g[0][0][0] === 'number' ? [g] : g;
+    for (const polygone of polygones) {
+      const a = polygone[0];
+      if (dedans(a[Math.floor(a.length / 2)]) || dedans(a[0])) anneaux.push(a.map(([lng, lat]) => [lngDe(lng), Math.max(cadre.lat[0], Math.min(cadre.lat[1], lat))]));
+    }
+  }
+  if (!anneaux.length) return '';
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const a of anneaux) for (const [x, y] of a) {
+    x0 = Math.min(x0, Math.max(x, cadre.lng[0])); x1 = Math.max(x1, Math.min(x, cadre.lng[1]));
+    y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
+  // Largeur corrigée de la latitude moyenne, comme une carte, dans une boîte de 100 × 60
+  const kx = Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
+  const echelle = Math.min(92 / ((x1 - x0) * kx || 1), 52 / (y1 - y0 || 1));
+  const dx = (100 - (x1 - x0) * kx * echelle) / 2;
+  const dy = (60 - (y1 - y0) * echelle) / 2;
+  const chemin = anneaux.map((a) => {
+    const pas = Math.max(1, Math.floor(a.length / 60));
+    const points = a.filter((_, i) => i % pas === 0).map(([x, y]) => `${(dx + (x - x0) * kx * echelle).toFixed(1)} ${(dy + (y1 - y) * echelle).toFixed(1)}`);
+    return points.length > 2 ? `M${points.join('L')}Z` : '';
+  }).join('');
+  return `<path d="${chemin}"/>`;
+}
+function dessinerSilhouettes(panneau, pays, geometries) {
+  const formes = Object.fromEntries(ZONES.map((zone) => [zone, zone === 'monde' ? TERRE : silhouette(zone, paysDeZone(pays, zone), geometries)]));
+  panneau.querySelectorAll('.jeux-zones button[data-valeur]').forEach((bouton) => {
+    const forme = formes[bouton.dataset.valeur];
+    if (!forme || bouton.querySelector('.jeux-zone-forme')) return;
+    bouton.insertAdjacentHTML('afterbegin', `<svg class="jeux-zone-forme${bouton.dataset.valeur === 'monde' ? ' monde' : ''}" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${forme}</svg>`);
+  });
+}
+const svgIco = (nom) => `<svg class="jeux-ico" viewBox="0 0 24 24" aria-hidden="true">${ICO[nom]}</svg>`;
+function decorerReglages(panneau) {
+  panneau.querySelectorAll('.jeux-options .jeux-reglage').forEach((reglage) => {
+    const groupe = reglage.querySelector('[data-choix]');
+    const nom = groupe ? LEGENDES[groupe.dataset.choix] : 'pays';
+    const legende = reglage.querySelector('.jeux-legende');
+    if (legende && nom && ICO[nom]) legende.insertAdjacentHTML('afterbegin', svgIco(nom));
+    if (!groupe || groupe.classList.contains('jeux-zones')) return;
+    groupe.querySelectorAll('button[data-valeur]').forEach((bouton) => {
+      const icone = VALEURS[groupe.dataset.choix]?.[bouton.dataset.valeur] ?? bouton.dataset.valeur;
+      if (!ICO[icone]) return;
+      const texte = document.createElement('span');
+      texte.className = 'jeux-texte';
+      while (bouton.firstChild) texte.appendChild(bouton.firstChild);
+      // Le texte suit la langue : on déplace aussi la clé de traduction
+      if (bouton.dataset.i18n) {
+        texte.dataset.i18n = bouton.dataset.i18n;
+        delete bouton.dataset.i18n;
+      }
+      bouton.insertAdjacentHTML('afterbegin', svgIco(icone));
+      bouton.appendChild(texte);
+    });
+  });
+}
+
 export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } = {}) {
   // ---------- Réglage de la partie, dans le menu ----------
   const choix = {
@@ -125,6 +227,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     niveau: 'choix',
     longueur: 'courte',
     zone: 'europe',
+    eclairage: 'plein',
     ...lire('jeux-choix', {}),
   };
   const records = () => lire('jeux-records', {});
@@ -219,6 +322,13 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
           ${ZONES.map((zone) => `<button type="button" data-valeur="${zone}"><span ${ti(`jeux.zone-${zone}`)}>${t(`jeux.zone-${zone}`)}</span><small></small></button>`).join('')}
         </div>
       </div>
+      <div class="jeux-reglage">
+        <span class="jeux-legende" ${ti('jeux.eclairage')}>${t('jeux.eclairage')}</span>
+        <div class="segments" data-choix="eclairage" role="group" ${ta('aria-label', 'jeux.eclairage')}>
+          <button type="button" data-valeur="plein" ${ti('bande.eclairage-plein')}>${t('bande.eclairage-plein')}</button>
+          <button type="button" data-valeur="reel" ${ti('bande.eclairage-reel')}>${t('bande.eclairage-reel')}</button>
+        </div>
+      </div>
       <div class="jeux-reglage" data-pour="niveau">
         <span class="jeux-legende" ${ti('jeux.niveau')}>${t('jeux.niveau')}</span>
         <div class="segments" data-choix="niveau" role="group" ${ta('aria-label', 'jeux.niveau')}>
@@ -240,6 +350,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     </div>
   `;
   const $ = (selecteur, racine = panneau) => racine.querySelector(selecteur);
+  decorerReglages(panneau);
   // Le niveau expert fait taper un nom : « Trouve le drapeau » se joue toujours en quatre choix
   const niveauImpose = (c) => c.mode === 'drapeaux' && c.sens === 'pays';
   // Ce que joue la partie : un seul sens, celui du mode choisi
@@ -370,8 +481,8 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     });
     rendreChoixPays();
     const total = villesPays ? donnees?.villes.parPays[choix.paysVilles]?.length : compte(choix.zone);
-    $('[data-valeur="courte"]').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
-    $('[data-valeur="complete"]').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
+    $('[data-valeur="courte"] .jeux-texte').textContent = t('jeux.longueur-courte', { n: LONGUEUR_COURTE });
+    $('[data-valeur="complete"] .jeux-texte').textContent = total ? t('jeux.longueur-complete', { n: total }) : t('jeux.longueur-tous');
     const record = records()[cleRecord(reglageEffectif())];
     $('.jeux-record').textContent = record ? texteRecord(record) : t('jeux.record-aucun');
   }
@@ -448,6 +559,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
     };
     const geometries = new Map(brut.features.map((f) => [f.properties.code, f.geometry.coordinates]));
     donnees = { brut, pays, parCode: new Map(pays.map((p) => [p.code, p])), points, villes, geometries, fiches, anecdotes };
+    dessinerSilhouettes(panneau, pays, geometries);
     rendreReglage();
     return donnees;
   }
@@ -528,7 +640,10 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       if (premiere) {
         this.vueAvant = { center: map.getCenter(), zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() };
         this.zoomMax = map.getMaxZoom();
-        fixerPleinJour(true); // la Terre entière éclairée pour jouer (retour du propriétaire du 25 novembre 2026)
+        // La Terre entière éclairée pour jouer, sauf si on a choisi le temps réel au lancement (25 novembre 2026)
+        document.body.classList.add('jeu-en-cours');
+        fixerPleinJour(choix.eclairage !== 'reel');
+        window.dispatchEvent(new CustomEvent('montis:plein-ecran', { detail: { actif: true } }));
       }
       if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: donnees.brut, promoteId: 'code' });
       if (!map.getSource(SOURCE_POINTS)) map.addSource(SOURCE_POINTS, { type: 'geojson', data: donnees.points, promoteId: 'code' });
@@ -802,6 +917,7 @@ export function creerJeux(map, { fermerMenu = () => {}, ouvrirMenu = () => {} } 
       this.textesCaches.clear();
       if (this.zoomMax !== null) map.setMaxZoom(this.zoomMax);
       fixerPleinJour(false);
+      document.body.classList.remove('jeu-en-cours');
       if (this.vueAvant) map.flyTo({ ...this.vueAvant, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 1600 });
       this.vueAvant = null;
       this.zoomMax = null;

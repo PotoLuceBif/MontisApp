@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  passageAstre,
   angleApparent, choisirEtiquettes, cretesCap, dedoublonner, directionCamera, directionVers, ecartCap, estVisible,
   pointA, pointCardinal, projeter, relierCretes, champHorizontal, choisirDepart, positionUtilisable,
   refraction, hauteurApparente, trajetAstre, profilHorizon, leverCoucherReels,
@@ -287,5 +288,21 @@ describe('soleil et Lune au-dessus du relief', () => {
   it('ne trouve rien quand l’astre reste caché', () => {
     const trajet = [0, 1, 2].map((i) => ({ t: i, azimut: 180, hauteur: 5 }));
     expect(leverCoucherReels(trajet, () => 10)).toEqual({ lever: null, coucher: null });
+  });
+});
+
+describe('passageAstre', () => {
+  // Une heure par point ; l'astre est levé de 3 à 6 h, puis de 17 à 22 h
+  const trajet = Array.from({ length: 24 }, (_, h) => ({ t: h, azimut: 0, hauteur: (h >= 3 && h <= 6) || (h >= 17 && h <= 22) ? 10 : -5 }));
+  it('garde le passage en cours', () => {
+    expect(passageAstre(trajet, 4)).toEqual([3, 6]);
+    expect(passageAstre(trajet, 20)).toEqual([17, 22]);
+  });
+  it('prend le prochain quand l’astre est couché, sinon le dernier', () => {
+    expect(passageAstre(trajet, 10)).toEqual([17, 22]);
+    expect(passageAstre(trajet, 23)).toEqual([17, 22]);
+  });
+  it('tient compte du relief', () => {
+    expect(passageAstre(trajet, 4, () => 20)).toBeNull();
   });
 });

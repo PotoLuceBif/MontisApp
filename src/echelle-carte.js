@@ -11,11 +11,13 @@ const SELECTEURS_OBSTACLES = [
   '#menu-bouton',
   '#menu-parametres-bouton',
   '.outils-rapides',
+  '.bande-onglet',
   '.maplibregl-ctrl-top-right',
   '.maplibregl-ctrl-bottom-right',
   '.maplibregl-popup',
 ];
 const SELECTEURS_PANNEAUX = [
+  '.bande-onglet',
   '#menu-tiroir',
   '.outil-rapide-panneau',
   '#fiche',
@@ -166,12 +168,17 @@ export function initEchelleCarte(map) {
         planifierActualisation();
       };
       element.addEventListener('transitionend', terminerTransition);
+      // Les feuilles et les bandes entrent par une animation, pas une transition : on se replace à la fin
+      element.addEventListener('animationend', planifierActualisation);
       element.addEventListener('transitioncancel', terminerTransition);
     }
     planifierActualisation();
   }
 
   observerTiroir.observe(document.body, { childList: true });
+  // Au démarrage, panneaux et polices finissent de se poser après le premier calcul (rattrapage)
+  window.setTimeout(planifierActualisation, 600);
+  window.setTimeout(planifierActualisation, 2000);
   observerTiroir.observe(conteneur, { childList: true, subtree: true });
   observerTaille.observe(conteneur);
   observerPanneaux();

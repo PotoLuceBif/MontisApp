@@ -91,7 +91,7 @@ async function preparer(navigateur, reglages, { midi = false } = {}) {
   }
   await contexte.addInitScript((r) => {
     if (!localStorage.getItem('montis.mesures')) {
-      localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': 'jour', 'derniere-visite': Date.now(), ...r }));
+      localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': 'jour', 'derniere-visite': Date.now(), 'bienvenue-vue': true, ...r }));
       localStorage.setItem('montis.mesures', '1');
     }
   }, reglages);

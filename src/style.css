@@ -1472,10 +1472,10 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] {
   --surface: #0b111b;
   --surface-2: #111d2a;
-  --survol: #172a3a;
-  --bord: #274252;
+  --survol: #1c2650;
+  --bord: #28325f;
   --texte: #e6f7ff;
-  --texte-2: #91adbd;
+  --texte-2: #a5aed0;
   --logo-ink: #f7faff;
   --logo-cyan: #20d9f5;
   --logo-blue: #b8d8ff;
@@ -1507,7 +1507,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-logotype img {
   filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 35%, transparent));
 }
-:root[data-theme='cyberpunk'] .menu-sous-titre { color: #a7c3d3; }
+:root[data-theme='cyberpunk'] .menu-sous-titre { color: #b3bad8; }
 :root[data-theme='cyberpunk'] .menu-vue-entete {
   border-bottom-color: color-mix(in srgb, var(--accent) 26%, var(--bord));
 }
@@ -1520,8 +1520,8 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-vue-entete p { color: var(--texte-2); }
 :root[data-theme='cyberpunk'] .menu-ligne { font-weight: 600; }
 :root[data-theme='cyberpunk'] .menu-ligne > svg {
-  border-color: #304c5d;
-  background: linear-gradient(145deg, #142638, #0d1722);
+  border-color: #2e386a;
+  background: linear-gradient(145deg, #1a2350, #121a38);
 }
 :root[data-theme='cyberpunk'] .menu-ligne:hover:not(.actif) {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--bord));
@@ -1530,7 +1530,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-ligne.actif {
   border-color: color-mix(in srgb, var(--accent) 52%, var(--bord));
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-  box-shadow: inset 2px 0 0 var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 :root[data-theme='cyberpunk'] .menu-ligne.actif > svg {
   border-color: color-mix(in srgb, var(--accent) 54%, var(--bord));
@@ -1550,7 +1550,7 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 :root[data-theme='cyberpunk'] .menu-contenu select,
 :root[data-theme='cyberpunk'] .menu-contenu textarea {
   border-color: var(--bord);
-  background-color: #0a141f;
+  background-color: #0b1128;
   color: var(--texte);
 }
 :root[data-theme='cyberpunk'] .fond-item:has(input:checked) {
@@ -1873,21 +1873,20 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .radar-lien-externe:hover { border-color: var(--accent); }
 :root[data-theme='cyberpunk'] .radar-panneau {
   border-color: color-mix(in srgb, var(--accent) 25%, var(--bord));
-  background: linear-gradient(145deg, #101e2b, #0b141f);
-  box-shadow: inset 0 1px 0 rgba(77, 235, 212, 0.05);
+  background: linear-gradient(145deg, #141c3c, #0d1430);
+  box-shadow: inset 0 1px 0 rgba(164, 148, 255, 0.05);
 }
 
 :root[data-theme='cyberpunk'] .radar-actions button {
   border-color: color-mix(in srgb, var(--accent) 28%, var(--bord));
-  background: #0b1520;
+  background: #121a38;
 }
 :root[data-theme='cyberpunk'] .radar-sources {
   border-color: color-mix(in srgb, var(--accent) 24%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .radar-sources button.actif {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent),
-    0 0 12px color-mix(in srgb, var(--accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 :root[data-theme='cyberpunk'] .radar-statut.erreur { color: #ff8296; }
 
@@ -2134,9 +2133,9 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .frise-note { margin: 0; color: var(--texte-2); font-size: 10.5px; line-height: 1.45; }
 :root[data-theme='cyberpunk'] .frise {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
-:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #09131d); }
+:root[data-theme='cyberpunk'] .meteo-heure.lue { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #0b1128); }
 .meteo-icone {
   display: grid;
   width: 30px;
@@ -2201,29 +2200,28 @@ body:has(#menu-tiroir.ouvert) #barre-haut { left: calc(min(352px, 88vw) + 22px);
 .meteo-credit a { color: var(--accent); }
 :root[data-theme='cyberpunk'] .meteo-locale {
   border-color: color-mix(in srgb, var(--accent) 25%, var(--bord));
-  background: linear-gradient(145deg, #101e2b, #0b141f);
-  box-shadow: inset 0 1px 0 rgba(77, 235, 212, 0.05);
+  background: linear-gradient(145deg, #141c3c, #0d1430);
+  box-shadow: inset 0 1px 0 rgba(164, 148, 255, 0.05);
 }
 :root[data-theme='cyberpunk'] .meteo-emplacement {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-reessayer {
   border-color: color-mix(in srgb, var(--accent) 24%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-actuelle,
 :root[data-theme='cyberpunk'] .meteo-soleil,
 :root[data-theme='cyberpunk'] .meteo-heure,
 :root[data-theme='cyberpunk'] .meteo-jour {
   border-color: color-mix(in srgb, var(--accent) 22%, var(--bord));
-  background: #09131d;
+  background: #0b1128;
 }
 :root[data-theme='cyberpunk'] .meteo-jour[aria-pressed='true'] {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, #09131d);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
-    0 0 12px color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #0b1128);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 :root[data-theme='cyberpunk'] .meteo-locale-statut.erreur { color: #ff8296; }
 
@@ -4329,7 +4327,7 @@ body.panorama-camera #panorama { background: #000; }
 #panorama::before {
   position: absolute;
   inset: 0;
-  background: linear-gradient(#2a3d52, #0e141b);
+  background: linear-gradient(#2e386a, #0e141b);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.6s ease;
@@ -4559,3 +4557,1012 @@ body.panorama-ciel .pano-etat { top: calc(78px + env(safe-area-inset-top)); bott
 .jeux-drapeau-grand img { width: min(92vw, 900px); max-height: 82dvh; object-fit: contain; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 18px 60px rgba(0, 0, 0, 0.6); }
 @keyframes jeux-drapeau-entree { from { opacity: 0; transform: scale(0.96); } }
 @media (prefers-reduced-motion: reduce) { .jeux-drapeau-grand { animation: none; } }
+
+/* ===== Onglets (refonte du 25 novembre 2026) ===== */
+/* Barre du bas sur téléphone, rail à gauche sur ordinateur. Le corps de la page devient la zone de l'appli
+   (contain: layout : il contient aussi les éléments fixes), la barre se pose juste à côté : tout ce qui était
+   calé en bas ou à gauche de l'écran se cale sur elle, sans retoucher chaque panneau. */
+#barre-onglets {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  box-sizing: border-box;
+  border: 0 solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  background: var(--surface);
+  font: 600 11px var(--police);
+}
+#barre-onglets .onglet.onglet {
+  position: relative;
+  inset: auto;
+  display: flex;
+  visibility: visible;
+  box-sizing: border-box;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--texte-2);
+  font: inherit;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: none;
+  filter: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+#barre-onglets .onglet.onglet::after { content: none; }
+#barre-onglets .onglet.onglet > svg {
+  width: 23px; height: 23px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+#barre-onglets .onglet.onglet > span {
+  max-width: none; overflow: hidden; opacity: 1;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+#barre-onglets .onglet.onglet:hover { color: var(--texte); background: color-mix(in srgb, var(--texte) 6%, transparent); }
+#barre-onglets .onglet.onglet[aria-expanded='true'] { color: var(--accent); background: transparent; }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before {
+  position: absolute; border-radius: 2px; background: var(--accent); content: '';
+}
+#barre-onglets .onglet.onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Le tiroir ne montre que la rubrique de l'onglet, sans le bandeau : le titre de la rubrique suffit */
+#menu-tiroir .menu-entete { display: none; }
+#menu-tiroir .menu-corps { padding-top: 6px; }
+#menu-tiroir[data-onglet='activites'] .menu-corps > .menu-vue:not(#menu-vue-activites),
+#menu-tiroir[data-onglet='traces'] .menu-corps > .menu-vue:not(#menu-vue-traces),
+#menu-tiroir[data-onglet='jeux'] .menu-corps > .menu-vue:not(#menu-vue-jeux) { display: none; }
+.outil-rapide-panneau .menu-partage { margin-top: 8px; }
+
+@media (max-width: 700px) {
+  :root { --onglets: calc(62px + env(safe-area-inset-bottom)); }
+  body { position: relative; height: calc(100% - var(--onglets)); contain: layout; }
+  #barre-onglets {
+    left: 0; right: 0; bottom: calc(-1 * var(--onglets));
+    height: var(--onglets);
+    padding: 0 4px env(safe-area-inset-bottom);
+    border-top-width: 1px;
+  }
+  #barre-onglets .onglet.onglet { flex: 1 1 0; margin: 4px 0; }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: -4px; left: 50%; width: 24px; height: 3px; transform: translateX(-50%); }
+  /* Plus de logo en haut à gauche : Paramètres prend sa place, la barre du haut s'élargit */
+  #menu-parametres-bouton { left: 10px; }
+  #barre-haut { left: 64px; }
+  /* Météo et Carte ne sont plus dans la colonne : leurs panneaux remontent sous Soleil et Lune et Horizon */
+  .outil-rapide-panneau { top: 268px; max-height: calc(100% - 278px); }
+  #menu-tiroir .menu-corps { padding-top: 10px; }
+}
+
+@media (min-width: 701px) {
+  :root { --rail: 88px; }
+  body { position: relative; margin-left: var(--rail); width: calc(100% - var(--rail)); contain: layout; }
+  #barre-onglets {
+    top: 0; bottom: 0; left: calc(-1 * var(--rail));
+    width: var(--rail);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 10px 84px;
+    border-right-width: 1px;
+  }
+  #barre-onglets .onglet.onglet { height: 64px; flex: none; }
+  #barre-onglets .onglet.onglet[aria-expanded='true'] { background: var(--accent-doux); }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 14px; bottom: 14px; left: -10px; width: 3px; }
+  /* Paramètres en bas du rail */
+  #menu-parametres-bouton { z-index: 31; top: auto; bottom: 18px; left: calc(-1 * var(--rail) + 20px); }
+  #barre-haut { left: 14px; }
+}
+
+/* Vues plein écran (Lune, Horizon, mode poche du guidage) : la barre s'efface, l'appli reprend tout l'écran */
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) { width: 100%; height: 100%; margin-left: 0; }
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #barre-onglets,
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #menu-parametres-bouton { display: none; }
+/* L'ancien bouton du menu se cachait tiroir ouvert : devenu onglet, il reste visible */
+body #barre-onglets #menu-bouton.onglet.onglet { visibility: visible; pointer-events: auto; }
+
+/* Logo de l'appli : montre ou cache les onglets. Sur ordinateur, il coiffe le rail ; rail caché, il reste en haut à gauche */
+#logo-onglets {
+  position: absolute; z-index: 32; top: 12px; left: 12px;
+  width: 46px; height: 46px; padding: 0; overflow: hidden;
+  border: 0; border-radius: 13px; background: #0a1020;
+  box-shadow: var(--ombre), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  cursor: pointer; transition: transform 0.14s ease, filter 0.14s ease;
+}
+#logo-onglets img { display: block; width: 100%; height: 100%; object-fit: cover; }
+#logo-onglets:hover { filter: brightness(1.12); }
+#logo-onglets:active { transform: scale(0.96); }
+#logo-onglets:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.onglets-masques #barre-onglets { display: none; }
+@media (max-width: 700px) {
+  #logo-onglets { top: max(10px, env(safe-area-inset-top)); left: 10px; }
+  #menu-parametres-bouton { left: 64px; }
+  #barre-haut { left: 118px; }
+  body.onglets-masques { height: 100%; }
+  body:has(#menu-tiroir.ouvert) #logo-onglets { visibility: hidden; }
+}
+@media (min-width: 701px) {
+  #logo-onglets { top: 14px; left: calc(-1 * var(--rail) + 21px); }
+  #barre-onglets { padding-top: 74px; }
+  body.onglets-masques { width: 100%; margin-left: 0; }
+  body.onglets-masques #logo-onglets { left: 14px; }
+  body.onglets-masques #menu-parametres-bouton { top: 14px; bottom: auto; left: 72px; }
+  body.onglets-masques #barre-haut { left: 130px; }
+}
+body:is(.jeu-en-cours, .en-visite, :has(.lune-visite, #panorama:not([hidden]), .guidage-poche:not([hidden]))) #logo-onglets { display: none; }
+/* Onglets cachés : plus d'engrenage, le logo seul en haut à gauche (demande du propriétaire du 25 novembre 2026) */
+body.onglets-masques #menu-parametres-bouton { display: none; }
+@media (max-width: 700px) { body.onglets-masques #barre-haut { left: 64px; } }
+@media (min-width: 701px) { body.onglets-masques #barre-haut { left: 72px; } }
+
+/* ===== Transitions des onglets (refonte du 25 novembre 2026) ===== */
+/* Sur téléphone, tout ce qu'ouvre un onglet monte du bas, juste au-dessus de la barre : tiroir et panneaux
+   deviennent des feuilles. Sur ordinateur, le tiroir glisse depuis le rail. */
+:root { --glisse: cubic-bezier(0.22, 0.8, 0.24, 1); }
+#barre-onglets .onglet.onglet:active { transform: scale(0.94); }
+#barre-onglets .onglet.onglet > svg { transition: transform 0.2s var(--glisse); }
+#barre-onglets .onglet.onglet[aria-expanded='true'] > svg { transform: translateY(-1px); }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: onglet-trait 0.24s var(--glisse); }
+@keyframes onglet-trait { from { opacity: 0; transform: translateX(-50%) scaleX(0.2); } }
+@media (min-width: 701px) {
+  @keyframes onglet-trait { from { opacity: 0; transform: scaleY(0.2); } }
+}
+/* Changer d'onglet fait apparaître la rubrique en fondu */
+#menu-tiroir .menu-corps > .menu-vue { animation: vue-entree 0.22s var(--glisse); }
+@keyframes vue-entree { from { opacity: 0; transform: translateY(6px); } }
+#menu-tiroir { transition: transform 0.3s var(--glisse), visibility 0s linear 0.3s; visibility: hidden; }
+#menu-tiroir.ouvert { visibility: visible; transition: transform 0.3s var(--glisse); }
+
+@media (max-width: 700px) {
+  #menu-tiroir {
+    top: auto; right: 8px; bottom: 8px; left: 8px;
+    width: auto; height: auto; max-height: calc(100% - 76px);
+    border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+    border-radius: 20px;
+    transform: translateY(calc(100% + 16px));
+  }
+  #menu-tiroir.ouvert { transform: none; }
+  #menu-tiroir.en-parametres { height: calc(100% - 76px); }
+  #menu-tiroir .menu-corps { flex: 0 1 auto; min-height: 0; }
+  :root[data-theme] #menu-tiroir { box-shadow: 0 -10px 36px rgba(0, 0, 0, 0.45); }
+  :root[data-theme] body:has(#menu-tiroir.ouvert)::before { background: rgba(2, 6, 12, 0.32); animation: voile-entree 0.3s ease; }
+  @keyframes voile-entree { from { opacity: 0; } }
+  /* Panneaux Carte, Météo, Soleil et Lune : feuilles du bas, sous la colonne de droite */
+  .outil-rapide-panneau {
+    top: auto; right: 8px; bottom: 8px; left: 8px;
+    width: auto; max-height: calc(100% - 276px);
+    border-radius: 20px;
+    animation: feuille-entree 0.3s var(--glisse);
+  }
+  .outil-rapide-panneau.reduit { right: 8px; bottom: 8px; left: 8px; }
+  @keyframes feuille-entree { from { opacity: 0.4; transform: translateY(40px); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  #menu-tiroir, #menu-tiroir.ouvert, #barre-onglets .onglet.onglet > svg { transition: none; }
+  #menu-tiroir .menu-corps > .menu-vue, .outil-rapide-panneau,
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: none; }
+}
+
+/* ===== Préparer : les quatre activités en tuiles, les outils de l'activité choisie dessous ===== */
+/* Chaque module garde sa ligne (même bouton, même comportement) : seule la mise en page change. */
+#menu-vue-activites { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-activites > :not(.menu-module) { grid-column: 1 / -1; }
+#menu-vue-activites .menu-module { display: contents; }
+#menu-vue-activites .menu-module:first-of-type { margin-top: 0; }
+#menu-tiroir #menu-vue-activites .menu-ligne {
+  grid-row: 2;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 84px;
+  padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: none;
+  font-size: 12px;
+  text-align: center;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+#menu-tiroir #menu-vue-activites .menu-ligne > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#menu-tiroir #menu-vue-activites .menu-ligne::after { content: none; }
+#menu-tiroir #menu-vue-activites .menu-ligne > .icone-activite { width: 40px; height: 40px; transition: transform 0.2s var(--glisse); }
+#menu-tiroir #menu-vue-activites .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+#menu-tiroir #menu-vue-activites .menu-ligne.actif > .icone-activite { transform: scale(1.08); }
+#menu-tiroir #menu-vue-activites .menu-ligne:active { transform: scale(0.96); }
+/* Une seule activité à la fois : ses outils prennent toute la largeur sous les tuiles */
+#menu-vue-activites .menu-contenu { grid-row: 3; grid-column: 1 / -1; padding: 6px 2px 4px; animation: vue-entree 0.24s var(--glisse); }
+@media (max-width: 380px) {
+  #menu-tiroir #menu-vue-activites .menu-ligne { min-height: 76px; font-size: 11px; }
+  #menu-tiroir #menu-vue-activites .menu-ligne > .icone-activite { width: 34px; height: 34px; }
+}
+@media (prefers-reduced-motion: reduce) { #menu-vue-activites .menu-contenu { animation: none; } }
+
+/* ===== Explorer : bande de petites cartes, la carte libre au-dessus ===== */
+.bande-onglet {
+  position: absolute; z-index: 14; right: 0; bottom: 10px; left: 0;
+  display: flex; gap: 8px;
+  overflow-x: auto; padding: 4px 12px;
+  scrollbar-width: none;
+  animation: bande-entree 0.3s var(--glisse);
+}
+.bande-onglet[hidden] { display: none; }
+.bande-onglet::-webkit-scrollbar { display: none; }
+@keyframes bande-entree { from { opacity: 0; transform: translateY(24px); } }
+.bande-carte {
+  display: flex; flex: 0 0 auto; align-items: center; gap: 10px;
+  min-width: 156px; height: 60px; box-sizing: border-box; padding: 0 14px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: var(--ombre-forte);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3); backdrop-filter: blur(12px) saturate(1.3);
+  color: var(--texte); font: inherit; text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, transform 0.12s ease;
+}
+.bande-carte:hover { border-color: var(--accent); }
+.bande-carte:active { transform: scale(0.96); }
+.bande-carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bande-carte > img { width: 40px; height: 40px; flex: none; border-radius: 10px; }
+.bande-icone { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 10px; background: var(--accent-doux); color: var(--accent); }
+.bande-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.bande-noms { display: grid; gap: 1px; min-width: 0; }
+.bande-noms strong { font-size: 13px; font-weight: 650; white-space: nowrap; }
+.bande-noms small { color: var(--accent); font-size: 11px; white-space: nowrap; }
+/* Rien à droite pendant Explorer : le globe a tout l'écran (décision du propriétaire du 25 novembre 2026) */
+body.bande-ouverte .maplibregl-ctrl-bottom-right { margin-bottom: 76px; }
+@media (min-width: 701px) {
+  .bande-onglet { bottom: 16px; padding: 4px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .bande-onglet { animation: none; } }
+
+/* Météo d'abord : les conditions du moment avant le choix du lieu, sans le paragraphe d'aide */
+.meteo-locale { display: flex; flex-direction: column; }
+.meteo-locale > .meteo-emplacement { order: 1; margin-top: 10px; }
+.meteo-locale > .meteo-actuelle ~ :not(.meteo-emplacement) { order: 2; }
+.meteo-locale .meteo-emplacement-aide { display: none; }
+
+/* Météo : Météo locale, Radar et Vent en tuiles côte à côte, comme les activités ; chaque contenu ouvert dessous */
+#menu-vue-meteo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-meteo > :not(.menu-module) { grid-column: 1 / -1; }
+#menu-vue-meteo > .menu-vue-entete { display: none; }
+#menu-vue-meteo .menu-module { display: contents; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne {
+  grid-row: 1;
+  flex-direction: column; justify-content: center; gap: 6px;
+  min-height: 74px; padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px; background: var(--surface-2); box-shadow: none;
+  font-size: 12px; line-height: 1.2; text-align: center;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.12s ease;
+}
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne::after { content: none; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne > svg { width: 28px; height: 28px; padding: 5px; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+.outil-rapide-panneau #menu-vue-meteo .menu-ligne:active { transform: scale(0.96); }
+#menu-vue-meteo .menu-contenu { grid-column: 1 / -1; padding: 4px 0 2px; animation: vue-entree 0.24s var(--glisse); }
+@media (prefers-reduced-motion: reduce) { #menu-vue-meteo .menu-contenu { animation: none; } }
+#menu-tiroir #menu-vue-activites .menu-ligne { padding-inline: 2px; font-size: 11.5px; letter-spacing: -0.01em; }
+
+/* ===== Fermer et réduire partout ; haut de l'écran sur téléphone (25 novembre 2026) ===== */
+/* Tiroir des onglets Préparer, Traces et Géographie : même en-tête que les panneaux Carte et Météo */
+#menu-tiroir .tiroir-entete { flex: none; padding: 6px 6px 6px 14px; border-bottom: 1px solid var(--bord); }
+#menu-tiroir .tiroir-icone { display: grid; place-items: center; color: var(--accent); }
+#menu-tiroir .tiroir-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#menu-tiroir.en-parametres .tiroir-entete { display: none; }
+/* Le titre de l'onglet suffit : celui de la rubrique ne garde que sa phrase d'aide */
+#menu-tiroir .menu-corps > .menu-vue > .menu-vue-entete h2 { display: none; }
+#menu-tiroir.reduit .menu-corps { display: none; }
+#menu-tiroir.reduit .tiroir-entete { border-bottom: 0; cursor: pointer; }
+#menu-tiroir.reduit .outil-rapide-reduire { color: var(--accent); }
+#menu-tiroir.reduit .outil-rapide-reduire svg { transform: rotate(180deg); }
+#menu-tiroir.reduit { bottom: auto; }
+body:has(#menu-tiroir.reduit)::before { content: none; }
+/* Paramètres : ligne de Traces sur téléphone seulement */
+
+/* Croix de la bande Explorer, en tête de bande */
+.bande-fermer {
+  display: grid; flex: none; place-items: center;
+  width: 44px; height: 60px; box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%); border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre-forte);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  color: var(--texte-2); cursor: pointer;
+}
+.bande-fermer:hover { color: var(--texte); border-color: var(--accent); }
+.bande-fermer svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+@media (max-width: 700px) {
+  #menu-tiroir.reduit { top: auto; max-height: none; }
+  /* Haut de l'écran : logo, champ de recherche, 2D/3D. Plus d'engrenage (Paramètres est dans Traces) */
+  #menu-parametres-bouton, body.onglets-masques #menu-parametres-bouton { display: none; }
+  #barre-haut, body.onglets-masques #barre-haut { left: 64px; right: 10px; }
+  #recherche, #recherche.ouverte, #recherche.avec-repere:not(.ouverte) {
+    position: relative; inset: auto; z-index: auto;
+    flex: 1 1 auto; width: auto; min-width: 0;
+  }
+  #recherche .rech-champ, #recherche:not(.ouverte) .rech-champ, #recherche.ouverte .rech-champ {
+    width: auto; height: 46px; padding: 0 4px; justify-content: flex-start; border-radius: 13px;
+  }
+  #recherche:not(.ouverte) input { display: block; min-width: 0; font-size: 15px; }
+  #recherche .rech-loupe { display: flex; }
+  /* Liste des résultats sur toute la largeur, sous la barre */
+  #recherche .rech-liste { position: fixed; top: calc(max(10px, env(safe-area-inset-top)) + 54px); right: 10px; left: 10px; }
+  /* Pendant une recherche, le 2D/3D s'efface pour laisser la place au champ */
+  #barre-haut:has(#recherche.ouverte) #bascule-mode { display: none; }
+}
+@media (max-width: 700px) {
+  /* Recherche ouverte : sa liste passe au-dessus des pastilles et de la colonne de droite */
+  #barre-haut:has(#recherche.ouverte) { z-index: 25; }
+  #barre-haut #recherche.ouverte { z-index: 25; }
+  body:has(#recherche.ouverte) .couches-actives { visibility: hidden; }
+}
+/* Tiroir réduit : sa barre en bas sur téléphone, et la carte retrouve tous ses boutons */
+@media (max-width: 700px) {
+  #menu-tiroir.ouvert.reduit { top: auto; bottom: 8px; max-height: none; }
+  body:has(#menu-tiroir.ouvert.reduit) #barre-haut { display: flex; }
+  body:has(#menu-tiroir.ouvert.reduit) #logo-onglets,
+  body:has(#menu-tiroir.ouvert.reduit) .outils-rapides,
+  body:has(#menu-tiroir.ouvert.reduit) .couches-actives,
+  body:has(#menu-tiroir.ouvert.reduit) .maplibregl-ctrl-bottom-left { visibility: visible; pointer-events: auto; }
+  body:has(#menu-tiroir.ouvert.reduit) .maplibregl-ctrl-top-right > .maplibregl-ctrl-group { display: block; }
+}
+@media (max-width: 700px) { body:has(#menu-tiroir.ouvert.reduit) #barre-haut { left: 64px; right: 10px; } }
+/* Bande Explorer : la première carte ne se colle plus au bord en défilant */
+.bande-onglet { scroll-padding-inline: 12px; overscroll-behavior-x: contain; touch-action: pan-x; }
+/* Carte d'un module allumé : liseré d'accent */
+.bande-carte.allumee { border-color: var(--accent); }
+/* Jeu en cours : la colonne de droite et les pastilles s'effacent aussi, le panneau du jeu garde sa croix */
+body.jeu-en-cours :is(.outils-rapides, .couches-actives, .maplibregl-ctrl-top-right, #logo-onglets) { display: none; }
+/* Colonne de droite sans Horizon : les feuilles du bas montent plus haut */
+@media (max-width: 700px) { .outil-rapide-panneau { max-height: calc(100% - 228px); } }
+body.jeu-en-cours #barre-haut { display: none; }
+
+/* Poignée des feuilles du bas : on peut les glisser (réduire, fermer, rouvrir) */
+@media (max-width: 700px) {
+  .outil-rapide-panneau > .outil-rapide-entete, #menu-tiroir > .tiroir-entete { position: relative; touch-action: none; }
+  .outil-rapide-panneau > .outil-rapide-entete::before, #menu-tiroir > .tiroir-entete::before {
+    position: absolute; top: 5px; left: 50%; width: 36px; height: 4px; border-radius: 2px;
+    background: color-mix(in srgb, var(--texte) 28%, transparent); content: ''; transform: translateX(-50%);
+  }
+}
+
+/* ===== Soleil et Lune plus compact sur téléphone (demande du propriétaire du 25 novembre 2026) ===== */
+/* Soleil, Lune et Visiter la Lune en tuiles, comme Météo */
+#menu-vue-ciel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+#menu-vue-ciel > :not(.menu-module, .ciel-visiter) { grid-column: 1 / -1; }
+#menu-vue-ciel > .menu-vue-entete { display: none; }
+#menu-vue-ciel .menu-module { display: contents; }
+.outil-rapide-panneau #menu-vue-ciel :is(.menu-module > .menu-ligne, .ciel-visiter) {
+  grid-row: 2;
+  flex-direction: column; justify-content: center; gap: 6px;
+  min-height: 74px; padding: 10px 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%);
+  border-radius: 14px; background: var(--surface-2); box-shadow: none;
+  font-size: 12px; line-height: 1.2; text-align: center;
+}
+.outil-rapide-panneau #menu-vue-ciel :is(.menu-ligne)::after { content: none; }
+.outil-rapide-panneau #menu-vue-ciel .menu-ligne > svg { width: 28px; height: 28px; padding: 5px; }
+.outil-rapide-panneau #menu-vue-ciel .ciel-visiter > img { width: 30px; height: 30px; border-radius: 8px; }
+.outil-rapide-panneau #menu-vue-ciel .menu-ligne.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); box-shadow: none; }
+#menu-vue-ciel .menu-contenu { grid-column: 1 / -1; padding: 4px 0 2px; animation: vue-entree 0.24s var(--glisse); }
+@media (max-width: 700px) {
+  #outil-rapide-panneau-ciel .ombres-jour { min-height: 0; }
+  #outil-rapide-panneau-ciel .ombres-jour-bouton,
+  #outil-rapide-panneau-ciel .ombres-jour-nom { height: 36px; min-height: 36px; }
+  #outil-rapide-panneau-ciel .ciel-lieu-bouton { min-height: 28px; }
+  /* Heure et « Maintenant » sur la même ligne, au-dessus d'une frise plus basse */
+  #outil-rapide-panneau-ciel .ombres-heure { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; }
+  #outil-rapide-panneau-ciel .ombres-heure > :not(.relief-entete, .ombres-reperes) { grid-column: 1 / -1; }
+  #outil-rapide-panneau-ciel .ombres-heure > .relief-entete { grid-row: 1; grid-column: 1; margin: 0; }
+  #outil-rapide-panneau-ciel .ombres-heure > .ombres-reperes { grid-row: 1; grid-column: 2; margin: 0; }
+  #outil-rapide-panneau-ciel .ombres-maintenant { min-height: 30px; padding: 0 12px; font-size: 12px; }
+  #outil-rapide-panneau-ciel .ciel-course { height: 54px; }
+  #outil-rapide-panneau-ciel .ombres-curseur { margin: 0; }
+  #outil-rapide-panneau-ciel .ciel-choix button { min-height: 32px; }
+  #outil-rapide-panneau-ciel .ciel-fuseau { display: none; }
+}
+/* Quitter la Lune : bien visible, avec son nom, même sur téléphone (demande du propriétaire du 25 novembre 2026) */
+.lune-visite .lune-visite-quitter { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 640px) {
+  .lune-visite .lune-visite-quitter { padding: 0 14px 0 10px; }
+  .lune-visite .lune-visite-quitter span { display: inline; }
+  .lune-visite .lune-recherche { flex: 1 1 0; }
+}
+
+/* Analyse du vent : lieu étudié et retour au point (demande du propriétaire du 25 novembre 2026) */
+.vent-lieu { display: flex; align-items: center; gap: 6px; margin: 6px 2px 0; color: var(--texte-2); font-size: 12px; }
+.vent-lieu[hidden] { display: none; }
+.vent-lieu svg { width: 15px; height: 15px; flex: none; fill: none; stroke: var(--accent); stroke-width: 1.8; }
+.vent-lieu span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texte); }
+.vent-zone-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Fond de carte : deux onglets sous la Carte Montis (25 novembre 2026) */
+.fond-parties { display: grid; grid-template-columns: 1fr 1fr; margin-top: 4px; }
+.fond-parties button { display: grid; justify-items: center; gap: 1px; min-height: 44px; padding: 4px 6px; }
+.fond-parties small { max-width: 100%; overflow: hidden; color: inherit; font-size: 11px; font-weight: 500; opacity: .75; text-overflow: ellipsis; white-space: nowrap; }
+.fond-parties small:empty { display: none; }
+.fond-partie[hidden] { display: none; }
+.fond-partie > .fond-groupe:first-child { margin-top: 14px; }
+.fond-partie .fond-onglets { margin-bottom: 8px; }
+.fond-partie[data-section="elements"] { padding-top: 6px; }
+
+/* Horizon et vue au sol : « Changer d'endroit », puis bandeau du choix sur la carte */
+.pano-choisir {
+  display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
+  border: 1px solid var(--accent); border-radius: 999px; background: var(--surface); color: var(--accent);
+  font: 600 13px var(--police); cursor: pointer;
+}
+.pano-choisir svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 640px) { .pano-choisir span { display: none; } .pano-choisir { padding: 0 10px; } }
+
+/* Soleil et Lune : la tuile de visite disparaît, la visite est en tête de la ligne Lune (25 novembre 2026) */
+#menu-vue-ciel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lune-panneau > .lune-visiter { margin: 0 0 12px; border: 1px solid var(--accent); background: var(--accent-doux); }
+.lune-panneau > .lune-visiter .lune-visiter-textes strong { color: var(--accent); }
+/* Éclairage du globe : posé sur la vue d'espace, sous la colonne de droite */
+.eclairage-globe {
+  position: absolute; z-index: 11; top: 178px; right: 10px; display: none; gap: 2px; padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%); border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre-forte);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+body.vue-espace:not(.jeu-en-cours, .eclairage-ferme) .eclairage-globe { display: flex; animation: bande-entree 0.25s var(--glisse); }
+body:has(#menu-tiroir.ouvert:not(.reduit), .outil-rapide-panneau:not([hidden], .reduit)) .eclairage-globe { display: none; }
+.eclairage-globe button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--texte-2); font: 600 12px var(--police); cursor: pointer; }
+.eclairage-globe button[aria-pressed='true'] { background: var(--accent); color: var(--accent-texte); }
+@media (min-width: 701px) { .eclairage-globe { top: 214px; right: 14px; } }
+
+/* Logo = Paramètres : l'engrenage du rail et de la barre du haut disparaît, un petit engrenage marque le logo */
+#menu-parametres-bouton, body #menu-parametres-bouton { display: none; }
+@media (min-width: 701px) { #barre-haut { left: 14px; } }
+#logo-onglets { overflow: visible; }
+#logo-onglets img { border-radius: 13px; }
+.logo-engrenage {
+  position: absolute; right: -4px; bottom: -4px; display: grid; width: 20px; height: 20px; place-items: center;
+  border: 1.5px solid var(--surface); border-radius: 50%; background: var(--accent); color: var(--accent-texte);
+}
+.logo-engrenage svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 700px) { #menu-tiroir .params-entete { position: relative; touch-action: none; } }
+
+/* Bulle d'éclairage de la Terre (25 novembre 2026) : titre, choix, croix ; sous la colonne de droite */
+.eclairage-globe { flex-direction: column; align-items: stretch; gap: 6px; width: 184px; padding: 8px 8px 8px 10px; border-radius: 14px; }
+.eclairage-titre { padding-right: 26px; color: var(--texte); font: 650 12px var(--police); }
+.eclairage-choix { display: flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--surface-2); }
+.eclairage-choix button { flex: 1; }
+.eclairage-globe .eclairage-fermer { position: absolute; top: 4px; right: 4px; display: grid; width: 28px; min-height: 28px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--texte-2); cursor: pointer; }
+.eclairage-globe .eclairage-fermer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+/* « Où veux-tu regarder ? » (Horizon et vue au sol, 25 novembre 2026) */
+.demande-lieu {
+  position: absolute; z-index: 45; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: grid; gap: 10px; width: min(360px, calc(100% - 24px)); box-sizing: border-box; padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte); font: 14px var(--police);
+  animation: bande-entree 0.25s var(--glisse);
+}
+.demande-lieu strong { font-size: 16px; }
+.demande-lieu p { margin: 0; color: var(--texte-2); font-size: 13px; line-height: 1.45; }
+.demande-lieu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.demande-lieu-actions button, .demande-lieu-annuler {
+  min-height: 44px; padding: 0 12px; border: 1px solid var(--bord); border-radius: 12px;
+  background: var(--surface-2); color: var(--texte); font: 600 13px var(--police); cursor: pointer;
+}
+.demande-lieu-carte { border-color: var(--accent) !important; background: var(--accent) !important; color: var(--accent-texte) !important; }
+.demande-lieu-annuler { min-height: 36px; border: 0; background: transparent; color: var(--texte-2); }
+/* Vue au sol : plus de panneau autour de la frise, seulement le jour et la frise (25 novembre 2026) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule :is(.ciel-lieu, .ciel-choix, .ciel-fuseau) { display: none; }
+
+/* ===== Icônes encadrées comme les logos (demande du propriétaire du 25 novembre 2026) ===== */
+/* Carré arrondi, contour cyan-magenta du logo, fond bleu nuit (blanc en thème clair), dessin blanc (bleu nuit en clair) */
+:root { --icone-fond: radial-gradient(circle at 50% 40%, #17234f, #0a1020); --icone-trait: #ffffff; }
+:root[data-theme='clair'] { --icone-fond: radial-gradient(circle at 50% 40%, #ffffff, #eef2fa); --icone-trait: #17234f; }
+.bande-icone,
+.menu-ligne:not(.menu-ligne-activite) > svg,
+#menu-tiroir .tiroir-icone {
+  box-sizing: border-box;
+  border: 1.5px solid transparent !important;
+  border-radius: 28% !important;
+  background: var(--icone-fond) padding-box, linear-gradient(135deg, #22d3ee, #c026d3) border-box !important;
+  color: var(--icone-trait) !important;
+}
+.bande-icone { display: grid; width: 40px; height: 40px; flex: none; place-items: center; }
+.bande-icone svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#menu-tiroir .tiroir-icone { width: 30px; height: 30px; }
+#menu-tiroir .tiroir-icone svg { width: 18px; height: 18px; }
+.menu-ligne.actif:not(.menu-ligne-activite) > svg { filter: none !important; }
+
+/* Vue au sol (25 novembre 2026) */
+/* Horizon n'est pas Soleil et Lune : ni astres, ni trajectoires dans sa vue (demande du propriétaire) */
+body.panorama-actif:not(.panorama-ciel) :is(.soleil-ciel, .lune-ciel, .soleil-ciel-trajets) { display: none !important; }
+
+/* Choix d'un endroit : repère fixe au centre et carte en bas (25 novembre 2026) */
+.choix-endroit-viseur { position: absolute; z-index: 30; left: 50%; top: 50%; width: 48px; height: 48px; margin: -48px 0 0 -24px; pointer-events: none; }
+.choix-endroit-viseur img { display: block; width: 48px; height: 48px; transition: transform .2s var(--glisse); filter: drop-shadow(0 4px 6px rgb(0 0 0 / .35)); }
+.choix-endroit-viseur i { position: absolute; left: 50%; bottom: -3px; width: 10px; height: 4px; margin-left: -5px; border-radius: 50%; background: rgb(0 0 0 / .35); }
+.choix-endroit-viseur.bouge img { transform: translateY(-10px); }
+.choix-endroit {
+  position: absolute; z-index: 45; left: 50%; bottom: 16px; transform: translateX(-50%);
+  display: grid; gap: 12px; width: min(380px, calc(100% - 24px)); box-sizing: border-box; padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte); font: 14px var(--police);
+  animation: bande-entree 0.25s var(--glisse);
+}
+.choix-endroit-textes { display: grid; gap: 3px; }
+.choix-endroit-textes strong { font-size: 15px; }
+.choix-endroit-textes small { color: var(--texte-2); font-size: 13px; line-height: 1.4; }
+.choix-endroit-actions { display: grid; grid-template-columns: auto 1fr; gap: 8px; }
+.choix-endroit-actions button { min-height: 44px; padding: 0 16px; border: 1px solid var(--bord); border-radius: 12px; background: var(--surface-2); color: var(--texte); font: 600 14px var(--police); cursor: pointer; }
+.choix-endroit-actions .choix-endroit-valider { border-color: var(--accent); background: var(--accent); color: var(--accent-texte); }
+/* Pendant le choix : rien d'autre sur la carte que la recherche */
+body.choix-endroit-actif :is(.bande-onglet, .couches-actives, .eclairage-globe) { display: none !important; }
+
+/* Réglages de partie : icône devant chaque rubrique et dans chaque choix, plus d'espace (25 novembre 2026) */
+.jeux-options .jeux-reglage { gap: 8px; margin-top: 4px; }
+.jeux-options .jeux-legende { display: inline-flex; align-items: center; gap: 7px; color: var(--texte); font-size: 12px; letter-spacing: .02em; text-transform: none; }
+.jeux-options .jeux-legende .jeux-ico { width: 18px; height: 18px; color: var(--accent); }
+.jeux-ico { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.jeux-options .segments button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; }
+.jeux-options .segments button .jeux-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Vue au sol : la frise du temps seule, sans le dessin de la course ; une poignée pour la replier d'un glissé (25 novembre 2026) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .ciel-course { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 14px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit)::before { position: absolute; top: 6px; left: 50%; width: 36px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--texte) 28%, transparent); content: ''; transform: translateX(-50%); }
+
+/* « Voir dans le ciel » seul dans Soleil et Lune : un bouton pleine largeur */
+.ciel-choix:has(.ciel-bouton-ciel[hidden]) { display: block; }
+.ciel-choix:has(.ciel-bouton-ciel[hidden]) .ciel-bouton-sol { width: 100%; }
+
+/* Vue au sol : frise compacte, toujours récupérable (demande du propriétaire du 25 novembre 2026). Pas de croix
+   (on quitte par celle de la vue), un bouton pour réduire, et la barre réduite pour la rouvrir */
+body.panorama-ciel #outil-rapide-panneau-ciel .outil-rapide-fermer { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete {
+  position: absolute; z-index: 2; top: 2px; right: 4px; display: flex; min-height: 0; padding: 0; border: 0; background: transparent;
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete .outil-rapide-titre { display: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire { width: 36px; min-height: 36px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 10px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-corps { padding-top: 0; padding-bottom: 6px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-right: 40px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule :is(.ombres-jour-bouton, .ombres-jour-nom) { height: 34px; min-height: 34px; font-size: 13px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-heure { margin-top: 6px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-maintenant { min-height: 28px; font-size: 12px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ciel-relief { margin: 4px 0 0; padding: 0; border: 0; font-size: 11px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue > :not(.ciel-entete) { display: none; }
+
+/* Zones de jeu : silhouette du continent derrière le nom, le contour de la Terre pour Monde */
+.jeux-zones button { position: relative; overflow: hidden; isolation: isolate; }
+.jeux-zone-forme { position: absolute; z-index: -1; inset: 3px 6px; width: calc(100% - 12px); height: calc(100% - 6px); fill: currentColor; opacity: .16; }
+.jeux-zone-forme.monde { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: .3; }
+.jeux-zones button.actif .jeux-zone-forme { opacity: .24; }
+
+/* ===== Paramètres accueillants (25 novembre 2026) : en-tête Montis, une carte par section, thèmes en vignettes ===== */
+.params-accueil {
+  display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--bord) 70%, var(--accent) 30%); border-radius: 18px;
+  background: radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), var(--surface-2);
+}
+.params-accueil img { width: 56px; height: 56px; flex: none; border-radius: 16px; }
+.params-accueil div { display: grid; gap: 2px; min-width: 0; }
+.params-accueil strong { font-size: 18px; letter-spacing: .02em; }
+.params-accueil small { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.params-accueil .params-accueil-version { font-size: 11px; opacity: .8; }
+#menu-tiroir .params-groupe {
+  margin: 0 0 12px; padding: 14px; border: 1px solid var(--bord); border-radius: 16px; background: var(--surface-2);
+}
+.params-groupe-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.params-groupe-tete h3 { margin: 0; color: var(--texte); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.params-icone { width: 34px !important; height: 34px !important; }
+.params-icone svg { width: 19px !important; height: 19px !important; }
+.params-themes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.params-theme {
+  display: grid; gap: 6px; justify-items: center; padding: 6px 4px 8px; border: 1.5px solid var(--bord); border-radius: 14px;
+  background: transparent; color: var(--texte); font: 600 12px var(--police); cursor: pointer;
+}
+.params-theme.actif { border-color: var(--accent); background: var(--accent-doux); color: var(--accent); }
+.params-theme-apercu { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 9px; box-shadow: inset 0 0 0 1px rgb(127 127 127 / .3); }
+.params-theme-apercu i { position: absolute; left: 12%; right: 12%; bottom: 0; height: 52%; border-radius: 6px 6px 0 0; }
+.params-theme-apercu b { position: absolute; left: 22%; bottom: 18%; width: 40%; height: 12%; border-radius: 4px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete::before { content: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ciel-entete { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .menu-vue { padding-bottom: 0; }
+
+/* Modes de jeu dans la DA des logos (25 novembre 2026) : carré bleu nuit, contour cyan-magenta, dessin blanc */
+.jeux-carte-icone, .jeux-carte-icone:is(.jeux-carte-drapeaux, .jeux-carte-capitales, .jeux-carte-liste, .jeux-carte-ou, .jeux-carte-revision, .jeux-carte-fiches) {
+  border: 1.5px solid transparent; border-radius: 28%; box-shadow: none;
+  background: var(--icone-fond) padding-box, linear-gradient(135deg, #22d3ee, #c026d3) border-box;
+}
+.jeux-carte-icone svg { stroke: var(--icone-trait); }
+.jeux-carte-icone .plein-c { fill: #22d3ee; stroke: none; }
+.jeux-carte-icone .plein-m { fill: #e040fb; stroke: none; opacity: .85; }
+.jeux-carte-icone .trait-c { stroke: #22d3ee; }
+
+/* Éditeur : ranger le parcours dans une activité ; Mes parcours : onglets par activité (25 novembre 2026) */
+.parcours-ranger { display: grid; gap: 6px; margin: 8px 0 4px; }
+.parcours-ranger[hidden] { display: none; }
+.parcours-ranger > span { color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.parcours-ranger .segments { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.parcours-ranger .segments button { min-height: 36px; font-size: 12.5px; }
+.traces-filtres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 8px 0 10px; }
+.traces-filtres button { display: grid; justify-items: center; gap: 1px; min-height: 44px; padding: 4px 2px; font-size: 12px; }
+.traces-filtres small { font-size: 11px; opacity: .75; }
+
+/* Bandes : flèche « encore » collée au bord droit tant que la bande déborde (25 novembre 2026) */
+.bande-suite {
+  position: sticky; right: 0; z-index: 2; display: none; flex: none; align-self: stretch; width: 44px; margin-left: -44px; padding: 0;
+  border: 0; border-radius: 0 16px 16px 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 92%, transparent) 55%);
+  color: var(--accent); cursor: pointer;
+}
+.bande-onglet.deborde .bande-suite { display: grid; place-items: center end; padding-right: 6px; }
+.bande-suite svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* En-tête du panneau Jeux : la même vignette que sa carte de Plus */
+#menu-tiroir .tiroir-icone.vignette { border: 0 !important; background: none !important; }
+#menu-tiroir .tiroir-icone.vignette img { width: 30px; height: 30px; display: block; }
+/* Vue au sol : la languette centrée en haut de la frise la réduit (remplace la barre de prise) */
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit)::before { content: none; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) > .outil-rapide-entete {
+  top: 0; right: auto; left: 50%; transform: translateX(-50%);
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire {
+  width: 64px; min-height: 22px; height: 22px; padding: 0; border-radius: 0 0 12px 12px;
+  background: color-mix(in srgb, var(--texte) 9%, transparent); color: var(--texte-2);
+}
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) .outil-rapide-reduire svg { width: 18px; height: 18px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule:not(.reduit) { padding-top: 24px; }
+body.panorama-ciel #outil-rapide-panneau-ciel.frise-seule .ombres-jour { margin-right: 0; }
+/* Flèche « encore » : pastille ronde sur un fondu franc, lisible au-dessus de la dernière carte */
+.bande-suite { width: 64px; margin-left: -64px; background: linear-gradient(90deg, transparent, var(--surface) 62%); }
+.bande-onglet.deborde .bande-suite { place-items: center end; padding-right: 4px; }
+.bande-suite svg { box-sizing: border-box; width: 34px; height: 34px; padding: 7px; border: 1px solid color-mix(in srgb, var(--bord) 60%, var(--accent) 40%); border-radius: 50%; background: var(--surface-2); box-shadow: var(--ombre); }
+/* En-tête de Soleil et Lune : la même vignette que sa carte de Plus */
+.outil-rapide-titre .outil-rapide-vignette { flex: none; width: 30px; height: 30px; display: block; }
+body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; height: 24px; }
+
+/* Fond de carte › Avancé (25 novembre 2026) : deux onglets en barre soulignée, fonds en groupes dépliables,
+   éléments de la carte sous des titres (plus de sous-onglets empilés) */
+.fond-parties { display: flex; gap: 0; margin: 2px 0 10px; padding: 0; border: 0; border-bottom: 1px solid var(--bord); background: none; border-radius: 0; }
+.fond-parties button {
+  flex: 1; display: block; min-height: 42px; margin-bottom: -1px; padding: 8px 6px; border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; background: none; color: var(--texte-2); font: 600 14px var(--police); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.fond-parties button:hover:not(.actif) { background: none; color: var(--texte); }
+.fond-parties button.actif { background: none; color: var(--accent); border-bottom-color: var(--accent); }
+.fond-contenu { display: grid; gap: 8px; margin-top: 12px; }
+.fond-section { border: 1px solid var(--bord); border-radius: 12px; overflow: hidden; }
+.fond-section.ouvert { background: color-mix(in srgb, var(--surface-2) 45%, transparent); }
+.fond-section-entete {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 12px 8px 14px;
+  border: 0; background: none; color: var(--texte); text-align: left; cursor: pointer;
+}
+.fond-section-entete:hover { background: var(--survol); }
+.fond-section-textes { display: grid; flex: 1; min-width: 0; gap: 1px; }
+.fond-section-nom { font: 600 15px var(--police); }
+.fond-section-textes small { color: var(--texte-2); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fond-section-nb {
+  flex: none; min-width: 26px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--texte) 8%, transparent);
+  color: var(--texte-2); font: 600 12px var(--police); text-align: center;
+}
+.fond-section-entete .fond-chevron { flex: none; width: 18px; height: 18px; fill: none; stroke: var(--texte-2); stroke-width: 2; transition: rotate .2s; }
+.fond-section-entete[aria-expanded="true"] .fond-chevron { rotate: 180deg; }
+.fond-section-corps { padding: 0 10px 10px; }
+.fond-section-corps > .note:first-child { margin-top: 0; }
+.elements-titre { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.elements-titre:first-child { margin-top: 4px; }
+.elements-titre small { color: var(--accent); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.elements-bloc { display: grid; }
+
+/* Barre d'onglets : courbes de niveau en filigrane, au dégradé du logo (demande du propriétaire du 25 novembre 2026).
+   Un masque porte le dessin : la couleur vient du dégradé, le thème clair l'éclaircit. */
+#barre-onglets::before {
+  position: absolute; inset: 0; z-index: 0; content: ''; pointer-events: none;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6 55%, #e040fb);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64' viewBox='0 0 240 64'%3E%3Cg fill='none' stroke='black' stroke-width='1.1'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 0 50% / auto 100% repeat-x;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64' viewBox='0 0 240 64'%3E%3Cg fill='none' stroke='black' stroke-width='1.1'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 0 50% / auto 100% repeat-x;
+  opacity: .16;
+}
+#barre-onglets .onglet.onglet { z-index: 1; }
+/* Un liseré dégradé sur le bord, du côté de la carte */
+#barre-onglets::after {
+  position: absolute; z-index: 1; content: ''; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, #22d3ee 55%, transparent) 25%, color-mix(in srgb, #e040fb 55%, transparent) 75%, transparent);
+}
+@media (max-width: 700px) {
+  #barre-onglets::after { top: -1px; left: 0; right: 0; height: 1px; }
+}
+@media (min-width: 701px) {
+  #barre-onglets::before {
+    background: linear-gradient(180deg, #22d3ee, #8b5cf6 55%, #e040fb);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='240' viewBox='0 0 64 240'%3E%3Cg fill='none' stroke='black' stroke-width='1.1' transform='matrix(0 1 1 0 0 0)'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 50% 0 / 100% auto repeat-y;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='240' viewBox='0 0 64 240'%3E%3Cg fill='none' stroke='black' stroke-width='1.1' transform='matrix(0 1 1 0 0 0)'%3E%3Cpath d='M0 7C40 3 80 11 120 7S200 11 240 7M0 19C40 13 80 25 120 19S200 25 240 19M0 31C40 24 80 38 120 31S200 38 240 31M0 44C40 38 80 50 120 44S200 50 240 44M0 56C40 52 80 60 120 56S200 60 240 56'/%3E%3C/g%3E%3C/svg%3E") 50% 0 / 100% auto repeat-y;
+  }
+  #barre-onglets::after { top: 0; bottom: 0; right: -1px; width: 1px; background: linear-gradient(180deg, transparent, color-mix(in srgb, #22d3ee 55%, transparent) 25%, color-mix(in srgb, #e040fb 55%, transparent) 75%, transparent); }
+}
+[data-theme='clair'] #barre-onglets::before { opacity: .3; }
+
+/* Onglet ouvert (demande du propriétaire du 25 novembre 2026 : ni trait violet, ni tuiles encadrées) :
+   une pilule derrière l'icône, au dégradé du logo, avec ses courbes de niveau ; le reste de la barre est uni */
+#barre-onglets::before { content: none; }
+#barre-onglets .onglet.onglet[aria-expanded='true'] { color: var(--accent); background: transparent; }
+#barre-onglets .onglet.onglet[aria-expanded='true']::before {
+  position: absolute; z-index: -1; left: 50%; width: 58px; height: 32px; border-radius: 16px; content: '';
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='34' viewBox='0 0 90 34'%3E%3Cpath d='M0 6C15 3 30 9 45 6S75 9 90 6M0 13C15 9 30 17 45 13S75 17 90 13M0 20C15 16 30 24 45 20S75 24 90 20M0 27C15 24 30 30 45 27S75 30 90 27' fill='none' stroke='%2322d3ee' stroke-opacity='.55' stroke-width='1'/%3E%3C/svg%3E") center / 90px 34px,
+    linear-gradient(120deg, color-mix(in srgb, #22d3ee 22%, transparent), color-mix(in srgb, #e040fb 22%, transparent));
+  transform: translateX(-50%);
+  animation: onglet-pilule 0.26s var(--glisse);
+}
+@keyframes onglet-pilule { from { opacity: 0; transform: translateX(-50%) scaleX(0.5); } }
+@media (max-width: 700px) {
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 3.5px; bottom: auto; height: 28px; border-radius: 14px; }
+}
+@media (min-width: 701px) {
+  #barre-onglets .onglet.onglet[aria-expanded='true'] { background: transparent; }
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { top: 8px; bottom: auto; height: 30px; border-radius: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #barre-onglets .onglet.onglet[aria-expanded='true']::before { animation: none; }
+}
+
+/* ===== Style « Nuit étoilée raffinée » (style B, choisi par le propriétaire le 25 novembre 2026) =====
+   Thème Montis : bleu nuit, un seul accent (le violet du logo), pas de néon ni de halo ; turquoise et
+   magenta restent dans les logos, les dégradés et les couleurs de données de la carte. */
+:root[data-theme='cyberpunk'] {
+  --surface: #0e1530;
+  --surface-2: #151d3e;
+  --survol: #1c2650;
+  --bord: #28325f;
+  --texte: #eef1fb;
+  --texte-2: #a5aed0;
+  --fond-tiroir: #121a38;
+  --accent-clair: #a494ff;
+  --accent-sombre: #a494ff;
+  --accent-texte: #0e1530;
+  --accent-doux: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  --ombre: 0 4px 16px rgba(3, 6, 20, 0.5);
+  --ombre-forte: 0 16px 44px rgba(3, 6, 20, 0.6);
+}
+:root[data-theme='cyberpunk'][data-accent='montis'] { --accent: #a494ff; }
+:root[data-accent='montis'] { --accent-clair: #6a4fd6; --accent-sombre: #a494ff; }
+:root[data-theme='cyberpunk'] #menu-tiroir {
+  background: linear-gradient(180deg, #131b3b, #0d1430);
+  box-shadow: 2px 0 28px rgba(3, 6, 20, 0.6);
+}
+:root[data-theme='cyberpunk'] .menu-logotype img,
+:root[data-theme='cyberpunk'] .menu-ligne.actif > svg { filter: none; }
+:root[data-theme='cyberpunk'] .menu-ligne > svg { border-color: var(--bord); background: var(--surface-2); }
+:root[data-theme='cyberpunk'] .menu-ligne.actif { box-shadow: inset 3px 0 0 var(--accent); }
+:root[data-theme='cyberpunk'] .menu-contenu :is(input, select, textarea) { background-color: #0b1128; }
+:root[data-theme='cyberpunk'] .menu-sous-titre { color: var(--texte-2); }
+
+/* Sélections discrètes : plus de pavé plein, un fond un peu plus clair et un fin contour d'accent */
+:root[data-theme='cyberpunk'] :is(.segments, .fond-onglets, .relief-bascule) button.actif {
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface-2));
+  color: var(--texte);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+:root[data-theme='cyberpunk'] .fond-item:has(input:checked) {
+  outline: 0;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+/* Le 2D/3D et l'action principale gardent l'accent plein : c'est le choix qu'on cherche des yeux */
+:root[data-theme='cyberpunk'] #bascule-mode button.actif { box-shadow: none; }
+
+/* Boutons secondaires : fond neutre, pas de contour coloré ; l'accent reste au bouton principal */
+:root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour) { border-color: transparent; background: var(--survol); }
+:root[data-theme='cyberpunk'] :is(.btn-secondaire, .params-retour):hover { border-color: transparent; background: color-mix(in srgb, var(--texte) 10%, var(--survol)); }
+
+/* Ordinateur : la bande d'un onglet devient une colonne le long du rail, de haut en bas (demande du
+   propriétaire du 25 novembre 2026 : la place y est, plus besoin de défiler sur le côté) */
+@keyframes bande-entree-gauche { from { opacity: 0; transform: translateX(-20px); } }
+@media (min-width: 701px) {
+  .bande-onglet {
+    top: 74px; right: auto; bottom: auto; left: 12px;
+    flex-direction: column; gap: 8px;
+    width: 264px; max-height: calc(100% - 96px);
+    overflow-x: hidden; overflow-y: auto; padding: 4px;
+    touch-action: pan-y; overscroll-behavior-y: contain;
+    animation: bande-entree-gauche 0.26s var(--glisse);
+  }
+  .bande-onglet .bande-carte { width: 100%; min-width: 0; height: 64px; }
+  .bande-onglet .bande-noms strong, .bande-onglet .bande-noms small { overflow: hidden; text-overflow: ellipsis; }
+  .bande-onglet .bande-fermer { align-self: flex-end; order: -1; width: 40px; height: 40px; border-radius: 12px; }
+  .bande-onglet .bande-suite { display: none !important; }
+  body.bande-ouverte .maplibregl-ctrl-bottom-right { margin-bottom: 0; }
+}
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) { .bande-onglet { animation: none; } }
+@media (min-width: 701px) {
+  /* De la place autour des cartes : sinon leur ombre, coupée par le défilement, dessinait un cadre gris */
+  .bande-onglet { left: 0; width: 292px; padding: 6px 16px 24px 12px; }
+  .bande-onglet :is(.bande-carte, .bande-fermer) { box-shadow: var(--ombre); }
+}
+
+/* Ordinateur : Carte, Météo et Soleil et Lune s'ouvrent comme Préparer, en feuille le long du rail
+   (demande du propriétaire du 25 novembre 2026 : tout du même côté, la carte libre à droite).
+   Réduits, ils gardent leur barre en bas à gauche. La vue au sol garde sa frise en bas. */
+@media (min-width: 701px) {
+  body:not(.panorama-ciel) .outil-rapide-panneau:not(.reduit) {
+    top: 0; right: auto; bottom: 0; left: 0;
+    width: min(352px, 88vw); max-height: none;
+    border-width: 0 1px 0 0; border-radius: 0;
+    box-shadow: 14px 0 42px rgba(3, 6, 20, 0.35);
+    animation: outil-feuille-gauche 0.22s var(--glisse);
+  }
+  body:not(.panorama-ciel) .outil-rapide-panneau.reduit {
+    top: auto; right: auto; bottom: 12px; left: 12px; width: 300px; max-height: none;
+  }
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) #barre-haut { left: calc(min(352px, 88vw) + 22px); }
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) .bande-onglet { display: none; }
+}
+@media (min-width: 780px) {
+  body:has(.outil-rapide-panneau:not([hidden], .reduit)):not(.panorama-ciel) .bf { left: 364px; }
+}
+@keyframes outil-feuille-gauche { from { opacity: 0; transform: translateX(-24px); } }
+@media (min-width: 701px) and (prefers-reduced-motion: reduce) { .outil-rapide-panneau { animation: none; } }
+
+/* En-tête des bandes : sur téléphone, la croix seule reste en tête de bande */
+.bande-tete { display: contents; }
+.bande-tete strong { display: none; }
+@media (min-width: 701px) {
+  /* Ordinateur : nom de l'onglet à gauche, croix à côté, sur une ligne au-dessus des cartes */
+  .bande-onglet .bande-tete {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    order: -1; min-height: 40px; padding: 0 2px 0 6px; flex: none;
+  }
+  .bande-onglet .bande-tete strong {
+    display: block; color: var(--texte); font: 650 15px var(--police);
+    text-shadow: 0 1px 6px rgba(3, 6, 20, 0.55);
+  }
+  .bande-onglet .bande-tete .bande-fermer {
+    align-self: auto; order: 0; width: 34px; height: 34px; border-radius: 10px;
+  }
+}
+@media (min-width: 701px) {
+  .bande-onglet .bande-tete {
+    min-height: 44px; padding: 4px 4px 4px 14px; box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--bord) 82%, var(--accent) 18%); border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 96%, transparent); box-shadow: var(--ombre);
+  }
+  .bande-onglet .bande-tete strong { text-shadow: none; }
+  .bande-onglet .bande-tete .bande-fermer { border: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .bande-onglet .bande-tete .bande-fermer:hover { background: var(--survol); }
+}
+
+/* Aide d'un graphique (aide.js) : petit « ? » discret à côté d'un titre, explication dépliée dessous */
+.aide-bouton {
+  display: inline-grid; flex: none; place-items: center; width: 20px; height: 20px; margin-left: 6px; padding: 0;
+  border: 1px solid color-mix(in srgb, var(--texte-2) 45%, transparent); border-radius: 50%;
+  background: transparent; color: var(--texte-2); font: 700 11.5px/1 var(--police); vertical-align: 1px; cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+/* Zone de toucher plus large que le dessin */
+.aide-bouton { position: relative; }
+.aide-bouton::after { position: absolute; inset: -12px; content: ''; }
+.aide-bouton:hover, .aide-bouton.actif { border-color: var(--accent); color: var(--accent); background: var(--accent-doux); }
+.aide-bulle {
+  position: relative; margin: 8px 0 10px; padding: 10px 36px 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--bord)); border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  color: var(--texte); font-size: 12.5px; line-height: 1.5;
+  animation: aide-entree .18s ease-out;
+}
+.aide-bulle p { margin: 0; }
+.aide-bulle p + p { margin-top: 6px; }
+.aide-fermer {
+  position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: 8px; background: transparent; color: var(--texte-2); cursor: pointer;
+}
+.aide-fermer:hover { background: var(--survol); color: var(--texte); }
+.aide-fermer svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.aide-titre { display: inline-flex; align-items: center; }
+@keyframes aide-entree { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .aide-bulle { animation: none; } }
+.aide-ligne { display: flex; align-items: center; gap: 0; }
+.aide-bulle p, .aide-bulle p:is(*) { color: var(--texte); font-size: 12.5px; }
+/* « ? » d'aide : icône au trait, sans pastille, alignée sur le titre ; l'accent au survol et ouverte */
+.aide-bouton {
+  width: 22px; height: 22px; margin-left: 5px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--texte-2); vertical-align: -5px;
+}
+.aide-bouton svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.aide-bouton .aide-point { fill: currentColor; stroke-width: 1.4; }
+.aide-bouton:hover, .aide-bouton.actif { border: 0; background: transparent; color: var(--accent); }
+.aide-bouton.actif svg circle:first-child { fill: var(--accent-doux); }
+
+/* « Montis en 20 secondes » (bienvenue.js) : carte au centre sur ordinateur, feuille en bas sur téléphone */
+.bienvenue-fond {
+  position: fixed; z-index: 60; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: rgba(3, 6, 20, 0.55); animation: bienvenue-fondu .25s ease-out;
+}
+.bienvenue-fond.sortie { opacity: 0; transition: opacity .2s ease; }
+.bienvenue {
+  box-sizing: border-box; width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
+  padding: 22px 22px 18px; border: 1px solid var(--bord); border-radius: 20px;
+  background: var(--surface); box-shadow: var(--ombre-forte); color: var(--texte);
+  animation: bienvenue-entree .32s var(--glisse);
+}
+.bienvenue-tete { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.bienvenue-tete img { width: 52px; height: 52px; flex: none; border-radius: 14px; }
+.bienvenue-tete h2 { margin: 0; font: 700 19px var(--police); }
+.bienvenue-accroche { margin: 3px 0 0; color: var(--texte-2); font-size: 13px; line-height: 1.4; }
+.bienvenue-onglets { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.bienvenue-onglets li { display: flex; align-items: center; gap: 12px; padding: 8px 6px; border-radius: 12px; }
+.bienvenue-onglets li + li { border-top: 1px solid color-mix(in srgb, var(--bord) 60%, transparent); border-radius: 0; }
+.bienvenue-icone {
+  display: grid; width: 38px; height: 38px; flex: none; place-items: center; box-sizing: border-box; border-radius: 11px;
+  border: 1px solid transparent;
+  background: linear-gradient(var(--surface-2), var(--surface-2)) padding-box, linear-gradient(135deg, #22d3ee, #8b5cf6 55%, #e040fb) border-box;
+  color: var(--texte);
+}
+.bienvenue-icone svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.bienvenue-onglets li > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.bienvenue-onglets strong { font: 650 14px var(--police); }
+.bienvenue-onglets small { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.bienvenue-astuce {
+  margin: 14px 0 16px; padding: 10px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); color: var(--texte); font-size: 12.5px; line-height: 1.45;
+}
+.bienvenue-ok {
+  display: block; width: 100%; min-height: 46px; border: 0; border-radius: 13px;
+  background: var(--accent); color: var(--accent-texte); font: 700 15px var(--police); cursor: pointer;
+}
+.bienvenue-ok:active { transform: scale(0.98); }
+@keyframes bienvenue-fondu { from { opacity: 0; } }
+@keyframes bienvenue-entree { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+@media (max-width: 700px) {
+  .bienvenue-fond { place-items: end stretch; padding: 0; }
+  .bienvenue { width: 100%; max-height: 92dvh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); border-width: 1px 0 0; border-radius: 22px 22px 0 0; }
+}
+@media (prefers-reduced-motion: reduce) { .bienvenue, .bienvenue-fond { animation: none; } }
+/* Paramètres : « Revoir la présentation » sous la version */
+.params-bienvenue {
+  justify-self: start; margin-top: 4px; padding: 0; border: 0; background: none;
+  color: var(--accent); font: 600 12.5px var(--police); text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+/* Bienvenue : chaque onglet se déplie sur ses sous-sections (une ligne à la fois) */
+.bienvenue-onglets > li { display: block; padding: 0; }
+.bienvenue-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 6px; border: 0; border-radius: 12px;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.bienvenue-ligne:hover { background: var(--survol); }
+.bienvenue-textes { display: grid; flex: 1; gap: 1px; min-width: 0; }
+.bienvenue-textes strong { font: 650 14px var(--police); }
+.bienvenue-textes small { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+.bienvenue-chevron { width: 18px; height: 18px; flex: none; fill: none; stroke: var(--texte-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: rotate .2s ease; }
+.bienvenue-onglets > li.ouvert .bienvenue-chevron { rotate: 180deg; stroke: var(--accent); }
+.bienvenue-onglets > li.ouvert .bienvenue-textes strong { color: var(--accent); }
+.bienvenue-sous {
+  display: grid; gap: 8px; margin: 2px 6px 10px 56px; padding: 2px 0 2px 12px; list-style: none;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: aide-entree .18s ease-out;
+}
+.bienvenue-sous[hidden] { display: none; }
+.bienvenue-sous li { display: grid; gap: 1px; padding: 0; border: 0 !important; }
+.bienvenue-sous b { font: 650 13px var(--police); color: var(--texte); }
+.bienvenue-sous span { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+
+/* Fiche d'une station ou d'un bike park sur téléphone : le nom prend toute la largeur (avant, coincé entre la
+   pastille et quatre boutons en visite, il se coupait lettre par lettre) ; les boutons passent dessous, à droite */
+@media (max-width: 700px) {
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete { flex-wrap: wrap; row-gap: 6px; }
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete > .rando-titres { flex: 1 1 calc(100% - 90px); min-width: 0; }
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete > button:first-of-type { margin-left: auto; }
+}
+/* Piste · Ski de rando : même segment que les autres (le bouton éteint gardait son propre cadre) */
+.ski-pratiques button:not(.actif) { border-color: transparent; background: transparent; box-shadow: none; }
+/* Position déjà autorisée : « Là où je suis » devient le choix principal, en premier */
+.demande-lieu.position-ici .demande-lieu-position { order: -1; border-color: var(--accent) !important; background: var(--accent) !important; color: var(--accent-texte) !important; }
+.demande-lieu.position-ici .demande-lieu-carte { border-color: var(--bord) !important; background: var(--surface-2) !important; color: var(--texte) !important; }

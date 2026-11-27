@@ -21,9 +21,10 @@ import { MINI_VENT, creerPastilleCouche, montrerCarte } from './couches-actives.
 import { dateHorsLigne, estHorsLigne, texteDonneesDu } from './hors-ligne.js';
 import { PALETTE_CARTE, cadranVent, couleurInterface, heureCourte, iconeVent, libellesPaliersVent, palierVent, paletteInterface, texteProvenance } from './vent-cadran.js';
 import { formatAltitude, formatDistance, formatVent, imperial, libelleVent, nombre, valeurVent } from './unites.js';
-import { surPreferences } from './preferences.js';
+import { langue, surPreferences } from './preferences.js';
 import { nomJour, t, ta, ti, tt, poser } from './i18n.js';
-import { erreurHttp, messageErreur } from './requete.js';
+import { erreurHttp, messageErreur, requete as requeteDelai } from './requete.js';
+import { altitudeRelief } from './relief-donnees.js';
 
 const API_VENT = 'https://api.open-meteo.com/v1/forecast';
 const SOURCE_VENT = 'vent-previsions';
@@ -173,9 +174,13 @@ export function creerCarteVent(map) {
       <input class="vent-temps-curseur" type="range" min="0" max="${ECHEANCE_MAX}" step="1" value="0" ${ta('aria-label', 'vent.echeance')}>
       <div class="vent-temps-reperes" aria-hidden="true">${tt('vent.maintenant')}<span>+12 h</span><span>+24 h</span><span>+36 h</span><span>+48 h</span></div>
     </div>
+    <p class="vent-lieu" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg><span data-vent-lieu></span></p>
     <div class="vent-zone-alerte" role="status" hidden>
       <p data-zone-message></p>
-      <button type="button" class="vent-zone-actualiser" ${ti('vent.actualiser')}>${t('vent.actualiser')}</button>
+      <div class="vent-zone-actions">
+        <button type="button" class="vent-zone-actualiser" ${ti('vent.actualiser')}>${t('vent.actualiser')}</button>
+        <button type="button" class="vent-zone-revenir" hidden ${ti('vent.revenir')}>${t('vent.revenir')}</button>
+      </div>
     </div>
     <section class="vent-vue-contenu" id="vent-vue-carte" role="tabpanel" aria-labelledby="vent-vue-carte-onglet">
       <div class="vent-resume" ${ta('aria-label', 'vent.resume')}>
@@ -259,6 +264,34 @@ export function creerCarteVent(map) {
   const alerteZone = panneau.querySelector('.vent-zone-alerte');
   const messageZone = panneau.querySelector('[data-zone-message]');
   const actualiserZone = panneau.querySelector('.vent-zone-actualiser');
+  const revenirZone = panneau.querySelector('.vent-zone-revenir');
+  const ligneLieu = panneau.querySelector('.vent-lieu');
+  const texteLieu = panneau.querySelector('[data-vent-lieu]');
+  // Point étudié (centre de la carte au chargement) : son nom, son code postal, son altitude
+  // (demande du propriétaire du 25 novembre 2026)
+  let pointEtude = null;
+  let requeteLieu = null;
+  async function nommerPointEtude(centre, zoom) {
+    pointEtude = { centre, zoom };
+    requeteLieu?.abort();
+    const controle = new AbortController();
+    requeteLieu = controle;
+    const parties = [];
+    const [lieu, alt] = await Promise.allSettled([
+      requeteDelai(`https://photon.komoot.io/reverse?${new URLSearchParams({ lat: centre.lat.toFixed(4), lon: centre.lng.toFixed(4), lang: langue() === 'en' ? 'en' : 'fr' })}`, { signal: controle.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(erreurHttp(r)))),
+      altitudeRelief(centre.lng, centre.lat),
+    ]);
+    if (requeteLieu !== controle) return;
+    const props = lieu.status === 'fulfilled' ? lieu.value?.features?.[0]?.properties ?? {} : {};
+    const nom = props.city ?? props.town ?? props.village ?? props.name;
+    if (nom) parties.push(nom);
+    if (props.postcode) parties.push(props.postcode);
+    if (alt.status === 'fulfilled' && Number.isFinite(alt.value)) parties.push(formatAltitude(alt.value));
+    if (!parties.length) parties.push(`${centre.lat.toFixed(3)}°, ${centre.lng.toFixed(3)}°`);
+    texteLieu.textContent = parties.join(' · ');
+    ligneLieu.hidden = false;
+  }
   const reglagesVolume = panneau.querySelector('.vent-volume-reglages');
   const aideVolume = () => t('vent.aide-volume');
   const cache = new Map();
@@ -633,6 +666,7 @@ export function creerCarteVent(map) {
     const message = actif && !enCours ? raisonActualiser() : '';
     messageZone.textContent = message;
     alerteZone.hidden = !message;
+    revenirZone.hidden = !message || !pointEtude || vueActive === 'profil';
   }
 
   // Demande à Open-Meteo les points absents du cache. Une seule requête et un seul
@@ -696,6 +730,7 @@ export function creerCarteVent(map) {
       const relief = await chargerRelief(centre, demi, grille, reponses);
       if (requete.signal.aborted || controleurProfil !== requete || !actif || vueActive !== 'volume') return;
       zoneVolumeCapturee = { centre, demi, grille, reponses, hauts, recue: dateEnregistree ?? Date.now() };
+      void nommerPointEtude(centre, map.getZoom());
       zoneVolume.textContent = `±${formatDistance(demi)}`;
       volume.definirRelief(relief);
       afficherEcheance();
@@ -910,6 +945,7 @@ export function creerCarteVent(map) {
       heureCourante = heureEcheance(reponses);
       if (!heureCourante) throw new Error(t('vent.aucune-prevision'));
       zoneCarteCapturee = { zoom: map.getZoom(), grille, recue: dateEnregistree ?? Date.now() };
+      void nommerPointEtude(map.getCenter(), map.getZoom());
       afficherDonnees(reponses, positions, heureCourante, grille);
       afficherEcheance();
     } catch (erreur) {
@@ -993,6 +1029,9 @@ export function creerCarteVent(map) {
     else void chargerVent();
   });
   map.on('moveend', mettreAJourAlerte);
+  revenirZone.addEventListener('click', () => {
+    if (pointEtude) map.flyTo({ center: pointEtude.centre, zoom: pointEtude.zoom, duration: 1200 });
+  });
   map.on('style.load', () => {
     if (!actif) return;
     assurerCouche();

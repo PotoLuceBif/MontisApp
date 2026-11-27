@@ -411,6 +411,14 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       if (event.key === 'Escape') ouvrirMenuFiltres(false);
     });
   }
+  // Demandé depuis Traces : comme un appui sur « Créer un parcours »
+  const cleCreation = `creer-parcours-${activite.id}`;
+  function reprendreCreation() {
+    if (actif && reprendre(cleCreation)) $('.parcours-creer').click();
+  }
+  window.addEventListener('montis:demande', (event) => {
+    if (event.detail === cleCreation) reprendreCreation();
+  });
   $('.parcours-creer').addEventListener('click', () => {
     annoncerOutilActivite();
     fermerMenu();
@@ -520,6 +528,7 @@ export function creerActiviteParcours(map, activite, { fermerMenu = () => {}, ou
       reprendreItineraire();
       reprendreParcours();
       reprendrePartage();
+      reprendreCreation();
     },
     desactiver() {
       actif = false;

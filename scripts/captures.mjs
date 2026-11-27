@@ -35,16 +35,23 @@ const clic = (selecteur) => (page) => page.evaluate((s) => document.querySelecto
 const module = (id) => async (page) => {
   await page.evaluate(async (id) => {
     const trouver = () => document.querySelector(`.menu-ligne[data-module="${id}"]`);
-    // Le menu peut ne se construire qu'à sa première ouverture
-    if (!trouver()) {
-      document.getElementById('menu-bouton')?.click();
-      await new Promise((fin) => setTimeout(fin, 400));
-    }
+    for (let i = 0; i < 20 && !trouver(); i++) await new Promise((fin) => setTimeout(fin, 200));
     const ligne = trouver();
     if (!ligne) throw new Error(`Module introuvable : ${id}`);
+    // Refonte en onglets : un panneau flottant s'ouvre par montis:ouvrir-module, le reste par sa carte de bande
     const flottant = ligne.closest('.outil-rapide-panneau');
-    if (flottant) document.getElementById(flottant.id.replace('panneau', 'bouton'))?.click();
-    else if (!document.getElementById('menu-bouton')?.matches('[aria-expanded="true"]')) document.getElementById('menu-bouton')?.click();
+    if (flottant) {
+      const categorie = flottant.id.replace('outil-rapide-panneau-', '');
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module: id } }));
+      return;
+    }
+    const carte = document.querySelector(`.bande-carte[data-carte="${id}"]`);
+    if (carte) {
+      carte.click();
+      return;
+    }
+    // Un jeu : la carte Jeux de Plus ouvre leur liste, puis on choisit le jeu
+    if (ligne.closest('#menu-vue-jeux')) document.querySelector('.bande-carte[data-carte="jeux"]')?.click();
     if (ligne.getAttribute('aria-pressed') !== 'true') ligne.click();
   }, id);
 };
@@ -151,12 +158,20 @@ const ZERMATT = { center: [7.75, 46.0], zoom: 12.5, bearing: 0, pitch: 0 };
 const ouvrirAvance = (section) => (page) => page.evaluate((section) => {
   const entete = document.querySelector('.fond-avance-entete');
   if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
-  document.querySelector(`.fond-avance [data-section="${section}"]`)?.scrollIntoView({ block: 'start' });
+  const onglet = document.querySelector(`.fond-parties [data-partie="${section}"]`);
+  onglet?.click();
+  onglet?.scrollIntoView({ block: 'start' });
 }, section);
 const elementsCarte = [module('fond'), ouvrirAvance('elements')];
 const ongletFond = (o) => async (page) => {
   await ouvrirAvance('fonds')(page);
-  await clic(`.fond-onglets [data-onglet="${o}"]`)(page);
+  // Groupe dépliable de « Autres fonds » (Ici, Monde, Pays, Anciennes)
+  await page.evaluate((g) => {
+    const entete = document.querySelector(`.fond-section[data-groupe="${g}"] .fond-section-entete`);
+    if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
+    document.querySelector(`.fond-section[data-groupe="${g}"]`)?.scrollIntoView({ block: 'start' });
+  }, o);
+  await page.waitForTimeout(300);
 };
 const choisirFond = (id) => async (page) => {
   await page.evaluate((i) => {
@@ -164,7 +179,11 @@ const choisirFond = (id) => async (page) => {
     if (!radio) {
       const entete = document.querySelector('.fond-avance-entete');
       if (entete?.getAttribute('aria-expanded') !== 'true') entete?.click();
-      document.querySelector('.fond-onglets [data-onglet="pays"]')?.click();
+      document.querySelector('.fond-parties [data-partie="fonds"]')?.click();
+      for (const g of ['monde', 'pays', 'anciennes']) {
+        const e = document.querySelector(`.fond-section[data-groupe="${g}"] .fond-section-entete[aria-expanded="false"]`);
+        e?.click();
+      }
       for (let ferme; (ferme = document.querySelector('.fond-pays-entete[aria-expanded="false"]'));) ferme.click();
       radio = document.querySelector(`.fond-contenu input[name="fond"][value="${i}"]`);
     }
@@ -246,19 +265,25 @@ function attendreHorizon() {
 }
 const ouvrirPanorama = [
   // Après plusieurs panoramas, les serveurs de tuiles ralentissent : le menu peut tarder
-  (p) => p.waitForSelector('#outil-rapide-bouton-panorama', { state: 'attached', timeout: 60000 }),
-  clic('#outil-rapide-bouton-panorama'),
+  (p) => p.waitForSelector('#onglet-explorer', { state: 'attached', timeout: 60000 }),
+  clic('#onglet-explorer'),
+  clic('.bande-carte[data-carte="horizon"]'),
+  // Toujours la question « Où veux-tu regarder ? » : position déjà autorisée, « Là où je suis »
+  attendre('.demande-lieu'),
+  clic('.demande-lieu-position'),
   ...attendreHorizon(),
 ];
 // Vue au sol de Soleil et Lune, à une heure de la frise (minutes depuis minuit)
 const VUE_EMBRUN = '#vue=12/44.5644/6.4954/0/0';
 const ouvrirCielSol = (minutes) => [
-  (p) => p.waitForSelector('#outil-rapide-bouton-ciel', { state: 'attached', timeout: 60000 }),
-  clic('#outil-rapide-bouton-ciel'),
+  (p) => p.waitForSelector('#onglet-explorer', { state: 'attached', timeout: 60000 }),
+  (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))),
   attendre('.ciel-course'),
   heureOmbres(minutes),
   (p) => p.waitForTimeout(600),
   clic('.ciel-bouton-sol'),
+  attendre('.demande-lieu'),
+  clic('.demande-lieu-position'),
   // Relief (25 tuiles) et crêtes : long avec le rendu logiciel des captures et un réseau lent
   (p) => attendreSur(p, () => document.querySelector('.ciel-relief') && !document.querySelector('.ciel-relief').hidden, null, 150000),
   (p) => p.waitForTimeout(6000),
@@ -380,6 +405,9 @@ const clavierSimule = async (p) => {
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
+  // « Montis en 20 secondes », au premier lancement
+  { nom: 'bienvenue', bienvenue: true, actions: [attendre('.bienvenue'), (p) => p.waitForTimeout(600)] },
+  { nom: 'bienvenue-deplie', bienvenue: true, actions: [attendre('.bienvenue'), clic('.bienvenue-onglets > li:nth-child(2) .bienvenue-ligne'), (p) => p.waitForTimeout(600)] },
   // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
   { nom: 'fond-massif', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-vallee', actions: [vue(MATIN), (p) => p.waitForTimeout(5000)] },
@@ -412,7 +440,10 @@ const ECRANS = [
   { nom: 'fond-batiments-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.87, 45.92], zoom: 15, pitch: 60, bearing: 140 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'fond-3d', actions: [clic('#bascule-mode [data-mode="3d"]'), (p) => p.waitForTimeout(1200), vue({ center: [6.9, 45.9], zoom: 12.4, pitch: 62, bearing: 160 }), (p) => p.waitForTimeout(7000)] },
   { nom: 'menu', actions: [clic('#menu-bouton')] },
-  { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#menu-parametres-bouton')] },
+  // Refonte du 25 novembre 2026 : onglets Traces et Explorer
+  { nom: 'onglet-traces', actions: [clic('#onglet-traces')] },
+  { nom: 'onglet-explorer', actions: [clic('#onglet-explorer')] },
+  { nom: 'parametres', actions: [clic('#menu-bouton'), clic('#logo-onglets')] },
   { nom: 'parapente', actions: [module('parapente')] },
   // Balises OpenWindMap et FFVL réunies, terrains FFVL (réseau requis : api.pioupiou.fr, data.gouv.fr)
   { nom: 'parapente-sites', actions: [...SITES] },
@@ -464,6 +495,7 @@ const ECRANS = [
   { nom: 'ski-rando-creer', actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.parcours-creer'), clic('.ski-activite .parcours-creer'), (p) => p.waitForTimeout(2500)] },
   // Retour à la piste : les pentes allumées par le ski de rando s'éteignent
   // Bulletin détaillé déplié, avec le bulletin d'hiver de Météo-France (option bulletin)
+  { nom: 'ski-rando-bulletin-aide', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), attendre('.bulletin-orientations .aide-bouton'), clic('.bulletin-orientations .aide-bouton'), (p) => p.waitForTimeout(800), defiler('.bulletin-orientations')] },
   { nom: 'ski-rando-bulletin', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.skirando-bulletin-bouton')] },
   { nom: 'ski-rando-bulletin-suite', bulletin: true, actions: [vue(ARGENTIERE), module('ski'), attendre('.ski-pratiques'), clic('.ski-pratiques [data-pratique="skirando"]'), attendre('.skirando-bulletin-bouton:not([hidden])'), clic('.skirando-bulletin-bouton'), (p) => p.waitForTimeout(4000), defiler('.bulletin-texte')] },
   // Pentes du bulletin sur la carte : orientations et altitudes du bulletin d'hiver, panneau fermé
@@ -494,6 +526,9 @@ const ECRANS = [
   { nom: 'meteo-vent', actions: [module('vent')] },
   // Profil heure par heure (lot 3.5) : vent par altitude, thermiques, cumulus (prévisions simulées)
   { nom: 'meteo-vent-profil', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), (p) => p.waitForTimeout(3000)] },
+  // Aide « ? » du profil ouverte
+  { nom: 'meteo-vent-profil-aide', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil .aide-bouton'), clic('.vent-profil .aide-bouton'), (p) => p.waitForTimeout(800), defiler('.vent-profil-entete')] },
+  { nom: 'parapente-plafonds-aide', simuler: true, actions: [module('parapente'), attendre('[data-para-vue="plafonds"]'), clic('[data-para-vue="plafonds"]'), attendre('.plafonds .aide-bouton'), clic('.plafonds .aide-bouton'), (p) => p.waitForTimeout(800), defiler('.plafonds-legende')] },
   // Volume 3D jusqu'à 10 000 m et profil jusqu'à 10 000 m
   { nom: 'meteo-vent-volume-10000', simuler: true, actions: [module('vent'), attendre('#vent-vue-volume-onglet'), clic('#vent-vue-volume-onglet'), (p) => p.waitForTimeout(2000), clic('input[name="vent-volume-plafond"][value="10000"]'), (p) => p.waitForTimeout(5000)] },
   { nom: 'meteo-vent-profil-haut', simuler: true, actions: [module('vent'), attendre('#vent-vue-profil-onglet'), clic('#vent-vue-profil-onglet'), attendre('.vent-profil-zone'), clic('.vent-profil-haut'), (p) => p.waitForTimeout(1500), defiler('.vent-profil-entete')] },
@@ -514,7 +549,6 @@ const ECRANS = [
   { nom: 'carte-fond-anciennes', actions: [module('fond'), ongletFond('anciennes')] },
   { nom: 'carte-fond-ici-suisse', actions: [vue(ZERMATT), module('fond'), ongletFond('ici')] },
   // Bâtiments, eaux et voies ferrées : sans pastille sur le fond Montis, avec sur les autres, rallumés en revenant au fond Montis
-  { nom: 'carte-fond-elements-onglet', actions: [...elementsCarte, clic('.elements-onglets button:nth-child(3)')] },
   { nom: 'carte-fond-elements-autre', actions: [module('fond'), choisirFond('osm'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-elements-retour', actions: [...elementsCarte, (p) => p.evaluate(() => { for (const l of document.querySelectorAll('.option-case')) if (/Bâtiments/.test(l.textContent)) { const c = l.querySelector('input'); if (c.checked) c.click(); } }), clic('#outil-rapide-panneau-carte .outil-rapide-fermer'), module('fond'), choisirFond('osm'), choisirFond('montis'), fermerCarte, (p) => p.waitForTimeout(2500)] },
   { nom: 'carte-fond-swisstopo', actions: [vue(ZERMATT), module('fond'), choisirFond('swisstopo'), fermerCarte, (p) => p.waitForTimeout(4000)] },
@@ -676,7 +710,7 @@ const ECRANS = [
   // Voies ferrées et gares (Carte › Éléments de la carte › Construit), en gare de Chamonix ; puis sur le satellite
   {
     nom: 'carte-gares',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte,
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -684,7 +718,7 @@ const ECRANS = [
   },
   {
     nom: 'carte-gares-satellite',
-    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte, clicVisible('.elements-onglets button:last-child'),
+    actions: [vue({ center: [6.871, 45.924], zoom: 14, bearing: 0, pitch: 0 }), ...elementsCarte,
       (p) => p.evaluate(() => {
         const case_ = [...document.querySelectorAll('.option-case')].find((l) => /Gares|Stations/i.test(l.textContent))?.querySelector('input');
         if (case_ && !case_.checked) case_.click();
@@ -732,11 +766,11 @@ const ECRANS = [
   },
   { nom: 'ciel-ombres-nuit', actions: [vue(MATIN), module('ombres'), clic('.relief-ombres .astre-option'), heureOmbres(23 * 60), (p) => p.waitForTimeout(1500), defiler('.relief-ombres')] },
   // Rubrique Soleil et Lune (lot 4.7) : frise commune (course du soleil et de la Lune), lignes Soleil et Lune
-  { nom: 'ciel', actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
+  { nom: 'ciel', actions: [vue(MATIN), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(11 * 60), (p) => p.waitForTimeout(1500)] },
   // Lieu choisi par la recherche : la carte y va, les heures passent au fuseau du lieu
   {
     nom: 'ciel-lieu',
-    actions: [vue(MATIN), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
+    actions: [vue(MATIN), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-lieu-bouton'), (p) => p.waitForTimeout(800), clic('.ciel-lieu-bouton'),
       async (page) => {
         await page.fill('.ciel-lieu-champ', 'Tokyo');
         await page.waitForSelector('.ciel-lieu-liste .rando-item', { timeout: 15000 }).catch(() => {});
@@ -751,22 +785,22 @@ const ECRANS = [
   { nom: 'ciel-lune-jour', actions: [vue(MATIN), module('lune'), attendre('.lunaison-phase'), heureOmbres(11 * 60), JOUR_LUNE, (p) => p.waitForTimeout(800), clic('.lunaison-pas[data-pas="1"]'), (p) => p.waitForTimeout(800), defiler('.lunaison')] },
   // « Au sol » : vue au sol au lieu de Soleil et Lune, trajectoires du jour, vrai lever derrière le relief
   // (demande du propriétaire du 24 novembre 2026). Près d'Embrun : la crête cache le soleil jusqu'à 8h48
-  { nom: 'ciel-sol', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60)] },
-  { nom: 'ciel-sol-nuit', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(18 * 60 + 50)] },
+  { nom: 'ciel-sol', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(11 * 60)] },
+  { nom: 'ciel-sol-nuit', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(18 * 60 + 50)] },
   // Le titre du panneau déplie le reste de Soleil et Lune
-  { nom: 'ciel-sol-deplie', lien: VUE_EMBRUN, actions: [...ouvrirCielSol(11 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-titre'), (p) => p.waitForTimeout(800)] },
+  { nom: 'ciel-sol-deplie', lien: VUE_EMBRUN, position: [6.4954, 44.5644], actions: [...ouvrirCielSol(11 * 60), clic('#outil-rapide-panneau-ciel .outil-rapide-titre'), (p) => p.waitForTimeout(800)] },
   // « Voir dans le ciel » sans l'ombre, vue 3D telle qu'elle est : la Lune basse au sud-ouest et sa trajectoire du
   // jour (16 novembre 2026, 22 h 40 ; trajectoires ajoutées le 24 novembre 2026)
   {
     nom: 'ciel-lune-3d',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-bouton-ciel'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 12.6, pitch: 82, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
   // Même option au dézoom (zoom 7, globe) : le ciel 3D prend le relais du ciel du globe
   {
     nom: 'ciel-lune-3d-dezoom',
-    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), clic('#outil-rapide-bouton-ciel'), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
+    actions: [vue(MATIN), clic('.relief-bascule [data-mode="3d"]'), (p) => p.evaluate(() => window.dispatchEvent(new Event('montis:ouvrir-ciel'))), attendre('.ciel-course'), heureOmbres(22 * 60 + 40), JOUR_LUNE,
       clic('.ciel-bouton-ciel'), clic('#outil-rapide-panneau-ciel .outil-rapide-fermer'),
       (p) => p.waitForTimeout(1200), vue({ center: [6.86, 45.9], zoom: 7, pitch: 80, bearing: 233 }), (p) => p.waitForTimeout(5000)],
   },
@@ -939,7 +973,7 @@ const ECRANS = [
   { nom: 'point-geologie', simuler: true, actions: [vue(MATIN), appuiLong(0.5, 0.42), (p) => p.waitForTimeout(3000), defiler('.point-prudence')] },
   { nom: 'point-frise', simuler: true, actions: [appuiLong(0.5, 0.42), defiler('.point-frise')] },
   // Partage par lien (lot 4.5) : boutons, lien copié, liens reçus
-  { nom: 'partage-menu', actions: [clic('#menu-bouton'), defiler('.menu-partage'), clic('.menu-partage .menu-ligne')] },
+  { nom: 'partage-menu', actions: [clic('#outil-rapide-bouton-carte'), clic('.bande-carte[data-carte="partage"]')] },
   { nom: 'partage-point', simuler: true, actions: [appuiLong(0.5, 0.42), attendre('.point-partager'), defiler('.point-partager'), clic('.point-partager')] },
   { nom: 'partage-lien-point', simuler: true, lien: '#point=45.92/6.87&z=14', actions: [attendre('.point-partager')] },
   { nom: 'partage-lien-vue', lien: '#vue=13.5/45.9/6.88/40/60&3d=1', actions: [] },
@@ -954,6 +988,10 @@ const ECRANS = [
   { nom: 'guidage-resume', lien: `#${LIEN_PARCOURS}`, position: tracePartage[22], actions: [attendre('.parcours-demarrer:not([hidden])'), (p) => p.evaluate(([lng, lat]) => { const t0 = Date.now() - 6000000; localStorage.setItem('montis.guidage-trace', JSON.stringify({ nom: 'Tour du lac · 17 nov.', debut: t0, segments: [[[t0, lng - 0.035, lat - 0.012, 1380], [t0 + 1800000, lng - 0.025, lat - 0.007, 1450], [t0 + 3600000, lng - 0.015, lat - 0.004, 1620]], [[t0 + 5400000, lng - 0.005, lat - 0.002, 1700], [t0 + 5900000, lng, lat, 1760]]] })); }, tracePartage[22]), clic('.parcours-demarrer'), attendre('.dialogue'), (p) => p.waitForTimeout(600), clic('.dialogue .para-bouton-principal'), (p) => p.waitForTimeout(2500), clic('.guidage-arreter'), attendre('.dialogue'), (p) => p.waitForTimeout(800)] },
   // Panorama des sommets (lot 4.1) : depuis le Brévent, face au Mont Blanc ; boussole et caméra simulées
   { nom: 'panorama', lien: VUE_BREVENT, position: BREVENT, actions: ouvrirPanorama },
+  // Sans position connue : Horizon demande où regarder, puis le repère central (25 novembre 2026)
+  { nom: 'horizon-question', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu')] },
+  { nom: 'horizon-question-ici', lien: VUE_BREVENT, position: BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu')] },
+  { nom: 'horizon-repere', lien: VUE_BREVENT, actions: [clic('#onglet-explorer'), clic('.bande-carte[data-carte="horizon"]'), attendre('.demande-lieu'), clic('.demande-lieu-carte'), attendre('.choix-endroit')] },
   { nom: 'panorama-boussole', lien: VUE_BREVENT, position: BREVENT, actions: [...ouvrirPanorama, boussoleSimulee(150, 5), (p) => p.waitForTimeout(1500), glisserPanorama(-60, 0), (p) => p.waitForTimeout(2500)] },
   { nom: 'panorama-camera', lien: VUE_BREVENT, position: BREVENT, actions: [cameraSimulee, ...ouvrirPanorama, boussoleSimulee(150, 3), (p) => p.waitForTimeout(1000), clic('.pano-modes [data-mode="camera"]'), (p) => p.waitForTimeout(5000)] },
   // « Voir l'horizon d'ici » depuis la fiche d'un point (sans position : le point choisi)
@@ -1147,7 +1185,7 @@ const ECRANS = [
   { nom: 'jeux-fiche-voisin', actions: [module('quiz-pays'), attendre('.jeux-zones small:not(:empty)'), clic('.jeux-carte[data-mode="fiches"]'), attendre('.jeux-fiche-ligne'), clic('[data-choix="zoneFiches"] [data-valeur="europe"]'), clic('.jeux-fiche-ligne[data-code="CH"]'), attendre('.bf-jeu .jeux-voisin'), clic('.bf-jeu .jeux-voisin[data-code="LI"]'), (p) => p.waitForTimeout(3000)] },
   {
     nom: 'combine-parcours-carte-fermee',
-    actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#outil-rapide-panneau-carte .outil-rapide-fermer')],
+    actions: [module('rando'), clic('.parcours-creer'), clic('#outil-rapide-bouton-carte'), clic('#bande-carte .bande-fermer')],
   },
 ];
 // Informations d'un astre du ciel : Soleil et Lune ouvert, la frise ne montre que cet astre
@@ -1177,7 +1215,7 @@ const RESSEMBLE_AU_FRANCAIS = /[éèêàùç]|\b(le|la|les|des|du|une|aucun|pour
 
 async function main() {
   const filtres = process.argv.slice(2);
-  const ecrans = filtres.length ? ECRANS.filter((e) => filtres.some((f) => e.nom.includes(f))) : ECRANS;
+  const ecrans = filtres.length ? ECRANS.filter((e) => filtres.some((f) => (f.startsWith('=') ? e.nom === f.slice(1) : e.nom.includes(f)))) : ECRANS;
 
   rmSync(DOSSIER, { recursive: true, force: true });
   mkdirSync(DOSSIER, { recursive: true });
@@ -1202,7 +1240,7 @@ async function main() {
         // Pas de feuille de partage du système : le lien est copié, ce qui se voit sur la capture
         await contexte.addInitScript(() => { delete Navigator.prototype.share; });
         // Fond de jour par défaut : en Auto, une série lancée le soir passerait tout en nuit
-        await contexte.addInitScript((mode) => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': mode })), ecran.fond ?? 'jour');
+        await contexte.addInitScript(([mode, vue]) => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': mode, 'bienvenue-vue': vue })), [ecran.fond ?? 'jour', !ecran.bienvenue]);
         const page = await contexte.newPage();
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));

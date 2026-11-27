@@ -14,6 +14,11 @@ import { poser, poserAttribut, surLangue, t, ta, ti } from './i18n.js';
 import { etat as etatCarte } from './options-carte.js';
 import { fragmentVue } from './partage-calcul.js';
 import { partagerLien } from './partage.js';
+import { visiterLaLune } from './lune-bulle.js';
+import { deposer } from './demandes.js';
+import { getMoonIllumination, getTimes } from 'suncalc';
+import { fixerPleinJour, pleinJour } from './heure-espace.js';
+import { suivreGlisse } from './geste-feuille.js';
 
 const ICONES_MENU = {
   activites: '<path d="m3 20 7-13 4 7 3-4 4 10H3Z"/><path d="m8 20 4-7 4 7"/>',
@@ -29,15 +34,23 @@ const ICONES_MENU = {
   courbes: '<path d="M4 19c4-5 12-5 16 0M3 14c5-6 13-6 18 0M5 9c4-4 10-4 14 0"/>',
   nature: '<path d="M3 7c3-2 6 2 9 0s6-2 9 0M3 12c3-2 6 2 9 0s6-2 9 0M3 17c3-2 6 2 9 0s6-2 9 0"/>',
   elements: '<path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/>',
-  reglages: '<path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.8 1.8 0 0 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .8v.2a1.8 1.8 0 0 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.8l-.1.1a1.8 1.8 0 0 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.8-3h-.2a1.8 1.8 0 0 1 0-3.6h.2a1.8 1.8 0 0 0 .8-3l-.1-.1a1.8 1.8 0 0 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.8v-.2a1.8 1.8 0 0 1 3.6 0v.2a1.8 1.8 0 0 0 3 .8l.1-.1a1.8 1.8 0 0 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .8 3h.2a1.8 1.8 0 0 1 0 3.6h-.2a1.8 1.8 0 0 0-.8 3Z"/>',
+  reglages: '<path d="M10.3 4.3c.4-1.8 3-1.8 3.4 0a1.7 1.7 0 0 0 2.5 1.1c1.6-.9 3.3.8 2.4 2.4a1.7 1.7 0 0 0 1 2.5c1.8.4 1.8 3 0 3.4a1.7 1.7 0 0 0-1 2.5c.9 1.6-.8 3.3-2.4 2.4a1.7 1.7 0 0 0-2.5 1c-.4 1.8-3 1.8-3.4 0a1.7 1.7 0 0 0-2.5-1c-1.6.9-3.3-.8-2.4-2.4a1.7 1.7 0 0 0-1-2.5c-1.8-.4-1.8-3 0-3.4a1.7 1.7 0 0 0 1-2.5c-.9-1.6.8-3.3 2.4-2.4 1 .6 2.3.1 2.5-1.1Z"/><circle cx="12" cy="12" r="3"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   partage: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
   'hors-ligne': '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
-  sorties: '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-1a3 3 0 0 1 0-6H18"/><path d="M18 3v7l3-1.75L18 6.5"/>',
+  sorties: '<path d="M12 8v4l2 2"/><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"/>',
   parcours: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h7.5a3.5 3.5 0 0 1 0 7h-7a3.5 3.5 0 0 0 0 7H16" stroke-dasharray="2 2.5"/>',
   jeux: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r="1"/><circle cx="18" cy="13.8" r="1"/>',
   panorama: '<path d="M2 20h20"/><path d="m4 20 5-8 3 4 3-5 5 9"/><path d="M5 7.5a10 10 0 0 1 14 0"/><path d="M12 4.5v1.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3Z"/>',
+  // Onglets : dessins de la maquette choisie par le propriétaire (25 novembre 2026)
+  'onglet-carte': '<path d="m3 7 6-3 6 3 6-3v13l-6 3-6-3-6 3V7Z"/><path d="M9 4v13M15 7v13"/>',
+  'onglet-preparer': '<path d="M2.5 20 9.5 8.5l3.6 5.6 2.6-3.6L21.5 20h-19Z"/><path d="m7.4 12 2.1 1.6 1.7-1.5"/><circle cx="18" cy="5" r="1.8"/>',
+  'onglet-meteo': '<path d="M6.7 18C4 18 2 16 2 13.5S4 9 6.7 9c.4-1.8 1.8-3.2 3.6-3.8 1.9-.6 4-.2 5.5 1 1.5 1.2 2.1 3 1.8 4.8h1c1.9 0 3.4 1.6 3.4 3.5S20.5 18 18.6 18H6.7Z"/>',
+  'onglet-traces': '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M12 19h4.5a3.5 3.5 0 0 0 0-7h-8a3.5 3.5 0 0 1 0-7H12"/>',
+  'onglet-explorer': '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>',
+  position: '<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
+  'creer-parcours': '<circle cx="5.5" cy="18.5" r="2"/><path d="M7.5 18.5h4a3.5 3.5 0 0 0 0-7h-4a3.5 3.5 0 0 1 0-7h2"/><path d="M18 4v7M14.5 7.5h7"/>',
   generic: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8m-4-4h8"/>',
 };
 
@@ -110,17 +123,34 @@ export function initMenu(map) {
     import('./carte-vent.js').then((m) => m.creerCarteVent(map))
   );
 
-  // ---------- Bouton et tiroir ----------
-  const bouton = document.createElement('button');
-  bouton.id = 'menu-bouton';
-  bouton.type = 'button';
-  bouton.setAttribute('aria-controls', 'menu-tiroir');
-  bouton.setAttribute('aria-expanded', 'false');
-  bouton.innerHTML = `
-    <img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" />
-  `;
+  // ---------- Onglets (refonte du 25 novembre 2026) : barre du bas sur téléphone, rail à gauche sur ordinateur ----------
+  // Carte et Météo sont les boutons de leurs panneaux flottants ; Préparer, Traces et Explorer ouvrent le tiroir
+  // sur une seule de ses rubriques. Préparer garde l'identifiant de l'ancien bouton du menu (#menu-bouton).
+  const barreOnglets = document.createElement('nav');
+  barreOnglets.id = 'barre-onglets';
+  poserAttribut(barreOnglets, 'aria-label', 'onglets.titre');
+  const creerOnglet = (id, icone, cle) => {
+    const onglet = document.createElement('button');
+    onglet.id = id;
+    onglet.type = 'button';
+    onglet.className = 'onglet';
+    onglet.setAttribute('aria-controls', 'menu-tiroir');
+    onglet.setAttribute('aria-expanded', 'false');
+    onglet.innerHTML = `${creerIconeMenu(icone)}<span ${ti(cle)}>${t(cle)}</span>`;
+    return onglet;
+  };
+  const bouton = creerOnglet('menu-bouton', 'onglet-preparer', 'onglets.preparer');
   poserAttribut(bouton, 'aria-label', 'menu.ouvrir-activites');
-  poserAttribut(bouton, 'title', 'menu.activites');
+  const ongletTraces = creerOnglet('onglet-traces', 'onglet-traces', 'onglets.traces');
+  const ongletExplorer = creerOnglet('onglet-explorer', 'onglet-explorer', 'onglets.explorer');
+  // Onglet → rubrique du tiroir qu'il montre
+  const ONGLETS_TIROIR = new Map([[bouton, 'activites'], [ongletTraces, 'traces']]);
+  // Chaque onglet ouvre d'abord sa bande de petites cartes, la carte libre au-dessus ; une carte ouvre son panneau
+  // (bandes posées en fin d'initMenu)
+  let fermerExplorer = () => {};
+  const bandes = new Map();
+  let bandeOuverte = null;
+  const basculeurs = new Map();
 
   const boutonParametres = document.createElement('button');
   boutonParametres.id = 'menu-parametres-bouton';
@@ -147,8 +177,47 @@ export function initMenu(map) {
     <div class="menu-corps" ${ta('aria-label', 'menu.activites')}></div>
     <div class="menu-parametres"></div>
   `;
-  document.body.append(bouton, boutonParametres, tiroir);
+  tiroir.dataset.onglet = 'activites';
+  document.body.append(boutonParametres, tiroir, barreOnglets);
   const corps = tiroir.querySelector('.menu-corps');
+  const TITRES_TIROIR = { activites: ['onglet-preparer', 'onglets.preparer'], traces: ['onglet-traces', 'onglets.traces'], jeux: ['jeux', 'menu.jeux'] };
+  const enteteTiroir = document.createElement('header');
+  enteteTiroir.className = 'outil-rapide-entete tiroir-entete';
+  enteteTiroir.innerHTML = `
+    <div class="outil-rapide-titre"><span class="tiroir-icone"></span><span class="outil-rapide-noms"><strong></strong></span></div>
+    <button type="button" class="outil-rapide-reduire" aria-expanded="true">${CHEVRON_BAS}</button>
+    <button type="button" class="outil-rapide-fermer" ${ta('aria-label', 'menu.fermer')}>${creerIconeMenu('close')}</button>
+  `;
+  corps.before(enteteTiroir);
+  const reduireTiroir = (reduit) => {
+    tiroir.classList.toggle('reduit', reduit);
+    const bouton = enteteTiroir.querySelector('.outil-rapide-reduire');
+    poserAttribut(bouton, 'aria-label', reduit ? 'menu.agrandir-panneau' : 'menu.reduire-panneau');
+    bouton.title = bouton.getAttribute('aria-label');
+    bouton.setAttribute('aria-expanded', String(!reduit));
+  };
+  const majEnteteTiroir = () => {
+    const [icone, cle] = TITRES_TIROIR[tiroir.dataset.onglet] ?? TITRES_TIROIR.activites;
+    enteteTiroir.querySelector('.tiroir-icone').innerHTML = icone === 'jeux'
+      ? '<img src="/icons/activites/jeux.svg" alt="" width="30" height="30" />'
+      : creerIconeMenu(icone);
+    enteteTiroir.querySelector('.tiroir-icone').classList.toggle('vignette', icone === 'jeux');
+    poser(enteteTiroir.querySelector('strong'), cle);
+  };
+  enteteTiroir.querySelector('.outil-rapide-reduire').addEventListener('click', (event) => {
+    event.stopPropagation();
+    reduireTiroir(!tiroir.classList.contains('reduit'));
+  });
+  enteteTiroir.addEventListener('click', (event) => {
+    if (tiroir.classList.contains('reduit') && !event.target.closest('.outil-rapide-fermer')) reduireTiroir(false);
+  });
+  enteteTiroir.querySelector('.outil-rapide-fermer').addEventListener('click', () => ouvrir(false));
+  suivreGlisse(tiroir, (cible) => cible.closest('.tiroir-entete, .params-entete') && !cible.closest('button'), {
+    contenu: true,
+    // Paramètres n'a pas de barre réduite : un glissé les ferme
+    bas: () => (tiroir.classList.contains('reduit') || tiroir.classList.contains('en-parametres') ? ouvrir(false) : reduireTiroir(true)),
+    haut: () => reduireTiroir(false),
+  });
 
   const boutonFermer = tiroir.querySelector('#menu-fermer');
   const panneauxFlottants = new Map();
@@ -163,7 +232,8 @@ export function initMenu(map) {
       if (garderReduits && panneau.classList.contains('reduit')) continue;
       panneau.hidden = true;
       reduirePanneau(panneau, false);
-      boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
+      // L'onglet dont la bande est ouverte reste allumé
+      if (bandes.get(bandeOuverte)?.onglet !== boutonsFlottants.get(id)) boutonsFlottants.get(id).setAttribute('aria-expanded', 'false');
     }
   }
 
@@ -181,7 +251,14 @@ export function initMenu(map) {
     resume.hidden = !resume.textContent;
   }
 
-  window.addEventListener('fiche-ouverte', fermerPanneauxFlottants);
+  // Une fiche (point, objet, balise, station…) passe devant : bandes et panneaux s'effacent, pas de chevauchement
+  window.addEventListener('fiche-ouverte', () => {
+    fermerPanneauxFlottants();
+    fermerExplorer();
+  });
+  window.addEventListener('panneau-carte', () => {
+    if (document.querySelector('.bf:not([hidden]):not(.lune-visite-panneau)')) fermerExplorer();
+  });
   // Pastille du vent : son réglage est dans son panneau posé sur la carte, que Météo ou Carte cachent sur téléphone
   window.addEventListener('montis:montrer-carte', () => {
     fermerPanneauxFlottants();
@@ -189,11 +266,21 @@ export function initMenu(map) {
   });
 
   const montrerParametres = (oui) => tiroir.classList.toggle('en-parametres', oui);
-  const ouvrir = (ouvert, pageParametres = false) => {
+  const ouvrir = (ouvert, pageParametres = false, rubrique = 'activites') => {
     tiroir.classList.toggle('ouvert', ouvert);
+    reduireTiroir(false);
+    if (ouvert) {
+      tiroir.dataset.onglet = rubrique;
+      majEnteteTiroir();
+      fermerExplorer();
+    }
     montrerParametres(ouvert && pageParametres);
-    bouton.setAttribute('aria-expanded', String(ouvert));
-    poserAttribut(bouton, 'aria-label', ouvert ? 'menu.ouvert' : 'menu.ouvrir-activites');
+    for (const [onglet, sienne] of ONGLETS_TIROIR) {
+      onglet.setAttribute('aria-expanded', String(ouvert && !pageParametres && tiroir.dataset.onglet === sienne));
+    }
+    // Géographie s'ouvre depuis Explorer : c'est lui qui reste allumé
+    if (tiroir.dataset.onglet === 'jeux') ongletExplorer.setAttribute('aria-expanded', String(ouvert && !pageParametres));
+    poserAttribut(bouton, 'aria-label', bouton.getAttribute('aria-expanded') === 'true' ? 'menu.ouvert' : 'menu.ouvrir-activites');
     boutonParametres.setAttribute('aria-expanded', String(ouvert && pageParametres));
     // La météo affichée (radar, vent) reste sur la carte pendant qu'on parcourt le menu
     if (ouvert) {
@@ -249,7 +336,7 @@ export function initMenu(map) {
       exclusif: false,
       modules: [
         differer({ id: 'sorties', labelCle: 'traces.sorties', icone: 'sorties' }, () =>
-          import('./mes-traces.js').then((m) => m.creerSorties(map, { fermerMenu, ouvrirMenu }))
+          import('./mes-traces.js').then((m) => m.creerSorties(map, { fermerMenu, ouvrirMenu: () => ouvrir(true, false, 'traces') }))
         ),
         differer({ id: 'parcours', labelCle: 'traces.parcours', icone: 'parcours' }, () =>
           import('./mes-traces.js').then((m) => m.creerParcoursTraces(map, { fermerMenu }))
@@ -266,13 +353,19 @@ export function initMenu(map) {
       exclusif: false,
       modules: [
         differer({ id: 'quiz-pays', labelCle: 'jeux.quiz', icone: 'culture-geo' }, () =>
-          import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu }))
+          import('./jeux.js').then((m) => m.creerJeux(map, { fermerMenu, ouvrirMenu: () => ouvrir(true, false, 'jeux') }))
         ),
       ],
       emplacement: 'menu',
     },
     {
       id: 'meteo',
+      onglet: true,
+      // L'onglet Météo montre tout de suite la météo d'ici, s'il n'y a rien d'autre d'ouvert dedans
+      surOuverture: () => {
+        const etats = etatsParCategorie.get('meteo');
+        if (etats && !etats.some((e) => e.actif)) demarrer(etats[0]);
+      },
       titre: 'menu.meteo',
       icone: 'meteo',
       aide: 'menu.aide-meteo',
@@ -290,6 +383,7 @@ export function initMenu(map) {
     },
     {
       id: 'carte',
+      onglet: true,
       titre: 'menu.carte',
       icone: 'carte',
       aide: 'menu.aide-carte',
@@ -307,6 +401,8 @@ export function initMenu(map) {
     {
       // Lot 4.7 : jour et heure communs en tête, puis l'ombre du soleil et la Lune
       id: 'ciel',
+      horsColonne: true,
+      uneSection: true,
       titre: 'menu.ciel',
       icone: 'ciel',
       aide: 'menu.aide-ciel',
@@ -325,7 +421,11 @@ export function initMenu(map) {
     },
   ];
 
-  bouton.addEventListener('click', () => ouvrir(!tiroir.classList.contains('ouvert')));
+  // Ouvre le tiroir sur une rubrique, en haut
+  const ouvrirRubrique = (rubrique) => {
+    ouvrir(true, false, rubrique);
+    corps.scrollTop = 0;
+  };
   boutonParametres.addEventListener('click', () => {
     ouvrir(true, true);
     obtenirParametres().then(
@@ -340,7 +440,7 @@ export function initMenu(map) {
 
   map.on('click', () => {
     fermerPanneauxFlottants({ garderReduits: true });
-    ouvrir(false);
+    if (!tiroir.classList.contains('reduit')) ouvrir(false);
   });
 
   document.addEventListener('keydown', (event) => {
@@ -388,7 +488,7 @@ export function initMenu(map) {
     },
     onOuvrir: () => {
       const e = activiteEnCours;
-      ouvrir(true);
+      ouvrir(true, false, 'activites');
       if (e) requestAnimationFrame(() => e.ligne.scrollIntoView({ block: 'start', behavior: 'smooth' }));
     },
     onRetirer: () => activiteEnCours?.ligne.click(),
@@ -402,6 +502,8 @@ export function initMenu(map) {
   }
 
   function demarrer(e) {
+    // Soleil et Lune : une seule section ouverte ; replier l'autre ne retire rien de la carte (ombre comprise)
+    if (e.uneSection) etatsParCategorie.get(e.categorie)?.forEach((autre) => autre !== e && autre.actif && arreter(autre));
     suivreActivite(e, true);
     e.actif = true;
     e.ligne.classList.add('actif');
@@ -487,7 +589,7 @@ export function initMenu(map) {
       if (!etat.actif) etat.ligne.click();
       return;
     }
-    if (panneau.hidden) boutonsFlottants.get(categorie).click();
+    if (panneau.hidden) basculeurs.get(categorie)();
     reduirePanneau(panneau, false);
     if (!etat.actif) demarrer(etat);
     // Le réglage demandé en haut du panneau (appui sur une pastille de couche)
@@ -521,7 +623,7 @@ export function initMenu(map) {
       boutonOutil.setAttribute('aria-controls', `outil-rapide-panneau-${categorie.id}`);
       boutonOutil.setAttribute('aria-expanded', 'false');
       poserAttribut(boutonOutil, 'aria-label', `menu.ouvrir-outils-${categorie.id}`);
-      boutonOutil.innerHTML = `${creerIconeMenu(categorie.icone)}<span ${ti(categorie.titre)}>${t(categorie.titre)}</span>`;
+      boutonOutil.innerHTML = `${creerIconeMenu(categorie.onglet ? `onglet-${categorie.id}` : categorie.icone)}<span ${ti(categorie.titre)}>${t(categorie.titre)}</span>`;
       ajouterAideMaintien(boutonOutil, categorie.titre);
 
       const panneauOutil = document.createElement('aside');
@@ -532,7 +634,10 @@ export function initMenu(map) {
       panneauOutil.innerHTML = `
         <header class="outil-rapide-entete">
           <div class="outil-rapide-titre">
-            ${creerIconeMenu(categorie.icone)}
+            ${categorie.id === 'ciel'
+              // Même vignette que sa carte de Plus (comme Jeux)
+              ? '<img class="outil-rapide-vignette" src="/icons/activites/ciel.svg" alt="" width="30" height="30" />'
+              : creerIconeMenu(categorie.icone)}
             <span class="outil-rapide-noms">
               <strong ${ti(categorie.titre)}>${t(categorie.titre)}</strong>
               <small class="outil-rapide-resume" hidden></small>
@@ -544,12 +649,22 @@ export function initMenu(map) {
         <div class="outil-rapide-corps"></div>
       `;
       panneauOutil.querySelector('.outil-rapide-corps').appendChild(vue);
-      actionsFlottantes.appendChild(boutonOutil);
+      // Carte et Météo sont des onglets ; Soleil et Lune reste dans la colonne de droite
+      if (categorie.onglet) boutonOutil.classList.add('onglet');
+      else if (!categorie.horsColonne) actionsFlottantes.appendChild(boutonOutil);
       document.body.appendChild(panneauOutil);
       boutonsFlottants.set(categorie.id, boutonOutil);
       panneauxFlottants.set(categorie.id, panneauOutil);
 
       reduirePanneau(panneauOutil, false);
+      suivreGlisse(panneauOutil, (cible) => cible.closest('.outil-rapide-entete') && !cible.closest('button'), {
+        contenu: true,
+        bas: () => {
+          if (panneauOutil.classList.contains('reduit')) panneauOutil.querySelector('.outil-rapide-fermer').click();
+          else reduirePanneau(panneauOutil, true);
+        },
+        haut: () => reduirePanneau(panneauOutil, false),
+      });
       const reduire = panneauOutil.querySelector('.outil-rapide-reduire');
       reduire.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -562,7 +677,8 @@ export function initMenu(map) {
         }
       });
 
-      boutonOutil.addEventListener('click', () => {
+      const basculer = () => {
+        fermerExplorer();
         // Le bouton d'un panneau réduit le rouvre, sans rien arrêter
         if (!panneauOutil.hidden && panneauOutil.classList.contains('reduit')) {
           reduirePanneau(panneauOutil, false);
@@ -578,7 +694,10 @@ export function initMenu(map) {
           boutonOutil.setAttribute('aria-expanded', 'true');
           categorie.surOuverture?.();
         }
-      });
+      };
+      basculeurs.set(categorie.id, basculer);
+      // Carte et Météo : l'onglet ouvre sa bande (fin d'initMenu) ; Soleil et Lune ouvre son panneau
+      if (!categorie.onglet) boutonOutil.addEventListener('click', basculer);
       panneauOutil.querySelector('.outil-rapide-fermer').addEventListener('click', () => {
         const retour = retourFlottant?.categorie === categorie.id ? retourFlottant : null;
         fermerPanneauxFlottants();
@@ -619,7 +738,7 @@ export function initMenu(map) {
       bloc.append(ligne, contenu);
       vue.appendChild(bloc);
 
-      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0, exclusif: categorie.exclusif };
+      const etat = { def, ligne, contenu, erreur, actif: false, demande: 0, exclusif: categorie.exclusif, uneSection: categorie.uneSection, categorie: categorie.id };
       etats.push(etat);
 
       ligne.addEventListener('click', () => {
@@ -660,16 +779,18 @@ export function initMenu(map) {
   poserAttribut(boutonPanorama, 'aria-label', 'panorama.ouvrir');
   boutonPanorama.innerHTML = `${creerIconeMenu('panorama')}<span ${ti('panorama.titre')}>${t('panorama.titre')}</span>`;
   ajouterAideMaintien(boutonPanorama, 'panorama.titre');
-  actionsFlottantes.appendChild(boutonPanorama);
   // options : point ({ lng, lat }) et retour, quand Horizon s'ouvre depuis la fiche d'un point
   const ouvrirHorizon = (options = {}) => {
     // iOS n'accorde la boussole que pendant l'appui lui-même : la demande part avant tout chargement
     const boussole = window.DeviceOrientationEvent?.requestPermission?.().catch(() => 'denied');
     fermerPanneauxFlottants();
     ouvrir(false);
+    fermerExplorer();
     boutonPanorama.disabled = true;
     import('./panorama.js')
-      .then((m) => m.ouvrirPanorama(map, { ...options, boussole }))
+      .then((m) => (options.point
+        ? m.ouvrirPanorama(map, { ...options, boussole })
+        : m.ouvrirAuBonEndroit(map, (point) => m.ouvrirPanorama(map, { ...options, point, boussole }))))
       .catch((err) => {
         console.warn('Panorama indisponible :', err);
         if (fichierDisparu(err)) rechargerSurNouvelleVersion();
@@ -704,5 +825,264 @@ export function initMenu(map) {
     }), 'Montis');
   });
   partage.append(lignePartage);
-  corps.appendChild(partage);
+  // La vue se partage depuis l'onglet Carte
+  panneauxFlottants.get('carte').querySelector('.outil-rapide-corps').appendChild(partage);
+
+  // Logo de l'appli en haut à gauche : il ouvre les Paramètres, comme le profil des applis (décision du propriétaire
+  // du 25 novembre 2026). Un petit engrenage dans son coin le dit.
+  const logo = document.createElement('button');
+  logo.id = 'logo-onglets';
+  logo.type = 'button';
+  logo.setAttribute('aria-controls', 'menu-tiroir');
+  logo.innerHTML = `<img src="/logos/montis-icon-fullbleed.svg" alt="" width="48" height="48" /><span class="logo-engrenage">${creerIconeMenu('reglages')}</span>`;
+  poserAttribut(logo, 'aria-label', 'menu.ouvrir-parametres');
+  poserAttribut(logo, 'title', 'menu.parametres');
+  logo.addEventListener('click', () => {
+    if (tiroir.classList.contains('en-parametres') && tiroir.classList.contains('ouvert')) ouvrir(false);
+    else boutonParametres.click();
+  });
+  document.body.appendChild(logo);
+  barreOnglets.append(boutonsFlottants.get('carte'), bouton, boutonsFlottants.get('meteo'), ongletTraces, ongletExplorer);
+
+  // ---------- Bandes des onglets (refonte du 25 novembre 2026) ----------
+  // Un onglet ouvre sa bande de petites cartes en bas, la carte reste libre au-dessus ; une carte ouvre son panneau
+  // (qui garde sa croix et se réduit). Explorer n'a que des cartes : Horizon reste dans la colonne.
+  const vignette = (fichier) => `<img src="/icons/activites/${fichier}.svg" alt="" width="40" height="40" />`;
+  const icone = (nom) => `<span class="bande-icone">${creerIconeMenu(nom)}</span>`;
+  function creerBande(id, onglet, cartes) {
+    const element = document.createElement('section');
+    element.className = 'bande-onglet';
+    element.id = `bande-${id}`;
+    element.hidden = true;
+    const fermer = document.createElement('button');
+    fermer.type = 'button';
+    fermer.className = 'bande-fermer';
+    poserAttribut(fermer, 'aria-label', 'menu.fermer');
+    fermer.innerHTML = creerIconeMenu('close');
+    fermer.addEventListener('click', () => fermerExplorer());
+    // En-tête : sur ordinateur, le nom de l'onglet et la croix en tête de colonne ; sur téléphone, la croix
+    // seule en tête de bande (le nom est caché)
+    const tete = document.createElement('div');
+    tete.className = 'bande-tete';
+    const nom = document.createElement('strong');
+    const majNom = () => { nom.textContent = onglet.querySelector('span')?.textContent ?? ''; };
+    majNom();
+    surLangue(majNom);
+    tete.append(nom, fermer);
+    element.appendChild(tete);
+    const details = [];
+    for (const { cle, image, titre, detail, action } of cartes) {
+      const carte = document.createElement('button');
+      carte.type = 'button';
+      carte.className = 'bande-carte';
+      carte.dataset.carte = cle;
+      carte.innerHTML = `${image}<span class="bande-noms"><strong></strong><small></small></span>`;
+      poser(carte.querySelector('strong'), titre);
+      carte.addEventListener('click', action);
+      element.appendChild(carte);
+      details.push([carte, carte.querySelector('small'), detail]);
+    }
+    const suite = document.createElement('button');
+    suite.type = 'button';
+    suite.className = 'bande-suite';
+    poserAttribut(suite, 'aria-label', 'bande.suite');
+    suite.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>';
+    suite.addEventListener('click', () => element.scrollTo({ left: element.scrollWidth, behavior: 'smooth' }));
+    element.appendChild(suite);
+    const majSuite = () => element.classList.toggle('deborde', element.scrollWidth - element.clientWidth - element.scrollLeft > 8);
+    element.addEventListener('scroll', majSuite, { passive: true });
+    window.addEventListener('resize', majSuite);
+    document.body.appendChild(element);
+    suivreGlisse(element, () => true, { bas: () => fermerExplorer() });
+    const maj = () => {
+      for (const [carte, petit, detail] of details) {
+        const [cle, variables, allume] = detail();
+        poser(petit, cle, variables);
+        carte.classList.toggle('allumee', Boolean(allume));
+      }
+    };
+    bandes.set(id, { element, onglet, maj: () => { maj(); requestAnimationFrame(majSuite); } });
+  }
+  let globeEclaire = lire('globe-plein-jour', false);
+  const etatModule = (categorie, id) => etatsParCategorie.get(categorie)?.find((e) => e.def.id === id);
+  const ouvrirModule = (categorie, module) => () =>
+    window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie, module } }));
+  // Carte d'un module : son nom, « Allumé » quand il tourne, sinon sa phrase
+  const carteModule = (categorie, id, image, detailCle, action = ouvrirModule(categorie, id)) => ({
+    cle: id,
+    image,
+    titre: etatModule(categorie, id)?.def.labelCle ?? detailCle,
+    detail: () => (etatModule(categorie, id)?.actif ? ['bande.allume', {}, true] : [detailCle]),
+    action,
+  });
+
+  creerBande('carte', boutonsFlottants.get('carte'), [
+    carteModule('carte', 'fond', icone('fond'), 'bande.fond'),
+    carteModule('carte', 'relief', icone('relief'), 'bande.relief'),
+    carteModule('carte', 'nature', icone('nature'), 'bande.nature'),
+    carteModule('carte', 'hors-ligne', icone('hors-ligne'), 'bande.hors-ligne'),
+    { cle: 'partage', image: icone('partage'), titre: 'bande.partage', detail: () => ['bande.partage-detail'], action: () => lignePartage.click() },
+  ]);
+  const activite = (id, fichier) => carteModule('activites', id, vignette(fichier), `bande.${id}`, () => {
+    const etat = etatModule('activites', id);
+    if (etat && !etat.actif) etat.ligne.click();
+    ouvrirRubrique('activites');
+  });
+  creerBande('activites', bouton, [activite('parapente', 'parapente'), activite('rando', 'randonnee'), activite('velo', 'velo'), activite('ski', 'ski')]);
+  creerBande('meteo', boutonsFlottants.get('meteo'), [
+    carteModule('meteo', 'meteo-locale', icone('meteo'), 'bande.meteo-locale'),
+    carteModule('meteo', 'radar', icone('radar'), 'bande.radar'),
+    carteModule('meteo', 'vent', icone('vent'), 'bande.vent'),
+  ]);
+  const trace = (id) => carteModule('traces', id, icone(id), `bande.${id}`, () => {
+    ouvrirRubrique('traces');
+    const etat = etatModule('traces', id);
+    if (etat && !etat.actif) etat.ligne.click();
+  });
+  // Créer un parcours : dans l'activité en cours si elle a ses parcours, sinon en Randonnée ; on le range à
+  // l'enregistrement dans l'activité voulue
+  const creerParcours = {
+    cle: 'creer', image: icone('creer-parcours'), titre: 'bande.creer', detail: () => ['bande.creer-detail'],
+    action: () => {
+      const enCours = etatsParCategorie.get('activites')?.find((e) => e.actif)?.def.id;
+      const activite = ['rando', 'velo'].includes(enCours) ? enCours : 'rando';
+      deposer(`creer-parcours-${activite}`, true);
+      fermerExplorer();
+      window.dispatchEvent(new CustomEvent('montis:ouvrir-module', { detail: { categorie: 'activites', module: activite } }));
+    },
+  };
+  creerBande('traces', ongletTraces, [trace('sorties'), trace('parcours'), creerParcours]);
+
+  // Explorer : détails du moment (phase de la Lune, coucher du soleil au centre de la carte)
+  const heure = (date) => (Number.isNaN(date?.getTime?.()) ? '' : `${date.getHours()}h${String(date.getMinutes()).padStart(2, '0')}`);
+  creerBande('explorer', ongletExplorer, [
+    {
+      cle: 'horizon', image: vignette('horizon'), titre: 'panorama.titre', detail: () => ['bande.horizon'],
+      action: () => ouvrirHorizon(),
+    },
+    {
+      cle: 'ciel', image: vignette('ciel'), titre: 'menu.ciel',
+      detail: () => {
+        const { lng, lat } = map.getCenter();
+        const coucher = heure(getTimes(new Date(), lat, lng).sunset);
+        return coucher ? ['explorer.ciel-detail', { heure: coucher }] : ['explorer.ciel-sans-coucher'];
+      },
+      action: () => {
+        fermerExplorer();
+        boutonsFlottants.get('ciel')?.click();
+      },
+    },
+    {
+      cle: 'globe', image: vignette('globe'), titre: 'explorer.globe', detail: () => ['explorer.globe-detail'],
+      action: () => {
+        document.body.classList.remove('eclairage-ferme');
+        map.flyTo({ zoom: 1.6, pitch: 0, bearing: 0, duration: 2600, essential: true });
+      },
+    },
+    // Jeux : on choisit ensuite le jeu (Géographie aujourd'hui, d'autres viendront)
+    {
+      cle: 'jeux', image: vignette('jeux'), titre: 'menu.jeux', detail: () => ['bande.jeux'],
+      action: () => ouvrirRubrique('jeux'),
+    },
+  ]);
+
+  // Globe tout éclairé ou à l'heure réelle, avec sa nuit (demande du propriétaire du 25 novembre 2026) ;
+  // un jeu remet le plein jour puis l'enlève en finissant : on rétablit alors le choix gardé
+  if (globeEclaire) fixerPleinJour(true);
+  // Choix posé sur la vue d'espace, sous la colonne de droite, dès que le globe se voit
+  const choixEclairage = document.createElement('div');
+  choixEclairage.className = 'eclairage-globe';
+  choixEclairage.setAttribute('role', 'group');
+  poserAttribut(choixEclairage, 'aria-label', 'bande.eclairage');
+  // Bulle refermable : elle revient en touchant Globe ou en se rapprochant puis en s'éloignant de nouveau
+  choixEclairage.innerHTML = `<strong class="eclairage-titre"></strong><div class="eclairage-choix"><button type="button" data-plein="0"></button><button type="button" data-plein="1"></button></div><button type="button" class="eclairage-fermer">${creerIconeMenu('close')}</button>`;
+  poser(choixEclairage.querySelector('.eclairage-titre'), 'bande.eclairage-titre');
+  poserAttribut(choixEclairage.querySelector('.eclairage-fermer'), 'aria-label', 'menu.fermer');
+  choixEclairage.querySelector('.eclairage-fermer').addEventListener('click', (event) => {
+    event.stopPropagation();
+    document.body.classList.add('eclairage-ferme');
+  });
+  poser(choixEclairage.querySelector('[data-plein="0"]'), 'bande.eclairage-reel');
+  poser(choixEclairage.querySelector('[data-plein="1"]'), 'bande.eclairage-plein');
+  const majChoixEclairage = () => {
+    choixEclairage.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.plein === '1') === globeEclaire)));
+  };
+  choixEclairage.addEventListener('click', (event) => {
+    const bouton = event.target.closest('button[data-plein]');
+    if (!bouton) return;
+    globeEclaire = bouton.dataset.plein === '1';
+    ecrire('globe-plein-jour', globeEclaire);
+    if (!document.body.classList.contains('jeu-en-cours')) fixerPleinJour(globeEclaire);
+    majChoixEclairage();
+  });
+  majChoixEclairage();
+  document.body.appendChild(choixEclairage);
+  // « Toute la Terre » : le globe entier tient à l'écran
+  const majVueEspace = () => {
+    const espace = map.getZoom() < 3.2;
+    if (!espace) document.body.classList.remove('eclairage-ferme');
+    document.body.classList.toggle('vue-espace', espace);
+  };
+  map.on('zoomend', majVueEspace);
+  map.on('zoom', majVueEspace);
+  majVueEspace();
+  window.addEventListener('montis:heure-espace', () => {
+    if (globeEclaire && !pleinJour() && !document.body.classList.contains('jeu-en-cours')) fixerPleinJour(true);
+  });
+
+  window.addEventListener('montis:ouvrir-ciel', () => {
+    if (panneauxFlottants.get('ciel')?.hidden) basculeurs.get('ciel')();
+  });
+
+  // Jeu, visite, Horizon… : un mode à part. Tout ce qui est ouvert se referme et les onglets s'effacent
+  // (style.css, body.jeu-en-cours, en-visite) : on n'ouvre pas les pentes au milieu d'un quiz des drapeaux
+  window.addEventListener('montis:plein-ecran', (event) => {
+    if (!event.detail?.actif) return;
+    fermerExplorer();
+    fermerPanneauxFlottants();
+    ouvrir(false);
+  });
+
+  // Sur ordinateur, la molette fait défiler une bande de côté
+  for (const { element } of bandes.values()) {
+    element.addEventListener('wheel', (event) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      element.scrollLeft += event.deltaY;
+      event.preventDefault();
+    }, { passive: false });
+  }
+
+  const montrerBande = (id) => {
+    for (const [nom, { element, onglet, maj }] of bandes) {
+      const oui = nom === id;
+      if (oui) maj();
+      element.hidden = !oui;
+      if (oui) element.scrollLeft = 0;
+      if (oui || bandeOuverte === nom) onglet.setAttribute('aria-expanded', String(oui));
+    }
+    bandeOuverte = id;
+    document.body.classList.toggle('explorer-ouvert', id === 'explorer');
+    document.body.classList.toggle('bande-ouverte', Boolean(id));
+  };
+  fermerExplorer = () => {
+    if (bandeOuverte) montrerBande(null);
+  };
+  // Un onglet : sa bande ; touché de nouveau, il referme ce qu'il a ouvert (bande ou panneau)
+  for (const [id, { onglet }] of bandes) {
+    onglet.addEventListener('click', () => {
+      if (bandeOuverte === id) {
+        montrerBande(null);
+        return;
+      }
+      const ouvertIci = onglet.getAttribute('aria-expanded') === 'true';
+      fermerPanneauxFlottants();
+      ouvrir(false);
+      if (!ouvertIci) montrerBande(id);
+    });
+  }
+
+  // « Montis en 20 secondes » au tout premier lancement, et sur demande (Paramètres) ; chargée à la demande
+  const ouvrirBienvenue = () => import('./bienvenue.js').then((m) => m.montrerBienvenue({ icone: creerIconeMenu }));
+  window.addEventListener('montis:bienvenue', ouvrirBienvenue);
+  if (!lire('bienvenue-vue', false)) setTimeout(ouvrirBienvenue, 1200);
 }

@@ -271,6 +271,28 @@ export function profilHorizon(points, depuis) {
 
 // Vrai lever et vrai coucher derrière le relief : le premier instant où l'astre passe au-dessus de la crête, et le
 // dernier où il y est encore. Instants interpolés entre deux points. → { lever, coucher } (ms ou null)
+// Passage d'un astre dans le ciel (suite de points au-dessus de l'horizon) qui contient l'instant t, sinon le prochain,
+// sinon le dernier : [début, fin] en indices de la trajectoire, ou null s'il ne se lève pas. Une trajectoire par
+// apparition, même à cheval sur minuit (retour du propriétaire du 25 novembre 2026)
+export function passageAstre(trajet, t, horizonDe = () => 0) {
+  const passages = [];
+  let debut = null;
+  trajet.forEach((p, i) => {
+    const haut = p.hauteur > horizonDe(p.azimut);
+    if (haut && debut === null) debut = i;
+    if (!haut && debut !== null) {
+      passages.push([debut, i - 1]);
+      debut = null;
+    }
+  });
+  if (debut !== null) passages.push([debut, trajet.length - 1]);
+  if (!passages.length) return null;
+  const instant = (i) => trajet[i].t;
+  return passages.find(([a, b]) => instant(a) <= t && t <= instant(b))
+    ?? passages.find(([a]) => instant(a) > t)
+    ?? passages[passages.length - 1];
+}
+
 export function leverCoucherReels(trajet, horizonDe) {
   const marge = trajet.map((p) => p.hauteur - horizonDe(p.azimut));
   const croisement = (i) => {

@@ -5,6 +5,7 @@ import mlcontour from 'maplibre-contour';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './style.css';
 import { initMenu } from './menu.js';
+import { initIconesTheme } from './icones-theme.js';
 import { etat, majCourbes, majOmbrage, peintureCotes, peintureCourbes } from './options-carte.js';
 import { lire, ecrire, marquerPrete } from './reglages.js';
 import { doitCentrerSurPosition } from './ouverture-calcul.js';
@@ -369,6 +370,7 @@ map.once('style.load', () => {
   });
 
   // ---------- Menu (activités, météo, carte) ----------
+  initIconesTheme();
   initMenu(map);
   retablirFond(map);
   initPaletteFond(map); // jour ou nuit, selon le mode et le soleil au centre de la carte

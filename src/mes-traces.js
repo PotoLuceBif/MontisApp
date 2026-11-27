@@ -1,7 +1,7 @@
 // Mes traces : les sorties importées des montres et des varios, et les parcours enregistrés
 // dans Randonnée et Vélo. Deux lignes du menu, chargées à leur première ouverture.
 import { creerStockageParcours } from './parcours-stockage.js';
-import { lire } from './reglages.js';
+import { ecrire, lire } from './reglages.js';
 import { deposer } from './demandes.js';
 import { erreurSortie, formatDuNom, lireSortie } from './sortie-lecture.js';
 import {
@@ -9,7 +9,7 @@ import {
 } from './sorties-stockage.js';
 import { formatDenivele, formatDistance } from './unites.js';
 import { surPreferences } from './preferences.js';
-import { t, ti, tt } from './i18n.js';
+import { t, ta, ti, tt } from './i18n.js';
 import { dateCourte, detailSortie, iconeType, nomSortie, svg, typeDe } from './traces-commun.js';
 import { creerVueSortie } from './sortie-vue.js';
 
@@ -226,6 +226,9 @@ export function creerParcoursTraces(map, { fermerMenu = () => {} } = {}) {
   panneau.className = 'traces';
   panneau.innerHTML = `
     <p class="note traces-aide" ${ti('traces.parcours-aide')}>${t('traces.parcours-aide')}</p>
+    <div class="segments traces-filtres" role="group" ${ta('aria-label', 'traces.parcours')}>
+      ${['tous', ...ACTIVITES_PARCOURS].map((id) => `<button type="button" data-filtre="${id}"><span ${ti(`traces.filtre-${id}`)}>${t(`traces.filtre-${id}`)}</span><small></small></button>`).join('')}
+    </div>
     <div class="traces-liste"></div>
     <p class="note traces-vide" hidden ${ti('traces.aucun-parcours')}>${t('traces.aucun-parcours')}</p>
   `;
@@ -234,12 +237,29 @@ export function creerParcoursTraces(map, { fermerMenu = () => {} } = {}) {
   const stockages = Object.fromEntries(ACTIVITES_PARCOURS.map((id) => [id, creerStockageParcours(id)]));
   const modifies = () => window.dispatchEvent(new CustomEvent('montis:parcours-modifies'));
 
+  // Onglets par activité (demande du propriétaire du 25 novembre 2026), avec le nombre de parcours de chacune
+  let filtre = lire('traces-parcours-filtre', 'tous');
+  panneau.querySelector('.traces-filtres').addEventListener('click', (event) => {
+    const bouton = event.target.closest('[data-filtre]');
+    if (!bouton) return;
+    filtre = bouton.dataset.filtre;
+    ecrire('traces-parcours-filtre', filtre);
+    rendre();
+  });
   function rendre() {
     const tous = ACTIVITES_PARCOURS
       .flatMap((activite) => stockages[activite].lister().map((parcours) => ({ ...parcours, activite })))
       .sort((a, b) => (b.date ?? 0) - (a.date ?? 0));
-    vide.hidden = tous.length > 0;
-    liste.replaceChildren(...tous.map((parcours) => ligneListe({
+    panneau.querySelectorAll('.traces-filtres [data-filtre]').forEach((bouton) => {
+      const id = bouton.dataset.filtre;
+      bouton.classList.toggle('actif', id === filtre);
+      bouton.setAttribute('aria-pressed', String(id === filtre));
+      const n = id === 'tous' ? tous.length : tous.filter((p) => p.activite === id).length;
+      bouton.querySelector('small').textContent = String(n);
+    });
+    const affiches = filtre === 'tous' ? tous : tous.filter((p) => p.activite === filtre);
+    vide.hidden = affiches.length > 0;
+    liste.replaceChildren(...affiches.map((parcours) => ligneListe({
       icone: iconeType(parcours.activite === 'skirando' ? 'ski' : parcours.activite),
       nom: parcours.nom,
       detail: [
