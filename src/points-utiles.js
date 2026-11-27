@@ -80,28 +80,41 @@ export const POINTS_UTILES = {
   abris: { couche: 'montis-abris', classe: 'shelter', defaut: false, rang: 1 },
   'points-eau': { couche: 'montis-points-eau', classe: 'drinking_water', defaut: false, rang: 0 },
 };
-export const COUCHES_POINTS_UTILES = Object.values(POINTS_UTILES).map((p) => p.couche);
+// Les tuiles n'ont ces points qu'au zoom 14 : de ZOOM_LOIN à 14, des couches « -loin » les lisent dans une source
+// GeoJSON remplie par points-utiles-loin.js (chargé à la demande), à partir des tuiles du zoom 14 de la vue.
+export const ZOOM_TUILES = 14;
+export const ZOOM_LOIN = 13;
+export const SOURCE_LOIN = 'points-utiles-loin';
+export const sourcePointsLoin = () => ({ type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+const loin = (couche) => `${couche}-loin`;
+export const COUCHES_POINTS_UTILES = Object.values(POINTS_UTILES).flatMap((p) => [loin(p.couche), p.couche]);
 
 export function couchesPointsUtiles() {
-  return Object.values(POINTS_UTILES).map(({ couche, classe, defaut, rang }) => ({
-    id: couche,
+  return Object.values(POINTS_UTILES).flatMap(({ couche, classe, defaut, rang }) => [false, true].map((tuiles) => ({
+    id: tuiles ? couche : loin(couche),
     type: 'symbol',
-    source: SOURCE_VECTEUR,
-    'source-layer': 'poi',
-    minzoom: 14, // les tuiles n'ont les points utiles qu'à partir du zoom 14
+    ...(tuiles ? { source: SOURCE_VECTEUR, 'source-layer': 'poi', minzoom: ZOOM_TUILES } : { source: SOURCE_LOIN, minzoom: ZOOM_LOIN, maxzoom: ZOOM_TUILES }),
     filter: ['==', ['get', 'class'], classe],
     layout: {
       visibility: defaut ? 'visible' : 'none',
       'icon-image': imageDe(classe),
-      'icon-size': ['interpolate', ['linear'], ['zoom'], 14, 0.75, 17, 1],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], ZOOM_LOIN, 0.6, ZOOM_TUILES, 0.75, 17, 1],
       'icon-padding': 2,
       // L'eau et les abris passent avant les parkings quand la place manque
       'symbol-sort-key': rang,
     },
-  }));
+  })));
 }
+
+const allumes = (map) => Object.values(POINTS_UTILES).some(({ couche }) => map.getLayoutProperty(couche, 'visibility') === 'visible');
+let suivi = null;
 
 export function afficherPointUtile(map, cle, visible) {
   const { couche } = POINTS_UTILES[cle];
-  if (map.getLayer(couche)) map.setLayoutProperty(couche, 'visibility', visible ? 'visible' : 'none');
+  for (const id of [couche, loin(couche)]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+  }
+  if (!visible || !map.getLayer(couche)) return;
+  suivi ??= import('./points-utiles-loin.js').then(({ suivrePointsLoin }) => suivrePointsLoin(map, () => allumes(map)));
+  suivi.then((s) => s.maj());
 }
