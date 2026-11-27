@@ -5553,3 +5553,13 @@ body.panorama-ciel .outil-rapide-titre .outil-rapide-vignette { width: 24px; hei
 .bienvenue-sous li { display: grid; gap: 1px; padding: 0; border: 0 !important; }
 .bienvenue-sous b { font: 650 13px var(--police); color: var(--texte); }
 .bienvenue-sous span { color: var(--texte-2); font-size: 12.5px; line-height: 1.4; }
+
+/* Fiche d'une station ou d'un bike park sur téléphone : le nom prend toute la largeur (avant, coincé entre la
+   pastille et quatre boutons en visite, il se coupait lettre par lettre) ; les boutons passent dessous, à droite */
+@media (max-width: 700px) {
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete { flex-wrap: wrap; row-gap: 6px; }
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete > .rando-titres { flex: 1 1 calc(100% - 90px); min-width: 0; }
+  :is(#ski-fiche, #bikepark-fiche) > .rando-entete > button:first-of-type { margin-left: auto; }
+}
+/* Piste · Ski de rando : même segment que les autres (le bouton éteint gardait son propre cadre) */
+.ski-pratiques button:not(.actif) { border-color: transparent; background: transparent; box-shadow: none; }

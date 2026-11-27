@@ -80,7 +80,7 @@ Demandée par le propriétaire le 25 novembre 2026 : une appli intuitive, accuei
 - [x] **R.3 Style « Nuit étoilée raffinée »** (style B) : bleu nuit, un seul accent (violet du logo), sélections discrètes, sans halo ; onglet ouvert en pilule à courbes de niveau ; sur ordinateur, cartes en colonne et panneaux contre le rail.
 - [x] **R.4 Bulles d'aide** (26 novembre 2026) : un « ? » discret sur les trois graphiques les plus difficiles, profil du vent, plafonds et rose du bulletin d'avalanche, qui déplie une explication courte (`aide.js`). La frise météo et le profil d'un parcours n'en ont pas (déjà lisibles, la frise a sa phrase d'indice) ; à ajouter si le propriétaire le demande.
 - [x] **R.5 Bienvenue** (26 novembre 2026) : « Montis en 20 secondes » au premier lancement (une ligne par onglet, l'astuce de l'appui long, « C'est parti »), à revoir depuis les Paramètres (`bienvenue.js`).
-- [ ] **R.6 Revue écran par écran** du nouveau style (fiches, éditeur, vent, jeux, Lune…), série complète de captures, puis fusion dans `developpement` sur validation du propriétaire.
+- [x] **R.6 Revue écran par écran** (27 novembre 2026) : série complète (306 écrans par format), sans erreur JavaScript ; corrigés : nom d'une station coupé lettre par lettre en visite sur téléphone, cadre en trop sur Piste · Ski de rando. Restent connus, d'avant la refonte : les textes d'une partie de jeu ou d'une fiche de pays déjà ouverte ne changent de langue qu'à la question suivante. Fusion dans `developpement` sur validation du propriétaire.
 
 ### Avant la 1.0 beta
 
