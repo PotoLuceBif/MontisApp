@@ -63,7 +63,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 - **Phase 4, effets « waouh » :** 4.1 Horizon · 4.5 Partage par lien · 4.7 Soleil et Lune · 4.10 Visiter la Lune.
 - **Hors phase :** 0.8 Performance · 0.9 Le fond Montis · 0.10 Ménage · 2.0 Balises et terrains FFVL · 3.9 Géologie · 3.10 Fonds topo · Jeux P.4a Géographie et P.4b Où est-ce ?.
 
-*État au 26 novembre 2026 :* tout ce qui était prévu pour la 1.0 beta est fait (phase 2, partage, lot 0.8). Reste à finir la refonte de l'interface (ci-dessous) avant de proposer la beta.
+*État au 27 novembre 2026 :* tout ce qui était prévu pour la 1.0 beta est fait (phase 2, partage, lot 0.8), et la refonte de l'interface est fusionnée. Reste la grande passe qualité (B.1 à B.5) avant la beta.
 
 - [x] **0.7 Robustesse** (9 novembre 2026, demandée par le propriétaire). Relecture de toute l'appli et essais « réseau coupé » et « réseau qui traîne ». Interface posée dès que le style est prêt, plus après les premières tuiles (avant : plus d'une minute sans menu ni recherche sur un réseau lent). Délai maximal sur chaque requête de service (recherche, radar, itinéraire, balises, neige, avalanches, Waymarked Trails, portée, zones hors ligne), messages d'échec lisibles, zone hors ligne surtout vide comptée comme un échec, sauvegarde vérifiée étape par étape, textes au tutoiement, MapLibre 6.17. Détail dans `docs/historique.md`.
 
@@ -71,7 +71,7 @@ La grande majorité du plan est faisable avec la stack actuelle et des sources g
 
 ## À faire, dans l'ordre
 
-### En cours : la refonte de l'interface (branche `refonte-onglets`)
+### Faite : la refonte de l’interface (fusionnée le 27 novembre 2026)
 
 Demandée par le propriétaire le 25 novembre 2026 : une appli intuitive, accueillante, belle sur téléphone comme sur ordinateur, sans perdre aucune fonction. Inventaire et choix dans `docs/refonte-inventaire.md`.
 
@@ -90,6 +90,16 @@ Demandée par le propriétaire le 25 novembre 2026 : une appli intuitive, accuei
   - **Robustesse :** relecture des modules ajoutés depuis le 0.7 (requêtes sans délai, échecs non affichés, écouteurs jamais retirés, minuteries qui tournent panneau fermé), essais réseau coupé et réseau lent sur ces écrans.
   - **Conflits de clics :** *balise contre terrain et anneau décentré faits le 24 novembre 2026 (doigt au plus proche ; anneau debout, ancré comme le pin).* Une balise de vent posée près d'un décollage ou d'un atterrissage prend tous les appuis ; le terrain ne s'ouvre plus (signalé le 24 novembre 2026). Chercher la cause (ordre des couches, zone de toucher des marqueurs HTML des balises au-dessus des images de terrains) et faire le tour des autres superpositions (pins, pastilles, fiches). Dans le même temps, **anneau des terrains décentré** (signalé le 24 novembre 2026) : l'anneau des orientations favorables doit entourer la tête ronde du pin de décollage ou d'atterrissage, pointe du pin sur le lieu ; il est décalé (`terrains-images.js`, `icon-offset` de 4,25 px, image de l'anneau).
 - [x] **0.9 Le fond Montis** (fait le 16 novembre 2026, détail élément par élément dans `docs/lot-0-9-fond.md`). Mélange d'IGN et d'appli moderne : relief ombré bleuté, rochers, éboulis, glaciers et zones humides, forêts à lisière, alpages, zones habitées gris rosé, courbes allégées, sentiers en tireté rouge, routes aux violets de la DA, remontées à pylônes, voies ferrées, noms d'eau, de sommets et de cols, liseré des parcs, frontières fines au dézoom ; fond Auto · Jour · Nuit (nuit cyberpunk) ; parkings (avec leur fiche), abris et points d'eau dans Éléments de la carte, pictos dans la DA. Écartés : teintes d'altitude, falaises en trait (pas dans les données), police propre à Montis. Détail dans `docs/historique.md`.
+
+### Juste avant la beta : la grande passe qualité (semaine du 30 novembre 2026)
+
+Demandée par le propriétaire le 27 novembre 2026 : **aucune fonction nouvelle**, la beta part avec ce qu'il y a (refonte et style Nuit étoilée compris). Le but : zéro bug connu, une appli claire à utiliser, robuste, accessible. Une branche par lot, comme d'habitude.
+
+- [ ] **B.1 Robustesse** : chaque fonction passée au crible en réseau coupé, lent et qui revient (tuiles, Open-Meteo, Overpass, BRouter, balises, avalanches, Lune, globe) : jamais d'écran figé, de chargement sans fin ni de message technique ; hors ligne vérifié sur une vraie zone téléchargée ; reprise après une appli restée en arrière-plan ; sauvegarde et import ; navigateurs Safari iPhone, Chrome Android, Chrome et Firefox ordinateur.
+- [ ] **B.2 Chasse aux bugs** : chaque parcours d'utilisation de bout en bout (préparer une rando, la suivre en guidage, importer une sortie, vol libre de la balise au plafond, ski de rando avec bulletin, partager un lien, jouer une partie, visiter la Lune) ; conflits entre panneaux, bandes, pastilles et modes à part ; ce qui reste ouvert ou allumé à tort ; textes qui ne suivent pas la langue (dont ceux d'une partie en cours) ; console sans erreur.
+- [ ] **B.3 Clarté d'usage** : chaque écran relu avec un regard de débutant : ce qu'on y fait, le bouton principal évident, des libellés concrets, des états vides qui disent quoi faire, des retours après chaque action, aucune fonction cachée sans indice ; textes harmonisés (tutoiement, majuscules, ponctuation).
+- [ ] **B.4 Accessibilité** : contrastes vérifiés (thèmes Montis, clair, sombre), zones de toucher d'au moins 44 px, tout faisable au clavier sur ordinateur, noms lisibles par un lecteur d'écran (boutons à icône, cartes, curseurs), mouvement réduit respecté, texte agrandi par le téléphone sans casse ; thème clair revu écran par écran après la refonte.
+- [ ] **B.5 Recette et version 1.0 beta** : série complète de captures, mesures de démarrage (`npm run mesures`), essai du propriétaire sur le terrain, puis PR de `developpement` vers `main` sur sa demande.
 
 ### Phase 1 : fin
 
@@ -226,7 +236,7 @@ Le canyon pourrait aussi rejoindre plus tard une activité « eaux vives » (can
 |---|---|
 | 1.0.0-alpha.1 | L'état de `main` au 2 novembre 2026 (sans tag) |
 | 1.0 alpha suivantes | Phases 0 et 1 |
-| 1.0 beta | Phase 2, le partage par lien et le lot 0.8 (performance et déploiement) : faits ; plus la refonte de l'interface (R.1 à R.6), en cours |
+| 1.0 beta | Phase 2, le partage par lien, le lot 0.8 et la refonte de l'interface : faits ; la passe qualité B.1 à B.5 : à faire |
 | 1.0 | Stable, testée sur le terrain |
 | 1.1, 1.2… | Une nouvelle pratique ou un effet « waouh » par version |
 
