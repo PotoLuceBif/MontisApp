@@ -122,11 +122,13 @@ export function creerPageParametres({ retour }) {
           <strong>Montis</strong>
           <small ${ti('params.accroche')}>${t('params.accroche')}</small>
           <small class="params-accueil-version"></small>
+          <button type="button" class="params-bienvenue" ${ti('bienvenue.revoir')}>${t('bienvenue.revoir')}</button>
         </div>
       </div>
     </div>
   `;
   page.querySelector('.params-retour').addEventListener('click', retour);
+  page.querySelector('.params-bienvenue').addEventListener('click', () => window.dispatchEvent(new Event('montis:bienvenue')));
   const corps = page.querySelector('.params-corps');
 
   // ---------- Thème ----------

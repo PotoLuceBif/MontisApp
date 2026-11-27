@@ -1080,4 +1080,9 @@ export function initMenu(map) {
       if (!ouvertIci) montrerBande(id);
     });
   }
+
+  // « Montis en 20 secondes » au tout premier lancement, et sur demande (Paramètres) ; chargée à la demande
+  const ouvrirBienvenue = () => import('./bienvenue.js').then((m) => m.montrerBienvenue({ icone: creerIconeMenu }));
+  window.addEventListener('montis:bienvenue', ouvrirBienvenue);
+  if (!lire('bienvenue-vue', false)) setTimeout(ouvrirBienvenue, 1200);
 }

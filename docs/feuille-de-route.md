@@ -79,7 +79,7 @@ Demandée par le propriétaire le 25 novembre 2026 : une appli intuitive, accuei
 - [x] **R.2 Retouches d'usage** : Horizon et « Voir dans le ciel » là où l'on est (ou repère à placer), trajectoires du soleil et de la Lune par passage, frise seule au sol ; Soleil et Lune à une section ouverte ; éclairage du globe en bulle ; parcours rangés par activité (« Ranger dans ») et Mes parcours en onglets ; Fond de carte › Avancé en groupes dépliables ; Paramètres refaits ; logos encadrés, versions claires.
 - [x] **R.3 Style « Nuit étoilée raffinée »** (style B) : bleu nuit, un seul accent (violet du logo), sélections discrètes, sans halo ; onglet ouvert en pilule à courbes de niveau ; sur ordinateur, cartes en colonne et panneaux contre le rail.
 - [x] **R.4 Bulles d'aide** (26 novembre 2026) : un « ? » discret sur les trois graphiques les plus difficiles, profil du vent, plafonds et rose du bulletin d'avalanche, qui déplie une explication courte (`aide.js`). La frise météo et le profil d'un parcours n'en ont pas (déjà lisibles, la frise a sa phrase d'indice) ; à ajouter si le propriétaire le demande.
-- [ ] **R.5 Bienvenue** : « Montis en 20 secondes » au premier lancement (ce que fait l'appli, ce qu'il y a dans chaque onglet), à rouvrir depuis les Paramètres.
+- [x] **R.5 Bienvenue** (26 novembre 2026) : « Montis en 20 secondes » au premier lancement (une ligne par onglet, l'astuce de l'appui long, « C'est parti »), à revoir depuis les Paramètres (`bienvenue.js`).
 - [ ] **R.6 Revue écran par écran** du nouveau style (fiches, éditeur, vent, jeux, Lune…), série complète de captures, puis fusion dans `developpement` sur validation du propriétaire.
 
 ### Avant la 1.0 beta

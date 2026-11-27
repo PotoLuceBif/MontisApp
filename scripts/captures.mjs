@@ -400,6 +400,8 @@ const clavierSimule = async (p) => {
 
 const ECRANS = [
   { nom: 'accueil', actions: [] },
+  // « Montis en 20 secondes », au premier lancement
+  { nom: 'bienvenue', bienvenue: true, actions: [attendre('.bienvenue'), (p) => p.waitForTimeout(600)] },
   // Fond Montis seul (lot 0.9) : massif, vallée, sentiers, 3D
   { nom: 'fond-massif', actions: [vue({ center: [6.95, 45.9], zoom: 9.6, bearing: 0, pitch: 0 }), (p) => p.waitForTimeout(5000)] },
   { nom: 'fond-vallee', actions: [vue(MATIN), (p) => p.waitForTimeout(5000)] },
@@ -1231,7 +1233,7 @@ async function main() {
         // Pas de feuille de partage du système : le lien est copié, ce qui se voit sur la capture
         await contexte.addInitScript(() => { delete Navigator.prototype.share; });
         // Fond de jour par défaut : en Auto, une série lancée le soir passerait tout en nuit
-        await contexte.addInitScript((mode) => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': mode })), ecran.fond ?? 'jour');
+        await contexte.addInitScript(([mode, vue]) => localStorage.setItem('montis.reglages', JSON.stringify({ langue: 'fr', 'fond-montis-mode': mode, 'bienvenue-vue': vue })), [ecran.fond ?? 'jour', !ecran.bienvenue]);
         const page = await contexte.newPage();
         const erreurs = [];
         page.on('pageerror', (e) => erreurs.push(e.message));

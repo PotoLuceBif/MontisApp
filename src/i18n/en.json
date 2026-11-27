@@ -2116,5 +2116,14 @@
   "aide.fermer": "Close help",
   "aide.vent-profil": "Each column is an hour, each row a height above the marker. Arrows point where the wind is going; their colour shows its strength (scale below).\nYellow shows how high thermals rise: the stronger the colour, the stronger they are. The dashed line marks the cumulus base, grey shows clouds.\nTap an hour to read its values.",
   "aide.plafonds": "Each colour shows how high thermals rise at the chosen hour.\n“Above ground”: the height you can gain from take-off. “Above sea level”: the altitude to read on your altimeter. Grey means no usable thermals.\nDrag the slider to change the hour; the value at the map centre shows under the legend.",
-  "aide.bulletin-rose": "The rose shows slopes by aspect, north at the top.\nColoured sectors are the slopes where the bulletin sees the most danger, in the colour of the danger level. Combine them with the altitudes shown above."
+  "aide.bulletin-rose": "The rose shows slopes by aspect, north at the top.\nColoured sectors are the slopes where the bulletin sees the most danger, in the colour of the danger level. Combine them with the altitudes shown above.",
+  "bienvenue.titre": "Montis in 20 seconds",
+  "bienvenue.carte": "Base map, relief, slopes, geology: choose what you see.",
+  "bienvenue.preparer": "Pick your activity (hiking, cycling, skiing, free flight) and plan your outing.",
+  "bienvenue.meteo": "Local forecast, rain radar, wind analysis.",
+  "bienvenue.traces": "Your watch activities and your routes.",
+  "bienvenue.plus": "Horizon, Sun and Moon, the globe and games.",
+  "bienvenue.astuce": "Long press (or right-click) anywhere on the map: altitude, slope, sun and weather at that spot.",
+  "bienvenue.ok": "Let’s go",
+  "bienvenue.revoir": "See the introduction again"
 }
