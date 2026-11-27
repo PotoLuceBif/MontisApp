@@ -129,12 +129,12 @@ Fluidité et temps de la carte : différences dans le bruit de mesure. **Constat
 
 ## Refonte de l'interface (25 au 27 novembre 2026, branche refonte-onglets, fusionnée le 27 novembre)
 
-**R.1 Onglets** (variante F) : Carte · Préparer · Météo · Traces · Plus, barre du bas sur téléphone, rail à gauche sur ordinateur ; chaque onglet ouvre une bande de cartes ; panneaux en feuilles qui glissent, croix et réduction partout ; logo Montis vers les Paramètres ; modes à part (jeu, visite, Lune, Horizon, mode poche). Détail des choix dans .
+**R.1 Onglets** (variante F) : Carte · Préparer · Météo · Traces · Plus, barre du bas sur téléphone, rail à gauche sur ordinateur ; chaque onglet ouvre une bande de cartes ; panneaux en feuilles qui glissent, croix et réduction partout ; logo Montis vers les Paramètres ; modes à part (jeu, visite, Lune, Horizon, mode poche). Détail des choix dans `docs/refonte-inventaire.md`.
 
 **R.2 Retouches d'usage** : Horizon et « Voir dans le ciel » demandent toujours où regarder (« Là où je suis » si la position est autorisée, ou repère à placer) ; trajectoires du soleil et de la Lune par passage, frise seule au sol (réduite par une languette, pourcentage de la Lune) ; Soleil et Lune à une section ouverte ; éclairage du globe en bulle ; parcours rangés par activité (« Ranger dans ») et Mes parcours en onglets ; Fond de carte › Avancé en groupes dépliables ; Paramètres refaits ; logos encadrés et versions claires ; bâtiments dès le zoom 13.
 
 **R.3 Style « Nuit étoilée raffinée »** : bleu nuit, accent unique violet du logo, sélections discrètes, sans halo ; onglet ouvert en pilule à courbes de niveau ; sur ordinateur, cartes en colonne sous un en-tête et panneaux contre le rail.
 
-**R.4 Aides** : « ? » au trait sur le profil du vent, les plafonds et la rose du bulletin (). **R.5 Bienvenue** : « Montis en 20 secondes », onglets dépliables sur leurs sous-sections (). **R.6 Revue** : série complète (306 écrans par format), sans erreur JavaScript ; nom de station en visite et sélecteur Piste · Ski de rando corrigés.
+**R.4 Aides** : « ? » au trait sur le profil du vent, les plafonds et la rose du bulletin (`aide.js`). **R.5 Bienvenue** : « Montis en 20 secondes », onglets dépliables sur leurs sous-sections (`bienvenue.js`). **R.6 Revue** : série complète (306 écrans par format), sans erreur JavaScript ; nom de station en visite et sélecteur Piste · Ski de rando corrigés.
 
-Publiée sur montis-alpha et poussée sur GitHub () le 27 novembre 2026, le compte GitHub du propriétaire étant de nouveau accessible.
+Publiée sur montis-alpha et poussée sur GitHub (`developpement`) le 27 novembre 2026, le compte GitHub du propriétaire étant de nouveau accessible.
